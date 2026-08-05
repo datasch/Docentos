@@ -1,0 +1,6 @@
+{
+  "name": "DocentOS",
+  "description": "DocentOS - The AI-Native, Open-Source Learning Engine. Plataforma de educación y mentoría interactiva con gestión de cursos, roles RBAC, soporte VIP, integración con Google Drive, guías de voz IA y arquitectura modular de plugins.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

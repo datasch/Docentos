@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Base de Datos Relacional PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: docentos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: docentos
+      POSTGRES_PASSWORD: docentos_secret_pass
+      POSTGRES_DB: docentos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docentos -d docentos_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Aplicación DocentOS LMS Engine (React + Express + Prisma)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docentos_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://docentos:docentos_secret_pass@db:5432/docentos_db?schema=public
+      - VITE_APP_NAME=DocentOS
+      - VITE_APP_TAGLINE=Plataforma e-Learning Open Source
+      - VITE_POWERED_BY_TEXT=Powered by DocentOS LMS Engine
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local

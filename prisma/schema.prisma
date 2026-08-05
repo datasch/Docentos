@@ -1,0 +1,184 @@
+// Prisma Schema for Academia Giantucchi
+// Supports RBAC roles (ADMIN, VIP, EXTERNAL), Paywall & VIP Bypass, Google Drive Videos, Mentorship Q&A, and Payments
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MENTOR
+  MENTEE
+  PUBLIC_USER
+  VIP
+  EXTERNAL
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id          String              @id @default(uuid())
+  email       String              @unique
+  name        String
+  role        Role                @default(PUBLIC_USER)
+  avatarUrl   String?
+  strikes     Int                 @default(0)
+  isActive    Boolean             @default(true)
+  payments    Payment[]
+  comments    MentorshipComment[]
+  progress    UserProgress[]
+  videoNotes  VideoNote[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Plugin {
+  id          String   @id
+  name        String
+  description String
+  version     String
+  enabled     Boolean  @default(true)
+  category    String
+  configJson  String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MenteeAssignment {
+  id        String   @id @default(uuid())
+  mentorId  String
+  menteeId  String
+  courseId  String
+  createdAt DateTime @default(now())
+}
+
+model Course {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  published   Boolean     @default(true)
+  coverImage  String
+  category    String      @default("Mentoría Elite")
+  modules     Module[]
+  payments    Payment[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Module {
+  id          String           @id @default(uuid())
+  title       String
+  description String?
+  order       Int
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  videos      VideoDriveLink[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model VideoDriveLink {
+  id          String              @id @default(uuid())
+  driveFileId String
+  title       String
+  description String?
+  duration    String?
+  mimeType    String              @default("video/mp4")
+  embedUrl    String
+  previewUrl  String?
+  order       Int
+  moduleId    String
+  module      Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  comments    MentorshipComment[]
+  progress    UserProgress[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  amount          Float
+  status          PaymentStatus @default(COMPLETED)
+  stripeSessionId String?
+  createdAt       DateTime      @default(now())
+}
+
+model MentorshipComment {
+  id               String              @id @default(uuid())
+  content          String
+  isMentorResponse Boolean             @default(false)
+  isResolved       Boolean             @default(false)
+  likes            Int                 @default(0)
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId          String
+  video            VideoDriveLink      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  parentId         String?
+  parent           MentorshipComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies          MentorshipComment[] @relation("CommentReplies")
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model UserProgress {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId     String
+  video       VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  completed   Boolean        @default(true)
+  completedAt DateTime       @default(now())
+
+  @@unique([userId, videoId])
+}
+
+model VideoNote {
+  id               String         @id @default(uuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId          String
+  video            VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  timestampSeconds Int            @default(0)
+  content          String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model LandingConfig {
+  id                   String   @id @default("singleton")
+  heroTitle            String   @default("El Motor de Aprendizaje Abierto con IA Nativa & Mentoría")
+  heroSubtitle         String   @default("DocentOS es la alternativa moderna, liviana y modular de código abierto frente a plataformas LMS tradicionales monolíticas como Moodle u Odoo LMS.")
+  heroMediaUrl         String   @default("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop")
+  heroCtaText          String   @default("Explorar Cursos")
+  heroCtaLink          String   @default("#courses")
+  heroSecondaryCtaText String   @default("Pase VIP")
+  heroSecondaryCtaLink String   @default("#vip")
+  featuredCourseIds    String   @default("[]")
+  bannerEnabled        Boolean  @default(true)
+  bannerText           String   @default("🚀 ¡Novedad en DocentOS v2.5! Motor de IA optimizado, gestión de guías vocales e integración con Drive.")
+  bannerLinkText       String   @default("Ver Novedades")
+  bannerLinkUrl        String   @default("#")
+  benefitsJson         String   @default("[]")
+  testimonialsJson     String   @default("[]")
+  footerText           String   @default("Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez)")
+  githubUrl            String   @default("https://github.com/giantucchi/docentos")
+  discordUrl           String   @default("")
+  twitterUrl           String   @default("")
+  linkedinUrl          String   @default("")
+  updatedAt            DateTime @updatedAt
+}
+

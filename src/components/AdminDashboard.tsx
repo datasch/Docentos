@@ -1,0 +1,852 @@
+/**
+ * Panel de Administración & Mentoría
+ * Academia Giantucchi
+ *
+ * Permite a los Profesores y Mentores:
+ * 1. Gestionar Usuarios y Asignar Pases VIP (RBAC)
+ * 2. Enlazar Videos de Google Drive a Módulos del Temario
+ * 3. Responder Preguntas de Mentoría en la bandeja de entrada
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders } from 'lucide-react';
+import { api } from '../lib/api';
+import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide } from '../types';
+import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
+import { PluginManagerView } from './PluginManagerView';
+import { LandingPageEditor } from './LandingPageEditor';
+
+interface AdminDashboardProps {
+  course: Course;
+  onRefreshData: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
+  const [activeTab, setActiveTab] = useState<'users' | 'drive' | 'tts' | 'plugins' | 'landing'>('users');
+  const [users, setUsers] = useState<User[]>([]);
+
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Drive Linker State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [driveVideos, setDriveVideos] = useState<DriveVideoFile[]>([]);
+  const [loadingDrive, setLoadingDrive] = useState(false);
+  const [selectedModuleId, setSelectedModuleId] = useState(course.modules[0]?.id || '');
+  const [linkingVideo, setLinkingVideo] = useState<DriveVideoFile | null>(null);
+  const [linkSuccessMsg, setLinkSuccessMsg] = useState('');
+
+  // TTS Gamified Guides Management State
+  const [ttsGuides, setTtsGuides] = useState<TTSGuide[]>([]);
+  const [loadingTtsGuides, setLoadingTtsGuides] = useState(false);
+  const [ttsTitle, setTtsTitle] = useState('');
+  const [ttsScript, setTtsScript] = useState('');
+  const [ttsVoice, setTtsVoice] = useState('es-ES-Carlos');
+  const [ttsSpeed, setTtsSpeed] = useState(1.0);
+  const [ttsTargetVideoId, setTtsTargetVideoId] = useState(course.modules[0]?.videos[0]?.id || '');
+  const [ttsSuccessMsg, setTtsSuccessMsg] = useState('');
+  const [isPreviewingAudio, setIsPreviewingAudio] = useState(false);
+  const [isGeneratingAiScript, setIsGeneratingAiScript] = useState(false);
+
+  useEffect(() => {
+    loadUsers();
+    loadDriveVideos();
+    loadTTSGuides();
+  }, []);
+
+  const handleGenerateAiScript = async () => {
+    setIsGeneratingAiScript(true);
+    try {
+      // Find selected video title
+      let targetVideoTitle = 'Lección de Mentoría Técnica';
+      for (const mod of course.modules) {
+        const foundVid = mod.videos.find((v) => v.id === ttsTargetVideoId);
+        if (foundVid) {
+          targetVideoTitle = `${mod.title}: ${foundVid.title}`;
+          break;
+        }
+      }
+
+      const selectedVoiceConfig = SUPPORTED_TTS_VOICES.find((v) => v.id === ttsVoice);
+      const targetLang = selectedVoiceConfig ? selectedVoiceConfig.lang : 'es';
+
+      const res = await api.generateScriptWithAI({
+        lessonTitle: targetVideoTitle,
+        language: targetLang,
+      });
+
+      if (res.scriptText) {
+        setTtsScript(res.scriptText);
+        setTtsSuccessMsg('¡Guion generado por IA exitosamente!');
+        setTimeout(() => setTtsSuccessMsg(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error generating AI script:', err);
+    } finally {
+      setIsGeneratingAiScript(false);
+    }
+  };
+
+  const loadTTSGuides = async () => {
+    setLoadingTtsGuides(true);
+    try {
+      const res = await api.getTTSGuides({ courseId: course.id });
+      setTtsGuides(res.guides || []);
+    } catch (error) {
+      console.error('Error loading TTS guides:', error);
+    } finally {
+      setLoadingTtsGuides(false);
+    }
+  };
+
+  const handlePreviewAudio = () => {
+    if (!ttsScript.trim()) {
+      alert('Por favor escribe un script para la guía antes de previsualizar el audio.');
+      return;
+    }
+
+    if (!('speechSynthesis' in window)) {
+      alert('Tu navegador no soporta síntesis de voz Web Speech API.');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(ttsScript);
+    
+    const voices = window.speechSynthesis.getVoices();
+    let selectedVoice = voices.find((v) => v.lang.startsWith('es'));
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+
+    utterance.rate = ttsSpeed;
+    
+    utterance.onstart = () => setIsPreviewingAudio(true);
+    utterance.onend = () => setIsPreviewingAudio(false);
+    utterance.onerror = () => setIsPreviewingAudio(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleCreateTTSGuide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ttsScript.trim()) return;
+
+    try {
+      const selectedModule = course.modules.find((m) =>
+        m.videos.some((v) => v.id === ttsTargetVideoId)
+      );
+
+      const res = await api.createTTSGuide({
+        courseId: course.id,
+        moduleId: selectedModule?.id || course.modules[0]?.id,
+        videoId: ttsTargetVideoId,
+        title: ttsTitle.trim() || 'Guía de Orientación de Mentoría',
+        scriptText: ttsScript.trim(),
+        voiceId: ttsVoice,
+        voiceSpeed: ttsSpeed,
+        xpReward: 50,
+      });
+
+      if (res.success) {
+        setTtsSuccessMsg('¡Guía de mentoría TTS creada y guardada con éxito!');
+        setTtsScript('');
+        setTtsTitle('');
+        loadTTSGuides();
+        setTimeout(() => setTtsSuccessMsg(''), 3500);
+      }
+    } catch (error) {
+      console.error('Error creating TTS guide:', error);
+    }
+  };
+
+  const handleDeleteTTSGuide = async (id: string) => {
+    try {
+      await api.deleteTTSGuide(id);
+      loadTTSGuides();
+    } catch (error) {
+      console.error('Error deleting TTS guide:', error);
+    }
+  };
+
+
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await api.getAdminUsers();
+      setUsers(res.users || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const loadDriveVideos = async (q?: string) => {
+    setLoadingDrive(true);
+    try {
+      const res = await api.searchDriveVideos(q);
+      setDriveVideos(res.videos || []);
+    } catch (error) {
+      console.error('Error searching drive:', error);
+    } finally {
+      setLoadingDrive(false);
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: UserRole) => {
+    try {
+      await api.updateUserRole(userId, newRole);
+      loadUsers();
+      onRefreshData();
+    } catch (error) {
+      console.error('Error updating role:', error);
+    }
+  };
+
+  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'toggle_active' | 'reset') => {
+    try {
+      let newStrikes = currentStrikes;
+      let newActive = currentActive;
+
+      if (action === 'add_strike') newStrikes += 1;
+      if (action === 'reset') newStrikes = 0;
+      if (action === 'toggle_active') newActive = !currentActive;
+
+      await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
+      loadUsers();
+      onRefreshData();
+    } catch (error) {
+      console.error('Error updating moderation:', error);
+    }
+  };
+
+  const [coursePrice, setCoursePrice] = useState<number>(course.price || 49);
+  const [updatingPrice, setUpdatingPrice] = useState(false);
+  const [priceSuccessMsg, setPriceSuccessMsg] = useState('');
+
+  const handleSaveCoursePrice = async () => {
+    setUpdatingPrice(true);
+    try {
+      await api.updateCoursePrice(course.id, coursePrice);
+      setPriceSuccessMsg('¡Precio del curso actualizado exitosamente!');
+      onRefreshData();
+      setTimeout(() => setPriceSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error('Error updating price:', err);
+    } finally {
+      setUpdatingPrice(false);
+    }
+  };
+
+  const handleLinkDriveVideo = async (video: DriveVideoFile) => {
+    if (!selectedModuleId) return;
+    setLinkingVideo(video);
+    try {
+      await api.addDriveVideoToModule(selectedModuleId, video);
+      setLinkSuccessMsg(`¡Video "${video.name}" enlazado correctamente al módulo!`);
+      onRefreshData();
+      setTimeout(() => setLinkSuccessMsg(''), 3500);
+    } catch (error) {
+      console.error('Error linking video:', error);
+    } finally {
+      setLinkingVideo(null);
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
+      
+      {/* Admin Header */}
+      <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-[#06b6d4] text-xs font-bold uppercase tracking-wider mb-1">
+            <Shield className="w-4 h-4 text-[#06b6d4]" /> Panel de Mentoría & Administración RBAC
+          </div>
+          <h2 className="text-2xl font-extrabold text-white tracking-tight">Academia Giantucchi Control Center</h2>
+          <p className="text-slate-400 text-sm mt-1">
+            Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
+          </p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 w-full md:w-auto">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'users'
+                ? 'btn-brand-primary'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" /> Usuarios & Roles VIP
+          </button>
+          <button
+            onClick={() => setActiveTab('drive')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'drive'
+                ? 'btn-brand-primary'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <HardDrive className="w-4 h-4" /> Enlazar Drive Videos
+          </button>
+          <button
+            onClick={() => setActiveTab('tts')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'tts'
+                ? 'bg-brand-gradient text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#eab308]" /> Guías TTS Gamificadas
+          </button>
+          <button
+            onClick={() => setActiveTab('plugins')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'plugins'
+                ? 'bg-brand-gradient text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-[#06b6d4]" /> Plugins & Extensiones
+          </button>
+          <button
+            onClick={() => setActiveTab('landing')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === 'landing'
+                ? 'bg-brand-gradient text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sliders className="w-4 h-4 text-[#06b6d4]" /> CMS Portada
+          </button>
+        </div>
+      </div>
+
+
+
+      {/* TAB 1: USER & VIP ROLE MANAGEMENT + MODERATION + PRICING */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          {/* Course Pricing Configuration Card */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+              <div>
+                <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-[#eab308]" />
+                  Monetización y Precio del Programa de Mentoría
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Configura el precio público del curso. Deja en 0 para ser completamente público y gratuito.
+                </p>
+              </div>
+              {priceSuccessMsg && (
+                <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl animate-fade-in">
+                  {priceSuccessMsg}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 w-full sm:w-64">
+                <span className="text-slate-400 font-extrabold text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={coursePrice}
+                  onChange={(e) => setCoursePrice(Number(e.target.value))}
+                  placeholder="Ej. 49"
+                  className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
+                />
+                <span className="text-slate-500 text-xs uppercase font-bold">USD</span>
+              </div>
+
+              <button
+                onClick={handleSaveCoursePrice}
+                disabled={updatingPrice}
+                className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
+              >
+                {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>Guardar Precio del Curso</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#06b6d4]" />
+                Gestión de Usuarios, Roles VIP y Moderación de Mentees
+              </h3>
+              <button
+                onClick={loadUsers}
+                className="p-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] text-slate-300 hover:text-white"
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-[#2d2d44]">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[11px] border-b border-[#2d2d44]">
+                  <tr>
+                    <th className="p-3.5">Usuario</th>
+                    <th className="p-3.5">Email</th>
+                    <th className="p-3.5">Rol Actual</th>
+                    <th className="p-3.5">Strikes & Estado</th>
+                    <th className="p-3.5 text-right">Moderación & Roles</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2d2d44]">
+                  {users.map((u) => {
+                    const strikes = u.strikes || 0;
+                    const isActive = u.isActive !== false;
+                    return (
+                      <tr key={u.id} className="hover:bg-[#1a1a2e] transition-colors">
+                        <td className="p-3.5 flex items-center gap-3">
+                          <img
+                            src={u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                            alt={u.name}
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
+                          />
+                          <div>
+                            <span className="font-semibold text-white block">{u.name}</span>
+                            {!isActive && (
+                              <span className="text-[10px] text-red-400 font-bold uppercase">Cuenta Suspendida</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3.5 font-mono text-slate-400">{u.email}</td>
+                        <td className="p-3.5">
+                          {u.role === 'ADMIN' && (
+                            <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
+                              <Shield className="w-3 h-3" /> ADMIN
+                            </span>
+                          )}
+                          {u.role === 'VIP' && (
+                            <span className="bg-brand-gradient text-white font-extrabold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                              <Crown className="w-3 h-3" /> SOCIO VIP
+                            </span>
+                          )}
+                          {u.role === 'EXTERNAL' && (
+                            <span className="bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 font-medium px-2.5 py-1 rounded-lg text-[10px]">
+                              EXTERNO
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${
+                              strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}>
+                              ⚠️ {strikes} Strikes
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                              isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
+                            }`}>
+                              {isActive ? 'Activo' : 'Suspendido'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-right space-x-1.5">
+                          {/* Moderation actions */}
+                          <button
+                            onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'add_strike')}
+                            title="Dar Strike de Moderación"
+                            className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
+                          >
+                            +1 Strike
+                          </button>
+                          <button
+                            onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
+                            title={isActive ? 'Suspender Usuario' : 'Activar Usuario'}
+                            className={`px-2 py-1 border font-bold rounded-lg text-[10px] transition-all ${
+                              isActive
+                                ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400'
+                                : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400'
+                            }`}
+                          >
+                            {isActive ? 'Suspender' : 'Activar'}
+                          </button>
+
+                          {/* Role actions */}
+                          {u.role !== 'VIP' && (
+                            <button
+                              onClick={() => handleUpdateRole(u.id, 'VIP')}
+                              className="px-2.5 py-1 bg-[#06b6d4] hover:bg-[#06b6d4]/80 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all"
+                            >
+                              Pase VIP
+                            </button>
+                          )}
+                          {u.role !== 'ADMIN' && (
+                            <button
+                              onClick={() => handleUpdateRole(u.id, 'ADMIN')}
+                              className="px-2.5 py-1 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all"
+                            >
+                              Admin
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: LINK GOOGLE DRIVE VIDEOS TO COURSE MODULES */}
+      {activeTab === 'drive' && (
+        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <HardDrive className="w-5 h-5 text-[#06b6d4]" />
+                Enlazar Contenido de Google Drive al Temario
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Selecciona un módulo del curso y asóciale videos alojados en Google Drive en tiempo real.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <label className="text-xs text-slate-400 font-semibold shrink-0">Módulo Destino:</label>
+              <select
+                value={selectedModuleId}
+                onChange={(e) => setSelectedModuleId(e.target.value)}
+                className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
+              >
+                {course.modules.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {linkSuccessMsg && (
+            <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 animate-fade-in font-semibold">
+              <CheckCircle2 className="w-4 h-4" /> {linkSuccessMsg}
+            </div>
+          )}
+
+          {/* Drive Videos Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {driveVideos.map((video) => (
+              <div
+                key={video.id}
+                className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 flex flex-col justify-between hover:border-[#06b6d4]/50 transition-all shadow-md"
+              >
+                <div className="space-y-2">
+                  <div className="aspect-video bg-black rounded-xl overflow-hidden border border-[#2d2d44] relative">
+                    <img
+                      src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
+                      alt={video.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {video.duration && (
+                      <span className="absolute bottom-1.5 right-1.5 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#2d2d44]">
+                        {video.duration}
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-semibold text-xs text-white line-clamp-2">{video.name}</h4>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-[#2d2d44] flex items-center justify-between">
+                  <span className="text-[10px] text-slate-500 font-mono">ID: {video.id.substring(0, 12)}...</span>
+                  <button
+                    onClick={() => handleLinkDriveVideo(video)}
+                    disabled={linkingVideo?.id === video.id}
+                    className="px-3 py-1.5 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
+                  >
+                    {linkingVideo?.id === video.id ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5" /> Enlazar al Módulo
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: GESTIÓN DE GUÍAS DE MENTORÍA (TTS GAMIFICADO) */}
+      {activeTab === 'tts' && (
+        <div className="space-y-6">
+          
+          {/* Form Box */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
+            <div className="border-b border-[#2d2d44] pb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#06b6d4]" />
+                <h3 className="font-bold text-base text-white">Gestión de Guías de Mentoría (TTS Gamificado)</h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada módulo o lección y recompénsalos con XP por escuchar la introducción.
+              </p>
+            </div>
+
+            {ttsSuccessMsg && (
+              <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 font-semibold animate-fade-in">
+                <CheckCircle2 className="w-4 h-4" /> {ttsSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateTTSGuide} className="space-y-4">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                    Título de la Guía
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Guía de Orientación: Metodología Giantucchi"
+                    value={ttsTitle}
+                    onChange={(e) => setTtsTitle(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  />
+                </div>
+
+                {/* Target Lesson/Video Selector */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                    Asociar a Clase / Lección Destino
+                  </label>
+                  <select
+                    value={ttsTargetVideoId}
+                    onChange={(e) => setTtsTargetVideoId(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4]"
+                  >
+                    {course.modules.flatMap((m) =>
+                      m.videos.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {m.title} → {v.title}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Voice Selector & Speed */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Voz Sintética TTS (Multilenguaje)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => ttsService.testVoice(ttsVoice, ttsSpeed)}
+                      className="text-[11px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg hover:bg-[#06b6d4]/20 flex items-center gap-1 transition-all"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" /> Probar Voz Seleccionada
+                    </button>
+                  </div>
+                  <select
+                    value={ttsVoice}
+                    onChange={(e) => setTtsVoice(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4]"
+                  >
+                    {SUPPORTED_TTS_VOICES.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.flag} {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                    Velocidad de Lectura (Speed: {ttsSpeed}x)
+                  </label>
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="1.4"
+                    step="0.1"
+                    value={ttsSpeed}
+                    onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
+                    className="w-full accent-[#06b6d4] mt-2 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Widget de Pruebas Rápidas de Voz Multilenguaje */}
+              <div className="bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-4 space-y-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  🔊 Banco de Prueba Rápida de Voces por Idioma
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {SUPPORTED_TTS_VOICES.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => {
+                        setTtsVoice(v.id);
+                        ttsService.testVoice(v.id, ttsSpeed);
+                      }}
+                      className={`p-2 rounded-lg border text-[11px] font-semibold text-left flex items-center justify-between transition-all ${
+                        ttsVoice === v.id
+                          ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-white shadow-sm'
+                          : 'bg-[#141420] border-[#2d2d44] text-slate-400 hover:text-white hover:border-[#06b6d4]/40'
+                      }`}
+                    >
+                      <span className="truncate">{v.flag} {v.name.split('(')[0]}</span>
+                      <Volume2 className="w-3.5 h-3.5 text-[#06b6d4] shrink-0 ml-1" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Script Text with Hybrid AI Generator Button */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Guion del Mensaje de Mentoría (Texto para TTS)
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={handleGenerateAiScript}
+                    disabled={isGeneratingAiScript}
+                    className="px-3 py-1 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#06b6d4] text-white text-[11px] font-extrabold flex items-center gap-1.5 shadow-md hover:opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {isGeneratingAiScript ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Generando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-3.5 h-3.5 text-[#eab308]" />
+                        <span>Generar con IA</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Escribe o genera con IA las instrucciones iniciales que el alumno escuchará antes de ver la lección..."
+                  value={ttsScript}
+                  onChange={(e) => setTtsScript(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4] transition-all"
+                />
+              </div>
+
+              {/* Form Action Buttons */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={handlePreviewAudio}
+                  className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+                >
+                  <Volume2 className={`w-4 h-4 ${isPreviewingAudio ? 'text-[#06b6d4] animate-bounce' : ''}`} />
+                  {isPreviewingAudio ? 'Reproduciendo Audio de Prueba...' : 'Previsualizar Audio'}
+                </button>
+
+                <button
+                  type="submit"
+                  className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
+                >
+                  <Sparkles className="w-4 h-4 text-[#eab308]" /> Generar y Guardar Guía TTS
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          {/* List of Existing TTS Guides */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
+            <h4 className="font-bold text-sm text-white flex items-center gap-2 border-b border-[#2d2d44] pb-3">
+              <Award className="w-4 h-4 text-[#a855f7]" /> Guías de Mentoría Creadas ({ttsGuides.length})
+            </h4>
+
+            {ttsGuides.length === 0 ? (
+              <p className="text-xs text-slate-500 py-4 text-center">No se han creado guías TTS aún.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ttsGuides.map((guide) => (
+                  <div
+                    key={guide.id}
+                    className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3 relative hover:border-[#06b6d4]/40 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={guide.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                          alt={guide.mentorName}
+                          className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
+                        />
+                        <div>
+                          <h5 className="font-bold text-xs text-white">{guide.title}</h5>
+                          <span className="text-[10px] text-[#06b6d4] font-semibold">{guide.mentorName}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteTTSGuide(guide.id)}
+                        className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
+                        title="Eliminar guía"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-slate-300 italic bg-[#0a0a0f] p-2.5 rounded-lg border border-[#2d2d44] line-clamp-3">
+                      "{guide.scriptText}"
+                    </p>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => ttsService.speak({ text: guide.scriptText, voiceId: guide.voiceId, speed: guide.voiceSpeed })}
+                          className="px-2.5 py-1 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] font-bold rounded-lg hover:bg-[#06b6d4]/20 flex items-center gap-1 transition-all"
+                        >
+                          <Volume2 className="w-3 h-3" /> Escuchar Guía
+                        </button>
+                        <span className="font-mono text-[#a855f7]">Voz: {guide.voiceId}</span>
+                      </div>
+                      <span className="font-bold text-[#eab308] bg-[#eab308]/10 px-2 py-0.5 rounded-lg border border-[#eab308]/20">
+                        +{guide.xpReward} XP
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 4: GESTIÓN DE PLUGINS & EXTENSIONES */}
+      {activeTab === 'plugins' && (
+        <PluginManagerView />
+      )}
+
+      {/* TAB 5: CMS EDITOR DE PORTADA */}
+      {activeTab === 'landing' && (
+        <LandingPageEditor onSaved={onRefreshData} />
+      )}
+
+    </div>
+  );
+};
+
+

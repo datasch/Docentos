@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #0a0a0f;
+    --bg-surface: #141420;
+    --bg-elevated: #1a1a2e;
+    --border-giantucchi: #2d2d44;
+    --text-primary: #ffffff;
+
+    --brand-cyan: #06b6d4;
+    --brand-blue: #3b82f6;
+    --brand-purple: #a855f7;
+    --brand-magenta: #ec4899;
+    --brand-orange: #f97316;
+    --brand-yellow: #eab308;
+  }
+
+  body {
+    background-color: #0a0a0f;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  }
+}
+
+/* Scrollbar styling with Giantucchi Spectrum gradient hover */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2d2d44;
+  border-radius: 9999px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+}
+
+/* Giantucchi Custom Utility Classes */
+.bg-giantucchi-main {
+  background-color: #0a0a0f;
+}
+
+.bg-giantucchi-surface {
+  background-color: #141420;
+}
+
+.bg-giantucchi-elevated {
+  background-color: #1a1a2e;
+}
+
+.border-giantucchi {
+  border-color: #2d2d44;
+}
+
+/* Gradients */
+.bg-brand-gradient {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+}
+
+.text-brand-gradient {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bg-dark-gradient {
+  background: linear-gradient(180deg, #0a0a0f 0%, #141420 100%);
+}
+
+/* Primary CTA Button (Giantucchi Spectrum) */
+.btn-brand-primary {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  color: #ffffff;
+  font-weight: 800;
+  border-radius: 0.5rem; /* rounded-lg */
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 15px -3px rgba(6, 182, 212, 0.35);
+}
+
+.btn-brand-primary:hover {
+  opacity: 0.93;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -2px rgba(168, 85, 247, 0.45);
+}
+
+.btn-brand-primary:active {
+  transform: translateY(0);
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 2.8s ease-in-out infinite;
+}
+
