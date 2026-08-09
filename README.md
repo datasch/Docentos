@@ -62,6 +62,6 @@
 Este proyecto está distribuido bajo la **Licencia MIT**.
 
 * **Entidad Creadora & Mantenedor:** Jose Luis Hernandez Hernandez — Giantucchi Inc. EIRL.
-* **Repositorio Oficial:** [https://github.com/giantucchi/docentos](https://github.com/giantucchi/docentos)
+* **Repositorio Oficial:** [https://github.com/datasch/docentos](https://github.com/datasch/docentos)
 
 `Powered by DocentOS • Built by Giantucchi`
