@@ -33,7 +33,7 @@
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone https://github.com/giantucchi/docentos.git
+   git clone https://github.com/giantucchi-org/docentos.git
    cd docentos
    ```
 
@@ -61,7 +61,7 @@
 
 Este proyecto está distribuido bajo la **Licencia MIT**.
 
-* **Entidad Creadora & Mantenedor:** Jose Luis Hernandez Hernandez — Giantucchi Inc. EIRL.
-* **Repositorio Oficial:** [https://github.com/datasch/docentos](https://github.com/datasch/docentos)
+* **Entidad Creadora & Mantenedor:** Giantucchi
+* **Repositorio Oficial:** [https://github.com/giantucchi-org/docentos](https://github.com/giantucchi-org/docentos) 
 
 `Powered by DocentOS • Built by Giantucchi`
