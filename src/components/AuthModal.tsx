@@ -9,7 +9,8 @@
  * - Redirección inteligente al autenticarse
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Lock, Mail, User as UserIcon, Shield, Sparkles, X, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -39,6 +40,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setError(null);
+    }
+  }, [initialMode, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -94,14 +119,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-md animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+    >
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6" onMouseDown={onClose}>
+        <div
+          className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl p-6 sm:p-8"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
         
         {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-[#141420] hover:bg-[#1a1a2e] rounded-full transition-colors"
+          aria-label="Cerrar ventana de autenticación"
         >
           <X className="w-4 h-4" />
         </button>
@@ -112,7 +148,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <Sparkles className="w-3.5 h-3.5" />
             <span>DocentOS Engine</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">
+          <h2 id="auth-modal-title" className="text-2xl font-extrabold text-white tracking-tight">
             {mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Institucional'}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
@@ -282,7 +318,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
 
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

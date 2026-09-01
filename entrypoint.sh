@@ -31,8 +31,12 @@ npx prisma generate
 
 # 3. Ejecutar migraciones / actualización de esquema
 echo "🗄️ Desplegando esquema de base de datos PostgreSQL..."
-npx prisma db push --accept-data-loss || npx prisma migrate deploy || echo "⚠️ Advertencia al sincronizar BD, continuando proceso de inicio..."
+npx prisma db push || npx prisma migrate deploy || echo "⚠️ Advertencia al sincronizar BD, continuando proceso de inicio..."
 
-# 4. Iniciar el servidor
+# 4. Cargar datos iniciales de forma idempotente
+echo "🌱 Verificando datos iniciales de DocentOS..."
+npm run prisma:seed
+
+# 5. Iniciar el servidor
 echo "✨ ¡DocentOS está listo y activo! Ejecutando proceso principal..."
 exec "$@"

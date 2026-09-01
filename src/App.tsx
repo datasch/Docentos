@@ -18,6 +18,7 @@ import { AIAssistantTour } from './components/AIAssistantTour';
 import { api } from './lib/api';
 import { User, Course, UserRole } from './types';
 import { siteConfig } from './config/theme';
+import { DOCENTOS_VERSION } from './version';
 import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
 
 export default function App() {
@@ -332,7 +333,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 text-[10px] text-[#06b6d4]">
-            <CheckCircle2 className="w-3.5 h-3.5" /> DocentOS Engine: Operativo
+            <CheckCircle2 className="w-3.5 h-3.5" /> DocentOS v{DOCENTOS_VERSION} · Alpha
           </div>
         </div>
       </footer>

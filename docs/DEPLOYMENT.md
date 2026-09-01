@@ -70,7 +70,7 @@ Esta guía detalla los pasos para desplegar **DocentOS** en cualquier infraestru
    npx prisma db push
    npm run build
    ```
-6. En PM2 Manager, añade un nuevo proyecto seleccionando `dist/server.cjs` como punto de entrada en el puerto `3000`.
+6. En PM2 Manager, añade un nuevo proyecto seleccionando `dist/server.js` como punto de entrada en el puerto `3000`.
 
 ---
 

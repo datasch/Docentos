@@ -4,12 +4,16 @@
 # ==========================================
 # STAGE 1: Builder
 # ==========================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Prisma 7 carga prisma.config.ts incluso al generar el cliente. Esta URL sólo
+# se usa durante el build; Docker Compose inyecta la URL real en ejecución.
+ENV DATABASE_URL=postgresql://docentos:docentos_secret_pass@db:5432/docentos_db?schema=public
+
 # Instalar herramientas requeridas para dependencias nativas si aplica
-RUN apk add --no-libc-musl --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++
 
 # Copiar manifiestos de dependencias y esquema de Prisma
 COPY package*.json ./
@@ -28,7 +32,7 @@ RUN npm run build
 # ==========================================
 # STAGE 2: Runner (Producción)
 # ==========================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 
@@ -41,6 +45,8 @@ COPY .env.example ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/server/prisma.ts ./server/prisma.ts
 COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 
 # Asegurar permisos de ejecución para el script de inicio

@@ -2,8 +2,13 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Status: Production Ready](https://img.shields.io/badge/Status-v2.5_Enterprise-a855f7.svg)
+![Version: 0.1.0-alpha.1](https://img.shields.io/badge/Version-0.1.0--alpha.1-a855f7.svg)
+![Status: Alpha](https://img.shields.io/badge/Status-Alpha-f59e0b.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
+
+> **Estado actual:** línea base alpha para desarrollo y evaluación local. La
+> autenticación, los pagos y la automatización de releases todavía no están
+> listos para una exposición pública de producción.
 
 **DocentOS** es un motor de aprendizaje de código abierto, ultraligero, modular y nativamente potenciado por IA. Diseñado como la alternativa moderna frente a LMS tradicionales pesados o monolíticos como **Moodle** u **Odoo LMS**, DocentOS ofrece control total sobre el contenido (streaming nativo vía Google Drive API v3), gestión de roles RBAC, guías de voz motivacionales TTS sintetizadas por IA, sistema de mentoría directa e interactiva y arquitectura extensible basada en plugins.
 
@@ -22,10 +27,10 @@
 
 ## 🚀 Tecnologías (Stack)
 
-* **Frontend:** React 18 (Vite), Tailwind CSS, Lucide Icons, i18next (Multilingüe: ES, EN, PT, FR, IT).
+* **Frontend:** React 19 (Vite), Tailwind CSS, Lucide Icons, i18next (Multilingüe: ES, EN, PT, FR, IT).
 * **Backend:** Node.js, Express.js.
 * **Inteligencia Artificial:** SDK oficial `@google/genai` (Gemini AI).
-* **Base de Datos & ORM:** PostgreSQL con Prisma ORM (almacenamiento persistente en memoria / SQL).
+* **Base de Datos & ORM:** PostgreSQL con Prisma ORM y volumen persistente en Docker.
 
 ---
 
@@ -37,8 +42,9 @@
    cd docentos
    ```
 
-2. **Configurar el entorno (.env):**
+2. **Instalar dependencias y configurar el entorno:**
    ```bash
+   npm install
    cp .env.example .env
    ```
    Edita `.env` para incluir tus claves (Gemini API Key, Google Drive, Stripe, etc.):
@@ -50,10 +56,34 @@
    VITE_AI_ASSISTANT_NAME="Ian"
    ```
 
-3. **Ejecutar la aplicación:**
+3. **Levantar PostgreSQL y preparar las tablas:**
+   ```bash
+   docker compose up -d db
+   npm run prisma:generate
+   npm run prisma:push
+   npm run prisma:seed
+   ```
+
+4. **Ejecutar la aplicación:**
    ```bash
    npm run dev
    ```
+
+   Abre [http://localhost:3000](http://localhost:3000). Puedes comprobar la conexión a PostgreSQL en `GET /api/health`.
+
+---
+
+## 🗺️ Estado y hoja de ruta
+
+* **Versión actual:** v0.1.0-alpha.1.
+* **Versión de la API:** GET /api/version.
+* **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
+* **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
+* **Historial de cambios:** [CHANGELOG.md](CHANGELOG.md).
+
+La primera prioridad es reemplazar la autenticación demostrativa por sesiones
+individuales y persistentes. No despliegues esta versión alpha en Internet con
+datos reales.
 
 ---
 

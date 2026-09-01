@@ -2,12 +2,12 @@
 // Supports RBAC roles (ADMIN, VIP, EXTERNAL), Paywall & VIP Bypass, Google Drive Videos, Mentorship Q&A, and Payments
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -37,6 +37,9 @@ model User {
   comments    MentorshipComment[]
   progress    UserProgress[]
   videoNotes  VideoNote[]
+  feedback    Feedback[]
+  mentorAssignments MenteeAssignment[] @relation("MentorAssignments")
+  menteeAssignments MenteeAssignment[] @relation("MenteeAssignments")
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 }
@@ -48,6 +51,7 @@ model Plugin {
   version     String
   enabled     Boolean  @default(true)
   category    String
+  icon        String   @default("Puzzle")
   configJson  String   @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -58,7 +62,17 @@ model MenteeAssignment {
   mentorId  String
   menteeId  String
   courseId  String
+  mentor    User     @relation("MentorAssignments", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentee    User     @relation("MenteeAssignments", fields: [menteeId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseProgress       Int      @default(0)
+  completedVideosCount Int      @default(0)
+  totalVideosCount     Int      @default(0)
+  lastActiveDate       String   @default("Reciente")
+  status               String   @default("ACTIVE")
   createdAt DateTime @default(now())
+
+  @@unique([menteeId, courseId])
 }
 
 model Course {
@@ -71,6 +85,7 @@ model Course {
   category    String      @default("Mentoría Elite")
   modules     Module[]
   payments    Payment[]
+  menteeAssignments MenteeAssignment[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }
@@ -101,6 +116,7 @@ model VideoDriveLink {
   module      Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   comments    MentorshipComment[]
   progress    UserProgress[]
+  videoNotes  VideoNote[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 }
@@ -182,3 +198,26 @@ model LandingConfig {
   updatedAt            DateTime @updatedAt
 }
 
+model TTSGuide {
+  id         String   @id @default(uuid())
+  courseId   String
+  moduleId   String?
+  videoId    String?
+  title      String
+  scriptText String
+  voiceId    String
+  voiceSpeed Float    @default(1)
+  mentorName String
+  avatarUrl  String?
+  xpReward   Int      @default(50)
+  createdAt  DateTime @default(now())
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int      @default(5)
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+}
