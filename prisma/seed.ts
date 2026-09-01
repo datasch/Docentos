@@ -1,4 +1,5 @@
 import { prisma } from '../server/prisma.js';
+import { hashPassword } from '../server/authService.js';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 
@@ -53,6 +54,16 @@ const users = [
     avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
   },
 ];
+
+const demoPasswords: Record<string, string> = {
+  'user-admin-01': 'admin123',
+  'user-mentor-01': 'mentor123',
+  'user-mentee-01': 'vip123',
+  'user-public-01': 'user123',
+  'user-external-01': 'external123',
+  'mentee-demo-02': 'roberto123',
+  'mentee-demo-03': 'mariana123',
+};
 
 const plugins = [
   {
@@ -145,11 +156,18 @@ const testimonials = [
 
 async function seedUsers() {
   for (const user of users) {
-    await prisma.user.upsert({
+    const existing = await prisma.user.findUnique({
       where: { id: user.id },
-      update: {},
-      create: { ...user, avatarUrl: user.avatarUrl || DEFAULT_AVATAR },
+      select: { id: true, passwordHash: true },
     });
+    if (existing?.passwordHash) continue;
+
+    const passwordHash = await hashPassword(demoPasswords[user.id]);
+    if (existing) {
+      await prisma.user.update({ where: { id: existing.id }, data: { passwordHash } });
+    } else {
+      await prisma.user.create({ data: { ...user, passwordHash, avatarUrl: user.avatarUrl || DEFAULT_AVATAR } });
+    }
   }
 }
 

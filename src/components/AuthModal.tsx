@@ -5,20 +5,20 @@
  * Soporta:
  * - Tarjeta flotante minimalista en tema oscuro (#000000, superficies #0a0a0f, bordes #262626)
  * - Campos de email / password con validación
- * - Selección de rol (Público General, Solicitud Mentee, Mentor)
+ * - Registro público seguro sin elevación de rol desde el navegador
  * - Redirección inteligente al autenticarse
  */
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Lock, Mail, User as UserIcon, Shield, Sparkles, X, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { User, UserRole } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
   initialMode?: 'login' | 'register';
+  initialMessage?: string | null;
   onClose: () => void;
   onSuccess: (user: User, redirectPath: string) => void;
 }
@@ -26,27 +26,36 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   initialMode = 'login',
+  initialMessage = null,
   onClose,
   onSuccess,
 }) => {
-  const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   
   // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('PUBLIC_USER');
-  
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [recoveryMode, setRecoveryMode] = useState<'request' | 'reset' | 'sent' | null>(null);
+  const [resetToken, setResetToken] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      const tokenFromUrl = new URLSearchParams(window.location.search).get('resetToken') || '';
       setMode(initialMode);
+      setRecoveryMode(tokenFromUrl ? 'reset' : null);
+      setResetToken(tokenFromUrl);
       setError(null);
+      setSuccessMessage(initialMessage);
+      setPassword('');
+      setConfirmPassword('');
     }
-  }, [initialMode, isOpen]);
+  }, [initialMessage, initialMode, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -70,10 +79,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
 
     try {
-      if (mode === 'login') {
+      if (recoveryMode === 'request') {
+        if (!email.trim()) throw new Error('Ingresa el correo de tu cuenta');
+        const res = await api.requestPasswordReset(email.trim());
+        setSuccessMessage(res.message);
+        if (res.resetToken) {
+          setResetToken(res.resetToken);
+          setRecoveryMode('reset');
+        } else {
+          setRecoveryMode('sent');
+        }
+      } else if (recoveryMode === 'reset') {
+        if (!resetToken) throw new Error('El enlace de recuperación no contiene un token válido');
+        if (password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres');
+        if (password !== confirmPassword) throw new Error('Las contraseñas no coinciden');
+        const res = await api.resetPassword(resetToken, password);
+        const cleanUrl = `${window.location.pathname}${window.location.hash}`;
+        window.history.replaceState({}, '', cleanUrl);
+        setRecoveryMode(null);
+        setMode('login');
+        setPassword('');
+        setConfirmPassword('');
+        setSuccessMessage(res.message);
+      } else if (mode === 'login') {
         if (!email.trim() || !password) {
           throw new Error('Ingresa tu email y contraseña');
         }
@@ -84,10 +116,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (!name.trim() || !email.trim() || !password) {
           throw new Error('Todos los campos son obligatorios');
         }
-        if (password.length < 4) {
-          throw new Error('La contraseña debe tener al menos 4 caracteres');
+        if (password.length < 8) {
+          throw new Error('La contraseña debe tener al menos 8 caracteres');
         }
-        const res = await api.register(name.trim(), email.trim(), password, selectedRole);
+        const res = await api.register(name.trim(), email.trim(), password);
         onSuccess(res.user, res.redirectPath);
         onClose();
       }
@@ -100,6 +132,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleDemoFill = (role: UserRole) => {
     setError(null);
+    setSuccessMessage(null);
     if (role === 'ADMIN') {
       setEmail('giantucchi@academia.com');
       setPassword('admin123');
@@ -149,17 +182,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <span>DocentOS Engine</span>
           </div>
           <h2 id="auth-modal-title" className="text-2xl font-extrabold text-white tracking-tight">
-            {mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Institucional'}
+            {recoveryMode === 'request'
+              ? 'Recuperar Contraseña'
+              : recoveryMode === 'reset'
+                ? 'Crear Nueva Contraseña'
+                : recoveryMode === 'sent'
+                  ? 'Revisa tu Correo'
+                  : mode === 'login'
+                    ? 'Iniciar Sesión'
+                    : 'Crear Cuenta Institucional'}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            {mode === 'login'
-              ? 'Accede a tus programas de mentoría y clases grabadas'
-              : 'Únete a la comunidad educativa de alto nivel'}
+            {recoveryMode
+              ? 'Usa un enlace de un solo uso para proteger tu cuenta'
+              : mode === 'login'
+                ? 'Accede a tus programas de mentoría y clases grabadas'
+                : 'Únete a la comunidad educativa de alto nivel'}
           </p>
         </div>
 
         {/* Mode Switcher Tabs */}
-        <div className="grid grid-cols-2 gap-1 bg-[#141420] p-1 rounded-xl mb-6 border border-[#262626]">
+        {!recoveryMode && <div className="grid grid-cols-2 gap-1 bg-[#141420] p-1 rounded-xl mb-6 border border-[#262626]">
           <button
             type="button"
             onClick={() => { setMode('login'); setError(null); }}
@@ -182,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           >
             Registrarse
           </button>
-        </div>
+        </div>}
 
         {/* Error Notification */}
         {error && (
@@ -192,9 +235,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* Auth Form */}
+        {successMessage && (
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs">
+            {successMessage}
+          </div>
+        )}
+
+        {recoveryMode === 'sent' ? (
+          <button
+            type="button"
+            onClick={() => {
+              setRecoveryMode(null);
+              setMode('login');
+              setSuccessMessage(null);
+            }}
+            className="w-full py-3 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] text-white font-bold rounded-xl transition-all"
+          >
+            Volver a iniciar sesión
+          </button>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'register' && (
+          {!recoveryMode && mode === 'register' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
                 Nombre Completo
@@ -207,13 +268,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej. Carlos Mendoza"
                   className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  autoComplete="name"
                   required={mode === 'register'}
                 />
               </div>
             </div>
           )}
 
-          <div>
+          {recoveryMode !== 'reset' && <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
               Correo Electrónico
             </label>
@@ -225,14 +287,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
                 className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                autoComplete="email"
                 required
               />
             </div>
-          </div>
+          </div>}
 
-          <div>
+          {recoveryMode !== 'request' && <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-              Contraseña
+              {recoveryMode === 'reset' ? 'Nueva Contraseña' : 'Contraseña'}
             </label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
@@ -242,36 +305,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                autoComplete={recoveryMode === 'reset' || mode === 'register' ? 'new-password' : 'current-password'}
+                minLength={recoveryMode === 'reset' || mode === 'register' ? 8 : 1}
                 required
               />
             </div>
-          </div>
+            {!recoveryMode && mode === 'login' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRecoveryMode('request');
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className="mt-2 text-[11px] font-semibold text-[#06b6d4] hover:text-cyan-300"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
+          </div>}
 
-          {mode === 'register' && (
+          {recoveryMode === 'reset' && (
             <div>
-              <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Tipo de Membresía / Rol
+              <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                Confirmar Nueva Contraseña
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { role: 'PUBLIC_USER' as UserRole, label: 'Público General', sub: 'Acceso Catálogo' },
-                  { role: 'MENTEE' as UserRole, label: 'Mentee VIP', sub: 'Pase Directo' },
-                  { role: 'MENTOR' as UserRole, label: 'Mentor Tutor', sub: 'Panel Docente' },
-                ].map((item) => (
-                  <button
-                    key={item.role}
-                    type="button"
-                    onClick={() => setSelectedRole(item.role)}
-                    className={`p-2 rounded-xl text-left border transition-all ${
-                      selectedRole === item.role
-                        ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-white'
-                        : 'bg-[#141420] border-[#262626] text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <div className="text-[10px] font-bold">{item.label}</div>
-                    <div className="text-[9px] text-slate-500">{item.sub}</div>
-                  </button>
-                ))}
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
               </div>
             </div>
           )}
@@ -285,15 +355,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span className="animate-pulse">Procesando...</span>
             ) : (
               <>
-                <span>{mode === 'login' ? 'Entrar a la Academia' : 'Completar Registro'}</span>
+                <span>
+                  {recoveryMode === 'request'
+                    ? 'Enviar Enlace de Recuperación'
+                    : recoveryMode === 'reset'
+                      ? 'Guardar Nueva Contraseña'
+                      : mode === 'login'
+                        ? 'Entrar a la Academia'
+                        : 'Completar Registro'}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
+        )}
 
         {/* Quick Demo Autofill Section */}
-        <div className="mt-6 pt-5 border-t border-[#262626]">
+        {!recoveryMode && <div className="mt-6 pt-5 border-t border-[#262626]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Cargar Credenciales de Prueba (Demo RBAC)
@@ -316,7 +395,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             ))}
           </div>
-        </div>
+        </div>}
+
+        {recoveryMode && recoveryMode !== 'sent' && (
+          <button
+            type="button"
+            onClick={() => {
+              setRecoveryMode(null);
+              setMode('login');
+              setError(null);
+              setSuccessMessage(null);
+            }}
+            className="mt-4 w-full text-xs font-semibold text-slate-400 hover:text-white"
+          >
+            Volver al inicio de sesión
+          </button>
+        )}
 
         </div>
       </div>

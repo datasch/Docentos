@@ -1,8 +1,8 @@
 /**
  * DocentOS API server.
  *
- * PostgreSQL is the source of truth. Prisma owns every persistent read/write;
- * only the currently selected demo user remains process-local session state.
+ * PostgreSQL is the source of truth for application data and authenticated
+ * sessions. Every request resolves its own user from an opaque session cookie.
  */
 
 import 'dotenv/config';
@@ -14,7 +14,26 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
-import { authenticateUser, requireRole, UserRole } from './server/authMiddleware.js';
+import {
+  AuthenticatedUser,
+  requireAuthenticated,
+  requireRole,
+  UserRole,
+} from './server/authMiddleware.js';
+import {
+  clearSessionCookie,
+  createPasswordResetToken,
+  createUserSession,
+  hashPassword,
+  hashSessionToken,
+  recordAuditEvent,
+  requireSameOrigin,
+  resolveRequestSession,
+  revokeAllUserSessions,
+  revokeRequestSession,
+  setSessionCookie,
+  verifyPassword,
+} from './server/authService.js';
 import { searchDriveVideos, getDriveFileInfo } from './server/driveService.js';
 import { createSetupGuard } from './server/setupGuard.js';
 import { sendTelemetryCallHome } from './server/telemetryService.js';
@@ -30,6 +49,7 @@ const PORT = Number(process.env.PORT || 3000);
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 const ADMIN_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
 const VALID_ROLES = ['ADMIN', 'MENTOR', 'MENTEE', 'PUBLIC_USER', 'VIP', 'EXTERNAL'] as const;
+const DUMMY_PASSWORD_HASH = '$2b$12$ctNbBMxeBgkvW2dkZ.wCJu.3B2.bDvDg9xvBPVVBofTsF3/Fx4rTW';
 
 function getReleaseMetadata() {
   return {
@@ -41,16 +61,6 @@ function getReleaseMetadata() {
   };
 }
 
-type RuntimeUser = {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  avatarUrl?: string | null;
-  strikes?: number;
-  isActive?: boolean;
-};
-
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
 
 const asyncRoute = (handler: AsyncHandler) => (req: Request, res: Response, next: NextFunction) => {
@@ -58,14 +68,8 @@ const asyncRoute = (handler: AsyncHandler) => (req: Request, res: Response, next
 };
 
 let configuredAppName = process.env.VITE_APP_NAME || 'DocentOS';
-let currentActiveUser: RuntimeUser = {
-  id: 'pending-database-user',
-  email: 'pending@docentos.local',
-  name: 'DocentOS',
-  role: 'PUBLIC_USER',
-};
 
-function toRuntimeUser(user: any): RuntimeUser {
+function toRuntimeUser(user: any): AuthenticatedUser {
   return {
     id: user.id,
     email: user.email,
@@ -151,6 +155,38 @@ function hasRoleAccess(role: UserRole) {
   return ['ADMIN', 'MENTOR', 'MENTEE', 'VIP'].includes(role);
 }
 
+async function userHasCourseAccess(user: AuthenticatedUser | undefined, courseId: string) {
+  if (!user) return false;
+  if (hasRoleAccess(user.role)) return true;
+
+  const payment = await prisma.payment.findFirst({
+    where: { userId: user.id, courseId, status: 'COMPLETED' },
+    select: { id: true },
+  });
+  return Boolean(payment);
+}
+
+async function userHasVideoAccess(user: AuthenticatedUser | undefined, videoId: string) {
+  if (!user) return false;
+  const video = await prisma.videoDriveLink.findUnique({
+    where: { id: videoId },
+    select: { module: { select: { courseId: true } } },
+  });
+  if (!video) return false;
+  return userHasCourseAccess(user, video.module.courseId);
+}
+
+function hideProtectedCourseContent(course: any, hasAccess: boolean) {
+  if (hasAccess) return course;
+  return {
+    ...course,
+    modules: (course.modules || []).map((module: any) => ({
+      ...module,
+      videos: [],
+    })),
+  };
+}
+
 async function getLandingRecord() {
   return prisma.landingConfig.upsert({
     where: { id: 'singleton' },
@@ -159,27 +195,80 @@ async function getLandingRecord() {
   });
 }
 
-async function getCurrentUserFromDatabase() {
-  const selected = await prisma.user.findUnique({ where: { id: currentActiveUser.id } });
-  if (selected) return selected;
-
-  return (
-    (await prisma.user.findFirst({ where: { role: 'PUBLIC_USER', isActive: true }, orderBy: { createdAt: 'asc' } })) ||
-    (await prisma.user.findFirst({ where: { isActive: true }, orderBy: { createdAt: 'asc' } }))
-  );
-}
-
 const loginSchema = z.object({
   email: z.string().email('Formato de email inválido').max(255),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').max(128),
+  password: z.string().min(1, 'La contraseña es obligatoria').max(128),
 });
 
 const registerSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
   email: z.string().email('Formato de email inválido').max(255),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').max(128),
-  role: z.enum(VALID_ROLES).optional(),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Formato de email inválido').max(255),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(32, 'Token de recuperación inválido').max(256),
+  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'La contraseña actual es obligatoria').max(128),
+  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
+});
+
+function redirectPathForRole(role: UserRole) {
+  if (role === 'ADMIN') return '/admin';
+  if (role === 'MENTOR') return '/mentor/dashboard';
+  return '/courses';
+}
+
+function passwordResetBaseUrl(req: Request) {
+  const configuredUrl = process.env.APP_URL?.trim();
+  if (configuredUrl?.startsWith('http') && configuredUrl !== 'MY_APP_URL') {
+    return configuredUrl.replace(/\/$/, '');
+  }
+  return `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`;
+}
+
+async function deliverPasswordReset(
+  req: Request,
+  user: { email: string; name: string },
+  token: string,
+  expiresAt: Date,
+) {
+  const resetUrl = `${passwordResetBaseUrl(req)}/?resetToken=${encodeURIComponent(token)}`;
+  const webhookUrl = process.env.PASSWORD_RESET_WEBHOOK_URL?.trim();
+
+  if (webhookUrl?.startsWith('http')) {
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(process.env.PASSWORD_RESET_WEBHOOK_TOKEN
+            ? { Authorization: `Bearer ${process.env.PASSWORD_RESET_WEBHOOK_TOKEN}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          event: 'password_reset_requested',
+          recipient: { email: user.email, name: user.name },
+          resetUrl,
+          expiresAt: expiresAt.toISOString(),
+        }),
+      });
+      if (!response.ok) console.warn(`Webhook de recuperación respondió HTTP ${response.status}.`);
+    } catch (error) {
+      console.warn('No se pudo entregar el enlace de recuperación:', error);
+    }
+  }
+
+  const exposeLocalToken = process.env.PASSWORD_RESET_EXPOSE_TOKEN === 'true';
+  return exposeLocalToken ? { resetToken: token, resetUrl } : {};
+}
 
 app.set('trust proxy', 1);
 app.use(
@@ -194,7 +283,7 @@ app.use(
     origin: process.env.ALLOWED_ORIGIN || '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-user-id', 'x-user-role', 'x-user-email', 'x-user-name'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   }),
 );
 app.use((req, res, next) => {
@@ -204,14 +293,24 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '5mb' }));
+app.use('/api', requireSameOrigin);
 
 const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, trustProxy: false },
+  message: { success: false, error: 'Demasiados intentos de autenticación. Por seguridad, reintenta en 15 minutos.' },
+});
+
+const passwordResetRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'Demasiados intentos de autenticación. Por seguridad, reintenta en 15 minutos.' },
+  message: { success: false, error: 'Demasiadas solicitudes de recuperación. Reintenta en 15 minutos.' },
 });
 
 const apiRateLimiter = rateLimit({
@@ -225,6 +324,8 @@ const apiRateLimiter = rateLimit({
 
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/register', authRateLimiter);
+app.use('/api/auth/password/forgot', passwordResetRateLimiter);
+app.use('/api/auth/password/reset', passwordResetRateLimiter);
 app.use('/api/', apiRateLimiter);
 
 // Database health and first-run setup
@@ -263,6 +364,9 @@ app.post(
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
     }
+    if (String(password).length < 8 || String(password).length > 128) {
+      return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 128 caracteres.' });
+    }
 
     const existingAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
     if (existingAdmin) {
@@ -272,17 +376,35 @@ app.post(
     }
 
     configuredAppName = appName || configuredAppName;
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const passwordHash = await hashPassword(String(password));
     const newAdminUser = await prisma.user.create({
-      data: { email, name, role: 'ADMIN', avatarUrl: ADMIN_AVATAR },
+      data: {
+        email: normalizedEmail,
+        passwordHash,
+        name: String(name).trim(),
+        role: 'ADMIN',
+        avatarUrl: ADMIN_AVATAR,
+      },
     });
-    currentActiveUser = toRuntimeUser(newAdminUser);
+    const { token } = await createUserSession(newAdminUser.id, req);
+    setSessionCookie(res, token);
+    await recordAuditEvent(req, {
+      actorUserId: newAdminUser.id,
+      action: 'setup.admin_created',
+      targetType: 'User',
+      targetId: newAdminUser.id,
+    });
 
-    const telemetryResult = await sendTelemetryCallHome({
-      adminEmail: email,
-      adminName: name,
-      appName: configuredAppName,
-      consentTelemetry: consentTelemetry !== false,
-    });
+    const telemetryResult =
+      consentTelemetry === true
+        ? await sendTelemetryCallHome({
+            adminEmail: normalizedEmail,
+            adminName: String(name).trim(),
+            appName: configuredAppName,
+            consentTelemetry: true,
+          })
+        : { success: true, message: 'Telemetría no autorizada; no se enviaron datos.' };
 
     res.json({
       success: true,
@@ -296,62 +418,32 @@ app.post(
 
 app.use(createSetupGuard(() => prisma.user.count()));
 
-// The existing UI uses a single selected demo user. Resolve it from PostgreSQL
-// before every request so roles and moderation changes are never stale.
+// Resolve an optional, independent user session for every API request.
 app.use(
   '/api',
-  asyncRoute(async (req, res, next) => {
-    const dbUser = await getCurrentUserFromDatabase();
-    if (!dbUser) {
-      return res.status(401).json({ error: 'No existe un usuario activo en la base de datos.' });
+  asyncRoute(async (req, _res, next) => {
+    const authentication = await resolveRequestSession(req);
+    if (authentication) {
+      req.user = authentication.user;
+      req.authSession = authentication.session;
     }
-
-    currentActiveUser = toRuntimeUser(dbUser);
-    req.headers['x-user-id'] = currentActiveUser.id;
-    req.headers['x-user-role'] = currentActiveUser.role;
-    req.headers['x-user-email'] = currentActiveUser.email;
-    req.headers['x-user-name'] = currentActiveUser.name;
-    authenticateUser(req, res, next);
+    next();
   }),
 );
 
 // Users and current session
 app.get(
   '/api/me',
-  asyncRoute(async (_req, res) => {
-    const [users, payment] = await Promise.all([
-      prisma.user.findMany({ orderBy: { createdAt: 'asc' } }),
-      prisma.payment.findFirst({
-        where: { userId: currentActiveUser.id, courseId: 'course-giantucchi-mastery', status: 'COMPLETED' },
-      }),
-    ]);
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const payment = await prisma.payment.findFirst({
+      where: { userId: req.user!.id, courseId: 'course-giantucchi-mastery', status: 'COMPLETED' },
+    });
     res.json({
-      user: currentActiveUser,
-      allDemoUsers: users.map(toRuntimeUser),
+      authenticated: true,
+      user: req.user,
       hasPaidDefaultCourse: Boolean(payment),
     });
-  }),
-);
-
-app.post(
-  '/api/users/switch-role',
-  asyncRoute(async (req, res) => {
-    const { role, userId } = req.body;
-    let target = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
-
-    if (!target && role && VALID_ROLES.includes(role)) {
-      target = await prisma.user.findFirst({ where: { role } });
-      if (!target) {
-        target = await prisma.user.update({
-          where: { id: currentActiveUser.id },
-          data: { role },
-        });
-      }
-    }
-
-    if (!target) return res.status(400).json({ error: 'Rol o UserId no válido' });
-    currentActiveUser = toRuntimeUser(target);
-    res.json({ success: true, user: currentActiveUser });
   }),
 );
 
@@ -359,22 +451,30 @@ app.post(
 app.get(
   '/api/courses',
   asyncRoute(async (req, res) => {
-    const user = req.user!;
+    const user = req.user;
+    const viewerRole: UserRole = user?.role || 'PUBLIC_USER';
     const [courses, payments] = await Promise.all([
       prisma.course.findMany({
         where: { published: true },
         include: { modules: { orderBy: { order: 'asc' }, include: { videos: { orderBy: { order: 'asc' } } } } },
         orderBy: { createdAt: 'asc' },
       }),
-      prisma.payment.findMany({ where: { userId: user.id, status: 'COMPLETED' }, select: { courseId: true } }),
+      user
+        ? prisma.payment.findMany({ where: { userId: user.id, status: 'COMPLETED' }, select: { courseId: true } })
+        : Promise.resolve([]),
     ]);
     const paidCourseIds = new Set(payments.map((payment) => payment.courseId));
-    const roleAccess = hasRoleAccess(user.role);
+    const roleAccess = Boolean(user && hasRoleAccess(user.role));
     const formattedCourses = courses.map((course) => {
       const hasAccess = roleAccess || paidCourseIds.has(course.id);
-      return { ...course, hasAccess, userRole: user.role, requiresPaywall: !hasAccess };
+      return {
+        ...hideProtectedCourseContent(course, hasAccess),
+        hasAccess,
+        userRole: viewerRole,
+        requiresPaywall: !hasAccess,
+      };
     });
-    res.json({ courses: formattedCourses, userRole: user.role, hasAccess: roleAccess || paidCourseIds.size > 0 });
+    res.json({ courses: formattedCourses, userRole: viewerRole, hasAccess: roleAccess || paidCourseIds.size > 0 });
   }),
 );
 
@@ -387,27 +487,31 @@ app.get(
     });
     if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
 
-    const user = req.user!;
-    const payment = hasRoleAccess(user.role)
-      ? null
-      : await prisma.payment.findFirst({ where: { userId: user.id, courseId: course.id, status: 'COMPLETED' } });
-    const hasAccess = hasRoleAccess(user.role) || Boolean(payment);
-    res.json({ course, hasAccess, userRole: user.role, requiresPaywall: !hasAccess });
+    const viewerRole: UserRole = req.user?.role || 'PUBLIC_USER';
+    const hasAccess = await userHasCourseAccess(req.user, course.id);
+    res.json({
+      course: hideProtectedCourseContent(course, hasAccess),
+      hasAccess,
+      userRole: viewerRole,
+      requiresPaywall: !hasAccess,
+    });
   }),
 );
 
 app.get(
   '/api/courses/:courseId/access',
   asyncRoute(async (req, res) => {
-    const user = req.user!;
-    const payment = await prisma.payment.findFirst({
-      where: { userId: user.id, courseId: req.params.courseId, status: 'COMPLETED' },
-    });
-    const isVipOrAdmin = hasRoleAccess(user.role);
-    const hasPaid = Boolean(payment);
+    const user = req.user;
+    const payment = user
+      ? await prisma.payment.findFirst({
+          where: { userId: user.id, courseId: req.params.courseId, status: 'COMPLETED' },
+        })
+      : null;
+    const isVipOrAdmin = Boolean(user && hasRoleAccess(user.role));
+    const hasPaid = Boolean(user && payment);
     res.json({
       courseId: req.params.courseId,
-      userRole: user.role,
+      userRole: user?.role || 'PUBLIC_USER',
       hasAccess: isVipOrAdmin || hasPaid,
       isVipOrAdmin,
       hasPaid,
@@ -418,6 +522,7 @@ app.get(
 
 app.post(
   '/api/payments/checkout',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const courseId = req.body.courseId || 'course-giantucchi-mastery';
     const course = await prisma.course.findUnique({ where: { id: courseId } });
@@ -439,20 +544,17 @@ app.post(
 
 app.post(
   '/api/vip/activate',
-  asyncRoute(async (_req, res) => {
-    const user = await prisma.user.update({ where: { id: currentActiveUser.id }, data: { role: 'VIP' } });
-    currentActiveUser = toRuntimeUser(user);
-    res.json({
-      success: true,
-      message: '¡Pase VIP Activado con éxito! Has obtenido acceso total y mentoría prioritaria.',
-      user: currentActiveUser,
-    });
-  }),
+  requireAuthenticated,
+  (_req, res) =>
+    res.status(501).json({
+      error: 'La activación VIP directa está deshabilitada hasta integrar un pago verificado.',
+    }),
 );
 
 // Google Drive integration
 app.get(
   '/api/drive/videos',
+  requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
     const videos = await searchDriveVideos(req.query.q as string, req.query.folderId as string);
     res.json({ success: true, count: videos.length, videos });
@@ -461,6 +563,7 @@ app.get(
 
 app.get(
   '/api/drive/file/:fileId',
+  requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
     const fileInfo = await getDriveFileInfo(req.params.fileId);
     res.json({ success: true, file: fileInfo });
@@ -470,7 +573,11 @@ app.get(
 // Mentorship comments
 app.get(
   '/api/videos/:videoId/comments',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
+    if (!(await userHasVideoAccess(req.user, req.params.videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
     const comments = await prisma.mentorshipComment.findMany({
       where: { videoId: req.params.videoId, parentId: null },
       include: {
@@ -485,7 +592,11 @@ app.get(
 
 app.post(
   '/api/videos/:videoId/comments',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
+    if (!(await userHasVideoAccess(req.user, req.params.videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
     const content = String(req.body.content || '').trim();
     if (!content) return res.status(400).json({ error: 'El contenido del comentario es obligatorio' });
 
@@ -504,12 +615,16 @@ app.post(
 
 app.post(
   '/api/comments/:commentId/reply',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const content = String(req.body.content || '').trim();
     if (!content) return res.status(400).json({ error: 'El contenido de la respuesta es obligatorio' });
 
     const parent = await prisma.mentorshipComment.findUnique({ where: { id: req.params.commentId } });
     if (!parent) return res.status(404).json({ error: 'Comentario original no encontrado' });
+    if (!(await userHasVideoAccess(req.user, parent.videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
 
     const isMentor = ['ADMIN', 'MENTOR'].includes(req.user!.role);
     const reply = await prisma.mentorshipComment.create({
@@ -533,9 +648,13 @@ app.post(
 
 app.post(
   '/api/comments/:commentId/like',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const existing = await prisma.mentorshipComment.findUnique({ where: { id: req.params.commentId } });
     if (!existing) return res.status(404).json({ error: 'Comentario no encontrado' });
+    if (!(await userHasVideoAccess(req.user, existing.videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
     const comment = await prisma.mentorshipComment.update({
       where: { id: existing.id },
       data: { likes: { increment: 1 } },
@@ -547,6 +666,7 @@ app.post(
 // Progress and notes
 app.get(
   '/api/progress',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const progress = await prisma.userProgress.findMany({ where: { userId: req.user!.id, completed: true } });
     const completedVideos = Object.fromEntries(progress.map((item) => [item.videoId, true]));
@@ -556,9 +676,13 @@ app.get(
 
 app.post(
   '/api/progress',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const { videoId, completed } = req.body;
     if (!videoId) return res.status(400).json({ error: 'videoId es requerido' });
+    if (!(await userHasVideoAccess(req.user, videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
 
     if (completed === false) {
       await prisma.userProgress.deleteMany({ where: { userId: req.user!.id, videoId } });
@@ -575,7 +699,11 @@ app.post(
 
 app.get(
   '/api/notes/:videoId',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
+    if (!(await userHasVideoAccess(req.user, req.params.videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
     const notes = await prisma.videoNote.findMany({
       where: { videoId: req.params.videoId, userId: req.user!.id },
       include: { user: true },
@@ -598,10 +726,14 @@ app.get(
 
 app.post(
   '/api/notes',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const { videoId, timestampSeconds, content } = req.body;
     if (!videoId || !String(content || '').trim()) {
       return res.status(400).json({ error: 'videoId y content son obligatorios' });
+    }
+    if (!(await userHasVideoAccess(req.user, videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
     }
     const note = await prisma.videoNote.create({
       data: {
@@ -637,7 +769,22 @@ app.put(
     if (typeof req.body.isActive === 'boolean') data.isActive = req.body.isActive;
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (existing.role === 'ADMIN' && data.isActive === false) {
+      return res.status(400).json({ error: 'El Administrador único no puede desactivar su propia cuenta.' });
+    }
     const user = await prisma.user.update({ where: { id: existing.id }, data });
+    if (data.isActive === false) await revokeAllUserSessions(user.id);
+    await recordAuditEvent(req, {
+      action: 'user.moderation_updated',
+      targetType: 'User',
+      targetId: user.id,
+      metadata: {
+        previousStrikes: existing.strikes,
+        strikes: user.strikes,
+        previousIsActive: existing.isActive,
+        isActive: user.isActive,
+      },
+    });
     res.json({ success: true, user: toRuntimeUser(user) });
   }),
 );
@@ -656,7 +803,7 @@ app.put(
   }),
 );
 
-// Demo authentication backed by persistent users
+// Authentication backed by password hashes and independent persistent sessions.
 app.post(
   '/api/auth/login',
   asyncRoute(async (req, res) => {
@@ -669,30 +816,31 @@ app.post(
     }
 
     const email = parsed.data.email.toLowerCase();
-    let user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      let role: UserRole = 'PUBLIC_USER';
-      if (email.includes('mentor')) role = 'MENTOR';
-      else if (email.includes('vip') || email.includes('mentee')) role = 'MENTEE';
-      else if (email.includes('admin') || email.includes('giantucchi')) {
-        const adminExists = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-        role = adminExists ? 'PUBLIC_USER' : 'ADMIN';
-      }
-      user = await prisma.user.create({
-        data: { email, name: email.split('@')[0], role, avatarUrl: DEFAULT_AVATAR },
-      });
+    const user = await prisma.user.findUnique({ where: { email } });
+    const passwordMatches = await verifyPassword(
+      parsed.data.password,
+      user?.passwordHash || DUMMY_PASSWORD_HASH,
+    );
+
+    if (!user || !user.passwordHash || !passwordMatches) {
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
     }
 
     if (!user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
-    currentActiveUser = toRuntimeUser(user);
-    let redirectPath = '/courses';
-    if (user.role === 'ADMIN') redirectPath = '/admin';
-    else if (user.role === 'MENTOR') redirectPath = '/mentor/dashboard';
+    await revokeRequestSession(req);
+    const { token } = await createUserSession(user.id, req);
+    setSessionCookie(res, token);
+    await recordAuditEvent(req, {
+      actorUserId: user.id,
+      action: 'auth.login_succeeded',
+      targetType: 'User',
+      targetId: user.id,
+    });
+
     res.json({
       success: true,
-      token: `jwt-token-${user.id}-${Date.now()}`,
-      user: currentActiveUser,
-      redirectPath,
+      user: toRuntimeUser(user),
+      redirectPath: redirectPathForRole(user.role),
     });
   }),
 );
@@ -708,47 +856,200 @@ app.post(
       });
     }
 
-    const { name, role = 'PUBLIC_USER' } = parsed.data;
+    const { name, password } = parsed.data;
     const email = parsed.data.email.toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return res.status(400).json({ error: 'El email ya se encuentra registrado. Inicia sesión.' });
-    if (role === 'ADMIN') {
-      const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-      if (admin) {
-        return res.status(400).json({
-          error: `Regla de Administrador Único: Ya existe un Administrador registrado (${admin.email}).`,
-        });
-      }
-    }
 
-    const user = await prisma.user.create({ data: { name, email, role, avatarUrl: DEFAULT_AVATAR } });
-    currentActiveUser = toRuntimeUser(user);
-    const redirectPath = role === 'ADMIN' ? '/admin' : role === 'MENTOR' ? '/mentor/dashboard' : '/courses';
+    const passwordHash = await hashPassword(password);
+    const user = await prisma.user.create({
+      data: { name, email, passwordHash, role: 'PUBLIC_USER', avatarUrl: DEFAULT_AVATAR },
+    });
+    await revokeRequestSession(req);
+    const { token } = await createUserSession(user.id, req);
+    setSessionCookie(res, token);
+    await recordAuditEvent(req, {
+      actorUserId: user.id,
+      action: 'auth.user_registered',
+      targetType: 'User',
+      targetId: user.id,
+      metadata: { role: user.role },
+    });
+
     res.json({
       success: true,
-      token: `jwt-token-${user.id}-${Date.now()}`,
-      user: currentActiveUser,
-      redirectPath,
+      user: toRuntimeUser(user),
+      redirectPath: '/courses',
     });
   }),
 );
 
-app.get('/api/auth/me', (_req, res) => {
-  res.json({ user: currentActiveUser, hasAccess: hasRoleAccess(currentActiveUser.role) });
+app.get('/api/auth/me', (req, res) => {
+  if (!req.user || !req.authSession) {
+    return res.json({ authenticated: false, user: null, hasAccess: false });
+  }
+  res.json({
+    authenticated: true,
+    user: req.user,
+    hasAccess: hasRoleAccess(req.user.role),
+    sessionExpiresAt: req.authSession.expiresAt,
+  });
 });
 
 app.post(
   '/api/auth/logout',
-  asyncRoute(async (_req, res) => {
-    const publicUser = await prisma.user.findFirst({ where: { role: 'PUBLIC_USER', isActive: true }, orderBy: { createdAt: 'asc' } });
-    if (publicUser) currentActiveUser = toRuntimeUser(publicUser);
+  asyncRoute(async (req, res) => {
+    if (req.user) {
+      await recordAuditEvent(req, {
+        action: 'auth.logout',
+        targetType: 'Session',
+        targetId: req.authSession?.id,
+      });
+    }
+    await revokeRequestSession(req);
+    clearSessionCookie(res);
     res.json({ success: true, message: 'Sesión cerrada correctamente' });
+  }),
+);
+
+app.post(
+  '/api/auth/password/forgot',
+  asyncRoute(async (req, res) => {
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() },
+      select: { id: true, email: true, name: true, isActive: true },
+    });
+    let developmentReset: { resetToken?: string; resetUrl?: string } = {};
+
+    if (user?.isActive) {
+      const { token, expiresAt } = await createPasswordResetToken(user.id);
+      developmentReset = await deliverPasswordReset(req, user, token, expiresAt);
+      await recordAuditEvent(req, {
+        actorUserId: user.id,
+        action: 'auth.password_reset_requested',
+        targetType: 'User',
+        targetId: user.id,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Si la cuenta existe, se enviaron las instrucciones para restablecer la contraseña.',
+      ...developmentReset,
+    });
+  }),
+);
+
+app.post(
+  '/api/auth/password/reset',
+  asyncRoute(async (req, res) => {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const tokenRecord = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash: hashSessionToken(parsed.data.token) },
+      include: { user: true },
+    });
+    if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt <= new Date() || !tokenRecord.user.isActive) {
+      return res.status(400).json({ error: 'El enlace de recuperación es inválido o ha expirado.' });
+    }
+
+    const passwordHash = await hashPassword(parsed.data.newPassword);
+    const changedAt = new Date();
+    const passwordChanged = await prisma.$transaction(async (tx) => {
+      const consumed = await tx.passwordResetToken.updateMany({
+        where: { id: tokenRecord.id, usedAt: null, expiresAt: { gt: changedAt } },
+        data: { usedAt: changedAt },
+      });
+      if (consumed.count !== 1) return false;
+
+      await tx.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash } });
+      await tx.session.updateMany({
+        where: { userId: tokenRecord.userId, revokedAt: null },
+        data: { revokedAt: changedAt },
+      });
+      return true;
+    });
+
+    if (!passwordChanged) {
+      return res.status(400).json({ error: 'El enlace de recuperación ya fue utilizado.' });
+    }
+    clearSessionCookie(res);
+    await recordAuditEvent(req, {
+      actorUserId: tokenRecord.userId,
+      action: 'auth.password_reset_completed',
+      targetType: 'User',
+      targetId: tokenRecord.userId,
+    });
+    res.json({ success: true, message: 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.' });
+  }),
+);
+
+app.put(
+  '/api/auth/password',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user?.passwordHash || !(await verifyPassword(parsed.data.currentPassword, user.passwordHash))) {
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+    }
+    if (await verifyPassword(parsed.data.newPassword, user.passwordHash)) {
+      return res.status(400).json({ error: 'La nueva contraseña debe ser diferente de la actual.' });
+    }
+
+    const passwordHash = await hashPassword(parsed.data.newPassword);
+    const changedAt = new Date();
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { passwordHash } }),
+      prisma.session.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: changedAt },
+      }),
+      prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: changedAt },
+      }),
+    ]);
+    await recordAuditEvent(req, {
+      actorUserId: user.id,
+      action: 'auth.password_changed',
+      targetType: 'User',
+      targetId: user.id,
+    });
+    clearSessionCookie(res);
+    res.json({
+      success: true,
+      requiresLogin: true,
+      message: 'Contraseña actualizada. Se cerraron todas las sesiones por seguridad.',
+    });
   }),
 );
 
 // Plugins
 app.get(
   '/api/plugins',
+  requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (_req, res) => {
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
     res.json({ success: true, plugins: plugins.map(parsePlugin) });
@@ -789,8 +1090,10 @@ app.post(
 // Mentor dashboard
 app.get(
   '/api/mentor/mentees',
-  asyncRoute(async (_req, res) => {
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
     const assignments = await prisma.menteeAssignment.findMany({
+      where: req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : undefined,
       include: { mentee: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -820,18 +1123,28 @@ app.post(
     const email = String(req.body.email || '').toLowerCase();
     if (!name || !email) return res.status(400).json({ error: 'Nombre y email son requeridos' });
 
+    const assignedMentorId = req.user!.role === 'MENTOR' ? req.user!.id : mentorId;
     const mentor = await prisma.user.findFirst({
-      where: mentorId ? { id: mentorId, role: { in: ['ADMIN', 'MENTOR'] } } : { role: { in: ['ADMIN', 'MENTOR'] } },
+      where: assignedMentorId
+        ? { id: assignedMentorId, role: { in: ['ADMIN', 'MENTOR'] }, isActive: true }
+        : { role: { in: ['ADMIN', 'MENTOR'] }, isActive: true },
       orderBy: { createdAt: 'asc' },
     });
     const course = await prisma.course.findFirst({ where: { published: true }, orderBy: { createdAt: 'asc' } });
     if (!mentor || !course) return res.status(400).json({ error: 'No existe mentor o curso disponible para la asignación.' });
 
-    const mentee = await prisma.user.upsert({
-      where: { email },
-      update: { name, role: 'MENTEE' },
-      create: { name, email, role: 'MENTEE', avatarUrl: DEFAULT_AVATAR },
-    });
+    const existingMentee = await prisma.user.findUnique({ where: { email } });
+    if (existingMentee && ['ADMIN', 'MENTOR'].includes(existingMentee.role)) {
+      return res.status(409).json({
+        error: 'Una cuenta administrativa o de mentor no puede reasignarse como mentee.',
+      });
+    }
+    if (existingMentee && !existingMentee.isActive) {
+      return res.status(409).json({ error: 'La cuenta indicada está desactivada.' });
+    }
+    const mentee = existingMentee
+      ? await prisma.user.update({ where: { id: existingMentee.id }, data: { name, role: 'MENTEE' } })
+      : await prisma.user.create({ data: { name, email, role: 'MENTEE', avatarUrl: DEFAULT_AVATAR } });
     const totalVideosCount = await prisma.videoDriveLink.count({ where: { module: { courseId: course.id } } });
     const assignment = await prisma.menteeAssignment.upsert({
       where: { menteeId_courseId: { menteeId: mentee.id, courseId: course.id } },
@@ -855,6 +1168,7 @@ app.post(
 
 app.get(
   '/api/mentor/qna',
+  requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (_req, res) => {
     const comments = await prisma.mentorshipComment.findMany({
       where: { parentId: null },
@@ -874,6 +1188,35 @@ app.get(
   }),
 );
 
+app.get(
+  '/api/admin/audit-logs',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const requestedLimit = Number(req.query.limit || 50);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+    const action = typeof req.query.action === 'string' ? req.query.action.trim() : '';
+    const logs = await prisma.auditLog.findMany({
+      where: action ? { action } : undefined,
+      include: { actor: { select: { id: true, name: true, email: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    res.json({
+      logs: logs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        targetType: log.targetType,
+        targetId: log.targetId,
+        metadata: JSON.parse(log.metadataJson || '{}'),
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        actor: log.actor,
+        createdAt: log.createdAt.toISOString(),
+      })),
+    });
+  }),
+);
+
 app.put(
   '/api/admin/users/:userId/role',
   requireRole(['ADMIN']),
@@ -882,6 +1225,9 @@ app.put(
     if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'Rol no válido' });
     const target = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (target.role === 'ADMIN' && role !== 'ADMIN') {
+      return res.status(400).json({ error: 'El Administrador único no puede perder su rol.' });
+    }
     if (role === 'ADMIN' && target.role !== 'ADMIN') {
       const existingAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN', id: { not: target.id } } });
       if (existingAdmin) {
@@ -891,7 +1237,12 @@ app.put(
       }
     }
     const user = await prisma.user.update({ where: { id: target.id }, data: { role } });
-    if (user.id === currentActiveUser.id) currentActiveUser = toRuntimeUser(user);
+    await recordAuditEvent(req, {
+      action: 'user.role_changed',
+      targetType: 'User',
+      targetId: user.id,
+      metadata: { previousRole: target.role, role: user.role },
+    });
     res.json({ success: true, user: toRuntimeUser(user) });
   }),
 );
@@ -976,7 +1327,17 @@ app.post(
 // TTS guides and feedback
 app.get(
   '/api/tts-guides',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
+    if (req.query.videoId && !(await userHasVideoAccess(req.user, String(req.query.videoId)))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    if (req.query.courseId && !(await userHasCourseAccess(req.user, String(req.query.courseId)))) {
+      return res.status(403).json({ error: 'No tienes acceso a este curso.' });
+    }
+    if (!req.query.videoId && !req.query.courseId && !['ADMIN', 'MENTOR'].includes(req.user!.role)) {
+      return res.status(403).json({ error: 'Debes indicar un curso o video autorizado.' });
+    }
     const where = req.query.videoId
       ? { videoId: String(req.query.videoId) }
       : req.query.courseId
@@ -1002,8 +1363,8 @@ app.post(
         scriptText,
         voiceId: req.body.voiceId || 'es-ES-Carlos',
         voiceSpeed: Number(req.body.voiceSpeed) || 1,
-        mentorName: currentActiveUser.name || 'Prof. Giantucchi',
-        avatarUrl: currentActiveUser.avatarUrl || ADMIN_AVATAR,
+        mentorName: req.user!.name || 'Prof. Giantucchi',
+        avatarUrl: req.user!.avatarUrl || ADMIN_AVATAR,
         xpReward: Number(req.body.xpReward) || 50,
       },
     });
@@ -1028,10 +1389,11 @@ app.delete(
 
 app.post(
   '/api/feedback',
+  requireAuthenticated,
   asyncRoute(async (req, res) => {
     const feedback = await prisma.feedback.create({
       data: {
-        userId: currentActiveUser.id,
+        userId: req.user!.id,
         rating: Math.min(5, Math.max(1, Number(req.body.rating) || 5)),
         comment: String(req.body.comment || ''),
       },
@@ -1101,6 +1463,10 @@ app.post(
     res.json({ success: true, scriptText: generatedScript, message: 'Guion generado exitosamente con IA.' });
   }),
 );
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Endpoint de API no encontrado.' });
+});
 
 // SEO endpoints
 app.get(
@@ -1175,8 +1541,6 @@ ${courses.map((course) => `<article><h2>${course.title}</h2><p>${course.descript
 
 async function startServer() {
   await prisma.$connect();
-  const initialUser = await getCurrentUserFromDatabase();
-  if (initialUser) currentActiveUser = toRuntimeUser(initialUser);
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });

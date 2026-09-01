@@ -119,47 +119,49 @@ La etiqueta **v1.0.0** debe reservarse para cuando se completen los requisitos c
 
 **PR sugerido:** feat/real-auth-sessions
 **Prioridad:** crítica
+**Versión:** v0.2.0-alpha.1
+**Estado:** completada y validada localmente
 
 ### Cambios de base de datos
 
-- [ ] Agregar passwordHash al modelo User.
-- [ ] Crear una tabla Session o RefreshToken.
-- [ ] Incluir fecha de expiración, revocación y metadatos mínimos de sesión.
-- [ ] Crear migración Prisma.
-- [ ] Preparar migración segura de usuarios demostrativos.
+- [x] Agregar passwordHash al modelo User.
+- [x] Crear una tabla Session o RefreshToken.
+- [x] Incluir fecha de expiración, revocación y metadatos mínimos de sesión.
+- [x] Crear migración Prisma.
+- [x] Preparar migración segura de usuarios demostrativos.
 
 ### Backend
 
-- [ ] Cifrar contraseñas con Argon2id o bcrypt.
-- [ ] Validar la contraseña durante el login.
-- [ ] Impedir que el login cree usuarios automáticamente.
-- [ ] Crear registro de usuario controlado.
-- [ ] Emitir una cookie HttpOnly, Secure y SameSite.
-- [ ] Implementar GET /api/auth/me.
-- [ ] Implementar cierre y revocación de sesión.
-- [ ] Eliminar currentActiveUser global.
-- [ ] Resolver cada usuario desde su propia sesión.
-- [ ] Eliminar el endpoint público de cambio de rol.
-- [ ] Agregar recuperación y cambio de contraseña.
-- [ ] Aplicar protección CSRF si se usan cookies.
+- [x] Cifrar contraseñas con Argon2id o bcrypt.
+- [x] Validar la contraseña durante el login.
+- [x] Impedir que el login cree usuarios automáticamente.
+- [x] Crear registro de usuario controlado.
+- [x] Emitir una cookie HttpOnly, Secure y SameSite.
+- [x] Implementar GET /api/auth/me.
+- [x] Implementar cierre y revocación de sesión.
+- [x] Eliminar currentActiveUser global.
+- [x] Resolver cada usuario desde su propia sesión.
+- [x] Eliminar el endpoint público de cambio de rol.
+- [x] Agregar recuperación y cambio de contraseña.
+- [x] Aplicar protección CSRF si se usan cookies.
 
 ### Frontend
 
-- [ ] Restaurar la cuenta llamando a /api/auth/me al iniciar.
-- [ ] Mantener la sesión después de recargar.
-- [ ] Mantener la ruta o pantalla actual.
-- [ ] Enviar credentials: include en las solicitudes.
-- [ ] Mostrar correctamente los estados cargando, autenticado y no autenticado.
-- [ ] Integrar un router para rutas públicas y privadas.
-- [ ] Redirigir ADMIN, MENTOR y estudiantes a su panel correcto.
+- [x] Restaurar la cuenta llamando a /api/auth/me al iniciar.
+- [x] Mantener la sesión después de recargar.
+- [x] Mantener la ruta o pantalla actual.
+- [x] Enviar credentials: include en las solicitudes.
+- [x] Mostrar correctamente los estados cargando, autenticado y no autenticado.
+- [x] Integrar enrutamiento History API para rutas públicas y privadas.
+- [x] Redirigir ADMIN, MENTOR y estudiantes a su panel correcto.
 
 ### Autorización
 
-- [ ] Proteger cada endpoint de administración.
-- [ ] Proteger endpoints de mentores.
-- [ ] Impedir asignar roles privilegiados desde el registro público.
-- [ ] Verificar permisos del recurso y no solo el rol general.
-- [ ] Registrar cambios sensibles en un historial de auditoría.
+- [x] Proteger cada endpoint de administración.
+- [x] Proteger endpoints de mentores.
+- [x] Impedir asignar roles privilegiados desde el registro público.
+- [x] Verificar permisos del recurso y no solo el rol general.
+- [x] Registrar cambios sensibles en un historial de auditoría.
 
 ### Criterios de aceptación
 

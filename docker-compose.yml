@@ -31,6 +31,12 @@ services:
       - PORT=3000
       - NODE_ENV=production
       - DATABASE_URL=postgresql://docentos:docentos_secret_pass@db:5432/docentos_db?schema=public
+      - APP_URL=http://localhost:3000
+      - ALLOWED_ORIGIN=http://localhost:3000
+      - SESSION_COOKIE_SECURE=false
+      - SESSION_TTL_DAYS=7
+      # Sólo para el entorno local: permite completar la recuperación sin un proveedor de correo.
+      - PASSWORD_RESET_EXPOSE_TOKEN=true
       - VITE_APP_NAME=DocentOS
       - VITE_APP_TAGLINE=Plataforma e-Learning Open Source
       - VITE_POWERED_BY_TEXT=Powered by DocentOS LMS Engine

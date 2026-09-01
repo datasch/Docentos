@@ -13,17 +13,49 @@ import { MentorDashboard } from './components/MentorDashboard';
 import { PluginManagerView } from './components/PluginManagerView';
 import { LandingPage } from './components/LandingPage';
 import { AuthModal } from './components/AuthModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { SetupWizard } from './components/SetupWizard';
 import { AIAssistantTour } from './components/AIAssistantTour';
 import { api } from './lib/api';
-import { User, Course, UserRole } from './types';
+import { User, Course } from './types';
 import { siteConfig } from './config/theme';
 import { DOCENTOS_VERSION } from './version';
 import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
 
+type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
+
+const TAB_PATHS: Record<ActiveTab, string> = {
+  landing: '/',
+  courses: '/courses',
+  mentor: '/mentor/dashboard',
+  admin: '/admin',
+  plugins: '/admin/plugins',
+  drive: '/drive',
+  vip: '/vip',
+};
+
+function tabFromPath(pathname: string): ActiveTab {
+  if (pathname.startsWith('/admin/plugins')) return 'plugins';
+  if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname.startsWith('/mentor')) return 'mentor';
+  if (pathname.startsWith('/courses')) return 'courses';
+  if (pathname.startsWith('/drive')) return 'drive';
+  if (pathname.startsWith('/vip')) return 'vip';
+  return 'landing';
+}
+
+function canOpenTab(user: User | null, tab: ActiveTab) {
+  if (tab === 'landing') return true;
+  if (!user) return false;
+  if (tab === 'admin') return user.role === 'ADMIN';
+  if (['mentor', 'plugins', 'drive'].includes(tab)) {
+    return user.role === 'ADMIN' || user.role === 'MENTOR';
+  }
+  return true;
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [allDemoUsers, setAllDemoUsers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [course, setCourse] = useState<Course | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean>(false);
@@ -31,33 +63,45 @@ export default function App() {
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
 
-  const [activeTab, setActiveTab] = useState<'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip'>('landing');
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromPath(window.location.pathname));
   const [showPaywallModal, setShowPaywallModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [showTour, setShowTour] = useState<boolean>(false);
+
+  const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
+    const path = TAB_PATHS[tab];
+    if (window.location.pathname !== path) {
+      if (options?.replace) window.history.replaceState({}, '', path);
+      else window.history.pushState({}, '', path);
+    }
+    setActiveTabState(tab);
+  };
 
   const checkSetupStatus = async () => {
     try {
       const res = await fetch('/api/setup/status');
       if (res.ok) {
         const data = await res.json();
-        if (data.isSetupRequired) {
-          setIsSetupRequired(true);
-        }
+        const setupRequired = Boolean(data.isSetupRequired);
+        setIsSetupRequired(setupRequired);
+        return setupRequired;
       }
     } catch (e) {
       console.log('Setup check note:', e);
     }
+    return false;
   };
 
   const loadData = async () => {
     try {
-      await checkSetupStatus();
+      const setupRequired = await checkSetupStatus();
+      if (setupRequired) return;
 
       const userRes = await api.getCurrentUser();
       setCurrentUser(userRes.user);
-      setAllDemoUsers(userRes.allDemoUsers);
 
       const courseRes = await api.getCourses();
       if (courseRes.courses && courseRes.courses.length > 0) {
@@ -68,7 +112,7 @@ export default function App() {
 
       // Check if onboarding assistant tour should trigger
       const isTourDone = localStorage.getItem('giantucchi_tour_completed');
-      if (!isTourDone) {
+      if (userRes.authenticated && !isTourDone && activeTab !== 'landing') {
         setShowTour(true);
       }
     } catch (error) {
@@ -80,7 +124,22 @@ export default function App() {
 
   useEffect(() => {
     loadData();
+    if (new URLSearchParams(window.location.search).has('resetToken')) {
+      setAuthMode('login');
+      setShowAuthModal(true);
+    }
   }, []);
+
+  useEffect(() => {
+    const handlePopState = () => setActiveTabState(tabFromPath(window.location.pathname));
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (loading || canOpenTab(currentUser, activeTab)) return;
+    navigateTo(currentUser ? 'courses' : 'landing', { replace: true });
+  }, [activeTab, currentUser, loading]);
 
   const handleSetupComplete = async (adminUser: User, updatedAppName?: string) => {
     if (updatedAppName) {
@@ -89,26 +148,13 @@ export default function App() {
     setIsSetupRequired(false);
     setShowSetupWizard(false);
     setCurrentUser(adminUser);
+    navigateTo('admin', { replace: true });
     await loadData();
   };
 
   if (isSetupRequired || showSetupWizard) {
     return <SetupWizard onSetupComplete={handleSetupComplete} />;
   }
-
-  const handleRoleSwitch = async (role: UserRole, userId?: string) => {
-    setLoading(true);
-    try {
-      const res = await api.switchRole(role, userId);
-      if (res.user) {
-        setCurrentUser(res.user);
-      }
-      await loadData();
-    } catch (error) {
-      console.error('Error al cambiar de rol:', error);
-      setLoading(false);
-    }
-  };
 
   const handlePaymentSuccess = async () => {
     setShowPaywallModal(false);
@@ -117,7 +163,7 @@ export default function App() {
 
   const handleVipActivated = async () => {
     setShowPaywallModal(false);
-    setActiveTab('courses');
+    navigateTo('courses');
     await loadData();
   };
 
@@ -127,19 +173,15 @@ export default function App() {
     } catch (e) {
       console.error('Logout error:', e);
     }
-    const userRes = await api.getCurrentUser();
-    setCurrentUser(userRes.user);
-    setActiveTab('landing');
+    setCurrentUser(null);
+    setHasAccess(false);
+    setShowTour(false);
+    navigateTo('landing');
   };
 
-  const isAuthenticated = Boolean(
-    currentUser &&
-    currentUser.role !== 'PUBLIC_USER' &&
-    currentUser.role !== 'EXTERNAL' &&
-    activeTab !== 'landing'
-  );
+  const isAuthenticated = Boolean(currentUser && activeTab !== 'landing');
 
-  if (loading || !currentUser || !course) {
+  if (loading || !course) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 rounded-2xl bg-[#141420] border border-[#2d2d44] text-[#06b6d4] flex items-center justify-center animate-pulse">
@@ -156,13 +198,12 @@ export default function App() {
       {/* App Private Navbar (ONLY rendered when user is authenticated and inside app views) */}
       {isAuthenticated && (
         <Navbar
-          currentUser={currentUser}
-          allDemoUsers={allDemoUsers}
+          currentUser={currentUser!}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onRoleSwitch={handleRoleSwitch}
+          setActiveTab={navigateTo}
           hasAccess={hasAccess}
           onRestartTour={() => setShowTour(true)}
+          onChangePassword={() => setShowChangePasswordModal(true)}
           onLogout={handleLogout}
         />
       )}
@@ -173,19 +214,24 @@ export default function App() {
         {activeTab === 'landing' && (
           <LandingPage
             courses={courses}
-            currentUser={currentUser}
             onOpenAuth={(mode) => {
               setAuthMode(mode);
+              setAuthNotice(null);
               setShowAuthModal(true);
             }}
             onExploreCourse={(selectedCourse) => {
               setCourse(selectedCourse);
-              setActiveTab('courses');
+              if (currentUser) navigateTo('courses');
+              else {
+                setAuthMode('login');
+                setAuthNotice(null);
+                setShowAuthModal(true);
+              }
             }}
           />
         )}
 
-        {activeTab === 'courses' && (
+        {activeTab === 'courses' && currentUser && (
           <div>
             {!hasAccess && (
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -221,7 +267,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'mentor' && (
+        {activeTab === 'mentor' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
           <MentorDashboard
             currentUser={currentUser}
             courses={courses}
@@ -229,20 +275,20 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && currentUser?.role === 'ADMIN' && (
           <AdminDashboard
             course={course}
             onRefreshData={loadData}
           />
         )}
 
-        {activeTab === 'plugins' && (
+        {activeTab === 'plugins' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
           <div className="max-w-7xl mx-auto p-4 sm:p-8">
             <PluginManagerView />
           </div>
         )}
 
-        {activeTab === 'drive' && (
+        {activeTab === 'drive' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
           <DriveExplorerModal
             userRole={currentUser.role}
             modules={course.modules}
@@ -250,7 +296,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'vip' && (
+        {activeTab === 'vip' && currentUser && (
           <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
             <PaywallModal
               userRole={currentUser.role}
@@ -266,22 +312,32 @@ export default function App() {
         <AuthModal
           isOpen={showAuthModal}
           initialMode={authMode}
+          initialMessage={authNotice}
           onClose={() => setShowAuthModal(false)}
           onSuccess={(user, redirectPath) => {
             setCurrentUser(user);
+            setAuthNotice(null);
             loadData();
-            if (redirectPath === '/mentor/dashboard') {
-              setActiveTab('mentor');
-            } else if (redirectPath === '/admin/plugins') {
-              setActiveTab('plugins');
-            } else {
-              setActiveTab('courses');
-            }
+            navigateTo(tabFromPath(redirectPath));
+          }}
+        />
+
+        <ChangePasswordModal
+          isOpen={showChangePasswordModal}
+          onClose={() => setShowChangePasswordModal(false)}
+          onChanged={(message) => {
+            setShowChangePasswordModal(false);
+            setCurrentUser(null);
+            setHasAccess(false);
+            setAuthMode('login');
+            setAuthNotice(message);
+            navigateTo('landing');
+            setShowAuthModal(true);
           }}
         />
 
         {/* Modal overlay if triggered from CourseViewer */}
-        {showPaywallModal && (
+        {showPaywallModal && currentUser && (
           <div className="fixed inset-0 z-50 bg-[#0a0a0f]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
             <div className="relative max-w-4xl w-full">
               <button
@@ -339,9 +395,9 @@ export default function App() {
       </footer>
 
       {/* Onboarding Assistant Ian Tour */}
-      {showTour && (
+      {showTour && currentUser && activeTab !== 'landing' && (
         <AIAssistantTour
-          onHighlightTab={(tab) => setActiveTab(tab)}
+          onHighlightTab={(tab) => navigateTo(tab)}
           onClose={() => setShowTour(false)}
         />
       )}

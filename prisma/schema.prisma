@@ -26,22 +26,73 @@ enum PaymentStatus {
 }
 
 model User {
-  id          String              @id @default(uuid())
-  email       String              @unique
-  name        String
-  role        Role                @default(PUBLIC_USER)
-  avatarUrl   String?
-  strikes     Int                 @default(0)
-  isActive    Boolean             @default(true)
-  payments    Payment[]
-  comments    MentorshipComment[]
-  progress    UserProgress[]
-  videoNotes  VideoNote[]
-  feedback    Feedback[]
-  mentorAssignments MenteeAssignment[] @relation("MentorAssignments")
-  menteeAssignments MenteeAssignment[] @relation("MenteeAssignments")
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  passwordHash        String?
+  name                String
+  role                Role                 @default(PUBLIC_USER)
+  avatarUrl           String?
+  strikes             Int                  @default(0)
+  isActive            Boolean              @default(true)
+  payments            Payment[]
+  comments            MentorshipComment[]
+  progress            UserProgress[]
+  videoNotes          VideoNote[]
+  feedback            Feedback[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  mentorAssignments   MenteeAssignment[]   @relation("MentorAssignments")
+  menteeAssignments   MenteeAssignment[]   @relation("MenteeAssignments")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  lastUsedAt DateTime  @default(now())
+  revokedAt  DateTime?
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorUserId  String?
+  actor        User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action       String
+  targetType   String
+  targetId     String?
+  metadataJson String   @default("{}")
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model Plugin {
@@ -58,36 +109,36 @@ model Plugin {
 }
 
 model MenteeAssignment {
-  id        String   @id @default(uuid())
-  mentorId  String
-  menteeId  String
-  courseId  String
-  mentor    User     @relation("MentorAssignments", fields: [mentorId], references: [id], onDelete: Cascade)
-  mentee    User     @relation("MenteeAssignments", fields: [menteeId], references: [id], onDelete: Cascade)
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(uuid())
+  mentorId             String
+  menteeId             String
+  courseId             String
+  mentor               User     @relation("MentorAssignments", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentee               User     @relation("MenteeAssignments", fields: [menteeId], references: [id], onDelete: Cascade)
+  course               Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseProgress       Int      @default(0)
   completedVideosCount Int      @default(0)
   totalVideosCount     Int      @default(0)
   lastActiveDate       String   @default("Reciente")
   status               String   @default("ACTIVE")
-  createdAt DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   @@unique([menteeId, courseId])
 }
 
 model Course {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  published   Boolean     @default(true)
-  coverImage  String
-  category    String      @default("Mentoría Elite")
-  modules     Module[]
-  payments    Payment[]
+  id                String             @id @default(uuid())
+  title             String
+  description       String
+  price             Float
+  published         Boolean            @default(true)
+  coverImage        String
+  category          String             @default("Mentoría Elite")
+  modules           Module[]
+  payments          Payment[]
   menteeAssignments MenteeAssignment[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model Module {

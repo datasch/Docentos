@@ -1,33 +1,31 @@
 /**
  * Navbar Component - Academia Giantucchi
- * Incluye Selector Interactivo de Roles (Admin, VIP, Externo) para pruebas RBAC en vivo
+ * Navegación privada basada en la identidad autenticada y sus permisos RBAC.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Shield, Crown, UserCheck, PlayCircle, HardDrive, Settings, Menu, X, CheckCircle2, Sparkles, ChevronDown, User as UserIcon, Globe, Bot, LogOut } from 'lucide-react';
+import { Shield, Crown, UserCheck, PlayCircle, HardDrive, Settings, Menu, X, Sparkles, ChevronDown, Globe, Bot, LogOut, KeyRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { siteConfig } from '../config/theme';
 
 interface NavbarProps {
   currentUser: User;
-  allDemoUsers: User[];
   activeTab: 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
   setActiveTab: (tab: 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip') => void;
-  onRoleSwitch: (role: UserRole, userId?: string) => void;
   hasAccess: boolean;
   onRestartTour?: () => void;
+  onChangePassword?: () => void;
   onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
-  allDemoUsers,
   activeTab,
   setActiveTab,
-  onRoleSwitch,
   hasAccess,
   onRestartTour,
+  onChangePassword,
   onLogout,
 }) => {
   const { t, i18n } = useTranslation();
@@ -132,17 +130,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab('drive')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'drive'
-                  ? 'btn-brand-primary'
-                  : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-              }`}
-            >
-              <HardDrive className="w-3.5 h-3.5" />
-              Drive
-            </button>
+            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+              <button
+                onClick={() => setActiveTab('drive')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'drive'
+                    ? 'btn-brand-primary'
+                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
+                }`}
+              >
+                <HardDrive className="w-3.5 h-3.5" />
+                Drive
+              </button>
+            )}
 
             <button
               onClick={() => setActiveTab('vip')}
@@ -226,34 +226,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                 </div>
 
-                {/* RBAC Role Switcher in Dropdown */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    {t('nav.rbacMode')}
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {allDemoUsers.map((u) => {
-                      const isActive = u.id === currentUser.id;
-                      return (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            onRoleSwitch(u.role, u.id);
-                            setProfileDropdownOpen(false);
-                          }}
-                          className={`py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase transition-all ${
-                            isActive
-                              ? 'btn-brand-primary text-white shadow-sm'
-                              : 'bg-[#0a0a0f] text-slate-400 hover:text-white hover:bg-[#141420] border border-[#2d2d44]'
-                          }`}
-                        >
-                          {u.role}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 {/* Restart Virtual Assistant Tour Button */}
                 {onRestartTour && (
                   <button
@@ -264,6 +236,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-[#06b6d4] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
                   >
                     <Bot className="w-4 h-4" /> {t('nav.restartTour')}
+                  </button>
+                )}
+
+                {onChangePassword && (
+                  <button
+                    onClick={() => {
+                      onChangePassword();
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+                  >
+                    <KeyRound className="w-4 h-4 text-[#06b6d4]" /> Cambiar contraseña
                   </button>
                 )}
 
@@ -305,28 +289,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       {mobileMenuOpen && (
 
         <div className="md:hidden bg-[#141420] border-b border-[#2d2d44] p-4 space-y-3 animate-fade-in">
-          <div className="p-3 bg-[#1a1a2e] rounded-xl border border-[#2d2d44] space-y-2">
-            <p className="text-xs font-semibold text-slate-400">Simulador de Rol (RBAC):</p>
-            <div className="grid grid-cols-3 gap-2">
-              {allDemoUsers.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => {
-                    onRoleSwitch(u.role, u.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`py-1.5 text-xs font-bold rounded-lg border text-center transition-all ${
-                    currentUser.id === u.id
-                      ? 'btn-brand-primary border-transparent'
-                      : 'bg-[#141420] text-slate-300 border-[#2d2d44]'
-                  }`}
-                >
-                  {u.role}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div className="space-y-1">
             <button
               onClick={() => {
@@ -338,16 +300,30 @@ export const Navbar: React.FC<NavbarProps> = ({
               <PlayCircle className="w-5 h-5 text-[#06b6d4]" />
               Cursos & Clases
             </button>
-            <button
-              onClick={() => {
-                setActiveTab('drive');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-            >
-              <HardDrive className="w-5 h-5 text-[#06b6d4]" />
-              Buscador Google Drive
-            </button>
+            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+              <button
+                onClick={() => {
+                  setActiveTab('drive');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
+              >
+                <HardDrive className="w-5 h-5 text-[#06b6d4]" />
+                Buscador Google Drive
+              </button>
+            )}
+            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+              <button
+                onClick={() => {
+                  setActiveTab('mentor');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
+              >
+                <UserCheck className="w-5 h-5 text-[#06b6d4]" />
+                Panel Mentor
+              </button>
+            )}
             {currentUser.role === 'ADMIN' && (
               <button
                 onClick={() => {
@@ -360,6 +336,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Panel Admin / Mentor
               </button>
             )}
+            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+              <button
+                onClick={() => {
+                  setActiveTab('plugins');
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
+              >
+                <Sparkles className="w-5 h-5 text-[#a855f7]" />
+                Plugins
+              </button>
+            )}
             <button
               onClick={() => {
                 setActiveTab('vip');
@@ -370,6 +358,30 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Crown className="w-5 h-5 text-[#eab308]" />
               Activar Pase VIP
             </button>
+            {onLogout && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onLogout();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/30"
+              >
+                <LogOut className="w-5 h-5" />
+                {t('nav.logout')}
+              </button>
+            )}
+            {onChangePassword && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onChangePassword();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 bg-[#1a1a2e] border border-[#2d2d44]"
+              >
+                <KeyRound className="w-5 h-5 text-[#06b6d4]" />
+                Cambiar contraseña
+              </button>
+            )}
           </div>
         </div>
       )}

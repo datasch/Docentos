@@ -2,13 +2,13 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 0.1.0-alpha.1](https://img.shields.io/badge/Version-0.1.0--alpha.1-a855f7.svg)
+![Version: 0.2.0-alpha.1](https://img.shields.io/badge/Version-0.2.0--alpha.1-a855f7.svg)
 ![Status: Alpha](https://img.shields.io/badge/Status-Alpha-f59e0b.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
-> **Estado actual:** línea base alpha para desarrollo y evaluación local. La
-> autenticación, los pagos y la automatización de releases todavía no están
-> listos para una exposición pública de producción.
+> **Estado actual:** alpha funcional para desarrollo y evaluación local. La
+> autenticación y las sesiones ya son individuales y persistentes; los pagos,
+> backups y la automatización de releases aún no están listos para producción.
 
 **DocentOS** es un motor de aprendizaje de código abierto, ultraligero, modular y nativamente potenciado por IA. Diseñado como la alternativa moderna frente a LMS tradicionales pesados o monolíticos como **Moodle** u **Odoo LMS**, DocentOS ofrece control total sobre el contenido (streaming nativo vía Google Drive API v3), gestión de roles RBAC, guías de voz motivacionales TTS sintetizadas por IA, sistema de mentoría directa e interactiva y arquitectura extensible basada en plugins.
 
@@ -71,19 +71,36 @@
 
    Abre [http://localhost:3000](http://localhost:3000). Puedes comprobar la conexión a PostgreSQL en `GET /api/health`.
 
+   Para levantar toda la instalación local con Docker en un solo paso:
+   ```bash
+   docker compose up -d --build
+   ```
+
+### Cuentas locales de demostración
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Administrador | `giantucchi@academia.com` | `admin123` |
+| Mentor | `sofia.mentor@giantucchi.com` | `mentor123` |
+| Mentee | `carlos.vip@giantucchi.com` | `vip123` |
+| Usuario público | `estudiante@gmail.com` | `user123` |
+
+Estas credenciales se crean únicamente mediante el seed de demostración. Deben
+reemplazarse o deshabilitarse antes de publicar una instalación en Internet.
+
 ---
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v0.1.0-alpha.1.
+* **Versión actual:** v0.2.0-alpha.1.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
 * **Historial de cambios:** [CHANGELOG.md](CHANGELOG.md).
 
-La primera prioridad es reemplazar la autenticación demostrativa por sesiones
-individuales y persistentes. No despliegues esta versión alpha en Internet con
-datos reales.
+La siguiente prioridad es formalizar migraciones, backups y restauración en la
+Fase 2. No despliegues esta versión alpha en Internet con datos reales sin
+cambiar las credenciales de demostración y configurar HTTPS.
 
 ---
 

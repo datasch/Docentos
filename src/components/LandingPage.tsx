@@ -35,14 +35,13 @@ import {
   Sliders,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Course, User, LandingConfig } from '../types';
+import { Course, LandingConfig } from '../types';
 import { api } from '../lib/api';
 import { PublicNavbar } from './PublicNavbar';
 import { Footer } from './Footer';
 
 interface LandingPageProps {
   courses: Course[];
-  currentUser: User;
   onOpenAuth: (mode: 'login' | 'register') => void;
   onExploreCourse: (course: Course) => void;
 }
@@ -114,7 +113,6 @@ const DEFAULT_LANDING_CONFIG: LandingConfig = {
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   courses,
-  currentUser,
   onOpenAuth,
   onExploreCourse,
 }) => {

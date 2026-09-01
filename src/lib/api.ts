@@ -5,14 +5,17 @@
 
 import { User, Course, MentorshipComment, DriveVideoFile, CourseAccessStatus, UserRole, TTSGuide, LandingConfig } from '../types';
 
+const fetch: typeof globalThis.fetch = (input, init) =>
+  globalThis.fetch(input, { ...init, credentials: 'include' });
+
 export const api = {
 
   // User & Auth
-  async login(email: string, password?: string): Promise<{ success: boolean; token: string; user: User; redirectPath: string }> {
+  async login(email: string, password: string): Promise<{ success: boolean; user: User; redirectPath: string }> {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: password || '123456' }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -21,11 +24,11 @@ export const api = {
     return res.json();
   },
 
-  async register(name: string, email: string, password?: string, role?: UserRole): Promise<{ success: boolean; token: string; user: User; redirectPath: string }> {
+  async register(name: string, email: string, password: string): Promise<{ success: boolean; user: User; redirectPath: string }> {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password: password || '123456', role }),
+      body: JSON.stringify({ name, email, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -40,20 +43,57 @@ export const api = {
     return res.json();
   },
 
-  async getCurrentUser(): Promise<{ user: User; allDemoUsers: User[]; hasPaidDefaultCourse: boolean }> {
-    const res = await fetch('/api/me');
-    if (!res.ok) throw new Error('Error al obtener usuario');
+  async getCurrentUser(): Promise<{
+    authenticated: boolean;
+    user: User | null;
+    hasAccess: boolean;
+    sessionExpiresAt?: string;
+  }> {
+    const res = await fetch('/api/auth/me');
+    if (!res.ok) throw new Error('Error al restaurar la sesión');
     return res.json();
   },
 
-  async switchRole(role?: UserRole, userId?: string): Promise<{ success: boolean; user: User }> {
-    const res = await fetch('/api/users/switch-role', {
+  async requestPasswordReset(email: string): Promise<{
+    success: boolean;
+    message: string;
+    resetToken?: string;
+    resetUrl?: string;
+  }> {
+    const res = await fetch('/api/auth/password/forgot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, userId }),
+      body: JSON.stringify({ email }),
     });
-    if (!res.ok) throw new Error('Error al cambiar rol');
-    return res.json();
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || 'No se pudo solicitar la recuperación');
+    return payload;
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch('/api/auth/password/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || 'No se pudo restablecer la contraseña');
+    return payload;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{
+    success: boolean;
+    requiresLogin: boolean;
+    message: string;
+  }> {
+    const res = await fetch('/api/auth/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || 'No se pudo cambiar la contraseña');
+    return payload;
   },
 
   // Courses & Access
@@ -174,6 +214,12 @@ export const api = {
   async getAdminUsers(): Promise<{ users: User[] }> {
     const res = await fetch('/api/admin/users');
     if (!res.ok) throw new Error('Error al cargar usuarios');
+    return res.json();
+  },
+
+  async getAuditLogs(limit = 50): Promise<{ logs: any[] }> {
+    const res = await fetch(`/api/admin/audit-logs?limit=${encodeURIComponent(limit)}`);
+    if (!res.ok) throw new Error('Error al cargar el historial de auditoría');
     return res.json();
   },
 
@@ -341,4 +387,3 @@ export const api = {
     return res.json();
   },
 };
-

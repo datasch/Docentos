@@ -106,7 +106,17 @@ Para un entorno de producción seguro, puedes ajustar las siguientes variables e
 | Variable | Descripción | Valor por Defecto |
 | :--- | :--- | :--- |
 | `DATABASE_URL` | Cadena de conexión a PostgreSQL | `postgresql://docentos:docentos_secret_pass@db:5432/docentos_db` |
-| `JWT_SECRET` | Clave secreta para tokens de autenticación | *Generada automáticamente si falta* |
+| `APP_URL` | URL pública usada para cookies y enlaces de recuperación | `http://localhost:3000` |
+| `ALLOWED_ORIGIN` | Origen web autorizado para solicitudes con credenciales | `http://localhost:3000` |
+| `SESSION_TTL_DAYS` | Duración de una sesión persistente | `7` |
+| `SESSION_COOKIE_SECURE` | Fuerza cookie Secure; vacío la activa automáticamente con HTTPS | Automático |
+| `PASSWORD_RESET_WEBHOOK_URL` | Webhook del proveedor que entrega el enlace de recuperación | *(Requerido en producción)* |
+| `PASSWORD_RESET_EXPOSE_TOKEN` | Devuelve el token en la respuesta para pruebas locales | `false` |
 | `VITE_APP_NAME` | Nombre de tu institución / academia | `DocentOS` |
 | `VITE_APP_TAGLINE` | Lema o subtítulo | `Plataforma e-Learning Open Source` |
 | `GOOGLE_DRIVE_API_KEY` | Key para streaming directo de videos | *(Opcional)* |
+
+En un despliegue conectado a Internet usa HTTPS, configura el webhook de correo
+y establece `PASSWORD_RESET_EXPOSE_TOKEN=false`. El valor `true` incluido en el
+Compose local existe únicamente para probar el flujo sin contratar un proveedor
+de correo.

@@ -46,7 +46,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/server/prisma.ts ./server/prisma.ts
+COPY --from=builder /app/server ./server
 COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 
 # Asegurar permisos de ejecución para el script de inicio
