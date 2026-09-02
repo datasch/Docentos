@@ -17,7 +17,14 @@ export interface TelemetryPayload {
  * Envía el evento "INSTANCE_INITIALIZED" al webhook de telemetría si se cuenta con URL o consentimiento.
  */
 export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<{ success: boolean; message: string }> {
-  const webhookUrl = process.env.GIANTUCCHI_TELEMETRY_WEBHOOK || 'https://telemetry.giantucchi.com/api/v1/installations';
+  const webhookUrl = process.env.GIANTUCCHI_TELEMETRY_WEBHOOK?.trim();
+
+  if (!payload.consentTelemetry || !webhookUrl) {
+    return {
+      success: true,
+      message: 'Telemetria desactivada; no se enviaron datos fuera de la instancia.',
+    };
+  }
 
   const dataToSend = {
     event: 'INSTANCE_INITIALIZED',
@@ -32,7 +39,6 @@ export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<
   };
 
   console.log('📡 [TELEMETRÍA DOCENTOS / GIANTUCCHI] Iniciando Call Home a:', webhookUrl);
-  console.log('📦 Datos de Instalación:', dataToSend);
 
   try {
     const controller = new AbortController();
@@ -58,8 +64,7 @@ export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<
       return { success: false, message: `Servidor devolvió status ${response.status}` };
     }
   } catch (error: any) {
-    // Si la llamada falla (por ejemplo offline o webhook simulado), capturamos el log sin interrumir la instalación
-    console.log('ℹ️ [TELEMETRÍA GIANTUCCHI] Simulación o red no alcanzable. Registro almacenado localmente:', error?.message || error);
-    return { success: true, message: 'Instancia registrada en modo local/desconectado.' };
+    console.warn('No se pudo enviar la telemetria autorizada:', error?.message || error);
+    return { success: false, message: 'No se pudo contactar el webhook de telemetria.' };
   }
 }

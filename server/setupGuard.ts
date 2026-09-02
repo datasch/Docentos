@@ -7,24 +7,24 @@ import { Request, Response, NextFunction } from 'express';
 
 // Definición de interfaz para la verificación de usuarios
 export interface SetupGuardOptions {
-  getUserCount: () => Promise<number> | number;
+  isSetupComplete: () => Promise<boolean> | boolean;
 }
 
 /**
  * Middleware que bloquea el acceso a rutas protegidas si no existe ningún usuario registrado.
  */
-export function createSetupGuard(getUserCount: () => Promise<number> | number) {
+export function createSetupGuard(isSetupComplete: () => Promise<boolean> | boolean) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Permitir acceso sin intercepción a rutas de setup y archivos estáticos
-    const openPaths = ['/api/setup', '/api/setup/status', '/api/health'];
+    // El frontend debe poder cargar el asistente aun cuando la base este vacia.
+    if (!req.path.startsWith('/api')) return next();
+
+    const openPaths = ['/api/setup', '/api/setup/status', '/api/health', '/api/version', '/api/runtime-config'];
     if (openPaths.includes(req.path)) {
       return next();
     }
 
     try {
-      const count = await getUserCount();
-
-      if (count === 0) {
+      if (!(await isSetupComplete())) {
         return res.status(428).json({
           isSetupRequired: true,
           error: 'Instalación inicial requerida (First Run Setup)',
@@ -36,8 +36,10 @@ export function createSetupGuard(getUserCount: () => Promise<number> | number) {
       next();
     } catch (error) {
       console.error('Error en setupGuard al verificar número de usuarios:', error);
-      // En caso de fallo grave en DB, permitir continuar para no romper la app en demo
-      next();
+      return res.status(503).json({
+        error: 'No se pudo verificar el estado de instalacion.',
+        message: 'La base de datos no esta disponible o no tiene el esquema compatible.',
+      });
     }
   };
 }

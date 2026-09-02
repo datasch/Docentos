@@ -38,6 +38,7 @@ import { searchDriveVideos, getDriveFileInfo } from './server/driveService.js';
 import { createSetupGuard } from './server/setupGuard.js';
 import { sendTelemetryCallHome } from './server/telemetryService.js';
 import { prisma } from './server/prisma.js';
+import { config } from './server/config.js';
 import {
   DOCENTOS_DEFAULT_EDITION,
   DOCENTOS_RELEASE_CHANNEL,
@@ -45,7 +46,7 @@ import {
 } from './src/version.js';
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
+const PORT = config.PORT;
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 const ADMIN_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
 const VALID_ROLES = ['ADMIN', 'MENTOR', 'MENTEE', 'PUBLIC_USER', 'VIP', 'EXTERNAL'] as const;
@@ -56,8 +57,8 @@ function getReleaseMetadata() {
     product: 'DocentOS',
     version: DOCENTOS_VERSION,
     channel: DOCENTOS_RELEASE_CHANNEL,
-    edition: process.env.DOCENTOS_EDITION?.trim() || DOCENTOS_DEFAULT_EDITION,
-    revision: process.env.GIT_COMMIT_SHA?.trim() || 'development',
+    edition: config.DOCENTOS_EDITION || DOCENTOS_DEFAULT_EDITION,
+    revision: config.GIT_COMMIT_SHA || 'development',
   };
 }
 
@@ -66,8 +67,6 @@ type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise
 const asyncRoute = (handler: AsyncHandler) => (req: Request, res: Response, next: NextFunction) => {
   void handler(req, res, next).catch(next);
 };
-
-let configuredAppName = process.env.VITE_APP_NAME || 'DocentOS';
 
 function toRuntimeUser(user: any): AuthenticatedUser {
   return {
@@ -195,6 +194,63 @@ async function getLandingRecord() {
   });
 }
 
+function instanceConfigDefaults() {
+  return {
+    institutionName: config.APP_NAME,
+    appTagline: config.APP_TAGLINE,
+    logoInitial: config.APP_LOGO_INITIAL.slice(0, 4),
+    logoUrl: config.APP_LOGO_URL,
+    poweredByText: config.POWERED_BY_TEXT,
+    poweredByLink: config.POWERED_BY_LINK,
+    authorCredit: config.AUTHOR_CREDIT,
+    defaultLanguage: config.DEFAULT_LANG,
+    assistantName: config.AI_ASSISTANT_NAME,
+  };
+}
+
+async function ensureLegacyInstanceConfig() {
+  const [instance, admin] = await Promise.all([
+    prisma.instanceConfig.findUnique({ where: { id: 'singleton' } }),
+    prisma.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } }),
+  ]);
+  if (!admin || instance?.setupCompletedAt) return;
+
+  await prisma.instanceConfig.upsert({
+    where: { id: 'singleton' },
+    update: { setupCompletedAt: admin.createdAt },
+    create: {
+      id: 'singleton',
+      ...instanceConfigDefaults(),
+      telemetryConsent: false,
+      setupCompletedAt: admin.createdAt,
+    },
+  });
+}
+
+async function isSetupComplete() {
+  const [instance, adminCount] = await Promise.all([
+    prisma.instanceConfig.findUnique({ where: { id: 'singleton' }, select: { setupCompletedAt: true } }),
+    prisma.user.count({ where: { role: 'ADMIN' } }),
+  ]);
+  return Boolean(instance?.setupCompletedAt) && adminCount > 0;
+}
+
+async function getPublicRuntimeConfig() {
+  const instance = await prisma.instanceConfig.findUnique({ where: { id: 'singleton' } });
+  const defaults = instanceConfigDefaults();
+  return {
+    appName: instance?.institutionName || defaults.institutionName,
+    appTagline: instance?.appTagline || defaults.appTagline,
+    logoInitial: instance?.logoInitial || defaults.logoInitial,
+    logoUrl: instance?.logoUrl || defaults.logoUrl,
+    poweredByText: instance?.poweredByText || defaults.poweredByText,
+    poweredByLink: instance?.poweredByLink || defaults.poweredByLink,
+    authorCredit: instance?.authorCredit || defaults.authorCredit,
+    defaultLanguage: instance?.defaultLanguage || defaults.defaultLanguage,
+    assistantName: instance?.assistantName || defaults.assistantName,
+  };
+}
+
 const loginSchema = z.object({
   email: z.string().email('Formato de email inválido').max(255),
   password: z.string().min(1, 'La contraseña es obligatoria').max(128),
@@ -220,6 +276,14 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
 
+const setupSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
+  password: z.string().min(12, 'La contraseña debe tener al menos 12 caracteres').max(128),
+  appName: z.string().trim().min(2).max(100),
+  consentTelemetry: z.boolean().default(false),
+});
+
 function redirectPathForRole(role: UserRole) {
   if (role === 'ADMIN') return '/admin';
   if (role === 'MENTOR') return '/mentor/dashboard';
@@ -227,10 +291,8 @@ function redirectPathForRole(role: UserRole) {
 }
 
 function passwordResetBaseUrl(req: Request) {
-  const configuredUrl = process.env.APP_URL?.trim();
-  if (configuredUrl?.startsWith('http') && configuredUrl !== 'MY_APP_URL') {
-    return configuredUrl.replace(/\/$/, '');
-  }
+  const configuredUrl = config.APP_URL;
+  if (configuredUrl.startsWith('http')) return configuredUrl.replace(/\/$/, '');
   return `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`;
 }
 
@@ -241,7 +303,7 @@ async function deliverPasswordReset(
   expiresAt: Date,
 ) {
   const resetUrl = `${passwordResetBaseUrl(req)}/?resetToken=${encodeURIComponent(token)}`;
-  const webhookUrl = process.env.PASSWORD_RESET_WEBHOOK_URL?.trim();
+  const webhookUrl = config.PASSWORD_RESET_WEBHOOK_URL;
 
   if (webhookUrl?.startsWith('http')) {
     try {
@@ -249,8 +311,8 @@ async function deliverPasswordReset(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(process.env.PASSWORD_RESET_WEBHOOK_TOKEN
-            ? { Authorization: `Bearer ${process.env.PASSWORD_RESET_WEBHOOK_TOKEN}` }
+          ...(config.PASSWORD_RESET_WEBHOOK_TOKEN
+            ? { Authorization: `Bearer ${config.PASSWORD_RESET_WEBHOOK_TOKEN}` }
             : {}),
         },
         body: JSON.stringify({
@@ -266,7 +328,7 @@ async function deliverPasswordReset(
     }
   }
 
-  const exposeLocalToken = process.env.PASSWORD_RESET_EXPOSE_TOKEN === 'true';
+  const exposeLocalToken = config.PASSWORD_RESET_EXPOSE_TOKEN;
   return exposeLocalToken ? { resetToken: token, resetUrl } : {};
 }
 
@@ -280,7 +342,12 @@ app.use(
 );
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGIN || '*',
+    origin(origin, callback) {
+      if (!origin || config.ALLOWED_ORIGINS.includes(origin.replace(/\/$/, ''))) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -352,41 +419,102 @@ app.get(
 app.get(
   '/api/setup/status',
   asyncRoute(async (_req, res) => {
-    const userCount = await prisma.user.count();
-    res.json({ isSetupRequired: userCount === 0, userCount, appName: configuredAppName });
+    const [setupComplete, userCount, runtimeConfig] = await Promise.all([
+      isSetupComplete(),
+      prisma.user.count(),
+      getPublicRuntimeConfig(),
+    ]);
+    res.json({ isSetupRequired: !setupComplete, userCount, appName: runtimeConfig.appName });
+  }),
+);
+
+app.get(
+  '/api/runtime-config',
+  asyncRoute(async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(await getPublicRuntimeConfig());
+  }),
+);
+
+app.get(
+  '/runtime-config.js',
+  asyncRoute(async (_req, res) => {
+    const serialized = JSON.stringify(await getPublicRuntimeConfig()).replace(/</g, '\\u003c');
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('application/javascript').send(`window.__DOCENTOS_CONFIG__ = Object.freeze(${serialized});`);
   }),
 );
 
 app.post(
   '/api/setup',
   asyncRoute(async (req, res) => {
-    const { name, email, password, appName, consentTelemetry } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios' });
-    }
-    if (String(password).length < 8 || String(password).length > 128) {
-      return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 128 caracteres.' });
-    }
-
-    const existingAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    if (existingAdmin) {
+    const parsedSetup = setupSchema.safeParse(req.body);
+    if (!parsedSetup.success) {
       return res.status(400).json({
-        error: `Regla de Administrador Único: Ya existe un Administrador registrado (${existingAdmin.email}).`,
+        error: parsedSetup.error.issues[0]?.message || 'Datos de instalacion invalidos.',
       });
     }
 
-    configuredAppName = appName || configuredAppName;
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const passwordHash = await hashPassword(String(password));
-    const newAdminUser = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        passwordHash,
-        name: String(name).trim(),
-        role: 'ADMIN',
-        avatarUrl: ADMIN_AVATAR,
-      },
+    const setupData = parsedSetup.data;
+    const passwordHash = await hashPassword(setupData.password);
+    const setupResult = await prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`
+        WITH installation_lock AS (SELECT pg_advisory_xact_lock(736228104))
+        SELECT 1::integer AS acquired FROM installation_lock
+      `;
+      const instance = await transaction.instanceConfig.findUnique({ where: { id: 'singleton' } });
+      const existingAdmin = await transaction.user.findFirst({
+        where: { role: 'ADMIN' },
+        select: { email: true },
+      });
+      const existingEmail = await transaction.user.findUnique({
+        where: { email: setupData.email },
+        select: { id: true },
+      });
+
+      if (instance?.setupCompletedAt || existingAdmin) {
+        return {
+          created: false as const,
+          error: existingAdmin
+            ? `La instalacion ya fue completada por ${existingAdmin.email}.`
+            : 'La instalacion inicial ya fue completada.',
+        };
+      }
+      if (existingEmail) {
+        return { created: false as const, error: 'El correo del administrador ya esta registrado.' };
+      }
+
+      const newAdminUser = await transaction.user.create({
+        data: {
+          email: setupData.email,
+          passwordHash,
+          name: setupData.name,
+          role: 'ADMIN',
+          avatarUrl: ADMIN_AVATAR,
+        },
+      });
+      await transaction.instanceConfig.upsert({
+        where: { id: 'singleton' },
+        update: {
+          ...instanceConfigDefaults(),
+          institutionName: setupData.appName,
+          telemetryConsent: setupData.consentTelemetry,
+          setupCompletedAt: new Date(),
+        },
+        create: {
+          id: 'singleton',
+          ...instanceConfigDefaults(),
+          institutionName: setupData.appName,
+          telemetryConsent: setupData.consentTelemetry,
+          setupCompletedAt: new Date(),
+        },
+      });
+      return { created: true as const, user: newAdminUser };
     });
+
+    if (!setupResult.created) return res.status(409).json({ error: setupResult.error });
+
+    const newAdminUser = setupResult.user;
     const { token } = await createUserSession(newAdminUser.id, req);
     setSessionCookie(res, token);
     await recordAuditEvent(req, {
@@ -396,27 +524,24 @@ app.post(
       targetId: newAdminUser.id,
     });
 
-    const telemetryResult =
-      consentTelemetry === true
-        ? await sendTelemetryCallHome({
-            adminEmail: normalizedEmail,
-            adminName: String(name).trim(),
-            appName: configuredAppName,
-            consentTelemetry: true,
-          })
-        : { success: true, message: 'Telemetría no autorizada; no se enviaron datos.' };
+    const telemetryResult = await sendTelemetryCallHome({
+      adminEmail: setupData.email,
+      adminName: setupData.name,
+      appName: setupData.appName,
+      consentTelemetry: setupData.consentTelemetry,
+    });
 
     res.json({
       success: true,
       message: '¡Instalación inicial completada con éxito! Usuario Administrador registrado.',
       user: toRuntimeUser(newAdminUser),
-      appName: configuredAppName,
+      appName: setupData.appName,
       telemetry: telemetryResult,
     });
   }),
 );
 
-app.use(createSetupGuard(() => prisma.user.count()));
+app.use(createSetupGuard(isSetupComplete));
 
 // Resolve an optional, independent user session for every API request.
 app.use(
@@ -1541,8 +1666,9 @@ ${courses.map((course) => `<article><h2>${course.title}</h2><p>${course.descript
 
 async function startServer() {
   await prisma.$connect();
+  await ensureLegacyInstanceConfig();
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (config.NODE_ENV !== 'production') {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {

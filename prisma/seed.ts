@@ -1,5 +1,6 @@
 import { prisma } from '../server/prisma.js';
 import { hashPassword } from '../server/authService.js';
+import { config } from '../server/config.js';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 
@@ -364,6 +365,10 @@ async function seedApplicationData() {
 }
 
 async function main() {
+  if (!config.SEED_DEMO_DATA) {
+    console.log('Datos demo omitidos: establece SEED_DEMO_DATA=true en un entorno no productivo para cargarlos.');
+    return;
+  }
   await seedUsers();
   await seedCourse();
   await seedApplicationData();

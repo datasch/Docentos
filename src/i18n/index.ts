@@ -1,7 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { siteConfig } from '../config/theme';
 
-const defaultLang = import.meta.env.VITE_DEFAULT_LANG || 'es';
+const defaultLang = siteConfig.defaultLanguage;
 
 const resources = {
   es: {

@@ -1,24 +1,22 @@
 services:
-  # Base de Datos Relacional PostgreSQL
   db:
     image: postgres:15-alpine
     container_name: docentos_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: docentos
-      POSTGRES_PASSWORD: docentos_secret_pass
-      POSTGRES_DB: docentos_db
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DATABASE_USER:-docentos}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: ${DATABASE_NAME:-docentos_db}
+    secrets:
+      - postgres_password
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U docentos -d docentos_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # Aplicación DocentOS LMS Engine (React + Express + Prisma)
   app:
     build:
       context: .
@@ -26,24 +24,130 @@ services:
     container_name: docentos_app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     environment:
-      - PORT=3000
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://docentos:docentos_secret_pass@db:5432/docentos_db?schema=public
-      - APP_URL=http://localhost:3000
-      - ALLOWED_ORIGIN=http://localhost:3000
-      - SESSION_COOKIE_SECURE=false
-      - SESSION_TTL_DAYS=7
-      # Sólo para el entorno local: permite completar la recuperación sin un proveedor de correo.
-      - PASSWORD_RESET_EXPOSE_TOKEN=true
-      - VITE_APP_NAME=DocentOS
-      - VITE_APP_TAGLINE=Plataforma e-Learning Open Source
-      - VITE_POWERED_BY_TEXT=Powered by DocentOS LMS Engine
+      PORT: "3000"
+      NODE_ENV: production
+      DOCENTOS_ENV: ${DOCENTOS_ENV:-production}
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${DATABASE_NAME:-docentos_db}
+      DATABASE_USER: ${DATABASE_USER:-docentos}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-http://localhost:3000}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
+      PASSWORD_RESET_WEBHOOK_URL: ${PASSWORD_RESET_WEBHOOK_URL:-}
+      PASSWORD_RESET_WEBHOOK_TOKEN: ${PASSWORD_RESET_WEBHOOK_TOKEN:-}
+      PASSWORD_RESET_EXPOSE_TOKEN: ${PASSWORD_RESET_EXPOSE_TOKEN:-false}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      APP_NAME: ${APP_NAME:-DocentOS}
+      APP_TAGLINE: ${APP_TAGLINE:-Plataforma e-Learning Open Source}
+      APP_LOGO_INITIAL: ${APP_LOGO_INITIAL:-D}
+      APP_LOGO_URL: ${APP_LOGO_URL:-}
+      POWERED_BY_TEXT: ${POWERED_BY_TEXT:-Powered by DocentOS LMS Engine}
+      POWERED_BY_LINK: ${POWERED_BY_LINK:-https://github.com/giantucchi-org/docentos}
+      AUTHOR_CREDIT: ${AUTHOR_CREDIT:-DocentOS Community Edition}
+      DEFAULT_LANG: ${DEFAULT_LANG:-es}
+      AI_ASSISTANT_NAME: ${AI_ASSISTANT_NAME:-Ian}
+      DOCENTOS_EDITION: ${DOCENTOS_EDITION:-community}
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}
+      GIANTUCCHI_TELEMETRY_WEBHOOK: ${GIANTUCCHI_TELEMETRY_WEBHOOK:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_DRIVE_API_KEY: ${GOOGLE_DRIVE_API_KEY:-}
+      GOOGLE_DRIVE_CLIENT_EMAIL: ${GOOGLE_DRIVE_CLIENT_EMAIL:-}
+      GOOGLE_DRIVE_PRIVATE_KEY: ${GOOGLE_DRIVE_PRIVATE_KEY:-}
+      GOOGLE_DRIVE_FOLDER_ID: ${GOOGLE_DRIVE_FOLDER_ID:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    secrets:
+      - postgres_password
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backup:
+    build:
+      context: .
+      dockerfile: ops/backup/Dockerfile
+    container_name: docentos_backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${DATABASE_NAME:-docentos_db}
+      PGUSER: ${DATABASE_USER:-docentos}
+      PGPASSWORD_FILE: /run/secrets/postgres_password
+      BACKUP_ENCRYPTION_PASSPHRASE_FILE: /run/secrets/backup_encryption_passphrase
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETRY_SECONDS: ${BACKUP_RETRY_SECONDS:-300}
+      BACKUP_DATABASE_WAIT_SECONDS: ${BACKUP_DATABASE_WAIT_SECONDS:-60}
+      BACKUP_RETENTION_DAILY: ${BACKUP_RETENTION_DAILY:-7}
+      BACKUP_RETENTION_WEEKLY: ${BACKUP_RETENTION_WEEKLY:-5}
+      BACKUP_RETENTION_MONTHLY: ${BACKUP_RETENTION_MONTHLY:-12}
+      BACKUP_ALERT_WEBHOOK_URL: ${BACKUP_ALERT_WEBHOOK_URL:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_PREFIX: ${S3_PREFIX:-docentos}
+      S3_STORAGE_CLASS: ${S3_STORAGE_CLASS:-STANDARD_IA}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    secrets:
+      - postgres_password
+      - backup_encryption_passphrase
+    volumes:
+      - backups:/backups
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /backups/last-success"]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 2m
+
+  restore:
+    build:
+      context: .
+      dockerfile: ops/backup/Dockerfile
+    profiles: ["restore"]
+    entrypoint: ["/usr/local/bin/restore-backup"]
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${DATABASE_NAME:-docentos_db}
+      PGUSER: ${DATABASE_USER:-docentos}
+      PGPASSWORD_FILE: /run/secrets/postgres_password
+      BACKUP_ENCRYPTION_PASSPHRASE_FILE: /run/secrets/backup_encryption_passphrase
+      BACKUP_FILE: ${BACKUP_FILE:-}
+      RESTORE_CONFIRM_DATABASE: ${RESTORE_CONFIRM_DATABASE:-}
+      RESTORE_ALLOW_OVERWRITE: ${RESTORE_ALLOW_OVERWRITE:-false}
+    secrets:
+      - postgres_password
+      - backup_encryption_passphrase
+    volumes:
+      - backups:/backups
     depends_on:
       db:
         condition: service_healthy
 
+secrets:
+  postgres_password:
+    environment: DOCENTOS_POSTGRES_PASSWORD
+  backup_encryption_passphrase:
+    environment: DOCENTOS_BACKUP_PASSPHRASE
+
 volumes:
   pgdata:
+    driver: local
+  backups:
     driver: local

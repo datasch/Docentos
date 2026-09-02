@@ -9,9 +9,47 @@ cuando alcance su primera versión estable.
 
 ### Planned
 
-- Migraciones versionadas y estrategia de respaldo/restauración.
 - Pagos y protección de contenido aptos para producción.
 - Automatización de pruebas y publicación de imágenes Docker.
+
+## 0.3.0-alpha.1 - 2026-09-02
+
+### Added
+
+- Historial formal de migraciones Prisma para instalaciones nuevas y heredadas.
+- Configuración institucional persistente y frontend configurado en tiempo de ejecución.
+- Instalador transaccional de un solo uso para crear el primer administrador.
+- Backups programados con `pg_dump`, cifrado AES-256, checksum SHA-256 y volumen separado.
+- Retención local diaria, semanal y mensual, subida opcional a S3 y webhook de fallos.
+- Espera de disponibilidad de PostgreSQL y reintento controlado para evitar falsas alarmas durante el arranque del host.
+- Restaurador protegido por confirmación explícita, verificación de integridad y transacción única.
+- Generador idempotente de secretos locales aleatorios mediante `npm run secrets:init`.
+
+### Changed
+
+- El arranque usa `prisma migrate deploy` y se detiene antes de Node.js si una migración falla.
+- El seed de demostración requiere `SEED_DEMO_DATA=true` y está prohibido en producción.
+- PostgreSQL dejó de publicar el puerto `5432` y recibe su contraseña mediante Docker Secrets.
+- El nombre, lema, logotipo, atribución, idioma y asistente dejaron de depender del bundle de Vite.
+- `ALLOWED_ORIGIN`, URLs, sesiones y variables críticas se validan al iniciar.
+
+### Security
+
+- Se eliminaron las contraseñas predeterminadas de Docker Compose.
+- La telemetría quedó desactivada por defecto y requiere consentimiento además de un webhook explícito.
+- Una instalación de producción limpia no crea usuarios con credenciales conocidas.
+- La restauración se niega a sobrescribir una base con tablas salvo autorización consciente.
+
+### Verification
+
+- Se actualizó una instalación `v0.2.0-alpha.1` conservando sus 7 usuarios y 1 curso.
+- Se restauró un backup cifrado real en una base vacía y se verificaron datos y 3 migraciones.
+- Se comprobó que una conexión de migración inválida impide iniciar la aplicación.
+
+### Known limitations
+
+- El almacenamiento S3 y el webhook de alertas requieren servicios y credenciales del operador.
+- Los pagos verificables, la cobertura automatizada completa y la publicación de imágenes corresponden a fases posteriores.
 
 ## 0.2.0-alpha.1 - 2026-09-01
 
@@ -78,3 +116,4 @@ cuando alcance su primera versión estable.
 
 [0.1.0-alpha.1]: https://github.com/giantucchi-org/Docentos/releases/tag/v0.1.0-alpha.1
 [0.2.0-alpha.1]: https://github.com/giantucchi-org/Docentos/releases/tag/v0.2.0-alpha.1
+[0.3.0-alpha.1]: https://github.com/giantucchi-org/Docentos/releases/tag/v0.3.0-alpha.1

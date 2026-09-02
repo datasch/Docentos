@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Prisma 7 carga prisma.config.ts incluso al generar el cliente. Esta URL sólo
 # se usa durante el build; Docker Compose inyecta la URL real en ejecución.
-ENV DATABASE_URL=postgresql://docentos:docentos_secret_pass@db:5432/docentos_db?schema=public
+ENV DATABASE_URL=postgresql://docentos_build@localhost:5432/docentos_build?schema=public
 
 # Instalar herramientas requeridas para dependencias nativas si aplica
 RUN apk add --no-cache python3 make g++
@@ -41,12 +41,13 @@ ENV PORT=3000
 
 # Copiar artefactos necesarios desde la etapa de compilación
 COPY package*.json ./
-COPY .env.example ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/generated ./generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/server ./server
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 
 # Asegurar permisos de ejecución para el script de inicio

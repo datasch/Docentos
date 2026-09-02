@@ -1,34 +1,47 @@
 #!/bin/sh
-set -e
+set -eu
 
-echo "========================================================"
-echo "🚀 DOCENTOS - Zero-Config Auto-Initialization Engine"
-echo "========================================================"
+echo "DocentOS: validando configuracion y migraciones"
 
-# 1. Comprobar y crear archivo .env si no existe
-if [ ! -f /app/.env ]; then
-  if [ -f /app/.env.example ]; then
-    echo "📄 No se encontró archivo .env. Generando automáticamente desde .env.example..."
-    cp /app/.env.example /app/.env
-  else
-    echo "📄 Creando archivo .env básico..."
-    touch /app/.env
+if [ -n "${DATABASE_URL_FILE:-}" ]; then
+  if [ ! -r "$DATABASE_URL_FILE" ]; then
+    echo "DATABASE_URL_FILE no existe o no se puede leer: $DATABASE_URL_FILE" >&2
+    exit 1
   fi
-
+  DATABASE_URL="$(tr -d '\r\n' < "$DATABASE_URL_FILE")"
+  export DATABASE_URL
+elif [ -n "${DATABASE_PASSWORD_FILE:-}" ]; then
+  if [ ! -r "$DATABASE_PASSWORD_FILE" ]; then
+    echo "DATABASE_PASSWORD_FILE no existe o no se puede leer: $DATABASE_PASSWORD_FILE" >&2
+    exit 1
+  fi
+  database_password="$(tr -d '\r\n' < "$DATABASE_PASSWORD_FILE")"
+  if [ -z "$database_password" ]; then
+    echo "El secreto de PostgreSQL esta vacio." >&2
+    exit 1
+  fi
+  database_user="${DATABASE_USER:-docentos}"
+  database_host="${DATABASE_HOST:-db}"
+  database_port="${DATABASE_PORT:-5432}"
+  database_name="${DATABASE_NAME:-docentos_db}"
+  encoded_user="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$database_user")"
+  encoded_password="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$database_password")"
+  DATABASE_URL="postgresql://${encoded_user}:${encoded_password}@${database_host}:${database_port}/${database_name}?schema=public"
+  export DATABASE_URL
+  unset database_password encoded_password
+elif [ -z "${DATABASE_URL:-}" ]; then
+  echo "Configura DATABASE_URL, DATABASE_URL_FILE o DATABASE_PASSWORD_FILE." >&2
+  exit 1
 fi
 
-# 2. Compilar Prisma Client
-echo "🛠️ Compilando cliente de base de datos Prisma..."
-npx prisma generate
+node scripts/prepare-migration-history.mjs
+./node_modules/.bin/prisma migrate deploy
 
-# 3. Ejecutar migraciones / actualización de esquema
-echo "🗄️ Desplegando esquema de base de datos PostgreSQL..."
-npx prisma db push || npx prisma migrate deploy || echo "⚠️ Advertencia al sincronizar BD, continuando proceso de inicio..."
+if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
+  npm run prisma:seed
+else
+  echo "DocentOS: seed de demostracion desactivado"
+fi
 
-# 4. Cargar datos iniciales de forma idempotente
-echo "🌱 Verificando datos iniciales de DocentOS..."
-npm run prisma:seed
-
-# 5. Iniciar el servidor
-echo "✨ ¡DocentOS está listo y activo! Ejecutando proceso principal..."
+echo "DocentOS: migraciones completadas; iniciando aplicacion"
 exec "$@"

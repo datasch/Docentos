@@ -63,7 +63,8 @@ pasar seguridad, migraciones, pruebas de actualización y restauración.
 Ejemplos:
 
 - v0.1.0-alpha.1: línea base Docker y PostgreSQL.
-- v0.2.0-alpha.1: versión actual con autenticación y sesiones reales.
+- v0.2.0-alpha.1: autenticación y sesiones reales.
+- v0.3.0-alpha.1: versión actual con migraciones, instalación segura y backups cifrados.
 - v0.5.0-rc.1: candidata a primera versión pública.
 - v1.0.0: primera versión comunitaria estable.
 - v1.4.0-internal.1: ejemplo de distribución interna adelantada.

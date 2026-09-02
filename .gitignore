@@ -7,3 +7,8 @@ coverage/
 .env*
 !.env.example
 /generated/prisma/
+backups/
+secrets/
+*.dump
+*.dump.enc
+*.dump.enc.sha256

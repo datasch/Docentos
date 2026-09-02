@@ -3,6 +3,7 @@ import { Sparkles, X, ChevronRight, Star, Send, Volume2, CheckCircle2, Bot, Comp
 import { useTranslation } from 'react-i18next';
 import { ttsService } from '../lib/ttsService';
 import { api } from '../lib/api';
+import { siteConfig } from '../config/theme';
 
 interface AIAssistantTourProps {
   onHighlightTab?: (tab: 'courses' | 'drive' | 'admin' | 'vip') => void;
@@ -11,7 +12,7 @@ interface AIAssistantTourProps {
 
 export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab, onClose }) => {
   const { t } = useTranslation();
-  const assistantName = import.meta.env.VITE_AI_ASSISTANT_NAME || 'Ian';
+  const assistantName = siteConfig.assistantName;
 
   const [currentStep, setCurrentStep] = useState(0); // 0: Welcome, 1: Courses, 2: Drive Search, 3: Mentorship/VIP, 4: Feedback Modal
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);

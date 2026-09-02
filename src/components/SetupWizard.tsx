@@ -10,7 +10,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [appName, setAppName] = useState('DocentOS');
-  const [consentTelemetry, setConsentTelemetry] = useState(true);
+  const [consentTelemetry, setConsentTelemetry] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -21,11 +21,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
 
     if (!name.trim() || !email.trim() || !password.trim() || !appName.trim()) {
       setErrorMessage('Por favor completa todos los campos del formulario.');
-      return;
-    }
-
-    if (!consentTelemetry) {
-      setErrorMessage('Debes aceptar el consentimiento de registro para finalizar la instalación.');
       return;
     }
 
@@ -153,6 +148,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                 <input
                   type="password"
                   required
+                  minLength={12}
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -171,7 +167,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                   className="mt-1 h-4 w-4 rounded border-[#2d2d44] bg-[#141420] text-[#06b6d4] focus:ring-[#06b6d4] accent-[#06b6d4]"
                 />
                 <span className="text-xs text-slate-300 leading-relaxed">
-                  Registrar mi instancia de DocentOS para emitir la licencia comunitaria gratuita y recibir actualizaciones de seguridad.
+                  Autorizar el envío opcional de los datos de instalación al webhook de telemetría configurado por el operador.
                 </span>
               </label>
             </div>

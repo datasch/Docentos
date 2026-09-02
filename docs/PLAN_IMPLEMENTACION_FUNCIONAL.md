@@ -176,42 +176,44 @@ La etiqueta **v1.0.0** debe reservarse para cuando se completen los requisitos c
 
 **PR sugerido:** feat/data-lifecycle-backups
 **Prioridad:** crítica
+**Versión:** v0.3.0-alpha.1
+**Estado:** completada y validada localmente el 2 de septiembre de 2026
 
 ### Migraciones
 
-- [ ] Crear prisma/migrations.
-- [ ] Sustituir prisma db push por prisma migrate deploy.
-- [ ] Detener el arranque si una migración falla.
-- [ ] Probar actualización desde una versión anterior.
-- [ ] Documentar rollback y recuperación.
+- [x] Crear prisma/migrations.
+- [x] Sustituir prisma db push por prisma migrate deploy.
+- [x] Detener el arranque si una migración falla.
+- [x] Probar actualización desde una versión anterior.
+- [x] Documentar rollback y recuperación.
 
 ### Datos iniciales
 
-- [ ] Ejecutar el seed de demostración solo con SEED_DEMO_DATA=true.
-- [ ] No crear cuentas con credenciales conocidas en producción.
-- [ ] Crear el primer administrador mediante instalación segura.
-- [ ] Guardar el nombre y configuración de la institución en PostgreSQL.
-- [ ] Hacer que el instalador sea de un solo uso.
+- [x] Ejecutar el seed de demostración solo con SEED_DEMO_DATA=true.
+- [x] No crear cuentas con credenciales conocidas en producción.
+- [x] Crear el primer administrador mediante instalación segura.
+- [x] Guardar el nombre y configuración de la institución en PostgreSQL.
+- [x] Hacer que el instalador sea de un solo uso.
 
 ### Configuración
 
-- [ ] Validar variables al arrancar.
-- [ ] Eliminar contraseñas predeterminadas del Compose.
-- [ ] Usar Docker Secrets o secretos del panel de despliegue.
-- [ ] Crear configuración frontend en tiempo de ejecución.
-- [ ] Evitar depender de variables VITE_* fijadas durante el build.
-- [ ] Restringir ALLOWED_ORIGIN.
-- [ ] No publicar el puerto 5432 en producción.
+- [x] Validar variables al arrancar.
+- [x] Eliminar contraseñas predeterminadas del Compose.
+- [x] Usar Docker Secrets o secretos del panel de despliegue.
+- [x] Crear configuración frontend en tiempo de ejecución.
+- [x] Evitar depender de variables VITE_* fijadas durante el build.
+- [x] Restringir ALLOWED_ORIGIN.
+- [x] No publicar el puerto 5432 en producción.
 
 ### Backups
 
-- [ ] Implementar pg_dump programado.
-- [ ] Cifrar los respaldos.
-- [ ] Subirlos a Amazon S3 o usar snapshots de Amazon RDS.
-- [ ] Definir retención diaria, semanal y mensual.
-- [ ] Implementar alertas de backup fallido.
-- [ ] Documentar el procedimiento de restauración.
-- [ ] Ejecutar una prueba real de restauración.
+- [x] Implementar pg_dump programado.
+- [x] Cifrar los respaldos.
+- [x] Implementar subida a Amazon S3/S3 compatible como almacenamiento externo opcional.
+- [x] Definir retención diaria, semanal y mensual.
+- [x] Implementar alertas de backup fallido.
+- [x] Documentar el procedimiento de restauración.
+- [x] Ejecutar una prueba real de restauración.
 
 ### Criterios de aceptación
 
@@ -220,6 +222,11 @@ La etiqueta **v1.0.0** debe reservarse para cuando se completen los requisitos c
 - Es posible restaurar la plataforma en un servidor limpio.
 - Producción no contiene usuarios ni contraseñas de demostración.
 - Las variables cambian la configuración sin reconstruir la imagen.
+
+**Evidencia local:** el volumen heredado conservó 7 usuarios y 1 curso tras la
+actualización; un backup cifrado se restauró en una base vacía con 1
+configuración de instancia y 3 migraciones aplicadas. La ruta S3 y el webhook de
+alertas quedan disponibles para que cada operador conecte sus servicios.
 
 ## Fase 3 — Funciones comerciales y académicas reales
 
@@ -382,8 +389,8 @@ DocentOS podrá considerarse funcional y listo para una primera versión estable
 - [ ] Las sesiones sean individuales, seguras y persistentes.
 - [ ] Las contraseñas se almacenen cifradas.
 - [ ] Los endpoints estén protegidos por autorización real.
-- [ ] PostgreSQL use migraciones versionadas.
-- [ ] Exista un backup automático y una restauración comprobada.
+- [x] PostgreSQL use migraciones versionadas.
+- [x] Exista un backup automático y una restauración comprobada.
 - [ ] Las compras dependan de confirmación real del proveedor de pagos.
 - [ ] El contenido privado no pueda obtenerse sin autorización.
 - [ ] La configuración funcione en tiempo de ejecución.
