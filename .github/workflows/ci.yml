@@ -95,6 +95,9 @@ jobs:
       - name: Compilar aplicación (Vite + Server Bundle + Seed Bundle)
         run: npm run build
 
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Validar compilación de imagen Docker (Dry-Run)
         uses: docker/build-push-action@v6
         with:
