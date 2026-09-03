@@ -12,7 +12,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import {
   AuthenticatedUser,
@@ -2905,6 +2904,9 @@ async function startServer() {
   await ensureLegacyInstanceConfig();
 
   if (config.NODE_ENV !== 'production') {
+    // Importacion diferida a proposito: asi Vite es una dependencia de
+    // desarrollo y no entra en la imagen de produccion.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
     app.use(vite.middlewares);
   } else {

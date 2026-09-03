@@ -99,6 +99,17 @@ cuando alcance su primera versión estable.
 - Las rutas de importación quedan reservadas a `ADMIN` y comparten un límite de
   20 peticiones cada 15 minutos, para que una cuenta comprometida no convierta
   la instancia en un amplificador de tráfico hacia Google.
+- La imagen de producción ya no arrastra el instrumental de compilación. Vite se
+  importaba de forma estática en `server.ts`, aunque solo se usa en desarrollo,
+  así que tenía que declararse como dependencia de producción y entraba en el
+  contenedor con Rollup, esbuild y Babel detrás. Ahora la importación es
+  diferida y esas herramientas viven en `devDependencies`.
+- npm sale de la imagen de ejecución: la aplicación arranca con `node` y las
+  migraciones invocan el binario de Prisma, de modo que las dependencias que npm
+  empaqueta consigo ya no viajan al servidor.
+- Base actualizada a `node:22.23.2-alpine3.24`, con el OpenSSL corregido.
+- Entre las tres cosas, el escaneo Trivy de la imagen pasa de cuatro
+  vulnerabilidades críticas a ninguna.
 
 ## 0.4.0-beta.2 - 2026-09-02
 

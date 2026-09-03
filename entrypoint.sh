@@ -38,7 +38,7 @@ node scripts/prepare-migration-history.mjs
 ./node_modules/.bin/prisma migrate deploy
 
 if [ "${SEED_DEMO_DATA:-false}" = "true" ]; then
-  npm run prisma:seed
+  node dist/seed.js
 else
   echo "DocentOS: seed de demostracion desactivado"
 fi

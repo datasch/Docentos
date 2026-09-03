@@ -4,7 +4,7 @@
 # ==========================================
 # STAGE 1: Builder
 # ==========================================
-FROM node:22.14.0-alpine3.21 AS builder
+FROM node:22.23.2-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN npm run build
 # ==========================================
 # STAGE 2: Production Dependencies (Pruned)
 # ==========================================
-FROM node:22.14.0-alpine3.21 AS prod-deps
+FROM node:22.23.2-alpine3.24 AS prod-deps
 
 WORKDIR /app
 
@@ -45,7 +45,7 @@ RUN npm ci --omit=dev --ignore-scripts
 # ==========================================
 # STAGE 3: Runner (Producción Endurecida & No-Root)
 # ==========================================
-FROM node:22.14.0-alpine3.21 AS runner
+FROM node:22.23.2-alpine3.24 AS runner
 
 ARG GIT_COMMIT_SHA=development
 ARG VERSION=0.5.0-beta.1
@@ -79,6 +79,14 @@ COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 RUN chmod +x /app/entrypoint.sh && \
     chown -R node:node /app
 
+# npm no se usa en ejecución: la aplicación arranca con `node` y las migraciones
+# invocan el binario de Prisma directamente. Retirarlo quita de la imagen las
+# dependencias que npm empaqueta consigo, que es de donde salían los avisos de
+# vulnerabilidad sobre código que nunca llega a ejecutarse.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/bin/npm \
+           /usr/local/bin/npx
+
 USER node
 
 EXPOSE 3000
@@ -87,4 +95,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["npm", "start"]
+CMD ["node", "dist/server.js"]
