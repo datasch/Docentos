@@ -46,6 +46,11 @@ jobs:
       - name: Validar consistencia de versiones
         run: npm run version:check
 
+      - name: Generar cliente Prisma
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://docentos_build@localhost:5432/docentos_build?schema=public
+
       - name: Validar tipado TypeScript (Lint)
         run: npm run lint
 
