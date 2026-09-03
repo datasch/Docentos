@@ -1,0 +1,138 @@
+# DocentOS Community Edition — Manifiesto de Despliegue en Producción
+# Diseñado para despliegue sin compilación previa (Coolify, Easypanel, Portainer o VPS puro).
+# Uso: docker compose -f docker-compose.community.yml up -d
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: docentos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-docentos}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: ${DATABASE_NAME:-docentos_db}
+    secrets:
+      - postgres_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ${DOCENTOS_IMAGE:-ghcr.io/giantucchi-org/docentos:0.5.0-beta.1}
+    container_name: docentos_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      DOCENTOS_ENV: ${DOCENTOS_ENV:-production}
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${DATABASE_NAME:-docentos_db}
+      DATABASE_USER: ${DATABASE_USER:-docentos}
+      DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
+      PASSWORD_RESET_WEBHOOK_URL: ${PASSWORD_RESET_WEBHOOK_URL:-}
+      PASSWORD_RESET_WEBHOOK_TOKEN: ${PASSWORD_RESET_WEBHOOK_TOKEN:-}
+      PASSWORD_RESET_EXPOSE_TOKEN: ${PASSWORD_RESET_EXPOSE_TOKEN:-false}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      APP_NAME: ${APP_NAME:-DocentOS}
+      APP_TAGLINE: ${APP_TAGLINE:-Plataforma e-Learning Open Source}
+      APP_LOGO_INITIAL: ${APP_LOGO_INITIAL:-D}
+      APP_LOGO_URL: ${APP_LOGO_URL:-}
+      POWERED_BY_TEXT: ${POWERED_BY_TEXT:-Powered by DocentOS LMS Engine}
+      POWERED_BY_LINK: ${POWERED_BY_LINK:-https://github.com/giantucchi-org/docentos}
+      AUTHOR_CREDIT: ${AUTHOR_CREDIT:-DocentOS Community Edition}
+      DEFAULT_LANG: ${DEFAULT_LANG:-es}
+      AI_ASSISTANT_NAME: ${AI_ASSISTANT_NAME:-Ian}
+      DOCENTOS_EDITION: ${DOCENTOS_EDITION:-community}
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}
+      GIANTUCCHI_TELEMETRY_WEBHOOK: ${GIANTUCCHI_TELEMETRY_WEBHOOK:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-auto}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      DRIVE_IMPORT_ENABLED: ${DRIVE_IMPORT_ENABLED:-true}
+      DRIVE_IMPORT_MAX_DEPTH: ${DRIVE_IMPORT_MAX_DEPTH:-4}
+      DRIVE_IMPORT_MAX_NODES: ${DRIVE_IMPORT_MAX_NODES:-3000}
+      DRIVE_IMPORT_CONCURRENCY: ${DRIVE_IMPORT_CONCURRENCY:-4}
+      DRIVE_IMPORT_TIMEOUT_MS: ${DRIVE_IMPORT_TIMEOUT_MS:-120000}
+      GOOGLE_DRIVE_API_KEY: ${GOOGLE_DRIVE_API_KEY:-}
+      GOOGLE_DRIVE_CLIENT_EMAIL: ${GOOGLE_DRIVE_CLIENT_EMAIL:-}
+      GOOGLE_DRIVE_PRIVATE_KEY: ${GOOGLE_DRIVE_PRIVATE_KEY:-}
+      GOOGLE_DRIVE_FOLDER_ID: ${GOOGLE_DRIVE_FOLDER_ID:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    secrets:
+      - postgres_password
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  backup:
+    image: ${DOCENTOS_BACKUP_IMAGE:-ghcr.io/giantucchi-org/docentos-backup:0.5.0-beta.1}
+    container_name: docentos_backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${DATABASE_NAME:-docentos_db}
+      PGUSER: ${DATABASE_USER:-docentos}
+      PGPASSWORD_FILE: /run/secrets/postgres_password
+      BACKUP_ENCRYPTION_PASSPHRASE_FILE: /run/secrets/backup_encryption_passphrase
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_RETENTION_WEEKS: ${BACKUP_RETENTION_WEEKS:-4}
+      BACKUP_RETENTION_MONTHS: ${BACKUP_RETENTION_MONTHS:-3}
+      BACKUP_SCHEDULE_CRON: ${BACKUP_SCHEDULE_CRON:-15 2 * * *}
+      BACKUP_NOTIFY_WEBHOOK: ${BACKUP_NOTIFY_WEBHOOK:-}
+      S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      S3_REGION: ${BACKUP_S3_REGION:-}
+      S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+    secrets:
+      - postgres_password
+      - backup_encryption_passphrase
+    volumes:
+      - backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /backups"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+secrets:
+  postgres_password:
+    environment: DOCENTOS_POSTGRES_PASSWORD
+  backup_encryption_passphrase:
+    environment: DOCENTOS_BACKUP_PASSPHRASE
+
+volumes:
+  pgdata:
+    driver: local
+  backups:
+    driver: local

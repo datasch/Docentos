@@ -1,0 +1,14 @@
+# DocentOS Internal / Development Compose Overlay
+# Permite desarrollar en caliente, conectar clientes DB locales (puerto 5432) y ejecutar pruebas.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.internal.yml up -d
+
+services:
+  db:
+    ports:
+      - "${DEV_DB_PORT:-5432}:5432"
+
+  app:
+    environment:
+      NODE_ENV: development
+      DOCENTOS_ENV: development
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}

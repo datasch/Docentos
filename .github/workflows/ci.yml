@@ -1,0 +1,177 @@
+name: CI - Verificación Continua
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  # Vacio si el secreto no esta configurado: el paso de despliegue se omite solo.
+  COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+
+jobs:
+  validate:
+    name: Lint, Pruebas y Compilación
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: docentos_ci
+          POSTGRES_PASSWORD: docentos_ci_password
+          POSTGRES_DB: docentos_ci_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Validar consistencia de versiones
+        run: npm run version:check
+
+      - name: Validar tipado TypeScript (Lint)
+        run: npm run lint
+
+      - name: Generar cliente Prisma
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://docentos_ci:docentos_ci_password@localhost:5432/docentos_ci_db?schema=public
+
+      - name: Aplicar migraciones en PostgreSQL
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://docentos_ci:docentos_ci_password@localhost:5432/docentos_ci_db?schema=public
+
+      - name: Cargar datos de demostración requeridos por las pruebas
+        run: npx tsx prisma/seed.ts
+        env:
+          DATABASE_URL: postgresql://docentos_ci:docentos_ci_password@localhost:5432/docentos_ci_db?schema=public
+          DOCENTOS_ENV: development
+          SEED_DEMO_DATA: true
+
+      - name: Ejecutar pruebas automatizadas (negocio, autenticación y regresiones de seguridad)
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://docentos_ci:docentos_ci_password@localhost:5432/docentos_ci_db?schema=public
+          DOCENTOS_ENV: development
+          SEED_DEMO_DATA: true
+
+      # Bloquea solo en severidad critica. Los avisos "high" vigentes provienen del
+      # CLI de Prisma (mysql2 / deepmerge-ts), que se requiere en runtime para
+      # `prisma migrate deploy` y cuyo unico "arreglo" seria degradar a prisma 6.x.
+      - name: Auditar dependencias (bloquea en severidad crítica)
+        run: npm audit --audit-level=critical
+
+      - name: Informe completo de vulnerabilidades (no bloqueante)
+        continue-on-error: true
+        run: npm audit
+
+      - name: Compilar aplicación (Vite + Server Bundle + Seed Bundle)
+        run: npm run build
+
+      - name: Validar compilación de imagen Docker (Dry-Run)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: docentos-lms:ci-test
+          build-args: |
+            GIT_COMMIT_SHA=${{ github.sha }}
+            VERSION=ci-build
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Escanear imagen con Trivy (bloquea en CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: docentos-lms:ci-test
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL
+
+      - name: Informe Trivy de severidad alta (no bloqueante)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: docentos-lms:ci-test
+          format: table
+          exit-code: '0'
+          severity: HIGH,CRITICAL
+
+      # ------------------------------------------------------------------
+      # Publicacion continua en GHCR
+      #
+      # Solo se ejecuta al integrar en main, y solo despues de que las pruebas
+      # y Trivy hayan pasado: una imagen que nadie ha verificado no deberia
+      # poder desplegarse. La etiqueta movil es `edge`, no `latest`; `latest`
+      # queda reservada a las versiones publicadas por release.yml, para que
+      # quien despliegue por nombre no reciba codigo sin revisar.
+      # ------------------------------------------------------------------
+      - name: Autenticar en GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generar metadatos de la imagen de desarrollo
+        id: meta_edge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=edge
+            type=sha,format=short
+
+      - name: Publicar imagen de desarrollo (edge)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta_edge.outputs.tags }}
+          labels: ${{ steps.meta_edge.outputs.labels }}
+          build-args: |
+            GIT_COMMIT_SHA=${{ github.sha }}
+            VERSION=edge
+          cache-from: type=gha
+
+      # Aviso al servidor para que descargue la imagen recien publicada. El paso
+      # se omite solo si el secreto no existe, asi que el repositorio funciona
+      # igual sin Coolify. `|| true` evita que un servidor caido tumbe la CI:
+      # la imagen ya esta publicada y el despliegue puede reintentarse.
+      - name: Disparar despliegue en Coolify
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.COOLIFY_WEBHOOK_URL != ''
+        run: curl -fsS -X GET "$COOLIFY_WEBHOOK_URL" || true

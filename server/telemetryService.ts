@@ -1,7 +1,11 @@
 /**
- * Telemetry Service ("Call Home") para Academia Giantucchi Open Source
- * Envía información básica de la instalación inicial al servidor central de Giantucchi para activación de licencia y soporte de seguridad.
+ * Telemetry Service ("Call Home") para DocentOS Open Source LMS
+ * Envía metadatos mínimos y no confidenciales de la instalación inicial al servidor central
+ * ÚNICAMENTE si el administrador otorga consentimiento explícito (opt-in).
  */
+
+import { DOCENTOS_VERSION } from '../src/version.js';
+import { logger } from './logger.js';
 
 export interface TelemetryPayload {
   adminEmail: string;
@@ -14,15 +18,17 @@ export interface TelemetryPayload {
 }
 
 /**
- * Envía el evento "INSTANCE_INITIALIZED" al webhook de telemetría si se cuenta con URL o consentimiento.
+ * Envía el evento "INSTANCE_INITIALIZED" al webhook de telemetría si se cuenta con URL y consentimiento explícito.
  */
 export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<{ success: boolean; message: string }> {
+  const isAirGapped = process.env.DISABLE_TELEMETRY === 'true';
   const webhookUrl = process.env.GIANTUCCHI_TELEMETRY_WEBHOOK?.trim();
 
-  if (!payload.consentTelemetry || !webhookUrl) {
+  if (isAirGapped || !payload.consentTelemetry || !webhookUrl) {
+    logger.info('Telemetría omitida: consentimiento no otorgado o modo air-gapped activo.');
     return {
       success: true,
-      message: 'Telemetria desactivada; no se enviaron datos fuera de la instancia.',
+      message: 'Telemetría desactivada; no se enviaron datos fuera de la instancia.',
     };
   }
 
@@ -33,12 +39,12 @@ export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<
     adminName: payload.adminName,
     appName: payload.appName || 'DocentOS',
     installedAt: payload.installedAt || new Date().toISOString(),
-    version: '2.5.0-opensource',
+    version: DOCENTOS_VERSION,
     environment: process.env.NODE_ENV || 'production',
     consentGranted: payload.consentTelemetry,
   };
 
-  console.log('📡 [TELEMETRÍA DOCENTOS / GIANTUCCHI] Iniciando Call Home a:', webhookUrl);
+  logger.info('Iniciando registro voluntario de telemetría de instancia...', { webhookUrl });
 
   try {
     const controller = new AbortController();
@@ -48,7 +54,7 @@ export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'DocentOS-LMS/2.5.0',
+        'User-Agent': `DocentOS-LMS/${DOCENTOS_VERSION}`,
       },
       body: JSON.stringify(dataToSend),
       signal: controller.signal,
@@ -57,14 +63,14 @@ export async function sendTelemetryCallHome(payload: TelemetryPayload): Promise<
     clearTimeout(timeoutId);
 
     if (response.ok) {
-      console.log('✅ [TELEMETRÍA GIANTUCCHI] Registro de instancia completado con éxito.');
+      logger.info('Registro voluntario de telemetría completado con éxito.');
       return { success: true, message: 'Telemetría enviada correctamente.' };
     } else {
-      console.warn('⚠️ [TELEMETRÍA GIANTUCCHI] Respuesta del servidor central:', response.status);
+      logger.warn('Respuesta inesperada del webhook de telemetría:', { status: response.status });
       return { success: false, message: `Servidor devolvió status ${response.status}` };
     }
   } catch (error: any) {
-    console.warn('No se pudo enviar la telemetria autorizada:', error?.message || error);
-    return { success: false, message: 'No se pudo contactar el webhook de telemetria.' };
+    logger.warn('No se pudo contactar el webhook de telemetría autorizada:', { error: error?.message || error });
+    return { success: false, message: 'No se pudo contactar el webhook de telemetría.' };
   }
 }

@@ -40,6 +40,69 @@ export interface UserQuizAttempt {
   timestamp: string;
 }
 
+/**
+ * Banco de preguntas por identificador de modulo.
+ *
+ * Esta claves son identificadores reales de modulo (UUID), asi que hoy el banco
+ * esta vacio: DocentOS todavia no tiene modelo de datos para examenes ni editor
+ * en el panel. Mientras siga vacio, ningun modulo muestra examen ni bloquea al
+ * siguiente. Las preguntas de ejemplo quedan abajo como referencia del formato.
+ *
+ * Un modulo sin preguntas **no puede exigir aprobado**: pedir un examen que no
+ * existe dejaria el temario bloqueado sin manera de avanzar.
+ */
+export const MODULE_QUIZZES: Record<string, QuizQuestion[]> = {};
+
+/** Ejemplo del formato esperado; no se asigna a ningun modulo. */
+export const SAMPLE_QUIZ: QuizQuestion[] = [
+  {
+    id: 'q1',
+    text: '¿Cuál es el objetivo principal de la arquitectura modular en DocentOS?',
+    options: [
+      'Aumentar el consumo de recursos',
+      'Permitir desacoplamiento y extensión mediante plugins independientes',
+      'Eliminar el acceso a bases de datos',
+      'Reemplazar la interfaz por consolas de comandos',
+    ],
+    correctIndex: 1,
+    explanation:
+      'La arquitectura modular permite habilitar/deshabilitar funcionalidades sin modificar el núcleo del software.',
+  },
+  {
+    id: 'q2',
+    text: '¿Qué ventaja ofrece la integración de Google Drive en los programas de mentoría?',
+    options: [
+      'Alojamiento directo de videos HD sin costo de almacenamiento de servidor',
+      'Imposibilidad de reproducir contenidos',
+      'Requiere descargar los archivos manualmente',
+      'Ninguna ventaja',
+    ],
+    correctIndex: 0,
+    explanation: 'Google Drive actúa como motor de streaming sin sobrecargar la infraestructura propia.',
+  },
+  {
+    id: 'q3',
+    text: '¿Qué sucede al completar el 100% de las lecciones en DocentOS?',
+    options: [
+      'Se borran los datos del estudiante',
+      'Se bloquea la cuenta',
+      'El plugin de Certificados genera un diploma firmado digitalmente con ID de verificación',
+      'Se envía una factura automática',
+    ],
+    correctIndex: 2,
+    explanation: 'Al alcanzar el 100%, el sistema emite automáticamente la certificación oficial.',
+  },
+];
+
+/** Preguntas de un modulo; vacio cuando ese modulo no tiene examen. */
+export function getModuleQuestions(moduleId: string): QuizQuestion[] {
+  return MODULE_QUIZZES[moduleId] ?? [];
+}
+
+export function moduleHasQuiz(moduleId: string): boolean {
+  return getModuleQuestions(moduleId).length > 0;
+}
+
 export class QuizzesPluginEngine {
   private userAttemptsStore: Map<string, UserQuizAttempt> = new Map();
 
@@ -130,8 +193,8 @@ export class QuizzesPluginEngine {
   /**
    * Determina si un módulo está desbloqueado para el usuario.
    * El módulo 0 siempre está desbloqueado.
-   * Los módulos posteriores (N > 0) requieren haber aprobado el módulo previo (N - 1)
-   * con una calificación >= passingThreshold si el plugin de quizzes está habilitado.
+   * Los módulos posteriores (N > 0) requieren haber aprobado, con calificación
+   * >= passingThreshold, cada módulo anterior **que tenga examen definido**.
    */
   public isModuleUnlocked(
     modules: Module[],
@@ -144,10 +207,12 @@ export class QuizzesPluginEngine {
       return true;
     }
 
-    // Verificar si aprobó todos los módulos anteriores
+    // Verificar si aprobó todos los módulos anteriores que tengan examen. Un
+    // módulo sin preguntas no bloquea nada: exigir un examen inexistente dejaría
+    // el temario cerrado sin forma de abrirlo.
     for (let i = 0; i < moduleIndex; i++) {
       const prevModule = modules[i];
-      if (!prevModule) continue;
+      if (!prevModule || !moduleHasQuiz(prevModule.id)) continue;
       const attempt = this.getUserAttempt(userId, prevModule.id);
       if (!attempt || !attempt.passed || attempt.scorePercentage < passingThreshold) {
         return false;

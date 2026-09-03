@@ -59,6 +59,12 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
     },
   ];
 
+  // Se marca como visto en cuanto se muestra: si el usuario cierra la pestaña a
+  // medias, el tour no debe volver a lanzarse ni mover su ruta en el proximo acceso.
+  useEffect(() => {
+    localStorage.setItem('giantucchi_tour_completed', 'true');
+  }, []);
+
   useEffect(() => {
     // Play voice greeting for step
     playStepVoice(currentStep);

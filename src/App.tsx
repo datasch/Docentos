@@ -16,10 +16,11 @@ import { AuthModal } from './components/AuthModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { SetupWizard } from './components/SetupWizard';
 import { AIAssistantTour } from './components/AIAssistantTour';
+import { CertificateVerifyModal } from './components/CertificateVerifyModal';
 import { api } from './lib/api';
 import { User, Course } from './types';
 import { siteConfig } from './config/theme';
-import { DOCENTOS_VERSION } from './version';
+import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
 import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
 
 type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
@@ -43,6 +44,9 @@ function tabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/vip')) return 'vip';
   return 'landing';
 }
+
+const releaseChannelLabel =
+  DOCENTOS_RELEASE_CHANNEL.charAt(0).toUpperCase() + DOCENTOS_RELEASE_CHANNEL.slice(1);
 
 function canOpenTab(user: User | null, tab: ActiveTab) {
   if (tab === 'landing') return true;
@@ -70,6 +74,8 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [showTour, setShowTour] = useState<boolean>(false);
+  const [showVerifyModal, setShowVerifyModal] = useState<boolean>(false);
+  const [verifyCode, setVerifyCode] = useState<string>('');
 
   const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
     const path = TAB_PATHS[tab];
@@ -78,6 +84,7 @@ export default function App() {
       else window.history.pushState({}, '', path);
     }
     setActiveTabState(tab);
+    window.scrollTo({ top: 0 });
   };
 
   const checkSetupStatus = async () => {
@@ -110,11 +117,9 @@ export default function App() {
         setHasAccess(courseRes.hasAccess);
       }
 
-      // Check if onboarding assistant tour should trigger
-      const isTourDone = localStorage.getItem('giantucchi_tour_completed');
-      if (userRes.authenticated && !isTourDone && activeTab !== 'landing') {
-        setShowTour(true);
-      }
+      // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
+      // expulsaria al usuario de la ruta que acaba de recargar. Solo arranca
+      // tras un inicio de sesion explicito (ver AuthModal onSuccess).
     } catch (error) {
       console.error('Error al cargar datos iniciales de Academia Giantucchi:', error);
     } finally {
@@ -205,6 +210,10 @@ export default function App() {
           onRestartTour={() => setShowTour(true)}
           onChangePassword={() => setShowChangePasswordModal(true)}
           onLogout={handleLogout}
+          onOpenVerifyModal={() => {
+            setVerifyCode('');
+            setShowVerifyModal(true);
+          }}
         />
       )}
 
@@ -214,6 +223,9 @@ export default function App() {
         {activeTab === 'landing' && (
           <LandingPage
             courses={courses}
+            currentUser={currentUser}
+            onGoToApp={() => navigateTo(currentUser?.role === 'ADMIN' ? 'admin' : 'courses')}
+            onLogout={handleLogout}
             onOpenAuth={(mode) => {
               setAuthMode(mode);
               setAuthNotice(null);
@@ -263,6 +275,12 @@ export default function App() {
               currentUser={currentUser}
               hasAccess={hasAccess}
               onOpenPaywall={() => setShowPaywallModal(true)}
+              courses={courses}
+              onSelectCourse={(selected) => {
+                setCourse(selected);
+                window.scrollTo({ top: 0 });
+              }}
+              onGoHome={() => navigateTo('landing')}
             />
           </div>
         )}
@@ -319,6 +337,9 @@ export default function App() {
             setAuthNotice(null);
             loadData();
             navigateTo(tabFromPath(redirectPath));
+            if (!localStorage.getItem('giantucchi_tour_completed')) {
+              setShowTour(true);
+            }
           }}
         />
 
@@ -349,6 +370,7 @@ export default function App() {
               <PaywallModal
                 userRole={currentUser.role}
                 courseTitle={course.title}
+                courseId={course.id}
                 price={course.price}
                 onPaymentSuccess={handlePaymentSuccess}
                 onVipActivated={handleVipActivated}
@@ -389,7 +411,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 text-[10px] text-[#06b6d4]">
-            <CheckCircle2 className="w-3.5 h-3.5" /> DocentOS v{DOCENTOS_VERSION} · Alpha
+            <CheckCircle2 className="w-3.5 h-3.5" /> {siteConfig.appName} v{DOCENTOS_VERSION} · {releaseChannelLabel}
           </div>
         </div>
       </footer>
@@ -401,6 +423,13 @@ export default function App() {
           onClose={() => setShowTour(false)}
         />
       )}
+
+      {/* Certificate Public Verification Modal */}
+      <CertificateVerifyModal
+        isOpen={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        initialCode={verifyCode}
+      />
 
     </div>
   );

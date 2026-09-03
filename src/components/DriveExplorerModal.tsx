@@ -29,12 +29,14 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
   const [selectedModuleId, setSelectedModuleId] = useState<string>(modules[0]?.id || '');
   const [linking, setLinking] = useState(false);
   const [linkedSuccess, setLinkedSuccess] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   const fetchVideos = async (searchQuery?: string) => {
     setLoading(true);
     try {
       const data = await api.searchDriveVideos(searchQuery);
       setDriveVideos(data.videos || []);
+      setIsDemo(Boolean(data.isDemo));
     } catch (error) {
       console.error('Error fetching drive videos:', error);
     } finally {
@@ -100,6 +102,17 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
           </button>
         </form>
       </div>
+
+      {isDemo && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-300 text-sm">
+          <strong className="font-bold">Modo demostración.</strong> No hay credenciales de Google
+          Drive configuradas, así que este catálogo es de ejemplo: sus identificadores no
+          corresponden a archivos reales y los vídeos que enlaces desde aquí no se reproducirán.
+          Para usar tus vídeos, pega el enlace de Drive directamente al crear el vídeo en el módulo,
+          o configura <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
+          <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code>.
+        </div>
+      )}
 
       {/* Main Grid: Video List & Drive Embedded Player Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

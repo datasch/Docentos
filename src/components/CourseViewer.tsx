@@ -9,14 +9,22 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { PlayCircle, CheckCircle2, ChevronLeft, ChevronRight, MessageSquare, Send, ShieldCheck, ThumbsUp, Sparkles, HelpCircle, HardDrive, Maximize2, Lock, Youtube, Code, Award, CheckSquare, Bookmark, FileText, Clock } from 'lucide-react';
+import { PlayCircle, CheckCircle2, ChevronLeft, ChevronRight, Home, MessageSquare, Send, ShieldCheck, ThumbsUp, Sparkles, HelpCircle, HardDrive, Maximize2, Lock, Youtube, Code, Award, CheckSquare, Bookmark, FileText, Clock, Download, FileCode, ExternalLink, Search } from 'lucide-react';
 import { api } from '../lib/api';
-import { Course, Module, VideoDriveLink, MentorshipComment, User, UserRole, TTSGuide, VideoNote } from '../types';
+import {
+  countCompleted,
+  findResumePosition,
+  flattenLessons,
+  indexOfLesson,
+  stepLesson,
+} from '../lib/courseNavigation';
+import { Course, Module, VideoDriveLink, MentorshipComment, User, UserRole, TTSGuide, VideoNote, CertificateRecord, CourseResource } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { ModuleQuizCard } from './ModuleQuizCard';
+import { CertificateVerifyModal } from './CertificateVerifyModal';
 
 interface CourseViewerProps {
 
@@ -24,6 +32,10 @@ interface CourseViewerProps {
   currentUser: User;
   hasAccess: boolean;
   onOpenPaywall: () => void;
+  /** Catálogo al que puede cambiar el alumno sin salir del reproductor. */
+  courses?: Course[];
+  onSelectCourse?: (course: Course) => void;
+  onGoHome?: () => void;
 }
 
 export const CourseViewer: React.FC<CourseViewerProps> = ({
@@ -31,9 +43,14 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   currentUser,
   hasAccess,
   onOpenPaywall,
+  courses = [],
+  onSelectCourse,
+  onGoHome,
 }) => {
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  // Mientras nadie elija lección a mano, el curso se abre por donde se dejó.
+  const [pickedByUser, setPickedByUser] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theaterMode, setTheaterMode] = useState(false);
 
@@ -51,6 +68,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // Progress state
   const [completedVideos, setCompletedVideos] = useState<Record<string, boolean>>({});
   const [quizPassKey, setQuizPassKey] = useState<number>(0);
+  const [certificate, setCertificate] = useState<CertificateRecord | null>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Video Notes State
   const [videoNotes, setVideoNotes] = useState<VideoNote[]>([]);
@@ -62,8 +81,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   // Load saved user progress on mount
   useEffect(() => {
+    setPickedByUser(false);
+    setActiveModuleIndex(0);
+    setActiveVideoIndex(0);
     loadUserProgress();
-  }, []);
+  }, [course.id]);
 
   const loadUserProgress = async () => {
     try {
@@ -71,14 +93,43 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       if (res.completedVideos) {
         setCompletedVideos(res.completedVideos);
       }
+      if (res.certificates && res.certificates.length > 0) {
+        const found = res.certificates.find((c) => c.courseId === course.id);
+        if (found) setCertificate(found);
+      }
     } catch (error) {
       console.error('Error loading saved progress:', error);
     }
   };
 
+  // Retomar donde se quedó: abrir siempre por la primera clase obliga a buscar
+  // a mano por dónde iba uno, y en un curso de cincuenta lecciones eso es una
+  // tarea. Solo actúa hasta que el alumno elige otra lección.
+  useEffect(() => {
+    if (pickedByUser) return;
+    const resume = findResumePosition(course, completedVideos);
+    if (!resume) return;
+    setActiveModuleIndex(resume.moduleIndex);
+    setActiveVideoIndex(resume.videoIndex);
+  }, [course.id, completedVideos, pickedByUser]);
+
+  const goToLesson = (moduleIndex: number, videoIndex: number) => {
+    setPickedByUser(true);
+    setActiveModuleIndex(moduleIndex);
+    setActiveVideoIndex(videoIndex);
+  };
+
+  const lessons = flattenLessons(course);
+  const currentLessonIndex = indexOfLesson(lessons, {
+    moduleIndex: activeModuleIndex,
+    videoIndex: activeVideoIndex,
+  });
+  const previousLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, -1);
+  const nextLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+
   // Calculate overall course progress metrics
   const totalCourseVideos = course.modules.reduce((acc, m) => acc + m.videos.length, 0);
-  const completedCourseVideos = Object.keys(completedVideos).filter((vId) => completedVideos[vId]).length;
+  const completedCourseVideos = countCompleted(course, completedVideos);
   const courseProgressPct = totalCourseVideos > 0 ? Math.round((completedCourseVideos / totalCourseVideos) * 100) : 0;
 
   // Fetch comments, TTS guides & Video Notes when video changes
@@ -218,7 +269,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setCompletedVideos(newCompletedMap);
 
     try {
-      await api.toggleProgress(videoId, isCompleted);
+      const res = await api.toggleProgress(videoId, isCompleted);
+      if (res.certificate) {
+        setCertificate(res.certificate);
+      }
 
       if (isCompleted && currentVideo) {
         // Trigger Plugin Hook for Lesson Complete
@@ -245,9 +299,40 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       {/* Top Banner / Course Header */}
       <div className="bg-[#141420] border-b border-[#2d2d44] px-4 py-3 sm:px-6 flex items-center justify-between text-xs text-slate-300">
         <div className="flex items-center gap-2 overflow-hidden">
-          <span className="font-bold text-[#06b6d4] truncate">{course.title}</span>
-          <span className="text-slate-600">•</span>
-          <span className="text-slate-400 hidden sm:inline">{currentModule?.title}</span>
+          {/* Desde dentro de un curso no habia manera de volver ni de cambiar a
+              otro: el alumno quedaba encerrado en el que abrio. */}
+          {onGoHome && (
+            <button
+              onClick={onGoHome}
+              title="Volver al inicio"
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold transition-all shrink-0"
+            >
+              <Home className="w-3.5 h-3.5 text-[#06b6d4]" />
+              <span className="hidden sm:inline">Inicio</span>
+            </button>
+          )}
+
+          {courses.length > 1 && onSelectCourse ? (
+            <select
+              value={course.id}
+              onChange={(event) => {
+                const selected = courses.find((item) => item.id === event.target.value);
+                if (selected) onSelectCourse(selected);
+              }}
+              aria-label="Cambiar de curso"
+              className="max-w-[16rem] bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] rounded-lg px-2 py-1.5 text-xs font-bold text-[#06b6d4] focus:outline-none focus:border-[#06b6d4] truncate"
+            >
+              {courses.map((item) => (
+                <option key={item.id} value={item.id} className="bg-[#141420] text-white">
+                  {item.title}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="font-bold text-[#06b6d4] truncate">{course.title}</span>
+          )}
+          <span className="text-slate-600 hidden sm:inline">•</span>
+          <span className="text-slate-400 hidden sm:inline truncate">{currentModule?.title}</span>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -313,8 +398,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         alert('🔒 Este módulo se encuentra bloqueado. Debes aprobar el examen del módulo anterior con al menos 80% para desbloquearlo.');
                         return;
                       }
-                      setActiveModuleIndex(mIdx);
-                      setActiveVideoIndex(0);
+                      goToLesson(mIdx, 0);
                     }}
                     className={`w-full p-3.5 text-left flex items-start justify-between gap-2 transition-colors ${
                       !isUnlocked ? 'opacity-60 cursor-not-allowed bg-[#0f0f18]' : 'hover:bg-[#1a1a2e]'
@@ -379,7 +463,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                               if (!hasAccess) {
                                 onOpenPaywall();
                               } else {
-                                setActiveVideoIndex(vIdx);
+                                goToLesson(mIdx, vIdx);
                               }
                             }}
                             className={`w-full p-3 text-left flex items-center justify-between gap-2 hover:bg-[#141420] transition-colors text-xs cursor-pointer ${
@@ -419,11 +503,63 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           </div>
                         );
                       })}
+
+                      {/* Module Resources */}
+                      {hasAccess && module.resources && module.resources.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-[#2d2d44]/50 space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-1">
+                            Recursos del Módulo
+                          </span>
+                          {module.resources.map((res) => (
+                            <a
+                              key={res.id}
+                              href={res.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between p-2 rounded-lg bg-[#141420] hover:bg-[#202034] text-slate-300 hover:text-white transition-all text-xs border border-[#2d2d44]/60 group"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <Download className="w-3.5 h-3.5 text-[#06b6d4] shrink-0" />
+                                <span className="truncate">{res.title}</span>
+                              </div>
+                              <span className="text-[9px] font-mono bg-[#0a0a0f] text-slate-400 px-1.5 py-0.5 rounded shrink-0">
+                                {res.kind}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
+
+            {/* Course-wide Resources */}
+            {hasAccess && course.resources && course.resources.length > 0 && (
+              <div className="mt-4 p-3 rounded-xl bg-[#141420] border border-[#2d2d44] space-y-2">
+                <span className="text-[11px] font-extrabold text-[#06b6d4] uppercase tracking-wider flex items-center gap-1.5">
+                  <FileCode className="w-3.5 h-3.5" /> Recursos del Programa
+                </span>
+                <div className="space-y-1">
+                  {course.resources.map((res) => (
+                    <a
+                      key={res.id}
+                      href={res.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-2 rounded-lg bg-[#0a0a0f] hover:bg-[#1a1a2e] text-slate-300 hover:text-white text-xs border border-[#2d2d44]/50 group transition-all"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Download className="w-3.5 h-3.5 text-[#a855f7] shrink-0" />
+                        <span className="truncate">{res.title}</span>
+                      </div>
+                      <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-white shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -448,7 +584,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 {/* 16:9 Responsive Embed Player */}
                 <div className={`relative w-full bg-black ${theaterMode ? 'aspect-[21/9]' : 'aspect-video'}`}>
                   <iframe
-                    src={parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId).embedUrl}
+                    src={parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId).embedUrl}
                     title={currentVideo.title}
                     className="w-full h-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -480,7 +616,35 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     <h1 className="text-lg font-bold text-white tracking-tight">{currentVideo.title}</h1>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {/* Sin estos dos botones, avanzar exigía buscar la lección
+                        siguiente en la lista lateral, una por una. */}
+                    <button
+                      onClick={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
+                      disabled={!previousLesson}
+                      title={previousLesson ? 'Lección anterior' : 'Estás en la primera lección'}
+                      className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:hover:border-[#2d2d44] disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Anterior</span>
+                    </button>
+
+                    {currentLessonIndex >= 0 && lessons.length > 0 && (
+                      <span className="text-[11px] font-mono text-slate-500 px-1">
+                        {currentLessonIndex + 1}/{lessons.length}
+                      </span>
+                    )}
+
+                    <button
+                      onClick={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
+                      disabled={!nextLesson}
+                      title={nextLesson ? 'Lección siguiente' : 'Es la última lección del curso'}
+                      className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:hover:border-[#2d2d44] disabled:cursor-not-allowed"
+                    >
+                      <span className="hidden sm:inline">Siguiente</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
                     <button
                       onClick={() => setTheaterMode(!theaterMode)}
                       className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 text-xs flex items-center gap-1.5 transition-all"
@@ -525,37 +689,61 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           </div>
 
           {/* Certificate Download Banner when Course Completed */}
-          {hasAccess && (courseProgressPct === 100 || pluginManager.isEnabled('pdf-certificates')) && (
+          {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
+              anunciaba «Disponible» desde la primera clase. */}
+          {hasAccess &&
+            pluginManager.isEnabled('pdf-certificates') &&
+            (courseProgressPct === 100 || certificate) && (
             <div className="bg-gradient-to-r from-[#0a0a0f] via-[#141420] to-[#1a1a2e] border-2 border-[#eab308] rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-[#eab308]/20 border border-[#eab308]/40 rounded-2xl text-[#eab308] shrink-0">
                   <Award className="w-8 h-8" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-                    <span>Certificado Oficial de Formación</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-extrabold text-base text-white">Certificado Oficial de Formación</h3>
                     <span className="text-[10px] font-black bg-[#eab308] text-black px-2 py-0.5 rounded-full uppercase">
                       {courseProgressPct === 100 ? '100% Completado' : 'Disponible'}
                     </span>
-                  </h3>
+                  </div>
                   <p className="text-xs text-slate-300">
                     Acredita tus competencias técnicas con el diploma oficial emitido por la Academia Giantucchi.
                   </p>
+                  {certificate?.verificationCode && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400">Código de Verificación:</span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-black/60 px-2 py-0.5 rounded border border-[#eab308]/30">
+                        {certificate.verificationCode}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <button
-                onClick={() =>
-                  downloadCertificate({
-                    studentName: currentUser.name,
-                    courseTitle: course.title,
-                  })
-                }
-                className="px-6 py-3 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2 shrink-0 transition-all"
-              >
-                <Award className="w-4 h-4" />
-                <span>Descargar Certificado Oficial</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
+                {certificate?.verificationCode && (
+                  <button
+                    onClick={() => setShowVerifyModal(true)}
+                    className="px-4 py-3 bg-[#1a1a2e] hover:bg-[#25253e] text-amber-300 border border-[#eab308]/40 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-400" />
+                    <span>Verificar Código</span>
+                  </button>
+                )}
+                <button
+                  onClick={() =>
+                    downloadCertificate({
+                      studentName: currentUser.name,
+                      courseTitle: course.title,
+                      certificateId: certificate?.verificationCode,
+                    })
+                  }
+                  className="px-5 py-3 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2 transition-all"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>Descargar Diploma</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -836,6 +1024,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
       </div>
 
+      {/* Certificate Public Verification Modal */}
+      <CertificateVerifyModal
+        isOpen={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        initialCode={certificate?.verificationCode}
+      />
     </div>
   );
 };

@@ -9,12 +9,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle } from 'lucide-react';
 import { api } from '../lib/api';
-import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide } from '../types';
+import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
 import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
 import { LandingPageEditor } from './LandingPageEditor';
+import { CourseManagerView } from './CourseManagerView';
 
 interface AdminDashboardProps {
   course: Course;
@@ -22,10 +23,32 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'drive' | 'tts' | 'plugins' | 'landing'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
   const [users, setUsers] = useState<User[]>([]);
-
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Enrollments State
+  const [enrollments, setEnrollments] = useState<CourseEnrollmentRecord[]>([]);
+  const [loadingEnrollments, setLoadingEnrollments] = useState(false);
+  const [newEnrollUserId, setNewEnrollUserId] = useState('');
+  const [enrollableCourses, setEnrollableCourses] = useState<Course[]>([]);
+  const [newEnrollCourseId, setNewEnrollCourseId] = useState(course.id);
+  const [newEnrollStatus, setNewEnrollStatus] = useState<'ACTIVE' | 'COMPLETED' | 'REVOKED' | 'EXPIRED'>('ACTIVE');
+  const [newEnrollSource, setNewEnrollSource] = useState<'ADMIN' | 'PAYMENT' | 'MENTORSHIP'>('ADMIN');
+  const [enrollSuccessMsg, setEnrollSuccessMsg] = useState('');
+
+  // Certificates State
+  const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
+  const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const [revokingCertId, setRevokingCertId] = useState<string | null>(null);
+  const [revokeReason, setRevokeReason] = useState('');
+
+  // Resources State
+  const [resTitle, setResTitle] = useState('');
+  const [resPrivateUrl, setResPrivateUrl] = useState('');
+  const [resKind, setResKind] = useState<'FILE' | 'LINK'>('FILE');
+  const [resModuleId, setResModuleId] = useState<string>('');
+  const [resSuccessMsg, setResSuccessMsg] = useState('');
 
   // Drive Linker State
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,7 +74,124 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     loadUsers();
     loadDriveVideos();
     loadTTSGuides();
+    loadEnrollments();
+    loadCertificates();
+    loadEnrollableCourses();
   }, []);
+
+  /**
+   * Los cursos que se pueden asignar. Sin esta lista el formulario matriculaba
+   * siempre en el curso abierto, sin decir en cual, y no habia forma de elegir.
+   */
+  const loadEnrollableCourses = async () => {
+    try {
+      const res = await api.getCourses();
+      const list = res.courses || [];
+      setEnrollableCourses(list);
+      setNewEnrollCourseId((current) =>
+        list.some((item) => item.id === current) ? current : list[0]?.id || '',
+      );
+    } catch (err) {
+      console.error('Error loading courses for enrollment:', err);
+    }
+  };
+
+  const loadEnrollments = async () => {
+    setLoadingEnrollments(true);
+    try {
+      const res = await api.getAdminEnrollments();
+      setEnrollments(res.enrollments || []);
+    } catch (err) {
+      console.error('Error loading enrollments:', err);
+    } finally {
+      setLoadingEnrollments(false);
+    }
+  };
+
+  const loadCertificates = async () => {
+    setLoadingCertificates(true);
+    try {
+      const res = await api.getAdminCertificates();
+      setCertificates(res.certificates || []);
+    } catch (err) {
+      console.error('Error loading certificates:', err);
+    } finally {
+      setLoadingCertificates(false);
+    }
+  };
+
+  const handleCreateEnrollment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEnrollUserId || !newEnrollCourseId) return;
+    try {
+      await api.createEnrollment({
+        userId: newEnrollUserId,
+        courseId: newEnrollCourseId,
+        status: newEnrollStatus,
+        source: newEnrollSource,
+      });
+      const enrolledUser = users.find((item) => item.id === newEnrollUserId);
+      const enrolledCourse = enrollableCourses.find((item) => item.id === newEnrollCourseId);
+      setEnrollSuccessMsg(
+        `${enrolledUser?.name || 'El usuario'} queda matriculado en «${enrolledCourse?.title || 'el curso'}».`,
+      );
+      setTimeout(() => setEnrollSuccessMsg(''), 3000);
+      loadEnrollments();
+    } catch (err: any) {
+      alert(err.message || 'Error al registrar matrícula');
+    }
+  };
+
+  const handleUpdateEnrollmentStatus = async (enrollmentId: string, status: string) => {
+    try {
+      await api.updateEnrollmentStatus(enrollmentId, status);
+      loadEnrollments();
+    } catch (err: any) {
+      alert(err.message || 'Error al actualizar matrícula');
+    }
+  };
+
+  const handleRevokeCertificate = async (certId: string) => {
+    const reason = revokeReason.trim() || 'Revocado por administración docente';
+    try {
+      await api.revokeCertificate(certId, reason);
+      setRevokingCertId(null);
+      setRevokeReason('');
+      loadCertificates();
+    } catch (err: any) {
+      alert(err.message || 'Error al revocar certificado');
+    }
+  };
+
+  const handleAddResource = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resTitle.trim() || !resPrivateUrl.trim()) return;
+    try {
+      await api.createCourseResource(course.id, {
+        moduleId: resModuleId || null,
+        title: resTitle.trim(),
+        privateUrl: resPrivateUrl.trim(),
+        kind: resKind,
+      });
+      setResSuccessMsg('¡Recurso añadido exitosamente!');
+      setResTitle('');
+      setResPrivateUrl('');
+      setTimeout(() => setResSuccessMsg(''), 3000);
+      onRefreshData();
+    } catch (err: any) {
+      alert(err.message || 'Error al agregar recurso');
+    }
+  };
+
+  const handleDeleteResource = async (resourceId: string) => {
+    if (!confirm('¿Deseas eliminar este recurso?')) return;
+    try {
+      await api.deleteCourseResource(resourceId);
+      onRefreshData();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar recurso');
+    }
+  };
 
   const handleGenerateAiScript = async () => {
     setIsGeneratingAiScript(true);
@@ -269,61 +409,85 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 w-full md:w-auto">
+        <div className="flex flex-wrap bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 w-full">
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === 'users'
-                ? 'btn-brand-primary'
-                : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'users' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Users className="w-4 h-4" /> Usuarios & Roles VIP
+            <Users className="w-3.5 h-3.5" /> Usuarios
+          </button>
+          <button
+            onClick={() => setActiveTab('courses')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Cursos
+          </button>
+          <button
+            onClick={() => setActiveTab('enrollments')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'enrollments' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-emerald-400" /> Matrículas
+          </button>
+          <button
+            onClick={() => setActiveTab('certificates')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'certificates' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-amber-400" /> Certificados
+          </button>
+          <button
+            onClick={() => setActiveTab('resources')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'resources' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Recursos
           </button>
           <button
             onClick={() => setActiveTab('drive')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === 'drive'
-                ? 'btn-brand-primary'
-                : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'drive' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <HardDrive className="w-4 h-4" /> Enlazar Drive Videos
+            <HardDrive className="w-3.5 h-3.5" /> Videos Drive
           </button>
           <button
             onClick={() => setActiveTab('tts')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === 'tts'
-                ? 'bg-brand-gradient text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'tts' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-[#eab308]" /> Guías TTS Gamificadas
+            <Sparkles className="w-3.5 h-3.5 text-[#eab308]" /> Guías TTS
           </button>
           <button
             onClick={() => setActiveTab('plugins')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === 'plugins'
-                ? 'bg-brand-gradient text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'plugins' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Layers className="w-4 h-4 text-[#06b6d4]" /> Plugins & Extensiones
+            <Layers className="w-3.5 h-3.5 text-[#06b6d4]" /> Plugins
           </button>
           <button
             onClick={() => setActiveTab('landing')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-              activeTab === 'landing'
-                ? 'bg-brand-gradient text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'landing' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Sliders className="w-4 h-4 text-[#06b6d4]" /> CMS Portada
+            <Sliders className="w-3.5 h-3.5 text-[#06b6d4]" /> Portada
           </button>
         </div>
       </div>
 
 
+
+      {activeTab === 'courses' && <CourseManagerView onRefreshData={onRefreshData} />}
 
       {/* TAB 1: USER & VIP ROLE MANAGEMENT + MODERATION + PRICING */}
       {activeTab === 'users' && (
@@ -840,9 +1004,395 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         <PluginManagerView />
       )}
 
-      {/* TAB 5: CMS EDITOR DE PORTADA */}
-      {activeTab === 'landing' && (
-        <LandingPageEditor onSaved={onRefreshData} />
+      {/* TAB: MATRÍCULAS (ENROLLMENTS) */}
+      {activeTab === 'enrollments' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Matricular Usuario Manualmente */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-emerald-400" />
+              <span>Matricular Usuario en Curso</span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).
+            </p>
+
+            {enrollSuccessMsg && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> {enrollSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Usuario</label>
+                <select
+                  value={newEnrollUserId}
+                  onChange={(e) => setNewEnrollUserId(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                >
+                  <option value="">Selecciona usuario...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.email}) [{u.role}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Curso</label>
+                <select
+                  value={newEnrollCourseId}
+                  onChange={(e) => setNewEnrollCourseId(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                >
+                  <option value="">Selecciona curso...</option>
+                  {enrollableCourses.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}{item.published === false ? ' (borrador)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Estado</label>
+                <select
+                  value={newEnrollStatus}
+                  onChange={(e) => setNewEnrollStatus(e.target.value as any)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                >
+                  <option value="ACTIVE">ACTIVE (Activa)</option>
+                  <option value="COMPLETED">COMPLETED (Graduado)</option>
+                  <option value="REVOKED">REVOKED (Revocada)</option>
+                  <option value="EXPIRED">EXPIRED (Expirada)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Origen</label>
+                <select
+                  value={newEnrollSource}
+                  onChange={(e) => setNewEnrollSource(e.target.value as any)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                >
+                  <option value="ADMIN">ADMIN (Asignación Directa)</option>
+                  <option value="PAYMENT">PAYMENT (Pago)</option>
+                  <option value="MENTORSHIP">MENTORSHIP (Mentoría)</option>
+                </select>
+              </div>
+
+              <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
+                <Plus className="w-4 h-4" /> Matricular
+              </button>
+            </form>
+          </div>
+
+          {/* Tabla de Matrículas */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#06b6d4]" />
+                <span>Matrículas Registradas ({enrollments.length})</span>
+              </h3>
+              <button
+                onClick={loadEnrollments}
+                disabled={loadingEnrollments}
+                className="p-2 bg-[#0a0a0f] hover:bg-[#1a1a2e] text-slate-300 rounded-xl border border-[#2d2d44] transition-all text-xs flex items-center gap-1"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingEnrollments ? 'animate-spin' : ''}`} />
+                <span>Actualizar</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
+                  <tr>
+                    <th className="py-3 px-4">Estudiante</th>
+                    <th className="py-3 px-4">Curso</th>
+                    <th className="py-3 px-4">Estado</th>
+                    <th className="py-3 px-4">Origen</th>
+                    <th className="py-3 px-4">Fecha</th>
+                    <th className="py-3 px-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2d2d44]/50">
+                  {enrollments.map((enr) => (
+                    <tr key={enr.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-white">
+                        {enr.userName || enr.userId}
+                        <span className="block text-[10px] text-slate-500 font-normal">{enr.userEmail}</span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">{enr.courseTitle || enr.courseId}</td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                            enr.status === 'ACTIVE'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                              : enr.status === 'COMPLETED'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                              : enr.status === 'REVOKED'
+                              ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                          }`}
+                        >
+                          {enr.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[10px] text-slate-400">{enr.source}</td>
+                      <td className="py-3 px-4 text-slate-400">
+                        {new Date(enr.createdAt).toLocaleDateString('es-ES')}
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1">
+                        {enr.status !== 'ACTIVE' && (
+                          <button
+                            onClick={() => handleUpdateEnrollmentStatus(enr.id, 'ACTIVE')}
+                            className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-bold"
+                          >
+                            Activar
+                          </button>
+                        )}
+                        {enr.status !== 'REVOKED' && (
+                          <button
+                            onClick={() => handleUpdateEnrollmentStatus(enr.id, 'REVOKED')}
+                            className="px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-[10px] font-bold"
+                          >
+                            Revocar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {enrollments.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-500">
+                        No hay matrículas registradas aún.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CERTIFICADOS (CERTIFICATES) */}
+      {activeTab === 'certificates' && (
+        <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-400" />
+                <span>Certificados Oficiales Emitidos ({certificates.length})</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Certificados con código alfanumérico persistente y verificación pública contra base de datos.
+              </p>
+            </div>
+            <button
+              onClick={loadCertificates}
+              disabled={loadingCertificates}
+              className="p-2 bg-[#0a0a0f] hover:bg-[#1a1a2e] text-slate-300 rounded-xl border border-[#2d2d44] transition-all text-xs flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingCertificates ? 'animate-spin' : ''}`} />
+              <span>Actualizar</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
+                <tr>
+                  <th className="py-3 px-4">Código Único</th>
+                  <th className="py-3 px-4">Graduado</th>
+                  <th className="py-3 px-4">Programa</th>
+                  <th className="py-3 px-4">Emisión</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#2d2d44]/50">
+                {certificates.map((cert) => (
+                  <tr key={cert.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                    <td className="py-3 px-4 font-mono font-bold text-amber-400">
+                      {cert.verificationCode}
+                    </td>
+                    <td className="py-3 px-4 font-semibold text-white">
+                      {cert.recipientName}
+                      {cert.userEmail && <span className="block text-[10px] text-slate-500 font-normal">{cert.userEmail}</span>}
+                    </td>
+                    <td className="py-3 px-4 text-slate-300">{cert.courseTitle}</td>
+                    <td className="py-3 px-4 text-slate-400">
+                      {new Date(cert.issuedAt).toLocaleDateString('es-ES')}
+                    </td>
+                    <td className="py-3 px-4">
+                      {cert.revokedAt ? (
+                        <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-bold">
+                          Revocado
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                          Válido
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {!cert.revokedAt && (
+                        revokingCertId === cert.id ? (
+                          <div className="flex items-center gap-1 justify-end">
+                            <input
+                              type="text"
+                              placeholder="Motivo..."
+                              value={revokeReason}
+                              onChange={(e) => setRevokeReason(e.target.value)}
+                              className="bg-[#0a0a0f] border border-[#2d2d44] px-2 py-1 rounded text-[10px] text-white w-32"
+                            />
+                            <button
+                              onClick={() => handleRevokeCertificate(cert.id)}
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold"
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => setRevokingCertId(null)}
+                              className="px-1 py-1 text-slate-400 hover:text-white text-[10px]"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setRevokingCertId(cert.id);
+                              setRevokeReason('');
+                            }}
+                            className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold"
+                          >
+                            Revocar
+                          </button>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {certificates.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">
+                      No se han emitido certificados todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: RECURSOS DESCARGABLES (RESOURCES) */}
+      {activeTab === 'resources' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Agregar Recurso */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-cyan-400" />
+              <span>Agregar Recurso Descargable Protegido</span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              Sube o enlaza material complementario (guías, PDF, repositorios o archivos ZIP). La URL privada estará protegida y sólo será accesible mediante token de sesión autorizado.
+            </p>
+
+            {resSuccessMsg && (
+              <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> {resSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleAddResource} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Recurso</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Guía de Arquitectura.pdf"
+                  value={resTitle}
+                  onChange={(e) => setResTitle(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">URL Privada / Archivo</label>
+                <input
+                  type="url"
+                  placeholder="https://drive.google.com/..."
+                  value={resPrivateUrl}
+                  onChange={(e) => setResPrivateUrl(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Asignar a Módulo</label>
+                <select
+                  value={resModuleId}
+                  onChange={(e) => setResModuleId(e.target.value)}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                >
+                  <option value="">General del Curso</option>
+                  {course.modules.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
+                <Plus className="w-4 h-4" /> Agregar Recurso
+              </button>
+            </form>
+          </div>
+
+          {/* Lista de Recursos Existentes */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#06b6d4]" />
+              <span>Recursos del Curso Actual</span>
+            </h3>
+
+            <div className="space-y-2">
+              {course.resources && course.resources.length > 0 ? (
+                course.resources.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
+                    <div className="flex items-center gap-3">
+                      <Download className="w-4 h-4 text-cyan-400" />
+                      <div>
+                        <p className="text-xs font-bold text-white">{r.title}</p>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {r.downloadUrl} • {r.kind}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteResource(r.id)}
+                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 py-4 text-center">No hay recursos generales configurados en este curso.</p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

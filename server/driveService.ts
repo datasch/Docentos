@@ -77,9 +77,50 @@ const CURATED_DRIVE_VIDEOS: DriveVideoFile[] = [
 ];
 
 /**
- * Initializes Google Drive API client using process.env credentials or returns null
+ * Extrae el identificador de un archivo de Google Drive.
+ *
+ * El formulario de administracion pide "el ID", pero lo natural es pegar el
+ * enlace que ofrece el boton Compartir de Drive. Antes se guardaba el texto tal
+ * cual y se construia `.../file/d/<enlace completo>/preview`, una URL invalida
+ * que dejaba el reproductor en negro sin ningun aviso. Aqui se aceptan las
+ * formas habituales y se devuelve null cuando el valor no puede ser un ID.
  */
-function getDriveClient() {
+export function extractDriveFileId(input: string): string | null {
+  const raw = String(input ?? '').trim();
+  if (!raw) return null;
+
+  const isPlausibleId = (candidate: string) => /^[A-Za-z0-9_-]{10,}$/.test(candidate);
+
+  // Enlaces: /file/d/<id>/view, /d/<id>/edit, ?id=<id>, /uc?export=download&id=<id>
+  const patterns = [/\/file\/d\/([A-Za-z0-9_-]+)/, /\/d\/([A-Za-z0-9_-]+)/, /[?&]id=([A-Za-z0-9_-]+)/];
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (match?.[1] && isPlausibleId(match[1])) return match[1];
+  }
+
+  // Valor pegado directamente como identificador.
+  if (isPlausibleId(raw)) return raw;
+
+  return null;
+}
+
+export function buildDriveEmbedUrl(fileId: string): string {
+  return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
+}
+
+/** Indica si hay credenciales reales; sin ellas el buscador solo devuelve demostracion. */
+export function isDriveConfigured(): boolean {
+  return Boolean(
+    process.env.GOOGLE_DRIVE_CLIENT_EMAIL && process.env.GOOGLE_DRIVE_PRIVATE_KEY,
+  ) || Boolean(process.env.GOOGLE_DRIVE_API_KEY);
+}
+
+/**
+ * Initializes Google Drive API client using process.env credentials or returns null.
+ * Se exporta para que el importador de carpetas reutilice las mismas
+ * credenciales en vez de definir su propia forma de autenticarse.
+ */
+export function getDriveClient() {
   const apiKey = process.env.GOOGLE_DRIVE_API_KEY;
   const clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY?.replace(/\\n/g, '\n');

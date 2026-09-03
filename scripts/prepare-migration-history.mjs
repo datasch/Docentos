@@ -12,6 +12,7 @@ const { Client } = pg;
 const INITIAL_MIGRATION = '20260901000000_initial_schema';
 const AUTH_MIGRATION = '20260901163000_real_auth_sessions';
 const PHASE_2_MIGRATION = '20260901210000_data_lifecycle_config';
+const PHASE_3_MIGRATION = '20260902120000_production_business_flows';
 
 const BASELINE_TABLES = [
   'Course',
@@ -163,6 +164,21 @@ async function main() {
     }
     if (phase2Present === phase2Fingerprint.length && !applied.has(PHASE_2_MIGRATION)) {
       migrationsToResolve.push(PHASE_2_MIGRATION);
+    }
+
+    const phase3Tables = [
+      'CourseEnrollment',
+      'CourseResource',
+      'Certificate',
+      'PaymentWebhookEvent',
+    ];
+    const phase3Fingerprint = phase3Tables.map((table) => tables.has(table));
+    const phase3Present = phase3Fingerprint.filter(Boolean).length;
+    if (phase3Present > 0 && phase3Present < phase3Fingerprint.length) {
+      fail('se detecto una aplicacion parcial de la migracion de Fase 3.');
+    }
+    if (phase3Present === phase3Fingerprint.length && !applied.has(PHASE_3_MIGRATION)) {
+      migrationsToResolve.push(PHASE_3_MIGRATION);
     }
   } finally {
     await client.end();

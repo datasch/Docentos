@@ -58,7 +58,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
     heroSecondaryCtaLink: '#vip',
     featuredCourseIds: ['course-giantucchi-mastery'],
     bannerEnabled: true,
-    bannerText: '🚀 ¡Novedad en DocentOS v2.5! Motor de IA optimizado, gestión de guías vocales e integración con Drive.',
+    bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
     bannerLinkText: 'Ver Novedades',
     bannerLinkUrl: '#',
     benefits: [],

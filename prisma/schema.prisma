@@ -23,6 +23,33 @@ enum PaymentStatus {
   PENDING
   COMPLETED
   FAILED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  REVOKED
+  EXPIRED
+}
+
+enum EnrollmentSource {
+  PAYMENT
+  ADMIN
+  MENTORSHIP
+  IMPORT
+}
+
+enum ContentSource {
+  GOOGLE_DRIVE
+  EXTERNAL_URL
+  DEMO
+}
+
+enum ResourceKind {
+  FILE
+  LINK
 }
 
 model User {
@@ -44,6 +71,8 @@ model User {
   auditLogs           AuditLog[]           @relation("AuditActor")
   mentorAssignments   MenteeAssignment[]   @relation("MentorAssignments")
   menteeAssignments   MenteeAssignment[]   @relation("MenteeAssignments")
+  enrollments         CourseEnrollment[]
+  certificates        Certificate[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -139,8 +168,11 @@ model MenteeAssignment {
   lastActiveDate       String   @default("Reciente")
   status               String   @default("ACTIVE")
   createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@unique([menteeId, courseId])
+  @@index([mentorId])
+  @@index([mentorId, courseId, status])
 }
 
 model Course {
@@ -148,14 +180,24 @@ model Course {
   title             String
   description       String
   price             Float
+  currency          String             @default("USD")
   published         Boolean            @default(true)
+  publishedAt       DateTime?
+  isDemo            Boolean            @default(false)
   coverImage        String
   category          String             @default("Mentoría Elite")
+  /// Carpeta de Google Drive de la que se importo, cuando vino de ahi.
+  driveFolderId     String?
   modules           Module[]
   payments          Payment[]
+  enrollments       CourseEnrollment[]
+  certificates      Certificate[]
+  resources         CourseResource[]
   menteeAssignments MenteeAssignment[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([driveFolderId])
 }
 
 model Module {
@@ -166,8 +208,11 @@ model Module {
   courseId    String
   course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   videos      VideoDriveLink[]
+  resources   CourseResource[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@index([courseId, order])
 }
 
 model VideoDriveLink {
@@ -179,6 +224,7 @@ model VideoDriveLink {
   mimeType    String              @default("video/mp4")
   embedUrl    String
   previewUrl  String?
+  source      ContentSource       @default(EXTERNAL_URL)
   order       Int
   moduleId    String
   module      Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
@@ -187,18 +233,107 @@ model VideoDriveLink {
   videoNotes  VideoNote[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  @@index([moduleId, order])
+  @@index([driveFileId])
 }
 
 model Payment {
-  id              String        @id @default(uuid())
+  id                    String        @id @default(uuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId              String
+  course                Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  amount                Float
+  currency              String        @default("USD")
+  status                PaymentStatus @default(PENDING)
+  provider              String        @default("stripe")
+  stripeSessionId       String?       @unique
+  stripePaymentIntentId String?       @unique
+  idempotencyKey        String?       @unique
+  checkoutUrl           String?
+  failureCode           String?
+  failureMessage        String?
+  refundedAmount        Float         @default(0)
+  completedAt           DateTime?
+  failedAt              DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([userId, courseId, status])
+  @@index([createdAt])
+}
+
+model PaymentWebhookEvent {
+  id              String   @id @default(uuid())
+  providerEventId String   @unique
+  eventType       String
+  payloadHash     String
+  processedAt     DateTime @default(now())
+
+  @@index([eventType])
+  @@index([processedAt])
+}
+
+model CourseEnrollment {
+  id              String           @id @default(uuid())
   userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId        String
-  course          Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  amount          Float
-  status          PaymentStatus @default(COMPLETED)
-  stripeSessionId String?
-  createdAt       DateTime      @default(now())
+  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status          EnrollmentStatus @default(ACTIVE)
+  source          EnrollmentSource
+  accessExpiresAt DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@index([accessExpiresAt])
+}
+
+model CourseResource {
+  id             String        @id @default(uuid())
+  courseId       String
+  course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId       String?
+  module         Module?       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  kind           ResourceKind  @default(FILE)
+  source         ContentSource @default(EXTERNAL_URL)
+  externalFileId String?
+  privateUrl     String
+  mimeType       String?
+  sizeBytes      BigInt?
+  order          Int           @default(1)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([courseId, order])
+  @@index([moduleId, order])
+  @@index([externalFileId])
+}
+
+model Certificate {
+  id                  String   @id @default(uuid())
+  verificationCode    String   @unique
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId            String
+  course              Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  recipientName       String
+  courseTitle         String
+  completionPercent   Int      @default(100)
+  issuedAt            DateTime @default(now())
+  revokedAt           DateTime?
+  revocationReason    String?
+  metadataJson        String   @default("{}")
+
+  @@unique([userId, courseId])
+  @@index([issuedAt])
 }
 
 model MentorshipComment {
@@ -216,6 +351,10 @@ model MentorshipComment {
   replies          MentorshipComment[] @relation("CommentReplies")
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
+
+  @@index([videoId, parentId, createdAt])
+  @@index([parentId, createdAt])
+  @@index([userId])
 }
 
 model UserProgress {
@@ -253,7 +392,7 @@ model LandingConfig {
   heroSecondaryCtaLink String   @default("#vip")
   featuredCourseIds    String   @default("[]")
   bannerEnabled        Boolean  @default(true)
-  bannerText           String   @default("🚀 ¡Novedad en DocentOS v2.5! Motor de IA optimizado, gestión de guías vocales e integración con Drive.")
+  bannerText           String   @default("🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.")
   bannerLinkText       String   @default("Ver Novedades")
   bannerLinkUrl        String   @default("#")
   benefitsJson         String   @default("[]")

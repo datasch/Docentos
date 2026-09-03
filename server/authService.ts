@@ -7,6 +7,7 @@ import { config } from './config.js';
 
 const SESSION_COOKIE_NAME = config.SESSION_COOKIE_NAME;
 const BCRYPT_ROUNDS = 12;
+const SESSION_LAST_USED_REFRESH_MS = 5 * 60 * 1000;
 
 function getSessionTtlMs() {
   return config.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
@@ -161,10 +162,17 @@ export async function resolveRequestSession(req: Request) {
     return null;
   }
 
-  await prisma.session.update({
-    where: { id: session.id },
-    data: { lastUsedAt: new Date() },
-  });
+  // lastUsedAt es un dato de diagnostico, no de autorizacion: refrescarlo en
+  // cada peticion anadia una escritura por llamada a la API. Se actualiza solo
+  // cuando la marca previa ya quedo obsoleta.
+  const now = Date.now();
+  const lastUsedAt = session.lastUsedAt?.getTime() ?? 0;
+  if (now - lastUsedAt >= SESSION_LAST_USED_REFRESH_MS) {
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { lastUsedAt: new Date(now) },
+    });
+  }
 
   const user: AuthenticatedUser = {
     id: session.user.id,
@@ -201,6 +209,7 @@ export async function revokeAllUserSessions(userId: string) {
 }
 
 export function requireSameOrigin(req: Request, res: Response, next: NextFunction) {
+  if (req.path === '/api/payments/webhook' || req.originalUrl?.includes('/api/payments/webhook')) return next();
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
 
   const fetchSite = req.get('sec-fetch-site');

@@ -362,6 +362,91 @@ async function seedApplicationData() {
       content: 'Punto clave sobre desacoplamiento de servicios y arquitectura modular.',
     },
   });
+
+  // Seed Phase 3: Course Resources
+  const resources = [
+    {
+      id: 'res-seed-1',
+      courseId: 'course-giantucchi-mastery',
+      moduleId: 'module-1',
+      title: 'Guía de Arquitectura de Software Limpia (PDF)',
+      description: 'Manual de buenas prácticas para desacoplar modelos y servicios en Node.js.',
+      kind: 'FILE' as const,
+      source: 'DEMO' as const,
+      privateUrl: 'https://drive.google.com/file/d/demo_clean_arch_guide/view',
+      mimeType: 'application/pdf',
+      order: 1,
+    },
+    {
+      id: 'res-seed-2',
+      courseId: 'course-giantucchi-mastery',
+      moduleId: null,
+      title: 'Repositorio Plantilla de Microservicios DocentOS',
+      description: 'Código base para desplegar nuevos plugins y pasarelas de pago con idempotencia.',
+      kind: 'LINK' as const,
+      source: 'DEMO' as const,
+      privateUrl: 'https://github.com/docentos/docentos-template',
+      mimeType: 'text/html',
+      order: 2,
+    },
+  ];
+
+  for (const res of resources) {
+    await prisma.courseResource.upsert({
+      where: { id: res.id },
+      update: {},
+      create: res,
+    });
+  }
+
+  // Seed Phase 3: Formal Enrollments
+  const enrollments = [
+    {
+      id: 'enr-mentee-01',
+      userId: 'user-mentee-01',
+      courseId: 'course-giantucchi-mastery',
+      status: 'ACTIVE' as const,
+      source: 'MENTORSHIP' as const,
+    },
+    {
+      id: 'enr-mentee-02',
+      userId: 'mentee-demo-02',
+      courseId: 'course-giantucchi-mastery',
+      status: 'ACTIVE' as const,
+      source: 'MENTORSHIP' as const,
+    },
+    {
+      id: 'enr-mentee-03',
+      userId: 'mentee-demo-03',
+      courseId: 'course-giantucchi-mastery',
+      status: 'COMPLETED' as const,
+      source: 'MENTORSHIP' as const,
+      completedAt: new Date('2026-08-30'),
+    },
+  ];
+
+  for (const enr of enrollments) {
+    await prisma.courseEnrollment.upsert({
+      where: { userId_courseId: { userId: enr.userId, courseId: enr.courseId } },
+      update: {},
+      create: enr,
+    });
+  }
+
+  // Seed Phase 3: Demo Verified Certificate for Graduated Mentee
+  await prisma.certificate.upsert({
+    where: { verificationCode: 'DOC-MARIANA2026' },
+    update: {},
+    create: {
+      verificationCode: 'DOC-MARIANA2026',
+      userId: 'mentee-demo-03',
+      courseId: 'course-giantucchi-mastery',
+      recipientName: 'Mariana Torres',
+      courseTitle: 'Mastery en Arquitectura de Software & Google Drive',
+      completionPercent: 100,
+      issuedAt: new Date('2026-08-30'),
+    },
+  });
 }
 
 async function main() {

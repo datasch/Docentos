@@ -37,6 +37,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Course, LandingConfig } from '../types';
 import { api } from '../lib/api';
+import { DOCENTOS_VERSION } from '../version';
 import { PublicNavbar } from './PublicNavbar';
 import { Footer } from './Footer';
 
@@ -44,6 +45,10 @@ interface LandingPageProps {
   courses: Course[];
   onOpenAuth: (mode: 'login' | 'register') => void;
   onExploreCourse: (course: Course) => void;
+  /** Sesion activa: la portada la refleja en vez de ofrecer iniciar sesion. */
+  currentUser?: { name: string; role: string } | null;
+  onGoToApp?: () => void;
+  onLogout?: () => void;
 }
 
 const DEFAULT_LANDING_CONFIG: LandingConfig = {
@@ -57,7 +62,7 @@ const DEFAULT_LANDING_CONFIG: LandingConfig = {
   heroSecondaryCtaLink: '#planes',
   featuredCourseIds: ['course-giantucchi-mastery'],
   bannerEnabled: true,
-  bannerText: '🚀 ¡Novedad en DocentOS v2.5! Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
+  bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
   bannerLinkText: 'Ver Novedades',
   bannerLinkUrl: '#metodologia',
   benefits: [
@@ -111,10 +116,44 @@ const DEFAULT_LANDING_CONFIG: LandingConfig = {
   linkedinUrl: '',
 };
 
+/**
+ * Convierte el destino guardado en el editor de portada en uno que exista.
+ *
+ * La configuración puede traer rutas de la aplicación (`#courses`, `/vip`) que
+ * no son secciones de esta página: pulsarlas no hacía absolutamente nada. Aquí
+ * se traducen a la sección equivalente y, ante un destino desconocido, se cae
+ * al catálogo en lugar de dejar el botón muerto.
+ */
+const SECTION_ALIASES: Record<string, string> = {
+  '#courses': '#cursos',
+  '/courses': '#cursos',
+  '#catalogo': '#cursos',
+  '#catalog': '#cursos',
+  '#vip': '#planes',
+  '/vip': '#planes',
+  '#planes': '#planes',
+  '#pricing': '#planes',
+  '#beneficios': '#beneficios',
+  '#testimonios': '#testimonios',
+};
+
+export function resolveLandingCta(link: string | undefined, fallback: string): string {
+  const value = String(link ?? '').trim();
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+  const alias = SECTION_ALIASES[value.toLowerCase()];
+  if (alias) return alias;
+  if (value.startsWith('#')) return value;
+  return fallback;
+}
+
 export const LandingPage: React.FC<LandingPageProps> = ({
   courses,
   onOpenAuth,
   onExploreCourse,
+  currentUser,
+  onGoToApp,
+  onLogout,
 }) => {
   const { t, i18n } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -273,7 +312,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       {/* 1. Thin Public Header */}
-      <PublicNavbar onOpenAuth={onOpenAuth} />
+      <PublicNavbar
+        onOpenAuth={onOpenAuth}
+        currentUser={currentUser}
+        onGoToApp={onGoToApp}
+        onLogout={onLogout}
+      />
 
       {/* 2. Dynamic Hero Section */}
       <section className="relative pt-16 pb-20 px-4 sm:px-8 max-w-7xl mx-auto overflow-hidden">
@@ -284,7 +328,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="relative z-10 text-center max-w-3xl mx-auto space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#141420] border border-[#262626] text-[#06b6d4] text-xs font-bold shadow-xl">
             <Sparkles className="w-4 h-4 text-[#06b6d4]" />
-            <span>DocentOS v2.5 Enterprise • Open Source LMS</span>
+            <span>DocentOS v{DOCENTOS_VERSION} • Open Source LMS</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
@@ -298,7 +342,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* CTA Group */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
             <a
-              href={landingConfig.heroCtaLink || '#cursos'}
+              href={resolveLandingCta(landingConfig.heroCtaLink, '#cursos')}
               className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black font-extrabold rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 text-xs"
             >
               <BookOpen className="w-4 h-4" />
@@ -306,7 +350,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </a>
 
             <a
-              href={landingConfig.heroSecondaryCtaLink || '#planes'}
+              href={resolveLandingCta(landingConfig.heroSecondaryCtaLink, '#planes')}
               className="w-full sm:w-auto px-7 py-3.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#06b6d4] text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-xs"
             >
               <Users className="w-4 h-4 text-[#06b6d4]" />
@@ -329,7 +373,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     DocentOS AI Studio & Mentor Engine
                   </span>
                   <span className="text-[10px] text-[#06b6d4] font-mono font-bold bg-black/80 px-3 py-1 rounded-lg border border-[#262626]">
-                    v2.5 Release
+                    v{DOCENTOS_VERSION}
                   </span>
                 </div>
               </div>

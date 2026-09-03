@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Shield, Crown, UserCheck, PlayCircle, HardDrive, Settings, Menu, X, Sparkles, ChevronDown, Globe, Bot, LogOut, KeyRound } from 'lucide-react';
+import { Shield, Crown, UserCheck, PlayCircle, HardDrive, Settings, Menu, X, Sparkles, ChevronDown, Globe, Bot, LogOut, KeyRound, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../types';
 import { siteConfig } from '../config/theme';
@@ -17,6 +17,7 @@ interface NavbarProps {
   onRestartTour?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
+  onOpenVerifyModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRestartTour,
   onChangePassword,
   onLogout,
+  onOpenVerifyModal,
 }) => {
   const { t, i18n } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -54,7 +56,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16">
           
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('courses')}>
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            title="Ir al inicio"
+            onClick={() => setActiveTab('landing')}
+          >
             <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center text-white font-extrabold shadow-lg shadow-[#06b6d4]/20 ring-1 ring-white/20 overflow-hidden shrink-0">
               {siteConfig.logoUrl ? (
                 <img src={siteConfig.logoUrl} alt={siteConfig.appName} className="w-full h-full object-cover" />
@@ -141,6 +147,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <HardDrive className="w-3.5 h-3.5" />
                 Drive
+              </button>
+            )}
+
+            {onOpenVerifyModal && (
+              <button
+                onClick={onOpenVerifyModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-[#141420] transition-all"
+                title="Verificar autenticidad de un certificado"
+              >
+                <Award className="w-3.5 h-3.5 text-[#eab308]" />
+                Verificar Diploma
               </button>
             )}
 
@@ -236,6 +253,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-[#06b6d4] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
                   >
                     <Bot className="w-4 h-4" /> {t('nav.restartTour')}
+                  </button>
+                )}
+
+                {onOpenVerifyModal && (
+                  <button
+                    onClick={() => {
+                      onOpenVerifyModal();
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#eab308] text-amber-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Award className="w-4 h-4 text-[#eab308]" /> Verificar Certificado
                   </button>
                 )}
 

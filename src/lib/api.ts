@@ -3,7 +3,24 @@
  * Gestiona llamadas al backend de Express, RBAC y Google Drive
  */
 
-import { User, Course, MentorshipComment, DriveVideoFile, CourseAccessStatus, UserRole, TTSGuide, LandingConfig } from '../types';
+import {
+  User,
+  Course,
+  MentorshipComment,
+  DriveVideoFile,
+  CourseAccessStatus,
+  UserRole,
+  TTSGuide,
+  LandingConfig,
+  CertificateRecord,
+  CourseEnrollmentRecord,
+  CourseResource,
+  PaymentRecord,
+  ImportPlan,
+  ImportPreviewResponse,
+  ImportOrganizeResponse,
+  ImportApplyResponse,
+} from '../types';
 
 const fetch: typeof globalThis.fetch = (input, init) =>
   globalThis.fetch(input, { ...init, credentials: 'include' });
@@ -110,13 +127,38 @@ export const api = {
   },
 
   // Paywall & Payments
-  async checkoutCourse(courseId: string): Promise<{ success: boolean; message: string }> {
+  async checkoutCourse(courseId: string): Promise<{ success: boolean; message?: string; checkoutUrl?: string; paymentId?: string; stripeSessionId?: string; isDevSimulation?: boolean }> {
     const res = await fetch('/api/payments/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ courseId }),
     });
-    if (!res.ok) throw new Error('Error al procesar pago');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al procesar pago');
+    }
+    return res.json();
+  },
+
+  async getPaymentStatus(paymentId: string): Promise<PaymentRecord> {
+    const res = await fetch(`/api/payments/${paymentId}/status`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al consultar estado de pago');
+    }
+    return res.json();
+  },
+
+  async simulateDevPayment(paymentId: string): Promise<{ success: boolean }> {
+    const res = await fetch('/api/payments/dev-simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al simular pago');
+    }
     return res.json();
   },
 
@@ -129,7 +171,10 @@ export const api = {
   },
 
   // Google Drive API
-  async searchDriveVideos(query?: string, folderId?: string): Promise<{ success: boolean; videos: DriveVideoFile[] }> {
+  async searchDriveVideos(
+    query?: string,
+    folderId?: string,
+  ): Promise<{ success: boolean; videos: DriveVideoFile[]; configured?: boolean; isDemo?: boolean }> {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     if (folderId) params.append('folderId', folderId);
@@ -174,14 +219,24 @@ export const api = {
     return res.json();
   },
 
-  // Progress
-  async getProgress(): Promise<{ success: boolean; completedVideos: Record<string, boolean> }> {
+  // Progress & Certificates
+  async getProgress(): Promise<{
+    success: boolean;
+    completedVideos: Record<string, boolean>;
+    certificates?: CertificateRecord[];
+  }> {
     const res = await fetch('/api/progress');
     if (!res.ok) throw new Error('Error al obtener progreso');
     return res.json();
   },
 
-  async toggleProgress(videoId: string, completed: boolean): Promise<{ success: boolean }> {
+  async toggleProgress(videoId: string, completed: boolean): Promise<{
+    success: boolean;
+    videoId?: string;
+    completed?: boolean;
+    progress?: any;
+    certificate?: CertificateRecord | null;
+  }> {
     const res = await fetch('/api/progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -384,6 +439,294 @@ export const api = {
       body: JSON.stringify({ price }),
     });
     if (!res.ok) throw new Error('Error al actualizar precio del curso');
+    return res.json();
+  },
+
+  // Certificates API
+  async verifyCertificate(code: string): Promise<{
+    valid: boolean;
+    isRevoked?: boolean;
+    certificate?: CertificateRecord;
+    error?: string;
+  }> {
+    const res = await fetch(`/api/certificates/verify/${encodeURIComponent(code.trim().toUpperCase())}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { valid: false, error: data.error || 'Certificado inválido o no encontrado' };
+    }
+    return data;
+  },
+
+  async getCourseCertificate(courseId: string): Promise<{ certificate: CertificateRecord }> {
+    const res = await fetch(`/api/courses/${courseId}/certificate`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se encontró certificado para este curso');
+    }
+    return res.json();
+  },
+
+  async getAdminCertificates(): Promise<{ certificates: CertificateRecord[] }> {
+    const res = await fetch('/api/admin/certificates');
+    if (!res.ok) throw new Error('Error al cargar lista de certificados');
+    return res.json();
+  },
+
+  async revokeCertificate(certificateId: string, reason: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/certificates/${certificateId}/revoke`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al revocar certificado');
+    }
+    return res.json();
+  },
+
+  // Enrollments API
+  async getAdminEnrollments(): Promise<{ enrollments: CourseEnrollmentRecord[] }> {
+    const res = await fetch('/api/admin/enrollments');
+    if (!res.ok) throw new Error('Error al cargar matrículas');
+    return res.json();
+  },
+
+  async createEnrollment(data: { userId: string; courseId: string; status?: string; source?: string; accessExpiresAt?: string }): Promise<{ success: boolean; enrollment: CourseEnrollmentRecord }> {
+    const res = await fetch('/api/admin/enrollments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al matricular usuario');
+    }
+    return res.json();
+  },
+
+  async updateEnrollmentStatus(enrollmentId: string, status: string): Promise<{ success: boolean; enrollment: CourseEnrollmentRecord }> {
+    const res = await fetch(`/api/admin/enrollments/${enrollmentId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar estado de matrícula');
+    }
+    return res.json();
+  },
+
+  // Course Admin CRUD
+  async createCourse(data: { title: string; description?: string; price?: number; currency?: string; published?: boolean; coverImage?: string; category?: string; isDemo?: boolean }): Promise<{ success: boolean; course: Course }> {
+    const res = await fetch('/api/admin/courses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al crear curso');
+    }
+    return res.json();
+  },
+
+  async updateCourse(courseId: string, data: Partial<Course>): Promise<{ success: boolean; course: Course }> {
+    const res = await fetch(`/api/admin/courses/${courseId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar curso');
+    }
+    return res.json();
+  },
+
+  async deleteCourse(courseId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/courses/${courseId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar curso');
+    }
+    return res.json();
+  },
+
+  // Module Admin CRUD
+  async createModule(courseId: string, data: { title: string; description?: string; order?: number }): Promise<{ success: boolean; module: any }> {
+    const res = await fetch(`/api/admin/courses/${courseId}/modules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al crear módulo');
+    }
+    return res.json();
+  },
+
+  async updateModule(moduleId: string, data: { title?: string; description?: string; order?: number }): Promise<{ success: boolean; module: any }> {
+    const res = await fetch(`/api/admin/modules/${moduleId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar módulo');
+    }
+    return res.json();
+  },
+
+  async deleteModule(moduleId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/modules/${moduleId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar módulo');
+    }
+    return res.json();
+  },
+
+  // Video Admin CRUD
+  async createModuleVideo(moduleId: string, data: { title: string; duration?: string; description?: string; driveFileId?: string; embedUrl?: string }): Promise<{ success: boolean; video: any }> {
+    const res = await fetch(`/api/admin/modules/${moduleId}/videos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al crear video');
+    }
+    return res.json();
+  },
+
+  async updateVideo(videoId: string, data: { title?: string; description?: string; duration?: string; embedUrl?: string; order?: number }): Promise<{ success: boolean; video: any }> {
+    const res = await fetch(`/api/admin/videos/${videoId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar video');
+    }
+    return res.json();
+  },
+
+  async deleteVideo(videoId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/videos/${videoId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar video');
+    }
+    return res.json();
+  },
+
+  // Resource Admin CRUD
+  async createCourseResource(courseId: string, data: { moduleId?: string | null; title: string; description?: string; kind?: string; privateUrl: string; mimeType?: string; sizeBytes?: number; order?: number }): Promise<{ success: boolean; resource: CourseResource }> {
+    const res = await fetch(`/api/admin/courses/${courseId}/resources`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al agregar recurso');
+    }
+    return res.json();
+  },
+
+  async deleteCourseResource(resourceId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/resources/${resourceId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar recurso');
+    }
+    return res.json();
+  },
+
+  // Importación de cursos desde una carpeta de Google Drive
+  async getDriveImportStatus(): Promise<{
+    success: boolean;
+    importEnabled: boolean;
+    strategy: 'public' | 'apikey';
+    driveConfigured: boolean;
+    aiProvider: 'openai' | 'deepseek' | 'none';
+    limits: { maxDepth: number; maxNodes: number; timeoutMs: number };
+  }> {
+    const res = await fetch('/api/admin/drive/status');
+    if (!res.ok) throw new Error('No se pudo consultar el estado de la importación');
+    return res.json();
+  },
+
+  async previewDriveImport(url: string): Promise<ImportPreviewResponse> {
+    const res = await fetch('/api/admin/drive/import/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo leer la carpeta de Google Drive');
+    }
+    return res.json();
+  },
+
+  async organizeDriveImport(plan: ImportPlan): Promise<ImportOrganizeResponse> {
+    const res = await fetch('/api/admin/drive/import/organize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo organizar el curso con IA');
+    }
+    return res.json();
+  },
+
+  /**
+   * Crea el curso a partir del plan. Un 409 significa que esa carpeta ya se
+   * importó: se propaga el código para que la vista pregunte antes de duplicar.
+   */
+  async applyDriveImport(data: {
+    plan: ImportPlan;
+    price?: number;
+    currency?: string;
+    published?: boolean;
+    coverImage?: string;
+    category?: string;
+    title?: string;
+    description?: string;
+    onDuplicate?: 'append' | 'create';
+    courseId?: string;
+  }): Promise<ImportApplyResponse> {
+    const res = await fetch('/api/admin/drive/import/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const error: Error & { code?: string; course?: { id: string; title: string } } = new Error(
+        err.error || 'No se pudo crear el curso',
+      );
+      error.code = err.code;
+      error.course = err.course;
+      throw error;
+    }
     return res.json();
   },
 };

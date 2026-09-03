@@ -1,0 +1,162 @@
+name: Release - Publicación de Imágenes y Releases
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  # Vacio si el secreto no esta configurado: el paso de despliegue se omite solo.
+  COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+
+jobs:
+  release:
+    name: Compilar, Publicar Contenedores y Crear Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extraer versión de la etiqueta
+        id: extract_tag
+        run: |
+          RAW_TAG="${GITHUB_REF#refs/tags/}"
+          VERSION_NUM="${RAW_TAG#v}"
+          echo "tag=${RAW_TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION_NUM}" >> $GITHUB_OUTPUT
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Validar consistencia de versiones
+        run: npm run version:check
+
+      - name: Validar tipado TypeScript (Lint)
+        run: npm run lint
+
+      - name: Compilar aplicación
+        run: npm run build
+
+      - name: Configurar QEMU (Soporte multi-arquitectura)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticar en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generar metadatos de Docker (Etiquetas OCI y SemVer)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !contains(steps.extract_tag.outputs.version, 'alpha') && !contains(steps.extract_tag.outputs.version, 'beta') && !contains(steps.extract_tag.outputs.version, 'rc') }}
+            type=raw,value=latest,enable=${{ !contains(steps.extract_tag.outputs.version, 'alpha') && !contains(steps.extract_tag.outputs.version, 'beta') && !contains(steps.extract_tag.outputs.version, 'rc') }}
+            type=sha,format=short
+
+      - name: Construir y Publicar Imagen Multi-Arquitectura (amd64 y arm64)
+        id: build_and_push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_COMMIT_SHA=${{ github.sha }}
+            VERSION=${{ steps.extract_tag.outputs.version }}
+          sbom: true
+          provenance: mode=max
+
+      - name: Generar metadatos de la imagen de respaldo
+        id: meta_backup
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-backup
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(steps.extract_tag.outputs.version, 'alpha') && !contains(steps.extract_tag.outputs.version, 'beta') && !contains(steps.extract_tag.outputs.version, 'rc') }}
+            type=sha,format=short
+
+      - name: Construir y Publicar Imagen de Respaldos
+        id: build_and_push_backup
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./ops/backup/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta_backup.outputs.tags }}
+          labels: ${{ steps.meta_backup.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+
+      - name: Instalar Cosign
+        uses: sigstore/cosign-installer@v3
+
+      # Firma keyless con OIDC de GitHub Actions (requiere id-token: write).
+      - name: Firmar imagen publicada con Cosign
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          DIGEST: ${{ steps.build_and_push.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Firmar imagen de respaldos con Cosign
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}-backup
+          DIGEST: ${{ steps.build_and_push_backup.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Crear GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DocentOS Release ${{ steps.extract_tag.outputs.tag }}"
+          tag_name: ${{ steps.extract_tag.outputs.tag }}
+          draft: false
+          prerelease: ${{ contains(steps.extract_tag.outputs.version, 'alpha') || contains(steps.extract_tag.outputs.version, 'beta') || contains(steps.extract_tag.outputs.version, 'rc') }}
+          generate_release_notes: true
+          body: |
+            ## 🎓 DocentOS ${{ steps.extract_tag.outputs.tag }}
+            
+            ### 📦 Imágenes de Contenedor Disponibles (GHCR):
+            - `ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.version }}`
+            - `ghcr.io/${{ github.repository }}@${{ steps.build_and_push.outputs.digest }}` (digest firmado con Cosign)
+            
+            ### 🚀 Despliegue Rápido:
+            Descarga `docker-compose.community.yml` e inicia la plataforma con:
+            ```bash
+            DOCENTOS_IMAGE=ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.version }} docker compose -f docker-compose.community.yml up -d
+            ```
+
+      # Aviso opcional al servidor. Va al final, cuando la imagen ya esta
+      # publicada y firmada: desplegar antes de firmar dejaria en produccion una
+      # imagen que todavia no se puede verificar.
+      - name: Disparar despliegue en Coolify
+        if: env.COOLIFY_WEBHOOK_URL != ''
+        run: curl -fsS -X GET "$COOLIFY_WEBHOOK_URL" || true

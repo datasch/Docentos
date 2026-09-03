@@ -6,6 +6,14 @@ import { siteConfig } from '../config/theme';
 interface PublicNavbarProps {
   appName?: string;
   onOpenAuth: (mode: 'login' | 'register') => void;
+  /**
+   * Sesion activa, si la hay. La portada es publica, pero seguia ofreciendo
+   * "Iniciar sesion" a quien ya habia entrado, de modo que recargar en `/`
+   * parecia haber cerrado la sesion aunque la cookie siguiera viva.
+   */
+  currentUser?: { name: string; role: string } | null;
+  onGoToApp?: () => void;
+  onLogout?: () => void;
 }
 
 const LANGUAGES = [
@@ -19,6 +27,9 @@ const LANGUAGES = [
 export const PublicNavbar: React.FC<PublicNavbarProps> = ({
   appName,
   onOpenAuth,
+  currentUser,
+  onGoToApp,
+  onLogout,
 }) => {
   const { t, i18n } = useTranslation();
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -110,20 +121,45 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
           )}
         </div>
 
-        <button
-          onClick={() => onOpenAuth('login')}
-          className="px-4 py-2 bg-[#141420] hover:bg-[#1f1f33] border border-[#262626] hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl transition-all"
-        >
-          {t('nav.login') || 'Iniciar Sesión'}
-        </button>
+        {currentUser ? (
+          <>
+            <span className="hidden sm:inline text-xs font-semibold text-slate-300 max-w-[14rem] truncate">
+              {currentUser.name}
+            </span>
 
-        <button
-          onClick={() => onOpenAuth('register')}
-          className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black text-xs font-extrabold rounded-xl shadow-lg transition-all flex items-center gap-1.5"
-        >
-          <span>{t('nav.register') || 'Registrarse'}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+            <button
+              onClick={onLogout}
+              className="px-3 py-2 bg-[#141420] hover:bg-[#1f1f33] border border-[#262626] hover:border-[#06b6d4] text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all"
+            >
+              Cerrar sesión
+            </button>
+
+            <button
+              onClick={onGoToApp}
+              className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black text-xs font-extrabold rounded-xl shadow-lg transition-all flex items-center gap-1.5"
+            >
+              <span>Ir a mi panel</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => onOpenAuth('login')}
+              className="px-4 py-2 bg-[#141420] hover:bg-[#1f1f33] border border-[#262626] hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl transition-all"
+            >
+              {t('nav.login') || 'Iniciar Sesión'}
+            </button>
+
+            <button
+              onClick={() => onOpenAuth('register')}
+              className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black text-xs font-extrabold rounded-xl shadow-lg transition-all flex items-center gap-1.5"
+            >
+              <span>{t('nav.register') || 'Registrarse'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

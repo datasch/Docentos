@@ -6,57 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, HelpCircle, Clock } from 'lucide-react';
 import { Module, User } from '../types';
-import { quizzesPluginEngine } from '../plugins/QuizzesPlugin';
+import { getModuleQuestions, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
 import { pluginManager } from '../plugins/PluginManager';
-
-interface Question {
-  id: string;
-  text: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-}
-
-const MODULE_QUIZZES: Record<string, Question[]> = {
-  default: [
-    {
-      id: 'q1',
-      text: '¿Cuál es el objetivo principal de la arquitectura modular en DocentOS?',
-      options: [
-        'Aumentar el consumo de recursos',
-        'Permitir desacoplamiento y extensión mediante plugins independientes',
-        'Eliminar el acceso a bases de datos',
-        'Reemplazar la interfaz por consolas de comandos',
-      ],
-      correctIndex: 1,
-      explanation: 'La arquitectura modular permite habilitar/deshabilitar funcionalidades sin modificar el núcleo del software.',
-    },
-    {
-      id: 'q2',
-      text: '¿Qué ventaja ofrece la integración de Google Drive en los programas de mentoría?',
-      options: [
-        'Alojamiento directo de videos HD sin costo de almacenamiento de servidor',
-        'Imposibilidad de reproducir contenidos',
-        'Requiere descargar los archivos manualmente',
-        'Ninguna ventaja',
-      ],
-      correctIndex: 0,
-      explanation: 'Google Drive actúa como motor de streaming sin sobrecargar la infraestructura propia.',
-    },
-    {
-      id: 'q3',
-      text: '¿Qué sucede al completar el 100% de las lecciones en DocentOS?',
-      options: [
-        'Se borran los datos del estudiante',
-        'Se bloquea la cuenta',
-        'El plugin de Certificados genera un diploma firmado digitalmente con ID de verificación',
-        'Se envía una factura automática',
-      ],
-      correctIndex: 2,
-      explanation: 'Al alcanzar el 100%, el sistema emite automáticamente la certificación oficial.',
-    },
-  ],
-};
 
 interface ModuleQuizCardProps {
   module: Module;
@@ -77,7 +28,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   maxAttempts = 3,
   onPassed,
 }) => {
-  const questions = MODULE_QUIZZES[module.id] || MODULE_QUIZZES.default;
+  const questions = getModuleQuestions(module.id);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [scorePercentage, setScorePercentage] = useState<number>(0);
@@ -85,7 +36,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   const [timeLeft, setTimeLeft] = useState<number>(timeLimitMinutes * 60);
 
   useEffect(() => {
-    if (!hasTimer || submitted) return;
+    if (!hasTimer || submitted || questions.length === 0) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -97,7 +48,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [hasTimer, submitted]);
+  }, [hasTimer, submitted, questions.length]);
 
   const triggerAutoSubmit = () => {
     // Usar la lógica centralizada de evaluación automática del QuizzesPluginEngine
@@ -141,6 +92,11 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+  // Un módulo sin preguntas no muestra examen. Antes se caía a un cuestionario
+  // de ejemplo sobre el propio DocentOS, que aparecía dentro de cualquier curso
+  // —inglés, derecho— sin tener nada que ver con su contenido.
+  if (questions.length === 0) return null;
 
   return (
     <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-6">
