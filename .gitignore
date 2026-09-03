@@ -12,3 +12,4 @@ secrets/
 *.dump
 *.dump.enc
 *.dump.enc.sha256
+npm-audit.json

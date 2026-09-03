@@ -22,7 +22,7 @@ jobs:
   validate:
     name: Lint, Pruebas y Compilación
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -82,15 +82,15 @@ jobs:
           DOCENTOS_ENV: development
           SEED_DEMO_DATA: true
 
+      # Una sola consulta al registro: antes se auditaba dos veces, una para
+      # bloquear y otra para listar, y cada pasada cuesta mas de dos minutos.
       # Bloquea solo en severidad critica. Los avisos "high" vigentes provienen del
       # CLI de Prisma (mysql2 / deepmerge-ts), que se requiere en runtime para
       # `prisma migrate deploy` y cuyo unico "arreglo" seria degradar a prisma 6.x.
-      - name: Auditar dependencias (bloquea en severidad crítica)
-        run: npm audit --audit-level=critical
-
-      - name: Informe completo de vulnerabilidades (no bloqueante)
-        continue-on-error: true
-        run: npm audit
+      - name: Auditar dependencias (informe completo, bloquea en severidad crítica)
+        run: |
+          npm audit --json > npm-audit.json || true
+          node scripts/audit-gate.mjs npm-audit.json
 
       - name: Compilar aplicación (Vite + Server Bundle + Seed Bundle)
         run: npm run build
