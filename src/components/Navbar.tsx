@@ -29,7 +29,7 @@ interface NavbarProps {
 /** Un destino del nav: apagado por defecto, cian cuando es el que se está viendo. */
 const navItem = (isActive: boolean) =>
   `flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-meta transition-colors ${
-    isActive ? 'bg-raised font-medium text-brand-cyan' : 'text-ink-muted hover:bg-raised hover:text-ink'
+    isActive ? 'bg-raised font-medium text-brand-blue' : 'text-ink-muted hover:bg-raised hover:text-ink'
   }`;
 
 /** Fila del cajón móvil. */
@@ -183,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="min-w-0">
                     <p className="truncate text-meta font-medium text-ink">{currentUser.name}</p>
                     <p className="truncate text-micro text-ink-muted">{currentUser.email}</p>
-                    <span className="mt-1 inline-block text-micro text-brand-cyan">{currentUser.role}</span>
+                    <span className="mt-1 inline-block text-micro text-brand-blue">{currentUser.role}</span>
                   </div>
                 </div>
 
@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           aria-pressed={isCurrent}
                           className={`flex flex-col items-center gap-0.5 rounded-lg py-1 text-micro transition-colors ${
                             isCurrent
-                              ? 'bg-brand-cyan font-semibold text-canvas'
+                              ? 'bg-brand-blue font-semibold text-canvas'
                               : 'border border-line bg-canvas text-ink-muted hover:text-ink'
                           }`}
                         >
@@ -229,7 +229,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }}
                     className={menuAction}
                   >
-                    <Bot aria-hidden className="h-4 w-4 text-brand-cyan" /> {t('nav.restartTour')}
+                    <Bot aria-hidden className="h-4 w-4 text-brand-blue" /> {t('nav.restartTour')}
                   </button>
                 )}
 
@@ -253,14 +253,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }}
                     className={menuAction}
                   >
-                    <KeyRound aria-hidden className="h-4 w-4 text-brand-cyan" /> Cambiar contraseña
+                    <KeyRound aria-hidden className="h-4 w-4 text-brand-blue" /> Cambiar contraseña
                   </button>
                 )}
 
                 {/* Access Status */}
                 <div className="flex items-center justify-between border-t border-line pt-3 text-meta">
                   <span className="text-ink-muted">{t('nav.accessStatus')}</span>
-                  <span className={hasAccess ? 'text-brand-cyan' : 'text-brand-orange'}>
+                  <span className={hasAccess ? 'text-brand-blue' : 'text-brand-orange'}>
                     {hasAccess ? t('nav.unlimited') : t('nav.noPayment')}
                   </span>
                 </div>
@@ -303,7 +303,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }}
             className={drawerItem}
           >
-            <PlayCircle aria-hidden className="h-5 w-5 text-brand-cyan" />
+            <PlayCircle aria-hidden className="h-5 w-5 text-brand-blue" />
             Cursos y clases
           </button>
 
@@ -315,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className={drawerItem}
             >
-              <HardDrive aria-hidden className="h-5 w-5 text-brand-cyan" />
+              <HardDrive aria-hidden className="h-5 w-5 text-brand-blue" />
               Buscador de Drive
             </button>
           )}
@@ -328,7 +328,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className={drawerItem}
             >
-              <UserCheck aria-hidden className="h-5 w-5 text-brand-cyan" />
+              <UserCheck aria-hidden className="h-5 w-5 text-brand-blue" />
               Mentoría
             </button>
           )}
@@ -378,7 +378,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
               className={drawerItem}
             >
-              <KeyRound aria-hidden className="h-5 w-5 text-brand-cyan" />
+              <KeyRound aria-hidden className="h-5 w-5 text-brand-blue" />
               Cambiar contraseña
             </button>
           )}

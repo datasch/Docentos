@@ -42,7 +42,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
     >
       <div
         className={`absolute inset-0 transition-[clip-path] duration-500 ease-out ${
-          tone === 'spectrum' ? 'bg-brand-gradient' : 'bg-brand-cyan'
+          tone === 'spectrum' ? 'bg-brand-gradient' : 'bg-brand-blue'
         }`}
         style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}
       />

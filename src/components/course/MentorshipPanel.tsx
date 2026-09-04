@@ -82,7 +82,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                   <button
                     type="button"
                     onClick={() => onLike(comment.id)}
-                    className="flex shrink-0 items-center gap-1 text-micro text-ink-muted transition-colors hover:text-brand-cyan"
+                    className="flex shrink-0 items-center gap-1 text-micro text-ink-muted transition-colors hover:text-brand-blue"
                   >
                     <ThumbsUp aria-hidden className="h-3 w-3" />
                     <span className="tabular-nums">{comment.likes}</span>

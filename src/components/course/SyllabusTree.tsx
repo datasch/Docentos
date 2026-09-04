@@ -19,6 +19,15 @@ interface SyllabusTreeProps {
   onOpenPaywall: () => void;
 }
 
+/**
+ * Los titulos del catalogo suelen llegar como «Modulo 3: Seguridad y RBAC».
+ * Con el numero ya en su propia linea, repetirlo dentro del titulo solo roba
+ * ancho y obliga a truncar el nombre real justo por donde importa.
+ */
+function moduleName(title: string): string {
+  return title.replace(/^m[óo]dulo\s*\d+\s*[:.\u2013\u2014-]\s*/i, '').trim() || title;
+}
+
 /** Una fila navegable del arbol: cabecera de modulo o leccion. */
 type Row =
   | { key: string; kind: 'module'; moduleIndex: number }
@@ -181,7 +190,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
               onFocus={() => setFocusKey(moduleKey)}
               onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
               className={`overflow-hidden rounded-xl border transition-colors ${
-                isCurrentModule ? 'border-brand-cyan/40 bg-raised' : 'border-line bg-raised'
+                isCurrentModule ? 'border-brand-blue/40 bg-raised' : 'border-line bg-raised'
               } ${isUnlocked ? '' : 'bg-surface'}`}
             >
               <div
@@ -189,34 +198,38 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                   if (!isUnlocked) return;
                   toggleModule(mIdx);
                 }}
-                className={`flex w-full items-center gap-3 p-3.5 text-left transition-colors ${
+                className={`flex w-full items-start gap-3 p-3.5 text-left transition-colors ${
                   isUnlocked ? 'cursor-pointer hover:bg-line/40' : 'cursor-not-allowed'
                 }`}
               >
                 {/* Estado del módulo a la izquierda, como en la referencia: se
                     lee antes que el título y sin recurrir a un color por módulo. */}
                 {!isUnlocked ? (
-                  <Lock aria-hidden className="h-4 w-4 shrink-0 text-ink-faint" />
+                  <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-ink-faint" />
                 ) : isComplete ? (
-                  <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" strokeWidth={2.5} />
+                  <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" strokeWidth={2.5} />
                 ) : (
-                  <Circle aria-hidden className="h-4 w-4 shrink-0 text-ink-faint" />
+                  <Circle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-line" />
                 )}
 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span
-                      className={`min-w-0 truncate text-section font-semibold ${
-                        isUnlocked ? 'text-ink' : 'text-ink-faint'
-                      }`}
-                    >
-                      {module.title}
+                    <span className={`text-micro ${isUnlocked ? 'text-ink-muted' : 'text-ink-faint'}`}>
+                      Módulo {String(mIdx + 1).padStart(2, '0')}
                     </span>
                     {!isUnlocked && (
                       <span className="shrink-0 rounded border border-brand-yellow/30 bg-brand-yellow/10 px-1.5 py-0.5 text-micro font-medium text-brand-yellow">
                         Bloqueado
                       </span>
                     )}
+                  </span>
+
+                  <span
+                    className={`mt-0.5 block truncate text-section font-semibold ${
+                      isUnlocked ? 'text-ink' : 'text-ink-faint'
+                    }`}
+                  >
+                    {moduleName(module.title)}
                   </span>
 
                   {isUnlocked ? (
@@ -235,7 +248,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
 
                 <ChevronDown
                   aria-hidden
-                  className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                  className={`mt-0.5 h-4 w-4 shrink-0 transition-transform duration-200 ${
                     isUnlocked ? 'text-ink-muted' : 'text-ink-faint'
                   } ${isOpen ? 'rotate-180' : ''}`}
                 />
@@ -259,7 +272,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <span
                               aria-hidden
                               className={`absolute top-[calc(50%+10px)] left-[1.125rem] h-[calc(100%-20px)] w-0.5 -translate-x-1/2 rounded-full ${
-                                isDone ? 'bg-brand-cyan/40' : 'bg-line'
+                                isDone ? 'bg-brand-blue/40' : 'bg-line'
                               }`}
                             />
                           )}
@@ -302,7 +315,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             >
                               <span
                                 className={`flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
-                                  isDone || isCurrent ? 'bg-brand-cyan' : 'border border-line hover:border-brand-cyan'
+                                  isDone || isCurrent ? 'bg-brand-blue' : 'border border-line hover:border-brand-blue'
                                 }`}
                               >
                                 {isDone && <Check aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3.5} />}
@@ -315,7 +328,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <span
                               className={`min-w-0 flex-1 truncate text-row ${
                                 isCurrent
-                                  ? 'font-medium text-brand-cyan'
+                                  ? 'font-medium text-brand-blue'
                                   : isDone
                                     ? 'text-ink-muted'
                                     : 'text-ink-soft'
@@ -348,7 +361,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-surface hover:text-ink"
                           >
-                            <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-cyan" />
+                            <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
                             <span className="min-w-0 flex-1 truncate">{res.title}</span>
                             <span className="shrink-0 text-micro text-ink-faint">{res.kind}</span>
                           </a>
@@ -375,7 +388,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-raised hover:text-ink"
               >
-                <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-cyan" />
+                <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
                 <span className="min-w-0 flex-1 truncate">{res.title}</span>
               </a>
             ))}
