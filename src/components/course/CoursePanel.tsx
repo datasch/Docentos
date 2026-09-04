@@ -72,7 +72,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
                 role="tab"
                 id={`panel-tab-${tab.id}`}
                 aria-selected={isActive}
-                aria-controls={`panel-${tab.id}`}
+                aria-controls={isActive ? `panel-${tab.id}` : undefined}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => onChange(tab.id)}
                 onKeyDown={handleKeyDown}

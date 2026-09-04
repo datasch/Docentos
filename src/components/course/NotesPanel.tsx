@@ -81,6 +81,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
           <input
             type="text"
             placeholder="Qué quieres recordar de este minuto"
+            aria-label="Contenido de la nota"
             value={content}
             onChange={(event) => onContentChange(event.target.value)}
             className="min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-meta text-ink placeholder-ink-faint focus:border-brand-cyan focus:outline-none"

@@ -111,6 +111,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                           rows={2}
                           autoFocus
                           placeholder="Responder como mentor"
+                          aria-label={`Responder a ${comment.userName}`}
                           value={replyTextMap[comment.id] || ''}
                           onChange={(event) => onReplyTextChange(comment.id, event.target.value)}
                           className="w-full resize-none rounded-lg border border-line bg-canvas p-2.5 text-meta text-ink placeholder-ink-faint focus:border-brand-purple focus:outline-none"
@@ -155,6 +156,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
             <textarea
               rows={1}
               placeholder="Pregunta sobre esta clase"
+              aria-label="Tu pregunta sobre esta clase"
               value={question}
               onChange={(event) => onQuestionChange(event.target.value)}
               className="min-h-[2.5rem] min-w-0 flex-1 resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-meta leading-relaxed text-ink placeholder-ink-faint focus:border-brand-cyan focus:outline-none"

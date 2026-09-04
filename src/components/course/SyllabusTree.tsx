@@ -44,7 +44,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   // con cincuenta lecciones, dejarlas todas en el orden de tabulacion convierte
   // el temario en una trampa de la que cuesta salir.
   const [focusKey, setFocusKey] = useState<string | null>(null);
-  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
+  const rowRefs = useRef(new Map<string, HTMLElement>());
 
   // El modulo que se esta viendo se abre solo: si el alumno salta de leccion con
   // los botones del reproductor, el temario debe seguirle.
@@ -87,10 +87,24 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
     setExpanded((prev) => ({ ...prev, [mIdx]: !prev[mIdx] }));
 
   const handleKeyDown = (event: React.KeyboardEvent, row: Row) => {
+    // Las lecciones viven dentro del treeitem de su modulo, asi que sus teclas
+    // burbujean hasta el: sin esta guarda una flecha se procesaria dos veces.
+    if (event.currentTarget !== event.target) return;
+
     const index = rows.findIndex((item) => item.key === row.key);
     if (index < 0) return;
 
     switch (event.key) {
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (row.kind === 'lesson') {
+          if (hasAccess) onSelectLesson(row.moduleIndex, row.videoIndex);
+          else onOpenPaywall();
+        } else if (unlocked[row.moduleIndex]) {
+          toggleModule(row.moduleIndex);
+        }
+        break;
       case 'ArrowDown':
         event.preventDefault();
         focusRow(rows[Math.min(index + 1, rows.length - 1)].key);
@@ -125,7 +139,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
     }
   };
 
-  const registerRow = (key: string) => (node: HTMLButtonElement | null) => {
+  const registerRow = (key: string) => (node: HTMLElement | null) => {
     if (node) rowRefs.current.set(key, node);
     else rowRefs.current.delete(key);
   };
@@ -159,24 +173,25 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
           return (
             <div
               key={module.id}
+              ref={registerRow(moduleKey)}
+              role="treeitem"
+              aria-expanded={isUnlocked ? isOpen : undefined}
+              aria-disabled={!isUnlocked}
+              aria-current={isCurrentModule ? 'true' : undefined}
+              aria-level={1}
+              tabIndex={tabbableKey === moduleKey ? 0 : -1}
+              onFocus={() => setFocusKey(moduleKey)}
+              onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
               style={{ '--hue': hue } as React.CSSProperties}
               className={`overflow-hidden rounded-xl transition-colors ${isOpen ? 'bg-raised' : ''}`}
             >
-              <button
-                ref={registerRow(moduleKey)}
-                role="treeitem"
-                aria-expanded={isUnlocked ? isOpen : undefined}
-                aria-disabled={!isUnlocked}
-                aria-current={isCurrentModule ? 'true' : undefined}
-                tabIndex={tabbableKey === moduleKey ? 0 : -1}
-                onFocus={() => setFocusKey(moduleKey)}
-                onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
+              <div
                 onClick={() => {
                   if (!isUnlocked) return;
                   toggleModule(mIdx);
                 }}
                 className={`flex w-full items-start gap-2.5 rounded-xl p-3 text-left transition-colors ${
-                  isUnlocked ? 'hover:bg-raised' : 'cursor-not-allowed'
+                  isUnlocked ? 'cursor-pointer hover:bg-raised' : 'cursor-not-allowed'
                 }`}
               >
                 <ChevronRight
@@ -220,11 +235,11 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                     </span>
                   )}
                 </span>
-              </button>
+              </div>
 
               <div className="accordion-shell" data-open={isOpen}>
                 <div>
-                  <ul className="flex flex-col px-2 pb-2">
+                  <ul role="group" className="flex flex-col px-2 pb-2">
                     {module.videos.map((video, vIdx) => {
                       const isCurrent = isCurrentModule && vIdx === activeVideoIndex;
                       const isDone = Boolean(completedVideos[video.id]);
@@ -232,7 +247,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                       const isLast = vIdx === module.videos.length - 1;
 
                       return (
-                        <li key={video.id} className="relative flex items-center">
+                        <li key={video.id} role="none" className="relative flex items-center">
                           {/* Riel que enhebra las lecciones del modulo. Arranca y
                               termina a 10px del centro de cada punto para no
                               pasar por debajo de ellos. */}
@@ -250,45 +265,49 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                               y el teclado no sabria cual esta activando. Queda
                               fuera del orden de tabulacion porque la misma accion
                               vive, accesible, en la barra bajo el reproductor. */}
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            disabled={!hasAccess}
-                            aria-pressed={isDone}
-                            aria-label={
-                              isDone
-                                ? `Marcar ${video.title} como pendiente`
-                                : `Marcar ${video.title} como completada`
-                            }
-                            onClick={() => onToggleComplete(video.id)}
-                            className="relative z-10 shrink-0 rounded-full p-2.5 disabled:cursor-not-allowed"
-                          >
-                            <span
-                              className={`flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
-                                isDone || isCurrent ? 'bg-(--hue)' : 'border border-line hover:border-(--hue)'
-                              }`}
-                            >
-                              {isDone && <Check aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3.5} />}
-                              {!isDone && isCurrent && (
-                                <Play aria-hidden className="h-2 w-2 fill-canvas text-canvas" />
-                              )}
-                            </span>
-                          </button>
-
-                          <button
+                          <div
                             ref={registerRow(lessonKey)}
                             role="treeitem"
                             aria-current={isCurrent ? 'true' : undefined}
+                            aria-level={2}
                             tabIndex={tabbableKey === lessonKey ? 0 : -1}
                             onFocus={() => setFocusKey(lessonKey)}
                             onKeyDown={(event) =>
                               handleKeyDown(event, { key: lessonKey, kind: 'lesson', moduleIndex: mIdx, videoIndex: vIdx })
                             }
                             onClick={() => (hasAccess ? onSelectLesson(mIdx, vIdx) : onOpenPaywall())}
-                            className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-2.5 pr-2.5 text-left transition-colors ${
+                            className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg pr-2.5 text-left transition-colors ${
                               isCurrent ? 'bg-raised' : 'hover:bg-raised'
                             }`}
                           >
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              disabled={!hasAccess}
+                              aria-pressed={isDone}
+                              aria-label={
+                                isDone
+                                  ? `Marcar ${video.title} como pendiente`
+                                  : `Marcar ${video.title} como completada`
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onToggleComplete(video.id);
+                              }}
+                              className="relative z-10 shrink-0 rounded-full p-2.5 disabled:cursor-not-allowed"
+                            >
+                              <span
+                                className={`flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
+                                  isDone || isCurrent ? 'bg-(--hue)' : 'border border-line hover:border-(--hue)'
+                                }`}
+                              >
+                                {isDone && <Check aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3.5} />}
+                                {!isDone && isCurrent && (
+                                  <Play aria-hidden className="h-2 w-2 fill-canvas text-canvas" />
+                                )}
+                              </span>
+                            </button>
+
                             <span
                               className={`min-w-0 flex-1 truncate text-row ${
                                 isCurrent
@@ -307,7 +326,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                                 {video.duration}
                               </span>
                             )}
-                          </button>
+                          </div>
                         </li>
                       );
                     })}
