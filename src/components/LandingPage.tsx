@@ -1,13 +1,14 @@
 /**
- * Landing Page Institucional Pública
- * DocentOS - The AI-Native, Open-Source Learning Engine
+ * Portada publica de DocentOS.
  *
- * Página de inicio pública para visitantes.
- * Carga dinámicamente la configuración desde `GET /api/public/landing-config` con fallback automático.
- * Diseño ultra alto nivel en tema oscuro minimalista (#000000, #0a0a0f, #262626, acentos neón).
+ * La misma pagina sirve dos estados: al visitante le presenta la plataforma y
+ * le ofrece entrar o registrarse; al alumno con sesion abierta le da la
+ * bienvenida por su nombre y le devuelve a su catalogo. Todo el contenido sale
+ * de `GET /api/public/landing-config` con respaldo local, y la piel visual vive
+ * en `src/styles/landing.css` bajo el prefijo `lp-`.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   Sparkles,
@@ -17,36 +18,34 @@ import {
   Users,
   ShieldCheck,
   CheckCircle2,
-  ArrowRight,
-  Globe,
-  PlayCircle,
-  MessageSquare,
-  Bot,
-  Zap,
-  Layers,
-  ChevronRight,
-  Star,
-  Megaphone,
   Github,
   Linkedin,
   Twitter,
-  ExternalLink,
+  Layers,
+  ChevronRight,
+  Star,
+  Play,
+  PlayCircle,
+  MessageCircle,
   Brain,
-  Sliders,
+  Zap,
+  Rocket,
+  GraduationCap,
+  Crown,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Course, LandingConfig } from '../types';
 import { api } from '../lib/api';
 import { DOCENTOS_VERSION } from '../version';
-import { PublicNavbar } from './PublicNavbar';
-import { Footer } from './Footer';
+import { PublicNavbar, PublicNavLink } from './PublicNavbar';
+import { siteConfig } from '../config/theme';
 
 interface LandingPageProps {
   courses: Course[];
   onOpenAuth: (mode: 'login' | 'register') => void;
   onExploreCourse: (course: Course) => void;
   /** Sesion activa: la portada la refleja en vez de ofrecer iniciar sesion. */
-  currentUser?: { name: string; role: string } | null;
+  currentUser?: { name: string; role: string; avatarUrl?: string } | null;
   onGoToApp?: () => void;
   onLogout?: () => void;
 }
@@ -147,6 +146,126 @@ export function resolveLandingCta(link: string | undefined, fallback: string): s
   return fallback;
 }
 
+/** Lecciones publicadas de un curso, que es la medida de "cuánto hay dentro". */
+function lessonCount(course: Course): number {
+  return course.modules?.reduce((total, module) => total + (module.videos?.length || 0), 0) || 0;
+}
+
+/**
+ * Emoji por categoria.
+ *
+ * Se mapea en vez de escribirse en la pildora porque las categorias las crea el
+ * admin al publicar cada curso: una lista fija se quedaria coja en cuanto
+ * apareciera una nueva. Las claves van sin tildes y en minusculas, asi que
+ * "Diseño UI/UX" y "diseno ui/ux" caen en la misma entrada, y lo que no este
+ * en el mapa recibe el emoji neutro.
+ */
+const CATEGORY_EMOJI: Record<string, string> = {
+  'desarrollo web': '🚀',
+  'inteligencia artificial': '🧠',
+  'ia': '🧠',
+  'devops & cloud': '☁️',
+  'devops y cloud': '☁️',
+  'cloud & devops': '☁️',
+  'cloud': '☁️',
+  'diseno ui/ux': '🎨',
+  'diseno': '🎨',
+  'ui/ux': '🎨',
+  'mobile con flutter': '📱',
+  'mobile': '📱',
+  'desarrollo movil': '📱',
+  'ciberseguridad': '🛡️',
+  'seguridad': '🛡️',
+  'bases de datos': '🗄️',
+  'base de datos': '🗄️',
+  'mentoria elite': '👑',
+  'habilidades blandas': '🤝',
+  'data science': '📊',
+  'marketing digital': '📈',
+  'negocios': '💼',
+  'idiomas': '🗣️',
+};
+
+const DEFAULT_CATEGORY_EMOJI = '📚';
+
+/**
+ * Color de la insignia. Sale del nombre de la categoria y no de la posicion en
+ * la rejilla: la misma tarjeta aparece en dos secciones, y con el indice el
+ * mismo curso cambiaba de color al bajar por la pagina.
+ */
+function categoryTone(category: string): number {
+  let hash = 0;
+  for (let i = 0; i < category.length; i += 1) {
+    hash = (hash * 31 + category.charCodeAt(i)) >>> 0;
+  }
+  return hash % 6;
+}
+
+/** Normaliza para buscar en el mapa: sin tildes, sin espacios de sobra, en minusculas. */
+function categoryEmoji(category: string): string {
+  const key = (category || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+  return CATEGORY_EMOJI[key] || DEFAULT_CATEGORY_EMOJI;
+}
+
+const FALLBACK_COVER = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80';
+
+/** Cuantos cursos ensena el catalogo cuando nadie ha marcado destacados. */
+const CATALOG_FALLBACK_SIZE = 3;
+
+/** Tarjeta de curso. La comparten el catalogo y la seccion de estrenos. */
+const CourseCard: React.FC<{ course: Course; onExplore: (course: Course) => void }> = ({
+  course,
+  onExplore,
+}) => {
+  const modules = course.modules?.length || 0;
+  const lessons = lessonCount(course);
+
+  return (
+    <article className="lp-course-card">
+      <div className="lp-card-cover">
+        <img className="lp-card-cover-bg" src={course.coverImage || FALLBACK_COVER} alt="" loading="lazy" />
+        <div className="lp-card-cover-glow" />
+        <div className="lp-card-badges">
+          <span className={`lp-cat-badge tone-${categoryTone(course.category)}`}>
+            <span aria-hidden>{categoryEmoji(course.category)}</span>
+            {course.category}
+          </span>
+          <span className={`lp-price-badge${course.price > 0 ? '' : ' is-free'}`}>
+            {course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : 'Gratis'}
+          </span>
+        </div>
+        <span className="lp-play-btn">
+          <Play aria-hidden className="h-5 w-5" fill="currentColor" />
+        </span>
+      </div>
+
+      <div className="lp-card-body">
+        <h3 className="lp-course-title">
+          <button type="button" className="lp-card-link" onClick={() => onExplore(course)}>
+            {course.title}
+          </button>
+        </h3>
+        <p className="lp-course-desc">{course.description}</p>
+
+        <div className="lp-card-meta">
+          <span className="lp-meta-item">
+            <Layers aria-hidden />
+            {modules} {modules === 1 ? 'módulo' : 'módulos'}
+          </span>
+          <span className="lp-meta-item is-violet">
+            <PlayCircle aria-hidden />
+            {lessons} {lessons === 1 ? 'lección' : 'lecciones'}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+};
+
 export const LandingPage: React.FC<LandingPageProps> = ({
   courses,
   onOpenAuth,
@@ -155,13 +274,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onGoToApp,
   onLogout,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [landingConfig, setLandingConfig] = useState<LandingConfig>(DEFAULT_LANDING_CONFIG);
+  const [activeSection, setActiveSection] = useState<string>('');
+  /** Estudio ya hecho por quien tiene la sesión abierta; null mientras no se sepa. */
+  const [studyStats, setStudyStats] = useState<{ lessons: number; certificates: number } | null>(null);
 
   useEffect(() => {
     loadLandingConfig();
   }, []);
+
+  // El saludo cuenta lecciones reales: sin sesión no hay nada que contar.
+  useEffect(() => {
+    if (!currentUser) {
+      setStudyStats(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getProgress()
+      .then((res) => {
+        if (cancelled) return;
+        setStudyStats({
+          lessons: Object.values(res.completedVideos || {}).filter(Boolean).length,
+          certificates: (res.certificates || []).filter((cert) => !cert.revokedAt).length,
+        });
+      })
+      .catch(() => {
+        /* el saludo se muestra igual, solo que sin la tarjeta de progreso */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   const loadLandingConfig = async () => {
     try {
@@ -179,17 +326,102 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
-  const categories = ['ALL', 'Mentoría Elite', 'Inteligencia Artificial', 'Desarrollo Web'];
+  /** Las píldoras salen del catálogo real, no de una lista escrita a mano. */
+  const categories = useMemo(() => {
+    const found = Array.from(new Set(courses.map((c) => c.category).filter(Boolean)));
+    return ['ALL', ...found];
+  }, [courses]);
 
-  // Filter courses by category and featured list
-  const featuredSet = new Set(landingConfig.featuredCourseIds || []);
-  const displayCourses = courses.filter((c) => {
-    if (selectedCategory !== 'ALL' && c.category !== selectedCategory) return false;
-    if (featuredSet.size > 0 && selectedCategory === 'ALL') {
-      return featuredSet.has(c.id) || courses.length <= 3;
-    }
-    return true;
-  });
+  const query = searchQuery.trim().toLowerCase();
+  /** Hay filtro puesto: la seccion deja de ser un escaparate y pasa a ser una busqueda. */
+  const isBrowsing = Boolean(query) || selectedCategory !== 'ALL';
+
+  /**
+   * Que ensena el catalogo.
+   *
+   * En reposo, solo los cursos marcados como destacados en el editor de
+   * portada: la portada es un escaparate, no el catalogo entero. En cuanto se
+   * escribe en el buscador o se pulsa una categoria, se recorre todo el
+   * catalogo, que es lo unico que hace util a esos dos controles.
+   *
+   * Si la lista de destacados esta vacia o quedo apuntando a cursos borrados,
+   * se ensenan los tres primeros en vez de dejar la seccion en blanco.
+   */
+  const displayCourses = useMemo(() => {
+    const featuredSet = new Set(landingConfig.featuredCourseIds || []);
+
+    const matching = courses.filter((course) => {
+      if (selectedCategory !== 'ALL' && course.category !== selectedCategory) return false;
+      if (!query) return true;
+      return `${course.title} ${course.description} ${course.category}`.toLowerCase().includes(query);
+    });
+
+    if (isBrowsing) return matching;
+    const featured = matching.filter((course) => featuredSet.has(course.id));
+    return featured.length > 0 ? featured : matching.slice(0, CATALOG_FALLBACK_SIZE);
+  }, [courses, landingConfig.featuredCourseIds, selectedCategory, query, isBrowsing]);
+
+  /**
+   * Estrenos: los cuatro publicados mas recientemente. La API entrega el
+   * catalogo de mas antiguo a mas nuevo, asi que se invierte antes de ordenar
+   * y el desempate de un curso sin fecha cae del lado del recien creado.
+   */
+  const newestCourses = useMemo(() => {
+    const publishedTime = (course: Course) =>
+      course.publishedAt ? Date.parse(course.publishedAt) || 0 : 0;
+    return [...courses].reverse().sort((a, b) => publishedTime(b) - publishedTime(a)).slice(0, 4);
+  }, [courses]);
+
+  const catalogTotals = useMemo(
+    () =>
+      courses.reduce(
+        (acc, course) => ({
+          modules: acc.modules + (course.modules?.length || 0),
+          lessons: acc.lessons + lessonCount(course),
+        }),
+        { modules: 0, lessons: 0 },
+      ),
+    [courses],
+  );
+
+  const showNewest = courses.length > 0;
+
+  /**
+   * Cuatro enlaces y no cinco: con el logo, el buscador y los dos botones de
+   * sesion, un quinto no cabia en los 1380px del contenedor y la barra se
+   * montaba sobre si misma. "Tendencias" se cae porque es la seccion que queda
+   * de paso al bajar desde el catalogo.
+   */
+  const navLinks: PublicNavLink[] = useMemo(
+    () => [
+      { id: 'cursos', label: 'Catálogo', href: '#cursos' },
+      { id: 'beneficios', label: 'Metodología', href: '#beneficios' },
+      { id: 'testimonios', label: 'Testimonios', href: '#testimonios' },
+      { id: 'planes', label: 'Planes', href: '#planes' },
+    ],
+    [],
+  );
+
+  // Subraya en la barra la sección que se está mirando.
+  useEffect(() => {
+    const sections = navLinks
+      .map((link) => document.getElementById(link.id))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible) setActiveSection(visible.target.id);
+      },
+      { rootMargin: '-80px 0px -55% 0px', threshold: 0 },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [navLinks]);
 
   const getIconComponent = (iconName: string) => {
     switch (iconName) {
@@ -213,6 +445,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         return Brain;
     }
   };
+
+  const appName = siteConfig.appName || 'DocentOS';
+  const firstName = (currentUser?.name || '').trim().split(/\s+/)[0] || '';
+  const communityUrl = landingConfig.discordUrl || landingConfig.githubUrl || 'https://github.com/giantucchi/docentos';
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://docentos.org';
   const pageTitle = `${landingConfig.heroTitle} | DocentOS Open Source LMS`;
@@ -266,7 +502,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#000000] text-slate-100 font-sans selection:bg-[#06b6d4] selection:text-black">
+    <div className="lp-root">
       <Helmet>
         {/* Basic Metadata */}
         <title>{pageTitle}</title>
@@ -294,388 +530,497 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <script type="application/ld+json">{JSON.stringify(orgSchema)}</script>
         <script type="application/ld+json">{JSON.stringify(coursesSchema)}</script>
       </Helmet>
-      
-      {/* 0. Promo Announcement Banner */}
-      {landingConfig.bannerEnabled && (
-        <div className="bg-gradient-to-r from-[#06b6d4] via-[#a855f7] to-[#06b6d4] text-black py-2 px-4 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-md">
-          <Megaphone className="w-4 h-4 text-black animate-pulse" />
-          <span>{landingConfig.bannerText}</span>
-          {landingConfig.bannerLinkText && (
-            <a
-              href={landingConfig.bannerLinkUrl || '#'}
-              className="underline font-black hover:text-white transition-colors ml-1"
-            >
-              {landingConfig.bannerLinkText} →
-            </a>
-          )}
-        </div>
-      )}
 
-      {/* 1. Thin Public Header */}
+      {/* 1. Barra de navegación */}
       <PublicNavbar
         onOpenAuth={onOpenAuth}
         currentUser={currentUser}
         onGoToApp={onGoToApp}
         onLogout={onLogout}
+        links={navLinks}
+        activeSection={activeSection}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
-      {/* 2. Dynamic Hero Section */}
-      <section className="relative pt-16 pb-20 px-4 sm:px-8 max-w-7xl mx-auto overflow-hidden">
-        {/* Background Glowing Orbs */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#06b6d4]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 right-10 w-80 h-80 bg-[#a855f7]/10 rounded-full blur-3xl pointer-events-none" />
+      <main className="lp-container" id="inicio">
+        {currentUser ? (
+          /* 2a. Sesión abierta: saludo por nombre y vuelta al estudio. */
+          <section className="lp-welcome">
+            <div className="lp-welcome-text">
+              <h1>
+                Bienvenido de vuelta, <span>{firstName || currentUser.name}</span> 👋
+              </h1>
+              <p>Continúa aprendiendo hoy para alcanzar tus objetivos profesionales.</p>
+            </div>
 
-        <div className="relative z-10 text-center max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#141420] border border-[#262626] text-[#06b6d4] text-xs font-bold shadow-xl">
-            <Sparkles className="w-4 h-4 text-[#06b6d4]" />
-            <span>DocentOS v{DOCENTOS_VERSION} • Open Source LMS</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            {landingConfig.heroTitle}
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-400 font-normal leading-relaxed">
-            {landingConfig.heroSubtitle}
-          </p>
-
-          {/* CTA Group */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-            <a
-              href={resolveLandingCta(landingConfig.heroCtaLink, '#cursos')}
-              className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black font-extrabold rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 text-xs"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>{landingConfig.heroCtaText || 'Explorar Catálogo'}</span>
-            </a>
-
-            <a
-              href={resolveLandingCta(landingConfig.heroSecondaryCtaLink, '#planes')}
-              className="w-full sm:w-auto px-7 py-3.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#06b6d4] text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-xs"
-            >
-              <Users className="w-4 h-4 text-[#06b6d4]" />
-              <span>{landingConfig.heroSecondaryCtaText || 'Solicitar Admisión VIP'}</span>
-            </a>
-          </div>
-
-          {/* Hero Media Preview Card */}
-          {landingConfig.heroMediaUrl && (
-            <div className="pt-8 max-w-4xl mx-auto">
-              <div className="rounded-2xl overflow-hidden border border-[#262626] shadow-2xl bg-[#0a0a0f] aspect-video relative group">
-                <img
-                  src={landingConfig.heroMediaUrl}
-                  alt="DocentOS Platform Preview"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-transparent to-transparent opacity-80" />
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-white">
-                  <span className="font-extrabold bg-black/80 px-3 py-1 rounded-lg border border-[#262626]">
-                    DocentOS AI Studio & Mentor Engine
-                  </span>
-                  <span className="text-[10px] text-[#06b6d4] font-mono font-bold bg-black/80 px-3 py-1 rounded-lg border border-[#262626]">
-                    v{DOCENTOS_VERSION}
+            {studyStats && (
+              <div className="lp-streak-card">
+                <div className="lp-streak-flame" aria-hidden>
+                  🔥
+                </div>
+                <div className="lp-streak-info">
+                  <span className="lp-streak-title">Tu progreso</span>
+                  <span className="lp-streak-val">
+                    {studyStats.lessons} {studyStats.lessons === 1 ? 'lección completada' : 'lecciones completadas'}
                   </span>
                 </div>
               </div>
+            )}
+          </section>
+        ) : (
+          /* 2b. Visitante: presentación de la plataforma. */
+          <section className="lp-hero">
+            <div className="lp-hero-content">
+              <span className="lp-hero-badge">
+                <Sparkles aria-hidden className="h-3.5 w-3.5" />
+                {appName} v{DOCENTOS_VERSION} • Open Source LMS
+              </span>
+
+              <h1 className="lp-hero-title">{landingConfig.heroTitle}</h1>
+              <p className="lp-hero-sub">{landingConfig.heroSubtitle}</p>
+
+              <div className="lp-hero-actions">
+                <a href={resolveLandingCta(landingConfig.heroCtaLink, '#cursos')} className="lp-btn-primary">
+                  <BookOpen aria-hidden className="h-4 w-4" />
+                  {landingConfig.heroCtaText || 'Explorar Catálogo'}
+                </a>
+                <a
+                  href={resolveLandingCta(landingConfig.heroSecondaryCtaLink, '#planes')}
+                  className="lp-btn-secondary"
+                >
+                  <Users aria-hidden className="h-4 w-4" />
+                  {landingConfig.heroSecondaryCtaText || 'Solicitar Admisión VIP'}
+                </a>
+              </div>
+
+              {courses.length > 0 && (
+                <div className="lp-hero-stats">
+                  <div className="lp-hero-stat">
+                    <strong>{courses.length}</strong>
+                    <span>{courses.length === 1 ? 'Programa' : 'Programas'}</span>
+                  </div>
+                  <div className="lp-hero-stat">
+                    <strong>{catalogTotals.modules}</strong>
+                    <span>Módulos</span>
+                  </div>
+                  <div className="lp-hero-stat">
+                    <strong>{catalogTotals.lessons}</strong>
+                    <span>Lecciones</span>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
+        )}
 
-      {/* 3. Featured Course Catalog Section */}
-      <section id="cursos" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto border-t border-[#262626]">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-[10px] font-bold text-[#06b6d4] uppercase tracking-widest block mb-1">
-            Programas Académicos Destacados
-          </span>
-          <h2 className="text-3xl font-extrabold text-white">Catálogo de Cursos & Mentorías</h2>
-          <p className="text-xs text-slate-400 mt-2">
-            Explora la estructura modular, clases en video y metodologías personalizadas de la plataforma.
-          </p>
-
-          {/* Category Filter Pills */}
-          <div className="flex flex-wrap justify-center gap-2 mt-6">
+        {/* 3. Píldoras de categoría */}
+        {categories.length > 1 && (
+          <div className="lp-pills">
             {categories.map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  selectedCategory === cat
-                    ? 'bg-[#06b6d4] text-black shadow-md'
-                    : 'bg-[#141420] text-slate-400 hover:text-white border border-[#262626]'
-                }`}
+                className={`lp-pill${selectedCategory === cat ? ' is-active' : ''}`}
               >
-                {cat === 'ALL' ? 'Todos los Programas' : cat}
+                <span className="lp-pill-emoji" aria-hidden>
+                  {cat === 'ALL' ? '✨' : categoryEmoji(cat)}
+                </span>
+                {cat === 'ALL' ? 'Destacados' : cat}
               </button>
             ))}
           </div>
-        </div>
+        )}
 
-        {/* Courses Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayCourses.map((course) => {
-            const moduleCount = course.modules?.length || 0;
-            const videoCount = course.modules?.reduce((acc, m) => acc + (m.videos?.length || 0), 0) || 0;
+        {/* 4. Catálogo */}
+        <section className="lp-section" id="cursos">
+          <div className="lp-section-header">
+            <div className="lp-section-title-wrap">
+              <div className="lp-section-indicator" />
+              <div>
+                <h2 className="lp-section-title">
+                  {isBrowsing ? 'Catálogo de cursos y mentorías' : 'Programas destacados'}
+                </h2>
+                <p className="lp-section-sub">
+                  {isBrowsing
+                    ? 'Estructura modular, clases en video y acompañamiento de mentores en cada programa.'
+                    : 'Una selección de la casa. Filtra por categoría o busca arriba para recorrer todo el catálogo.'}
+                </p>
+              </div>
+            </div>
 
-            return (
-              <div
-                key={course.id}
-                className="bg-[#0a0a0f] border border-[#262626] rounded-2xl overflow-hidden hover:border-[#06b6d4] transition-all group flex flex-col justify-between"
-              >
+            <a href="#planes" className="lp-see-all">
+              Ver formas de acceso
+              <ChevronRight aria-hidden className="h-4 w-4" />
+            </a>
+          </div>
+
+          {displayCourses.length === 0 ? (
+            <p className="lp-empty">
+              {query
+                ? `No encontramos cursos que coincidan con “${searchQuery.trim()}”.`
+                : 'Todavía no hay cursos publicados en esta categoría.'}
+            </p>
+          ) : (
+            <div className="lp-courses-grid">
+              {displayCourses.map((course) => (
+                <CourseCard key={course.id} course={course} onExplore={onExploreCourse} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* 5. Estrenos del catálogo */}
+        {showNewest && (
+          <section className="lp-section" id="estrenos">
+            <div className="lp-section-header">
+              <div className="lp-section-title-wrap">
+                <div className="lp-section-indicator is-gold" />
                 <div>
-                  {/* Cover Image & Category Badge */}
-                  <div className="relative h-48 overflow-hidden bg-[#141420]">
-                    <img
-                      src={course.coverImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'}
-                      alt={course.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent" />
-                    
-                    <span className="absolute top-3 left-3 bg-[#0a0a0f]/90 border border-[#262626] text-[#06b6d4] text-[10px] font-extrabold px-2.5 py-1 rounded-lg backdrop-blur-md">
-                      {course.category}
-                    </span>
+                  <h2 className="lp-section-title">Nuevos cursos</h2>
+                  <p className="lp-section-sub">Lo último que se ha publicado en la plataforma.</p>
+                </div>
+              </div>
 
-                    <span className="absolute top-3 right-3 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] text-black text-xs font-black px-2.5 py-1 rounded-lg shadow-md">
-                      ${course.price} USD
-                    </span>
-                  </div>
+              <a href="#cursos" className="lp-see-all">
+                Ver todos los estrenos
+                <ChevronRight aria-hidden className="h-4 w-4" />
+              </a>
+            </div>
 
-                  {/* Course Details */}
-                  <div className="p-5 space-y-3">
-                    <h3 className="font-extrabold text-base text-white group-hover:text-[#06b6d4] transition-colors line-clamp-2">
-                      {course.title}
-                    </h3>
+            <div className="lp-courses-grid">
+              {newestCourses.map((course) => (
+                <CourseCard key={course.id} course={course} onExplore={onExploreCourse} />
+              ))}
+            </div>
+          </section>
+        )}
 
-                    <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
-                      {course.description}
-                    </p>
+        {/* 6. Pilares de metodología */}
+        <section className="lp-section" id="beneficios">
+          <div className="lp-section-header">
+            <div className="lp-section-title-wrap">
+              <div className="lp-section-indicator" />
+              <div>
+                <h2 className="lp-section-title">Pilares de metodología y tecnología</h2>
+                <p className="lp-section-sub">
+                  Las piezas del motor que sostienen la retención y la aplicación de lo aprendido.
+                </p>
+              </div>
+            </div>
+          </div>
 
-                    {/* Modules & Videos Summary */}
-                    <div className="flex items-center gap-4 text-[11px] font-mono text-slate-400 pt-2 border-t border-[#262626]">
-                      <span className="flex items-center gap-1">
-                        <Layers className="w-3.5 h-3.5 text-[#06b6d4]" /> {moduleCount} Módulos
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <PlayCircle className="w-3.5 h-3.5 text-[#a855f7]" /> {videoCount} Lecciones
-                      </span>
+          <div className="lp-benefits-grid">
+            {landingConfig.benefits.map((benefit, idx) => {
+              const IconComp = getIconComponent(benefit.icon);
+              return (
+                <article key={benefit.id || idx} className="lp-benefit-card">
+                  <span className="lp-benefit-num" aria-hidden>
+                    0{idx + 1}
+                  </span>
+                  <span className="lp-benefit-icon">
+                    <IconComp aria-hidden className="h-5 w-5" />
+                  </span>
+                  <h3 className="lp-benefit-title">{benefit.title}</h3>
+                  <p className="lp-benefit-desc">{benefit.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 7. Testimonios */}
+        <section className="lp-section" id="testimonios">
+          <div className="lp-section-header">
+            <div className="lp-section-title-wrap">
+              <div className="lp-section-indicator is-violet" />
+              <div>
+                <h2 className="lp-section-title">Lo que opinan nuestros mentees</h2>
+                <p className="lp-section-sub">Experiencias de profesionales que ya estudian en la plataforma.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="lp-testimonials-grid">
+            {landingConfig.testimonials.map((testimonial) => (
+              <article key={testimonial.id} className="lp-testimonial">
+                <div className="lp-testimonial-head">
+                  <div className="lp-testimonial-person">
+                    {testimonial.avatarUrl && (
+                      <img className="lp-testimonial-avatar" src={testimonial.avatarUrl} alt="" loading="lazy" />
+                    )}
+                    <div>
+                      <h4 className="lp-testimonial-name">{testimonial.name}</h4>
+                      <span className="lp-testimonial-role">{testimonial.role}</span>
                     </div>
                   </div>
-                </div>
 
-                {/* Card Action Footer */}
-                <div className="p-5 pt-0">
-                  <button
-                    onClick={() => onExploreCourse(course)}
-                    className="w-full py-2.5 bg-[#141420] hover:bg-gradient-to-r hover:from-[#06b6d4] hover:to-[#a855f7] hover:text-black border border-[#262626] text-white text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>Ver Programa Completo</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 4. Benefits & Methodology Section */}
-      <section id="beneficios" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto border-t border-[#262626] bg-[#0a0a0f]">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-[10px] font-bold text-[#06b6d4] uppercase tracking-widest block mb-1">
-            Innovación Educativa
-          </span>
-          <h2 className="text-3xl font-extrabold text-white">Pilares de Metodología & Tecnología</h2>
-          <p className="text-xs text-slate-400 mt-2">
-            Garantizamos la máxima retención y aplicación de conocimientos a través de herramientas de vanguardia.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {landingConfig.benefits.map((b, idx) => {
-            const IconComp = getIconComponent(b.icon);
-            return (
-              <div key={b.id || idx} className="bg-[#000000] border border-[#262626] p-6 rounded-2xl relative hover:border-[#06b6d4]/50 transition-all">
-                <span className="text-3xl font-black text-slate-800 font-mono absolute top-4 right-4">
-                  0{idx + 1}
-                </span>
-                <div className="w-10 h-10 rounded-xl bg-[#141420] border border-[#262626] flex items-center justify-center text-[#06b6d4] mb-4">
-                  <IconComp className="w-5 h-5" />
-                </div>
-                <h3 className="font-extrabold text-sm text-white mb-2">{b.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{b.description}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 5. Testimonials Section */}
-      <section id="testimonios" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto border-t border-[#262626]">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-[10px] font-bold text-[#a855f7] uppercase tracking-widest block mb-1">
-            Comunidad & Testimonios
-          </span>
-          <h2 className="text-3xl font-extrabold text-white">Lo que opinan nuestros Mentees</h2>
-          <p className="text-xs text-slate-400 mt-2">
-            Experiencias reales de profesionales transformando su carrera con DocentOS.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {landingConfig.testimonials.map((t) => (
-            <div key={t.id} className="bg-[#0a0a0f] border border-[#262626] p-6 rounded-2xl space-y-4 hover:border-[#a855f7]/50 transition-all">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={t.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                    alt={t.name}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-[#262626]"
-                  />
-                  <div>
-                    <h4 className="text-xs font-bold text-white">{t.name}</h4>
-                    <span className="text-[10px] text-[#06b6d4] font-semibold">{t.role}</span>
+                  <div className="lp-stars" aria-label={`${testimonial.rating || 5} de 5`}>
+                    {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
+                      <Star key={i} aria-hidden className="h-3.5 w-3.5" fill="currentColor" />
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 text-[#eab308]">
-                  {[...Array(t.rating || 5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-[#eab308]" />
-                  ))}
-                </div>
-              </div>
+                <p className="lp-testimonial-text">“{testimonial.comment}”</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-              <p className="text-xs text-slate-300 leading-relaxed italic">
-                "{t.comment}"
-              </p>
+        {/* 8. Planes de acceso */}
+        <section className="lp-section" id="planes">
+          <div className="lp-section-header">
+            <div className="lp-section-title-wrap">
+              <div className="lp-section-indicator" />
+              <div>
+                <h2 className="lp-section-title">Membresías y tiers de admisión</h2>
+                <p className="lp-section-sub">Elige el formato de acceso que mejor se adapte a tus metas.</p>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      {/* 6. Pricing & Admission Tiers */}
-      <section id="planes" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto border-t border-[#262626]">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-[10px] font-bold text-[#06b6d4] uppercase tracking-widest block mb-1">
-            Planes de Acceso
-          </span>
-          <h2 className="text-3xl font-extrabold text-white">Membresías & Tiers de Admisión</h2>
-          <p className="text-xs text-slate-400 mt-2">
-            Elige el formato de acceso que mejor se adapte a tus metas profesionales.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Tier 1: Public User */}
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 flex flex-col justify-between">
-            <div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Público General
+          <div className="lp-plans-grid">
+            <article className="lp-plan">
+              <span className="lp-plan-kicker">
+                <GraduationCap aria-hidden className="h-3.5 w-3.5" />
+                Público general
+              </span>
+              <div className="lp-plan-price">
+                $149 <small>/ curso</small>
               </div>
-              <div className="text-3xl font-black text-white mb-4">
-                $149 <span className="text-xs font-normal text-slate-500">/ curso</span>
-              </div>
-              <p className="text-xs text-slate-400 mb-6">
+              <p className="lp-plan-desc">
                 Para estudiantes individuales que desean adquirir programas específicos.
               </p>
-              <ul className="space-y-3 text-xs text-slate-300">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Acceso al curso seleccionado
+              <ul className="lp-plan-list">
+                <li>
+                  <CheckCircle2 aria-hidden /> Acceso al curso seleccionado
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Reproductor Google Drive
+                <li>
+                  <CheckCircle2 aria-hidden /> Reproductor con Google Drive
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Comentarios de clase
+                <li>
+                  <CheckCircle2 aria-hidden /> Comentarios de clase
                 </li>
               </ul>
-            </div>
-            <button
-              onClick={() => onOpenAuth('register')}
-              className="w-full mt-8 py-3 bg-[#141420] hover:bg-[#1f1f33] border border-[#262626] text-white font-bold rounded-xl text-xs transition-all"
-            >
-              Registrarse como Público
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
+                className="lp-btn-secondary lp-btn-block lp-plan-cta"
+              >
+                {currentUser ? 'Ir a mi panel' : 'Registrarme como público'}
+              </button>
+            </article>
 
-          {/* Tier 2: Mentee VIP (Featured) */}
-          <div className="bg-gradient-to-b from-[#141420] to-[#0a0a0f] border-2 border-[#06b6d4] rounded-2xl p-6 relative flex flex-col justify-between shadow-2xl shadow-[#06b6d4]/10">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] text-black text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider">
-              Recomendado
-            </span>
-            <div>
-              <div className="text-xs font-extrabold text-[#06b6d4] uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> Mentee VIP
+            <article className="lp-plan is-featured">
+              <span className="lp-plan-flag">Recomendado</span>
+              <span className="lp-plan-kicker is-cyan">
+                <Crown aria-hidden className="h-3.5 w-3.5" />
+                Mentee VIP
+              </span>
+              <div className="lp-plan-price">
+                Pase total <small className="is-accent">Bypass activo</small>
               </div>
-              <div className="text-3xl font-black text-white mb-4">
-                Pase Total <span className="text-xs font-normal text-emerald-400 font-bold">Bypass Activo</span>
-              </div>
-              <p className="text-xs text-slate-300 mb-6">
+              <p className="lp-plan-desc">
                 Acceso ilimitado e inmediato a todos los cursos y mentorías del catálogo.
               </p>
-              <ul className="space-y-3 text-xs text-slate-200">
-                <li className="flex items-center gap-2 font-semibold">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Todos los programas sin Muro de Pago
+              <ul className="lp-plan-list">
+                <li>
+                  <CheckCircle2 aria-hidden /> Todos los programas sin muro de pago
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Tutoría prioritaria con Mentores
+                <li>
+                  <CheckCircle2 aria-hidden /> Tutoría prioritaria con mentores
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Guías de Voz IA de Mentor
+                <li>
+                  <CheckCircle2 aria-hidden /> Guías de voz con IA
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" /> Certificados Oficiales PDF
+                <li>
+                  <CheckCircle2 aria-hidden /> Certificados oficiales en PDF
                 </li>
               </ul>
+              <button
+                type="button"
+                onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
+                className="lp-btn-primary lp-btn-block lp-plan-cta"
+              >
+                {currentUser ? 'Gestionar mi acceso' : 'Obtener pase VIP'}
+              </button>
+            </article>
+
+            <article className="lp-plan is-mentor">
+              <span className="lp-plan-kicker is-violet">
+                <Users aria-hidden className="h-3.5 w-3.5" />
+                Membresía mentor
+              </span>
+              <div className="lp-plan-price">
+                Docente <small>/ institucional</small>
+              </div>
+              <p className="lp-plan-desc">
+                Para instructores que desean publicar programas y acompañar a sus mentees.
+              </p>
+              <ul className="lp-plan-list">
+                <li>
+                  <CheckCircle2 aria-hidden /> Panel del mentor
+                </li>
+                <li>
+                  <CheckCircle2 aria-hidden /> Creación y edición de cursos
+                </li>
+                <li>
+                  <CheckCircle2 aria-hidden /> Seguimiento de mentees asignados
+                </li>
+                <li>
+                  <CheckCircle2 aria-hidden /> Centro de consultas Q&amp;A
+                </li>
+              </ul>
+              <button
+                type="button"
+                onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
+                className="lp-btn-secondary lp-btn-block lp-plan-cta"
+              >
+                {currentUser ? 'Ir a mi panel' : 'Postular como mentor'}
+              </button>
+            </article>
+          </div>
+        </section>
+
+        {/* 9. Cierre */}
+        <section className="lp-promo-section">
+          <div className="lp-promo-banner">
+            <div className="lp-promo-content">
+              <span className="lp-promo-badge">
+                <Rocket aria-hidden className="h-3.5 w-3.5" />
+                Código abierto
+              </span>
+
+              <h2 className="lp-promo-title">{appName}</h2>
+
+              <div className="lp-promo-meta">
+                <span>
+                  <Sparkles aria-hidden className="h-4 w-4" />v{DOCENTOS_VERSION}
+                </span>
+                <span>•</span>
+                <span>{landingConfig.footerText || siteConfig.authorCredit}</span>
+              </div>
+
+              <p className="lp-promo-desc">
+                {currentUser
+                  ? 'Tu sesión ya está abierta: vuelve a tus clases, retoma la lección donde la dejaste y sigue avanzando con tus mentores.'
+                  : 'Un motor de aprendizaje autoalojable, modular y con IA nativa. Crea tu cuenta y empieza hoy con las clases, las guías de voz y la mentoría de la plataforma.'}
+              </p>
+
+              <div className="lp-promo-actions">
+                {currentUser ? (
+                  <>
+                    <button type="button" onClick={onGoToApp} className="lp-btn-primary">
+                      <Zap aria-hidden className="h-4 w-4" />
+                      Ir a mi panel
+                    </button>
+                    <a href="#cursos" className="lp-btn-secondary">
+                      Explorar el catálogo
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => onOpenAuth('register')} className="lp-btn-primary">
+                      <Zap aria-hidden className="h-4 w-4" />
+                      {t('nav.register') || 'Crear mi cuenta'}
+                    </button>
+                    <button type="button" onClick={() => onOpenAuth('login')} className="lp-btn-secondary">
+                      {t('nav.login') || 'Iniciar sesión'}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => onOpenAuth('register')}
-              className="w-full mt-8 py-3 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black font-extrabold rounded-xl text-xs shadow-lg transition-all"
-            >
-              Obtener Pase VIP
-            </button>
+          </div>
+        </section>
+      </main>
+
+      {/* 10. Pie */}
+      <footer className="lp-footer">
+        <div className="lp-container">
+          <div className="lp-footer-grid">
+            <div className="lp-footer-left">
+              <span className="lp-logo" style={{ fontSize: '1.1rem' }}>
+                <span className="lp-logo-badge" style={{ width: 30, height: 30 }}>
+                  <span className="lp-logo-badge-inner" style={{ fontSize: '0.85rem' }}>
+                    <span>{siteConfig.logoInitial || appName.charAt(0)}</span>
+                  </span>
+                </span>
+                <span className="lp-logo-text">
+                  {appName}
+                  <span>.</span>
+                </span>
+              </span>
+              <p className="lp-footer-motto">{siteConfig.appTagline}</p>
+            </div>
+
+            <ul className="lp-footer-links">
+              <li>
+                <a href="#cursos">Catálogo</a>
+              </li>
+              <li>
+                <a href="#planes">Planes</a>
+              </li>
+              {landingConfig.githubUrl && (
+                <li>
+                  <a href={landingConfig.githubUrl} target="_blank" rel="noopener noreferrer">
+                    <Github aria-hidden className="h-4 w-4" />
+                    GitHub
+                  </a>
+                </li>
+              )}
+              {landingConfig.discordUrl && (
+                <li>
+                  <a href={landingConfig.discordUrl} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle aria-hidden className="h-4 w-4" />
+                    Comunidad
+                  </a>
+                </li>
+              )}
+              {landingConfig.twitterUrl && (
+                <li>
+                  <a href={landingConfig.twitterUrl} target="_blank" rel="noopener noreferrer">
+                    <Twitter aria-hidden className="h-4 w-4" />
+                    Twitter
+                  </a>
+                </li>
+              )}
+              {landingConfig.linkedinUrl && (
+                <li>
+                  <a href={landingConfig.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                    <Linkedin aria-hidden className="h-4 w-4" />
+                    LinkedIn
+                  </a>
+                </li>
+              )}
+            </ul>
           </div>
 
-          {/* Tier 3: Mentor Tutor */}
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 flex flex-col justify-between">
-            <div>
-              <div className="text-xs font-bold text-[#a855f7] uppercase tracking-wider mb-2">
-                Membresía Mentor
-              </div>
-              <div className="text-3xl font-black text-white mb-4">
-                Docente <span className="text-xs font-normal text-slate-500">/ Institucional</span>
-              </div>
-              <p className="text-xs text-slate-400 mb-6">
-                Para instructores y mentores que desean publicar programas y gestionar mentees.
-              </p>
-              <ul className="space-y-3 text-xs text-slate-300">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#a855f7]" /> Panel del Mentor (`MentorDashboard`)
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#a855f7]" /> Creación y edición de Cursos
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#a855f7]" /> Seguimiento de Mentees asignados
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#a855f7]" /> Centro de Consultas Q&A
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={() => onOpenAuth('register')}
-              className="w-full mt-8 py-3 bg-[#141420] hover:bg-[#1f1f33] border border-[#262626] text-white font-bold rounded-xl text-xs transition-all"
-            >
-              Postular como Mentor
-            </button>
+          <div className="lp-footer-bottom">
+            <span>
+              © {new Date().getFullYear()} {appName}. Todos los derechos reservados.
+            </span>
+            <span>·</span>
+            <span className="lp-footer-version">
+              <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />v{DOCENTOS_VERSION}
+            </span>
           </div>
         </div>
-      </section>
+      </footer>
 
-      {/* 7. Public Footer */}
-      <Footer githubUrl={landingConfig.githubUrl} />
-
+      {/* 11. Acceso rápido a la comunidad */}
+      <a
+        href={communityUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="lp-support"
+        aria-label="Abrir la comunidad de soporte"
+      >
+        <span className="lp-support-tooltip">💬 ¿Tienes dudas? Escríbenos</span>
+        <MessageCircle aria-hidden />
+      </a>
     </div>
   );
 };

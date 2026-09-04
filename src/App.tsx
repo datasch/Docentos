@@ -431,7 +431,10 @@ export default function App() {
       {/* Footer */}
       {/* El pie cierra la pagina, asi que comparte su fondo. Pintarlo de
           #0a0a0f lo dejaba mas claro que el suelo #050505 y se leia como una
-          banda encendida al final en vez de como un remate. */}
+          banda encendida al final en vez de como un remate.
+          La portada trae el suyo propio, en su propio sistema visual: sin este
+          filtro salian dos pies seguidos al final de `/`. */}
+      {activeTab !== 'landing' && (
       <footer className="border-t border-line px-4 py-6 sm:px-6">
         <div className="mx-auto flex w-full max-w-[1800px] flex-col items-center gap-3 text-meta text-ink-muted md:flex-row md:justify-between">
           <div className="flex flex-col items-center gap-2 md:flex-row">
@@ -466,6 +469,7 @@ export default function App() {
           </span>
         </div>
       </footer>
+      )}
 
       {/* Onboarding Assistant Ian Tour */}
       {showTour && currentUser && activeTab !== 'landing' && (

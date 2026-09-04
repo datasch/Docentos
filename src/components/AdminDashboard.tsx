@@ -1357,6 +1357,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         <PluginManagerView />
       )}
 
+      {/* TAB: EDITOR DE PORTADA. La pestaña existia y el editor estaba
+          importado, pero nadie lo pintaba: pulsar "Portada" dejaba la pagina en
+          blanco por debajo de las pestañas. */}
+      {activeTab === 'landing' && (
+        <LandingPageEditor onSaved={onRefreshData} />
+      )}
+
       {/* TAB: MATRÍCULAS (ENROLLMENTS) */}
       {activeTab === 'enrollments' && (
         <div className="space-y-6 animate-fade-in">
