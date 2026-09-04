@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, CheckCircle2, ChevronRight, Download, Lock, Play } from 'lucide-react';
+import { Check, ChevronDown, Circle, Download, Lock, Play } from 'lucide-react';
 import { Course, User } from '../../types';
 import { pluginManager } from '../../plugins/PluginManager';
 import { ProgressMeter } from './ProgressMeter';
-import { moduleHue } from './hues';
 
 interface SyllabusTreeProps {
   course: Course;
@@ -158,9 +157,8 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
         </p>
       </div>
 
-      <div role="tree" aria-label="Temario del curso" className="flex flex-col p-2">
+      <div role="tree" aria-label="Temario del curso" className="flex flex-col gap-2 p-3">
         {course.modules.map((module, mIdx) => {
-          const hue = moduleHue(mIdx);
           const isUnlocked = unlocked[mIdx];
           const isOpen = Boolean(expanded[mIdx]) && isUnlocked;
           const isCurrentModule = mIdx === activeModuleIndex;
@@ -182,59 +180,65 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
               tabIndex={tabbableKey === moduleKey ? 0 : -1}
               onFocus={() => setFocusKey(moduleKey)}
               onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
-              style={{ '--hue': hue } as React.CSSProperties}
-              className={`overflow-hidden rounded-xl transition-colors ${isOpen ? 'bg-raised' : ''}`}
+              className={`overflow-hidden rounded-xl border transition-colors ${
+                isCurrentModule ? 'border-brand-cyan/40 bg-raised' : 'border-line bg-raised'
+              } ${isUnlocked ? '' : 'bg-surface'}`}
             >
               <div
                 onClick={() => {
                   if (!isUnlocked) return;
                   toggleModule(mIdx);
                 }}
-                className={`flex w-full items-start gap-2.5 rounded-xl p-3 text-left transition-colors ${
-                  isUnlocked ? 'cursor-pointer hover:bg-raised' : 'cursor-not-allowed'
+                className={`flex w-full items-center gap-3 p-3.5 text-left transition-colors ${
+                  isUnlocked ? 'cursor-pointer hover:bg-line/40' : 'cursor-not-allowed'
                 }`}
               >
-                <ChevronRight
-                  aria-hidden
-                  className={`mt-0.5 h-4 w-4 shrink-0 transition-transform duration-200 ${
-                    isUnlocked ? 'text-ink-muted' : 'text-ink-faint'
-                  } ${isOpen ? 'rotate-90' : ''}`}
-                />
+                {/* Estado del módulo a la izquierda, como en la referencia: se
+                    lee antes que el título y sin recurrir a un color por módulo. */}
+                {!isUnlocked ? (
+                  <Lock aria-hidden className="h-4 w-4 shrink-0 text-ink-faint" />
+                ) : isComplete ? (
+                  <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" strokeWidth={2.5} />
+                ) : (
+                  <Circle aria-hidden className="h-4 w-4 shrink-0 text-ink-faint" />
+                )}
 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span
-                      className={`text-micro font-semibold ${isUnlocked ? 'text-(--hue)' : 'text-ink-faint'}`}
+                      className={`min-w-0 truncate text-section font-semibold ${
+                        isUnlocked ? 'text-ink' : 'text-ink-faint'
+                      }`}
                     >
-                      Módulo {String(mIdx + 1).padStart(2, '0')}
+                      {module.title}
                     </span>
-                    {!isUnlocked && <Lock aria-hidden className="h-3 w-3 text-ink-faint" />}
-                    {isUnlocked && isComplete && (
-                      <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-(--hue)" />
+                    {!isUnlocked && (
+                      <span className="shrink-0 rounded border border-brand-yellow/30 bg-brand-yellow/10 px-1.5 py-0.5 text-micro font-medium text-brand-yellow">
+                        Bloqueado
+                      </span>
                     )}
-                  </span>
-
-                  <span
-                    className={`mt-0.5 block text-section font-semibold ${
-                      isUnlocked ? 'text-ink' : 'text-ink-faint'
-                    }`}
-                  >
-                    {module.title}
                   </span>
 
                   {isUnlocked ? (
                     <span className="mt-2 flex items-center gap-2.5">
-                      <ProgressMeter value={pct} tone="hue" label={`Progreso de ${module.title}`} className="flex-1" />
+                      <ProgressMeter value={pct} tone="accent" label={`Progreso de ${module.title}`} className="flex-1" />
                       <span className="shrink-0 text-micro text-ink-muted tabular-nums">
                         {done}/{total}
                       </span>
                     </span>
                   ) : (
-                    <span className="mt-1.5 block text-micro leading-snug text-ink-faint">
+                    <span className="mt-1 block text-micro leading-snug text-ink-faint">
                       Aprueba el examen del módulo anterior con 80 % para abrirlo.
                     </span>
                   )}
                 </span>
+
+                <ChevronDown
+                  aria-hidden
+                  className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                    isUnlocked ? 'text-ink-muted' : 'text-ink-faint'
+                  } ${isOpen ? 'rotate-180' : ''}`}
+                />
               </div>
 
               <div className="accordion-shell" data-open={isOpen}>
@@ -255,7 +259,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <span
                               aria-hidden
                               className={`absolute top-[calc(50%+10px)] left-[1.125rem] h-[calc(100%-20px)] w-0.5 -translate-x-1/2 rounded-full ${
-                                isDone ? 'bg-(--hue)/40' : 'bg-line'
+                                isDone ? 'bg-brand-cyan/40' : 'bg-line'
                               }`}
                             />
                           )}
@@ -298,7 +302,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             >
                               <span
                                 className={`flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
-                                  isDone || isCurrent ? 'bg-(--hue)' : 'border border-line hover:border-(--hue)'
+                                  isDone || isCurrent ? 'bg-brand-cyan' : 'border border-line hover:border-brand-cyan'
                                 }`}
                               >
                                 {isDone && <Check aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3.5} />}
@@ -311,7 +315,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <span
                               className={`min-w-0 flex-1 truncate text-row ${
                                 isCurrent
-                                  ? 'font-medium text-(--hue)'
+                                  ? 'font-medium text-brand-cyan'
                                   : isDone
                                     ? 'text-ink-muted'
                                     : 'text-ink-soft'
@@ -344,7 +348,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-surface hover:text-ink"
                           >
-                            <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-(--hue)" />
+                            <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-cyan" />
                             <span className="min-w-0 flex-1 truncate">{res.title}</span>
                             <span className="shrink-0 text-micro text-ink-faint">{res.kind}</span>
                           </a>

@@ -7,10 +7,11 @@ interface ProgressMeterProps {
   label: string;
   /**
    * 'spectrum' descubre el gradiente de marca completo conforme se avanza y se
-   * reserva al progreso del curso. 'hue' pinta el tono del modulo y se usa en
-   * las barras de cada modulo, para no repetir seis veces el mismo gesto.
+   * reserva al progreso del curso, que es la unica pista lo bastante ancha para
+   * que las seis paradas se distingan. 'accent' pinta un cian plano y es lo que
+   * usan las barras de cada modulo.
    */
-  tone?: 'spectrum' | 'hue';
+  tone?: 'spectrum' | 'accent';
   className?: string;
 }
 
@@ -41,7 +42,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
     >
       <div
         className={`absolute inset-0 transition-[clip-path] duration-500 ease-out ${
-          tone === 'spectrum' ? 'bg-brand-gradient' : 'bg-(--hue)'
+          tone === 'spectrum' ? 'bg-brand-gradient' : 'bg-brand-cyan'
         }`}
         style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}
       />
