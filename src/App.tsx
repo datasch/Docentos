@@ -380,37 +380,41 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#0a0a0f] border-t border-[#2d2d44] py-6 px-4 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col md:flex-row items-center gap-2 font-bold text-slate-200">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-lg bg-brand-gradient text-white font-black text-[10px] flex items-center justify-center shadow-sm">
-                {siteConfig.logoInitial}
-              </div>
-              <span className="text-white uppercase">{siteConfig.appName}</span>
-              <span className="text-slate-500 font-normal">© {new Date().getFullYear()}</span>
-            </div>
-            <span className="text-[11px] text-slate-500 font-normal hidden md:inline">
-              • {siteConfig.authorCredit}
+      {/* El pie cierra la pagina, asi que comparte su fondo. Pintarlo de
+          #0a0a0f lo dejaba mas claro que el suelo #050505 y se leia como una
+          banda encendida al final en vez de como un remate. */}
+      <footer className="border-t border-line px-4 py-6 sm:px-6">
+        <div className="mx-auto flex w-full max-w-[1800px] flex-col items-center gap-3 text-meta text-ink-muted md:flex-row md:justify-between">
+          <div className="flex flex-col items-center gap-2 md:flex-row">
+            <span className="flex items-center gap-2">
+              <span className="bg-brand-gradient flex h-5 w-5 shrink-0 items-center justify-center rounded-md p-px">
+                <span className="flex h-full w-full items-center justify-center rounded-[5px] bg-canvas">
+                  <span className="bg-gradient-to-r from-brand-cyan to-brand-purple bg-clip-text text-micro font-black text-transparent">
+                    {siteConfig.logoInitial}
+                  </span>
+                </span>
+              </span>
+              <span className="text-ink">{siteConfig.appName}</span>
+              <span>© {new Date().getFullYear()}</span>
             </span>
+            <span className="hidden md:inline">· {siteConfig.authorCredit}</span>
           </div>
 
           {/* White-Label Credit */}
-          <div className="flex items-center gap-2">
-            <a
-              href={siteConfig.poweredByLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 hover:text-white transition-all text-[11px] font-medium group shadow-sm"
-            >
-              <span>{siteConfig.poweredByText}</span>
-              <ExternalLink className="w-3 h-3 text-[#06b6d4] group-hover:scale-110 transition-transform" />
-            </a>
-          </div>
+          <a
+            href={siteConfig.poweredByLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
+          >
+            {siteConfig.poweredByText}
+            <ExternalLink aria-hidden className="h-3 w-3" />
+          </a>
 
-          <div className="flex items-center gap-2 text-[10px] text-[#06b6d4]">
-            <CheckCircle2 className="w-3.5 h-3.5" /> {siteConfig.appName} v{DOCENTOS_VERSION} · {releaseChannelLabel}
-          </div>
+          <span className="flex items-center gap-1.5 tabular-nums">
+            <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-brand-violet" />
+            v{DOCENTOS_VERSION} · {releaseChannelLabel}
+          </span>
         </div>
       </footer>
 
