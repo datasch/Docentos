@@ -246,25 +246,23 @@ export default function App() {
         {activeTab === 'courses' && currentUser && (
           <div>
             {!hasAccess && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-                <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3 shadow-xl">
+              <div className="mx-auto w-full max-w-[1800px] px-4 pt-6 lg:px-6">
+                <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center shrink-0 shadow-md">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
+                    <Sparkles aria-hidden className="h-5 w-5 shrink-0 text-brand-cyan" />
                     <div>
-                      <h4 className="text-sm font-bold text-white">Muro de Pago Activo (Usuario Externo)</h4>
-                      <p className="text-xs text-slate-400">
-                        Paga el curso o activa tu Pase VIP para desbloquear las clases y mentorías.
+                      <h2 className="text-section font-semibold text-ink">Estás viendo una vista previa</h2>
+                      <p className="mt-0.5 text-meta text-ink-muted">
+                        Las clases y la mentoría se abren al activar tu acceso.
                       </p>
                     </div>
                   </div>
 
                   <button
                     onClick={() => setShowPaywallModal(true)}
-                    className="btn-brand-primary px-4 py-2 text-xs font-extrabold shrink-0"
+                    className="btn-brand-primary shrink-0 px-4 py-2.5 text-meta"
                   >
-                    Activar Pase VIP / Comprar Acceso
+                    Activar acceso
                   </button>
                 </div>
               </div>
