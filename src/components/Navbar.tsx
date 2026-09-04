@@ -81,12 +81,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex shrink-0 items-center gap-2.5"
             onClick={() => setActiveTab('landing')}
           >
-            <span className="bg-brand-gradient flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl">
-              {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-lg font-semibold tracking-tight text-ink">{siteConfig.logoInitial}</span>
-              )}
+            {/* La misma marca que la cabecera publica: anillo de gradiente,
+                nucleo oscuro y la inicial recortada sobre cian-morado. La
+                version anterior rellenaba los 36px con el gradiente entero y
+                ponia la letra en blanco, que sobre esas seis paradas se queda
+                entre 1.9:1 y 4:1; sobre el nucleo oscuro no baja de 5:1. */}
+            <span className="bg-brand-gradient shadow-brand-cyan/20 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl p-0.5 shadow-lg">
+              <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-canvas">
+                {siteConfig.logoUrl ? (
+                  <img src={siteConfig.logoUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="bg-gradient-to-r from-brand-cyan to-brand-purple bg-clip-text text-lg font-black text-transparent">
+                    {siteConfig.logoInitial}
+                  </span>
+                )}
+              </span>
             </span>
             <span className="text-section font-semibold tracking-tight text-ink">{siteConfig.appName}</span>
           </button>
