@@ -314,8 +314,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     ? comments.filter((c) => c.isMentorResponse || (c.replies && c.replies.some((r) => r.isMentorResponse)))
     : comments;
 
+  // La fuente que se reproduce y la que da nombre al proveedor no son la misma:
+  // playbackUrl apunta a /api/content/videos/<id>, que es nuestro control de
+  // acceso y redirige al archivo. Deducir el proveedor de ahi hacia que todo
+  // dijera «Reproductor embebido», incluidos los videos de Drive.
   const videoSource = currentVideo
     ? parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId)
+    : null;
+  const videoOrigin = currentVideo
+    ? parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || currentVideo.playbackUrl)
     : null;
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
   const showsPlayer = hasAccess && currentVideo;
@@ -468,7 +475,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 lessonTitle={currentVideo.title}
                 moduleTitle={currentModule?.title || ''}
                 moduleIndex={activeModuleIndex}
-                providerLabel={PROVIDER_LABELS[videoSource?.provider || ''] || 'Video'}
+                providerLabel={PROVIDER_LABELS[videoOrigin?.provider || ''] || 'Video'}
                 lessonNumber={currentLessonIndex + 1}
                 totalLessons={lessons.length}
                 isCompleted={isCurrentCompleted}
