@@ -13,3 +13,6 @@ secrets/
 *.dump.enc
 *.dump.enc.sha256
 npm-audit.json
+
+# Notas de trabajo locales, no se publican
+notas/
