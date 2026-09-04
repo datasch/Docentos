@@ -11,6 +11,9 @@ cuando alcance su primera versión estable.
 
 - Entrega real de correo para recuperación de contraseña.
 - Publicación de la primera versión estable v1.0.0.
+- Reescribir la construcción multi-arquitectura de `release.yml` sobre runners
+  ARM nativos. La emulación con QEMU agota el límite de tiempo del trabajo y
+  ninguna imagen llega a publicarse.
 
 ## 0.5.0-beta.1 - 2026-09-03
 

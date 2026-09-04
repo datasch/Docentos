@@ -214,6 +214,12 @@ git push origin v0.5.0-beta.1
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,
 así que una etiqueta nunca publica una imagen que se anuncia con otra versión.
 
+> **Pendiente antes de volver a etiquetar.** `release.yml` construye hoy amd64 y
+> arm64 en la misma máquina Intel, emulando ARM con QEMU. La emulación es tan
+> lenta con las dependencias nativas de este proyecto que el trabajo agota su
+> límite de tiempo sin llegar a publicar nada. Ver
+> [Publicación multi-arquitectura](docs/DEPLOYMENT.md#publicación-multi-arquitectura-pendiente).
+
 ## 📄 Licencia & Atribución
 
 Este proyecto está distribuido bajo la **Licencia MIT**.

@@ -362,3 +362,63 @@ se generó un backup cifrado. Ese artefacto se restauró en una base temporal
 vacía: checksum correcto, `7` usuarios, `1` curso, `1` configuración de
 instancia y `3` migraciones aplicadas. La base temporal se eliminó después de
 la prueba; la base original permaneció activa y saludable.
+
+## 8. Publicación multi-arquitectura (pendiente)
+
+**Estado:** sin resolver. `release.yml` no ha llegado a publicar ninguna imagen.
+
+### Qué ocurre
+
+El paso «Construir y Publicar Imagen Multi-Arquitectura» compila `linux/amd64` y
+`linux/arm64` en el mismo trabajo. El runner de GitHub es Intel, así que la mitad
+ARM se construye emulando ese procesador con QEMU. Este proyecto instala
+dependencias nativas (`python3`, `make`, `g++`) y compila con Vite dentro de esa
+mitad emulada, y el conjunto no termina dentro del límite de 30 minutos.
+
+Resultado del intento del 3 de septiembre de 2026 sobre la etiqueta
+`v0.5.0-beta.1` (ejecución `33817925536`): los trece pasos previos en verde y el
+trabajo cancelado a los 30 minutos exactos durante la construcción. **No se
+publicó ninguna imagen, ni se firmó nada, ni se creó el Release.** La etiqueta
+`v0.5.0-beta.1` existe en el repositorio pero no tiene artefactos asociados.
+
+### Opción recomendada: runners ARM nativos
+
+El repositorio es público, y GitHub ofrece runners ARM gratuitos para
+repositorios públicos (`ubuntu-24.04-arm`). En lugar de emular, se construye cada
+arquitectura en su propia máquina y en paralelo, y después se combinan ambas en
+una única imagen mediante una lista de manifiestos. La forma habitual es un
+trabajo con matriz de plataformas que publica por digest, seguido de un trabajo
+de fusión que crea las etiquetas finales.
+
+Consideraciones al implementarlo:
+
+- La firma con Cosign debe aplicarse sobre el digest de la lista de manifiestos
+  resultante, no sobre el de cada arquitectura por separado.
+- El SBOM y la procedencia se generan por plataforma; conviene comprobar que la
+  fusión los conserva.
+- La imagen de respaldos (`ops/backup/Dockerfile`) tiene el mismo problema y debe
+  migrarse igual.
+
+### Opción alternativa: publicar solo amd64
+
+Basta con dejar `platforms: linux/amd64` en ambos pasos de construcción. Es lo
+que ya hace la publicación continua de `:edge`, y resuelve el problema en una
+línea. Se pierde la posibilidad de desplegar en servidores ARM (Graviton de AWS,
+Ampere de Oracle) y de ejecutar la imagen en equipos Apple con chip propio.
+
+### Al retomarlo
+
+El workflow se dispara al recibir una etiqueta, de modo que corregirlo no basta:
+hay que rehacer la etiqueta para que vuelva a ejecutarse.
+
+```bash
+git tag -d v0.5.0-beta.1
+git push origin :refs/tags/v0.5.0-beta.1
+# corregir release.yml, confirmar y subir
+git tag -a v0.5.0-beta.1 -m "DocentOS 0.5.0-beta.1"
+git push origin v0.5.0-beta.1
+```
+
+Mientras tanto, la publicación continua sigue funcionando con normalidad: cada
+integración en `main` que supera las comprobaciones publica
+`ghcr.io/giantucchi-org/docentos:edge` para amd64.
