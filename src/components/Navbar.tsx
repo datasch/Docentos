@@ -1,6 +1,12 @@
 /**
  * Navbar Component - Academia Giantucchi
  * Navegación privada basada en la identidad autenticada y sus permisos RBAC.
+ *
+ * El gradiente de marca aparece una sola vez, en el logo. En el reproductor el
+ * espectro codifica avance —se destapa segun progresas y cada modulo toma su
+ * tono—, asi que repetirlo aqui como adorno, tres veces en la misma fila de
+ * 64px, vaciaba de significado esa lectura. El resto del header usa cian para
+ * decir «estas aqui» y superficies neutras para todo lo demas.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -19,6 +25,18 @@ interface NavbarProps {
   onLogout?: () => void;
   onOpenVerifyModal?: () => void;
 }
+
+/** Un destino del nav: apagado por defecto, cian cuando es el que se está viendo. */
+const navItem = (isActive: boolean) =>
+  `flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-meta transition-colors ${
+    isActive ? 'bg-raised font-medium text-brand-cyan' : 'text-ink-muted hover:bg-raised hover:text-ink'
+  }`;
+
+/** Fila del cajón móvil. */
+const drawerItem = 'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-section text-ink-soft transition-colors hover:bg-raised hover:text-ink';
+
+/** Acción secundaria del menú de perfil. */
+const menuAction = 'flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-canvas py-2 text-meta text-ink-soft transition-colors hover:bg-raised hover:text-ink';
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
@@ -50,175 +68,121 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const isStaff = currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR';
+
   return (
-    <header className="sticky top-0 z-50 bg-[#141420]/95 backdrop-blur-md border-b border-[#2d2d44] text-white shadow-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
+    <header className="sticky top-0 z-50 border-b border-line bg-surface/95 text-ink backdrop-blur-md">
+      <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6">
+        <div className="flex h-16 items-center justify-between gap-4">
+
           {/* Logo & Brand */}
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            title="Ir al inicio"
+          <button
+            type="button"
+            className="flex shrink-0 items-center gap-2.5"
             onClick={() => setActiveTab('landing')}
           >
-            <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center text-white font-extrabold shadow-lg shadow-[#06b6d4]/20 ring-1 ring-white/20 overflow-hidden shrink-0">
+            <span className="bg-brand-gradient flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl">
               {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} alt={siteConfig.appName} className="w-full h-full object-cover" />
+                <img src={siteConfig.logoUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-xl tracking-tighter font-black text-white">{siteConfig.logoInitial}</span>
+                <span className="text-lg font-semibold tracking-tight text-ink">{siteConfig.logoInitial}</span>
               )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight text-white uppercase">
-                  {siteConfig.appName}
-                </span>
-                <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-gradient text-white uppercase tracking-widest shadow-sm">
-                  {siteConfig.appTagline}
-                </span>
-              </div>
-            </div>
-          </div>
+            </span>
+            <span className="text-section font-semibold tracking-tight text-ink">{siteConfig.appName}</span>
+          </button>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1 bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44]">
-            <button
-              onClick={() => setActiveTab('courses')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'courses'
-                  ? 'btn-brand-primary'
-                  : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-              }`}
-            >
-              <PlayCircle className="w-3.5 h-3.5" />
+          <nav className="hidden items-center gap-1 lg:flex">
+            <button onClick={() => setActiveTab('courses')} className={navItem(activeTab === 'courses')}>
+              <PlayCircle aria-hidden className="h-4 w-4" />
               {t('nav.courses')}
             </button>
 
-            {(currentUser.role === 'MENTOR' || currentUser.role === 'ADMIN') && (
-              <button
-                onClick={() => setActiveTab('mentor')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'mentor'
-                    ? 'bg-[#a855f7] text-white shadow-md shadow-[#a855f7]/30'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5 text-[#06b6d4]" />
-                Panel Mentor
+            {isStaff && (
+              <button onClick={() => setActiveTab('mentor')} className={navItem(activeTab === 'mentor')}>
+                <UserCheck aria-hidden className="h-4 w-4" />
+                Mentoría
               </button>
             )}
 
             {currentUser.role === 'ADMIN' && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'admin'
-                    ? 'bg-[#a855f7] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5 text-amber-400" />
-                Admin Roles
+              <button onClick={() => setActiveTab('admin')} className={navItem(activeTab === 'admin')}>
+                <Shield aria-hidden className="h-4 w-4" />
+                Administración
               </button>
             )}
 
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => setActiveTab('plugins')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'plugins'
-                    ? 'bg-[#06b6d4] text-black font-extrabold shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
+            {isStaff && (
+              <button onClick={() => setActiveTab('plugins')} className={navItem(activeTab === 'plugins')}>
+                <Sparkles aria-hidden className="h-4 w-4" />
                 Plugins
               </button>
             )}
 
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => setActiveTab('drive')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'drive'
-                    ? 'btn-brand-primary'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <HardDrive className="w-3.5 h-3.5" />
+            {isStaff && (
+              <button onClick={() => setActiveTab('drive')} className={navItem(activeTab === 'drive')}>
+                <HardDrive aria-hidden className="h-4 w-4" />
                 Drive
               </button>
             )}
 
             {onOpenVerifyModal && (
-              <button
-                onClick={onOpenVerifyModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-[#141420] transition-all"
-                title="Verificar autenticidad de un certificado"
-              >
-                <Award className="w-3.5 h-3.5 text-[#eab308]" />
-                Verificar Diploma
+              <button onClick={onOpenVerifyModal} className={navItem(false)}>
+                <Award aria-hidden className="h-4 w-4 text-brand-yellow" />
+                Verificar diploma
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab('vip')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'vip'
-                  ? 'bg-brand-gradient text-white shadow-md'
-                  : 'text-[#06b6d4] hover:bg-[#141420]'
-              }`}
-            >
-              <Crown className="w-3.5 h-3.5 text-[#eab308]" />
+            <button onClick={() => setActiveTab('vip')} className={navItem(activeTab === 'vip')}>
+              <Crown aria-hidden className="h-4 w-4 text-brand-yellow" />
               Pase VIP
             </button>
           </nav>
 
           {/* Sleek User Profile Dropdown Button */}
-          <div className="hidden md:flex items-center relative" ref={dropdownRef}>
+          <div className="relative hidden shrink-0 items-center md:flex" ref={dropdownRef}>
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2.5 bg-[#0a0a0f] hover:bg-[#1a1a2e] p-1.5 pr-3 rounded-xl border border-[#2d2d44] transition-all hover:border-[#06b6d4]/50"
+              aria-expanded={profileDropdownOpen}
+              className="flex items-center gap-2.5 rounded-xl py-1.5 pr-2 pl-1.5 transition-colors hover:bg-raised"
             >
               <img
                 src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                alt={currentUser.name}
-                className="w-7 h-7 rounded-full ring-2 ring-[#06b6d4]/40 object-cover"
+                alt=""
+                className="h-7 w-7 rounded-full object-cover"
               />
-              <div className="text-left text-xs">
-                <p className="font-bold text-white leading-tight flex items-center gap-1.5">
+              <span className="text-left">
+                <span className="flex items-center gap-1.5 text-meta font-medium text-ink">
                   {currentUser.name}
-                  {currentUser.role === 'ADMIN' && <Shield className="w-3 h-3 text-[#a855f7]" />}
-                  {currentUser.role === 'VIP' && <Crown className="w-3 h-3 text-[#eab308]" />}
-                </p>
-                <span className="text-[10px] text-slate-400 uppercase font-mono">{currentUser.role}</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                  {currentUser.role === 'ADMIN' && <Shield aria-hidden className="h-3 w-3 text-brand-purple" />}
+                  {currentUser.role === 'VIP' && <Crown aria-hidden className="h-3 w-3 text-brand-yellow" />}
+                </span>
+                <span className="block text-micro text-ink-muted">{currentUser.role}</span>
+              </span>
+              <ChevronDown aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
             </button>
 
             {/* Profile Dropdown Menu */}
             {profileDropdownOpen && (
-              <div className="absolute right-0 top-12 w-72 bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-4 shadow-2xl z-50 animate-fade-in space-y-3">
-                <div className="flex items-center gap-3 border-b border-[#2d2d44] pb-3">
+              <div className="animate-fade-in absolute top-14 right-0 z-50 w-72 space-y-3 rounded-2xl border border-line bg-raised p-4 shadow-2xl">
+                <div className="flex items-center gap-3 border-b border-line pb-3">
                   <img
                     src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                    alt={currentUser.name}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-[#06b6d4]"
+                    alt=""
+                    className="h-10 w-10 rounded-full object-cover"
                   />
-                  <div>
-                    <p className="font-bold text-xs text-white">{currentUser.name}</p>
-                    <p className="text-[10px] text-slate-400">{currentUser.email}</p>
-                    <span className="inline-block mt-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#06b6d4]/10 text-[#06b6d4] border border-[#06b6d4]/30 uppercase">
-                      Rol: {currentUser.role}
-                    </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-meta font-medium text-ink">{currentUser.name}</p>
+                    <p className="truncate text-micro text-ink-muted">{currentUser.email}</p>
+                    <span className="mt-1 inline-block text-micro text-brand-cyan">{currentUser.role}</span>
                   </div>
                 </div>
 
                 {/* Global i18n Language Selector */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-[#06b6d4]" /> {t('nav.language')} (i18n)
-                  </label>
+                  <span className="mb-1.5 flex items-center gap-1.5 text-micro text-ink-muted">
+                    <Globe aria-hidden className="h-3 w-3" /> {t('nav.language')}
+                  </span>
                   <div className="grid grid-cols-5 gap-1">
                     {[
                       { code: 'es', flag: '🇪🇸', label: 'ES' },
@@ -226,20 +190,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                       { code: 'pt', flag: '🇧🇷', label: 'PT' },
                       { code: 'fr', flag: '🇫🇷', label: 'FR' },
                       { code: 'it', flag: '🇮🇹', label: 'IT' },
-                    ].map((item) => (
-                      <button
-                        key={item.code}
-                        onClick={() => handleLanguageChange(item.code)}
-                        className={`py-1 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center gap-0.5 ${
-                          i18n.language.startsWith(item.code)
-                            ? 'bg-[#06b6d4] text-black shadow-sm font-extrabold'
-                            : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
-                        }`}
-                      >
-                        <span className="text-xs">{item.flag}</span>
-                        <span>{item.label}</span>
-                      </button>
-                    ))}
+                    ].map((item) => {
+                      const isCurrent = i18n.language.startsWith(item.code);
+                      return (
+                        <button
+                          key={item.code}
+                          onClick={() => handleLanguageChange(item.code)}
+                          aria-pressed={isCurrent}
+                          className={`flex flex-col items-center gap-0.5 rounded-lg py-1 text-micro transition-colors ${
+                            isCurrent
+                              ? 'bg-brand-cyan font-semibold text-canvas'
+                              : 'border border-line bg-canvas text-ink-muted hover:text-ink'
+                          }`}
+                        >
+                          <span className="text-meta">{item.flag}</span>
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -250,9 +218,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onRestartTour();
                       setProfileDropdownOpen(false);
                     }}
-                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-[#06b6d4] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+                    className={menuAction}
                   >
-                    <Bot className="w-4 h-4" /> {t('nav.restartTour')}
+                    <Bot aria-hidden className="h-4 w-4 text-brand-cyan" /> {t('nav.restartTour')}
                   </button>
                 )}
 
@@ -262,9 +230,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onOpenVerifyModal();
                       setProfileDropdownOpen(false);
                     }}
-                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#eab308] text-amber-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+                    className={menuAction}
                   >
-                    <Award className="w-4 h-4 text-[#eab308]" /> Verificar Certificado
+                    <Award aria-hidden className="h-4 w-4 text-brand-yellow" /> Verificar diploma
                   </button>
                 )}
 
@@ -274,18 +242,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onChangePassword();
                       setProfileDropdownOpen(false);
                     }}
-                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
+                    className={menuAction}
                   >
-                    <KeyRound className="w-4 h-4 text-[#06b6d4]" /> Cambiar contraseña
+                    <KeyRound aria-hidden className="h-4 w-4 text-brand-cyan" /> Cambiar contraseña
                   </button>
                 )}
 
                 {/* Access Status */}
-                <div className="pt-2 border-t border-[#2d2d44] flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">{t('nav.accessStatus')}:</span>
-                  <strong className={hasAccess ? 'text-[#06b6d4]' : 'text-[#f97316]'}>
+                <div className="flex items-center justify-between border-t border-line pt-3 text-meta">
+                  <span className="text-ink-muted">{t('nav.accessStatus')}</span>
+                  <span className={hasAccess ? 'text-brand-cyan' : 'text-brand-orange'}>
                     {hasAccess ? t('nav.unlimited') : t('nav.noPayment')}
-                  </strong>
+                  </span>
                 </div>
 
                 {/* Logout Button */}
@@ -295,9 +263,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       setProfileDropdownOpen(false);
                       onLogout();
                     }}
-                    className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all mt-2"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-orange/30 bg-brand-orange/10 py-2 text-meta font-medium text-brand-orange transition-colors hover:bg-brand-orange/20"
                   >
-                    <LogOut className="w-4 h-4" /> {t('nav.logout')}
+                    <LogOut aria-hidden className="h-4 w-4" /> {t('nav.logout')}
                   </button>
                 )}
               </div>
@@ -307,111 +275,117 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1a2e]"
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-raised hover:text-ink md:hidden"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X aria-hidden className="h-6 w-6" /> : <Menu aria-hidden className="h-6 w-6" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
+        <div className="animate-fade-in space-y-1 border-b border-line bg-surface p-3 md:hidden">
+          <button
+            onClick={() => {
+              setActiveTab('courses');
+              setMobileMenuOpen(false);
+            }}
+            className={drawerItem}
+          >
+            <PlayCircle aria-hidden className="h-5 w-5 text-brand-cyan" />
+            Cursos y clases
+          </button>
 
-        <div className="md:hidden bg-[#141420] border-b border-[#2d2d44] p-4 space-y-3 animate-fade-in">
-          <div className="space-y-1">
+          {isStaff && (
             <button
               onClick={() => {
-                setActiveTab('courses');
+                setActiveTab('drive');
                 setMobileMenuOpen(false);
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
+              className={drawerItem}
             >
-              <PlayCircle className="w-5 h-5 text-[#06b6d4]" />
-              Cursos & Clases
+              <HardDrive aria-hidden className="h-5 w-5 text-brand-cyan" />
+              Buscador de Drive
             </button>
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => {
-                  setActiveTab('drive');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-              >
-                <HardDrive className="w-5 h-5 text-[#06b6d4]" />
-                Buscador Google Drive
-              </button>
-            )}
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => {
-                  setActiveTab('mentor');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-              >
-                <UserCheck className="w-5 h-5 text-[#06b6d4]" />
-                Panel Mentor
-              </button>
-            )}
-            {currentUser.role === 'ADMIN' && (
-              <button
-                onClick={() => {
-                  setActiveTab('admin');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-              >
-                <Settings className="w-5 h-5 text-[#a855f7]" />
-                Panel Admin / Mentor
-              </button>
-            )}
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => {
-                  setActiveTab('plugins');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-              >
-                <Sparkles className="w-5 h-5 text-[#a855f7]" />
-                Plugins
-              </button>
-            )}
+          )}
+
+          {isStaff && (
             <button
               onClick={() => {
-                setActiveTab('vip');
+                setActiveTab('mentor');
                 setMobileMenuOpen(false);
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white bg-brand-gradient"
+              className={drawerItem}
             >
-              <Crown className="w-5 h-5 text-[#eab308]" />
-              Activar Pase VIP
+              <UserCheck aria-hidden className="h-5 w-5 text-brand-cyan" />
+              Mentoría
             </button>
-            {onLogout && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onLogout();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/30"
-              >
-                <LogOut className="w-5 h-5" />
-                {t('nav.logout')}
-              </button>
-            )}
-            {onChangePassword && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onChangePassword();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 bg-[#1a1a2e] border border-[#2d2d44]"
-              >
-                <KeyRound className="w-5 h-5 text-[#06b6d4]" />
-                Cambiar contraseña
-              </button>
-            )}
-          </div>
+          )}
+
+          {currentUser.role === 'ADMIN' && (
+            <button
+              onClick={() => {
+                setActiveTab('admin');
+                setMobileMenuOpen(false);
+              }}
+              className={drawerItem}
+            >
+              <Settings aria-hidden className="h-5 w-5 text-brand-purple" />
+              Administración
+            </button>
+          )}
+
+          {isStaff && (
+            <button
+              onClick={() => {
+                setActiveTab('plugins');
+                setMobileMenuOpen(false);
+              }}
+              className={drawerItem}
+            >
+              <Sparkles aria-hidden className="h-5 w-5 text-brand-purple" />
+              Plugins
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setActiveTab('vip');
+              setMobileMenuOpen(false);
+            }}
+            className={drawerItem}
+          >
+            <Crown aria-hidden className="h-5 w-5 text-brand-yellow" />
+            Pase VIP
+          </button>
+
+          {onChangePassword && (
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onChangePassword();
+              }}
+              className={drawerItem}
+            >
+              <KeyRound aria-hidden className="h-5 w-5 text-brand-cyan" />
+              Cambiar contraseña
+            </button>
+          )}
+
+          {onLogout && (
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onLogout();
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-section text-brand-orange transition-colors hover:bg-brand-orange/10"
+            >
+              <LogOut aria-hidden className="h-5 w-5" />
+              {t('nav.logout')}
+            </button>
+          )}
         </div>
       )}
     </header>
