@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Circle, Download, Lock, Play } from 'lucide-react';
-import { Course, User } from '../../types';
-import { pluginManager } from '../../plugins/PluginManager';
+import { Course } from '../../types';
+import type { ModuleLockState } from '../../lib/courseNavigation';
 import { ProgressMeter } from './ProgressMeter';
 
 interface SyllabusTreeProps {
   course: Course;
-  currentUser: User;
   hasAccess: boolean;
   completedVideos: Record<string, boolean>;
   activeModuleIndex: number;
   activeVideoIndex: number;
+  /** Estado de cada módulo, resuelto en el reproductor para que ambos coincidan. */
+  moduleLocks: ModuleLockState[];
   courseProgressPct: number;
   completedCourseVideos: number;
   totalCourseVideos: number;
@@ -35,11 +36,11 @@ type Row =
 
 export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   course,
-  currentUser,
   hasAccess,
   completedVideos,
   activeModuleIndex,
   activeVideoIndex,
+  moduleLocks,
   courseProgressPct,
   completedCourseVideos,
   totalCourseVideos,
@@ -61,8 +62,8 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   }, [activeModuleIndex]);
 
   const unlocked = useMemo(
-    () => course.modules.map((_, mIdx) => pluginManager.isModuleUnlocked(course.modules, mIdx, currentUser.id)),
-    [course.modules, currentUser.id],
+    () => course.modules.map((_, mIdx) => moduleLocks[mIdx]?.unlocked ?? true),
+    [course.modules, moduleLocks],
   );
 
   /** Filas visibles, en el orden en que se ven. Es lo que recorren las flechas. */
@@ -240,7 +241,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
 
                   {!isUnlocked && (
                     <span className="mt-1 block text-micro leading-snug text-ink-faint">
-                      Aprueba el examen del módulo anterior con 80 % para abrirlo.
+                      {moduleLocks[mIdx]?.reason === 'quiz'
+                        ? 'Aprueba el examen del módulo anterior con 80 % para abrirlo.'
+                        : 'Termina las lecciones del módulo anterior para abrirlo.'}
                     </span>
                   )}
                 </span>

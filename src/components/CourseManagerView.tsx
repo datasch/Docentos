@@ -28,6 +28,8 @@ import {
   HardDrive,
   Search,
   Link2,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
@@ -45,6 +47,7 @@ const emptyForm = {
   currency: 'USD',
   coverImage: '',
   published: false,
+  sequentialUnlock: false,
 };
 
 type CourseForm = typeof emptyForm;
@@ -123,6 +126,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
       currency: course.currency || 'USD',
       coverImage: course.coverImage || '',
       published: course.published,
+      sequentialUnlock: Boolean(course.sequentialUnlock),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -429,6 +433,33 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
             </div>
           </div>
 
+          {/* Progresión secuencial: el candado del temario del alumno. Va en su
+              propia caja porque no es una casilla más del formulario, sino la
+              regla con la que se recorre el curso entero. */}
+          <label className="flex items-start gap-3 rounded-xl border border-[#2d2d44] bg-[#0a0a0f] p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.sequentialUnlock}
+              onChange={(e) => setForm({ ...form, sequentialUnlock: e.target.checked })}
+              className="accent-[#06b6d4] w-4 h-4 mt-0.5 shrink-0"
+            />
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+                {form.sequentialUnlock ? (
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                ) : (
+                  <Unlock className="w-3.5 h-3.5 text-slate-500" />
+                )}
+                Progresión secuencial (bloquear módulos)
+              </span>
+              <span className="block text-[11px] text-slate-400 mt-1 leading-relaxed">
+                El alumno empieza con el Módulo 1 abierto y el resto con candado. Cada módulo se
+                desbloquea cuando termina todas las lecciones del anterior. Apagado, el temario se
+                ve completo desde el primer día.
+              </span>
+            </span>
+          </label>
+
           <div className="flex items-center justify-between pt-1">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
               <input
@@ -514,6 +545,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
                           {course.isDemo && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30">
                               Demo
+                            </span>
+                          )}
+                          {course.sequentialUnlock && (
+                            <span
+                              title="Los módulos se desbloquean uno a uno"
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1"
+                            >
+                              <Lock className="w-2.5 h-2.5" /> Secuencial
                             </span>
                           )}
                         </div>

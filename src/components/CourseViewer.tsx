@@ -7,7 +7,7 @@
  * vacia en escritorio y enterraba el video bajo el temario en movil.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Award,
   Bookmark,
@@ -26,6 +26,8 @@ import {
   findResumePosition,
   flattenLessons,
   indexOfLesson,
+  isModuleOpen,
+  moduleLockStates,
   stepLesson,
 } from '../lib/courseNavigation';
 import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord } from '../types';
@@ -73,6 +75,22 @@ const PROVIDER_LABELS: Record<string, string> = {
   embed: 'Reproductor embebido',
 };
 
+/**
+ * El diploma que corresponde al curso abierto, y solo ese.
+ *
+ * El progreso del alumno llega con todos sus certificados; quedarse con uno de
+ * otro curso no era un adorno mal puesto: la tarjeta anunciaba «Curso
+ * completado» bajo el título del curso que se estaba viendo y el botón de
+ * descarga componía el PDF con ese título y el código de verificación ajeno, un
+ * diploma que no corresponde a nada.
+ */
+export function certificateForCourse(
+  certificate: CertificateRecord | null | undefined,
+  courseId: string,
+): CertificateRecord | null {
+  return certificate && certificate.courseId === courseId ? certificate : null;
+}
+
 export const CourseViewer: React.FC<CourseViewerProps> = ({
   course,
   currentUser,
@@ -119,6 +137,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setPickedByUser(false);
     setActiveModuleIndex(0);
     setActiveVideoIndex(0);
+    // El diploma es de un curso concreto. Arrastrar el del curso anterior
+    // mientras carga el progreso anuncia «Curso completado» nada más entrar.
+    setCertificate(null);
     loadUserProgress();
   }, [course.id]);
 
@@ -128,10 +149,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       if (res.completedVideos) {
         setCompletedVideos(res.completedVideos);
       }
-      if (res.certificates && res.certificates.length > 0) {
-        const found = res.certificates.find((c) => c.courseId === course.id);
-        if (found) setCertificate(found);
-      }
+      // Siempre se asigna, también cuando no hay: `if (found)` dejaba en pie
+      // el diploma del curso anterior, y la tarjeta lo anunciaba bajo el
+      // título del curso abierto y con el código del otro.
+      const found = res.certificates?.find((c) => c.courseId === course.id);
+      setCertificate(found || null);
     } catch (error) {
       console.error('Error loading saved progress:', error);
     }
@@ -148,10 +170,31 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setActiveVideoIndex(resume.videoIndex);
   }, [course.id, completedVideos, pickedByUser]);
 
-  const goToLesson = (moduleIndex: number, videoIndex: number) => {
+  /** El filtro del plugin de exámenes, que es independiente del curso. */
+  const isQuizGateOpen = (moduleIndex: number) =>
+    pluginManager.isModuleUnlocked(course.modules, moduleIndex, currentUser.id);
+
+  // Estado del temario: qué módulos están abiertos y por qué no lo están los
+  // demás. Se calcula aquí una sola vez para que el temario, las flechas del
+  // reproductor y el salto automático al marcar una clase digan lo mismo.
+  // `quizPassKey` entra en las dependencias porque aprobar un examen abre el
+  // módulo siguiente sin que cambie ninguna otra pieza del estado.
+  const moduleLocks = useMemo(
+    () => moduleLockStates(course, completedVideos, isQuizGateOpen),
+    [course, completedVideos, currentUser.id, quizPassKey],
+  );
+
+  const openLesson = (moduleIndex: number, videoIndex: number) => {
     setPickedByUser(true);
     setActiveModuleIndex(moduleIndex);
     setActiveVideoIndex(videoIndex);
+  };
+
+  const goToLesson = (moduleIndex: number, videoIndex: number) => {
+    // El temario no ofrece las lecciones de un módulo cerrado, pero las flechas
+    // y el avance automático sí pueden apuntar a una: aquí se para el salto.
+    if (!isModuleOpen(moduleLocks, moduleIndex)) return;
+    openLesson(moduleIndex, videoIndex);
   };
 
   const lessons = flattenLessons(course);
@@ -160,7 +203,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     videoIndex: activeVideoIndex,
   });
   const previousLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, -1);
-  const nextLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+  const rawNextLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+  // Hacia atrás siempre hay paso: lo ya abierto no se vuelve a cerrar. Hacia
+  // delante, la siguiente lección puede caer en un módulo aún cerrado, y
+  // entonces no hay a dónde ir: el botón se apaga como en el final del curso.
+  const nextLesson = rawNextLesson && isModuleOpen(moduleLocks, rawNextLesson.moduleIndex) ? rawNextLesson : null;
 
   // Calculate overall course progress metrics
   const totalCourseVideos = course.modules.reduce((acc, m) => acc + m.videos.length, 0);
@@ -318,6 +365,20 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         if (totalCourseVideos > 0 && completedCount === totalCourseVideos) {
           pluginManager.onCourseComplete(currentUser, course);
         }
+
+        // Dar una clase por terminada es decir «sigo»: quedarse en el video ya
+        // visto obliga a buscar el siguiente a mano en cada lección. Solo
+        // avanza al marcar la clase que se está viendo, no al marcar otra
+        // cualquiera desde el temario, y nunca al desmarcar.
+        //
+        // El destino se recalcula con el progreso recién guardado: marcar la
+        // última clase de un módulo es justo lo que abre el siguiente, y
+        // `nextLesson` todavía lo ve cerrado.
+        const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+        const locksAfterMarking = moduleLockStates(course, newCompletedMap, isQuizGateOpen);
+        if (videoId === currentVideo.id && target && isModuleOpen(locksAfterMarking, target.moduleIndex)) {
+          openLesson(target.moduleIndex, target.videoIndex);
+        }
       }
     } catch (error) {
       console.error('Error toggling video progress:', error);
@@ -340,11 +401,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       PROVIDER_LABELS[parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
       'Video'
     : 'Video';
+  // Última barrera: aunque alguna respuesta traiga un certificado de otro
+  // curso, de aquí no pasa a la pantalla.
+  const courseCertificate = certificateForCourse(certificate, course.id);
+
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
   const showsPlayer = hasAccess && currentVideo;
   const showsQuiz = hasAccess && pluginManager.isEnabled('interactive-quizzes') && Boolean(currentModule);
   const showsCertificate =
-    hasAccess && pluginManager.isEnabled('pdf-certificates') && (courseProgressPct === 100 || Boolean(certificate));
+    hasAccess && pluginManager.isEnabled('pdf-certificates') && (courseProgressPct === 100 || Boolean(courseCertificate));
   const showsExtras = showsQuiz || showsCertificate;
 
   return (
@@ -519,11 +584,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       <div className="min-h-0 flex-1 overflow-y-auto">
                         <SyllabusTree
                           course={course}
-                          currentUser={currentUser}
                           hasAccess={hasAccess}
                           completedVideos={completedVideos}
                           activeModuleIndex={activeModuleIndex}
                           activeVideoIndex={activeVideoIndex}
+                          moduleLocks={moduleLocks}
                           courseProgressPct={courseProgressPct}
                           completedCourseVideos={completedCourseVideos}
                           totalCourseVideos={totalCourseVideos}
@@ -603,7 +668,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 anunciaba «Disponible» desde la primera clase. */}
             {hasAccess &&
               pluginManager.isEnabled('pdf-certificates') &&
-              (courseProgressPct === 100 || certificate) && (
+              (courseProgressPct === 100 || courseCertificate) && (
               <div className="flex flex-col gap-4 rounded-2xl border border-brand-yellow/40 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5">
                   <Award aria-hidden className="h-7 w-7 shrink-0 text-brand-yellow" />
@@ -611,11 +676,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     <h2 className="text-section font-semibold text-ink">Curso completado</h2>
                     <p className="mt-1 text-meta text-ink-muted">
                       Tu diploma de {course.title} está listo.
-                      {certificate?.verificationCode && (
+                      {courseCertificate?.verificationCode && (
                         <>
                           {' '}
                           Código{' '}
-                          <span className="text-ink-soft tabular-nums">{certificate.verificationCode}</span>.
+                          <span className="text-ink-soft tabular-nums">{courseCertificate.verificationCode}</span>.
                         </>
                       )}
                     </p>
@@ -623,7 +688,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
-                  {certificate?.verificationCode && (
+                  {courseCertificate?.verificationCode && (
                     <button
                       type="button"
                       onClick={() => setShowVerifyModal(true)}
@@ -639,7 +704,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       downloadCertificate({
                         studentName: currentUser.name,
                         courseTitle: course.title,
-                        certificateId: certificate?.verificationCode,
+                        certificateId: courseCertificate?.verificationCode,
                       })
                     }
                     className="rounded-lg bg-brand-yellow px-4 py-2.5 text-meta font-semibold text-canvas transition-opacity hover:opacity-90"
@@ -659,7 +724,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       <CertificateVerifyModal
         isOpen={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}
-        initialCode={certificate?.verificationCode}
+        initialCode={courseCertificate?.verificationCode}
       />
     </div>
   );

@@ -207,7 +207,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
-    if (!res.ok) throw new Error('Error al responder comentario');
+    if (!res.ok) {
+      // Un mentor solo puede responder en los cursos que tiene asignados; sin
+      // el motivo del servidor la respuesta se perdía sin decir por qué.
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al responder comentario');
+    }
     return res.json();
   },
 
@@ -223,6 +228,8 @@ export const api = {
   async getProgress(): Promise<{
     success: boolean;
     completedVideos: Record<string, boolean>;
+    /** Curso de la última lección marcada; null si el alumno aún no completó ninguna. */
+    lastCourseId?: string | null;
     certificates?: CertificateRecord[];
   }> {
     const res = await fetch('/api/progress');
@@ -400,7 +407,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, mentorId }),
     });
-    if (!res.ok) throw new Error('Error al asignar mentee');
+    if (!res.ok) {
+      // El servidor explica por qué rechaza la asignación («esa cuenta es un
+      // mentor», «está desactivada»). Sustituirlo por un texto genérico deja al
+      // mentor sin saber qué corregir.
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al asignar mentee');
+    }
+    return res.json();
+  },
+
+  /** Todas las consultas del catálogo, con la clase de la que salió cada una. */
+  async getMentorQna(): Promise<{ success: boolean; comments: MentorshipComment[] }> {
+    const res = await fetch('/api/mentor/qna');
+    if (!res.ok) throw new Error('Error al cargar las consultas de mentoría');
     return res.json();
   },
 
@@ -519,7 +539,7 @@ export const api = {
   },
 
   // Course Admin CRUD
-  async createCourse(data: { title: string; description?: string; price?: number; currency?: string; published?: boolean; coverImage?: string; category?: string; isDemo?: boolean }): Promise<{ success: boolean; course: Course }> {
+  async createCourse(data: { title: string; description?: string; price?: number; currency?: string; published?: boolean; coverImage?: string; category?: string; isDemo?: boolean; sequentialUnlock?: boolean }): Promise<{ success: boolean; course: Course }> {
     const res = await fetch('/api/admin/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

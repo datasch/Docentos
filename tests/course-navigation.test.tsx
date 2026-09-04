@@ -15,10 +15,13 @@ import {
   findResumePosition,
   flattenLessons,
   indexOfLesson,
+  isModuleOpen,
+  moduleLockStates,
   stepLesson,
 } from '../src/lib/courseNavigation.js';
 import { resolveLandingCta } from '../src/components/LandingPage.js';
-import type { Course } from '../src/types.js';
+import { certificateForCourse } from '../src/components/CourseViewer.js';
+import type { CertificateRecord, Course } from '../src/types.js';
 
 /** Curso de tres módulos: 2 + 1 + 2 lecciones. */
 function sampleCourse(): Course {
@@ -133,6 +136,36 @@ test('Curso: el progreso cuenta solo las lecciones de este curso', async (t) => 
   });
 });
 
+test('Curso: el diploma que se enseña es el de este curso', async (t) => {
+  const certificate = (courseId: string, code: string) =>
+    ({
+      id: `cert-${courseId}`,
+      verificationCode: code,
+      courseId,
+      courseTitle: courseId,
+      recipientName: 'Carlos Mendoza',
+      completionPercent: 100,
+      issuedAt: '2026-09-01T00:00:00.000Z',
+    }) as CertificateRecord;
+
+  await t.test('1. El diploma del curso abierto se muestra', () => {
+    const own = certificate('curso-ingles', 'DOC-AAA');
+    assert.equal(certificateForCourse(own, 'curso-ingles'), own);
+  });
+
+  await t.test('2. El de otro curso no se cuela en la pantalla', () => {
+    // Terminar un curso abría la tarjeta «Curso completado» en todos los
+    // demás, con el título del curso abierto y el código del terminado.
+    const otro = certificate('curso-mentoria', 'DOC-0F81948B86F94940');
+    assert.equal(certificateForCourse(otro, 'curso-ingles'), null);
+  });
+
+  await t.test('3. Sin diploma no se inventa ninguno', () => {
+    assert.equal(certificateForCourse(null, 'curso-ingles'), null);
+    assert.equal(certificateForCourse(undefined, 'curso-ingles'), null);
+  });
+});
+
 test('Portada: los botones del encabezado llevan a algún sitio', async (t) => {
   await t.test('1. Las rutas de la aplicación se traducen a su sección', () => {
     assert.equal(
@@ -157,5 +190,52 @@ test('Portada: los botones del encabezado llevan a algún sitio', async (t) => {
     assert.equal(resolveLandingCta('', '#cursos'), '#cursos');
     assert.equal(resolveLandingCta(undefined, '#cursos'), '#cursos');
     assert.equal(resolveLandingCta('ruta-inventada', '#cursos'), '#cursos');
+  });
+});
+
+test('Curso: la progresión secuencial cierra los módulos que aún no tocan', async (t) => {
+  const sequential = () => ({ ...sampleCourse(), sequentialUnlock: true }) as Course;
+
+  await t.test('1. Sin la opción activa el temario se ve entero', () => {
+    const states = moduleLockStates(sampleCourse(), {});
+    assert.deepEqual(states.map((state) => state.unlocked), [true, true, true]);
+  });
+
+  await t.test('2. Con la opción activa solo abre el primer módulo', () => {
+    const states = moduleLockStates(sequential(), {});
+    assert.deepEqual(states.map((state) => state.unlocked), [true, false, false]);
+    assert.deepEqual(states.map((state) => state.reason), [null, 'progress', 'progress']);
+  });
+
+  await t.test('3. Terminar el módulo 1 abre el 2, y no el 3', () => {
+    const states = moduleLockStates(sequential(), { v1: true, v2: true });
+    assert.deepEqual(states.map((state) => state.unlocked), [true, true, false]);
+  });
+
+  await t.test('4. Una lección suelta del módulo 2 no adelanta el módulo 3', () => {
+    const states = moduleLockStates(sequential(), { v1: true, v2: true, v4: true });
+    assert.deepEqual(states.map((state) => state.unlocked), [true, true, false]);
+  });
+
+  await t.test('5. Con todo lo anterior visto se abre el último módulo', () => {
+    const states = moduleLockStates(sequential(), { v1: true, v2: true, v3: true });
+    assert.deepEqual(states.map((state) => state.unlocked), [true, true, true]);
+  });
+
+  await t.test('6. El examen pendiente cierra el módulo aunque las clases estén vistas', () => {
+    const states = moduleLockStates(sequential(), { v1: true, v2: true }, (index) => index !== 1);
+    assert.equal(states[1].unlocked, false);
+    assert.equal(states[1].reason, 'quiz');
+  });
+
+  await t.test('7. El primer módulo nunca se cierra: el curso ha de poder empezar', () => {
+    const states = moduleLockStates(sequential(), {}, () => false);
+    assert.equal(states[0].unlocked, true);
+    assert.equal(isModuleOpen(states, 0), true);
+  });
+
+  await t.test('8. Un curso vacío no produce candados, y un índice fuera de rango se da por abierto', () => {
+    assert.deepEqual(moduleLockStates(null, {}), []);
+    assert.equal(isModuleOpen([], 3), true);
   });
 });

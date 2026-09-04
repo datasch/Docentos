@@ -237,6 +237,11 @@ export interface Course {
   isDemo?: boolean;
   category: string;
   coverImage: string;
+  /**
+   * Progresion secuencial: el temario se abre de modulo en modulo, y cada uno
+   * espera a que el anterior este terminado. Apagado, el curso se ve entero.
+   */
+  sequentialUnlock?: boolean;
   modules: Module[];
   resources?: CourseResource[];
   hasAccess?: boolean;
@@ -257,6 +262,15 @@ export interface MentorshipComment {
   likes: number;
   createdAt: string;
   replies?: MentorshipComment[];
+  /**
+   * De donde salio la pregunta. Solo lo rellena la bandeja del mentor, que
+   * recorre todo el catalogo: en el reproductor el contexto es la propia
+   * pantalla y el servidor no lo repite.
+   */
+  videoTitle?: string | null;
+  moduleTitle?: string | null;
+  courseId?: string | null;
+  courseTitle?: string | null;
 }
 
 export interface DriveVideoFile {

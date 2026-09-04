@@ -188,6 +188,8 @@ model Course {
   category          String             @default("Mentoría Elite")
   /// Carpeta de Google Drive de la que se importo, cuando vino de ahi.
   driveFolderId     String?
+  /// Progresion secuencial: cada modulo se abre al terminar el anterior.
+  sequentialUnlock  Boolean            @default(false)
   modules           Module[]
   payments          Payment[]
   enrollments       CourseEnrollment[]

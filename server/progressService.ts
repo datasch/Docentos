@@ -81,6 +81,9 @@ export async function calculateCourseProgress(userId: string, courseId: string) 
     certificate: certificate
       ? {
           id: certificate.id,
+          // Sin el curso al que pertenece, el navegador no puede comprobar que
+          // el diploma que enseña es el de la pantalla en la que está.
+          courseId: certificate.courseId,
           verificationCode: certificate.verificationCode,
           recipientName: certificate.recipientName,
           courseTitle: certificate.courseTitle,

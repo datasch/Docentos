@@ -260,6 +260,9 @@ export function serializeCourseForViewer(course: any, hasAccess: boolean) {
     isDemo: course.isDemo,
     coverImage: course.coverImage,
     category: course.category,
+    // El temario del alumno necesita saber si el curso abre los modulos de uno
+    // en uno: sin este dato el candado no se puede pintar.
+    sequentialUnlock: Boolean(course.sequentialUnlock),
     createdAt: course.createdAt,
     updatedAt: course.updatedAt,
   };

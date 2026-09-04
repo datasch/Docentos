@@ -45,6 +45,18 @@ function tabFromPath(pathname: string): ActiveTab {
   return 'landing';
 }
 
+/** Dónde estaba estudiando el alumno en este navegador. */
+const LAST_COURSE_KEY = 'docentos_last_course_id';
+
+function readLastCourseId(): string | null {
+  try {
+    return localStorage.getItem(LAST_COURSE_KEY);
+  } catch {
+    // Navegación privada o almacenamiento bloqueado: se recurre al progreso.
+    return null;
+  }
+}
+
 const releaseChannelLabel =
   DOCENTOS_RELEASE_CHANNEL.charAt(0).toUpperCase() + DOCENTOS_RELEASE_CHANNEL.slice(1);
 
@@ -102,6 +114,19 @@ export default function App() {
     return false;
   };
 
+  /**
+   * Abrir un curso lo deja apuntado como el último en el que se estudió, para
+   * volver a él en la siguiente visita en vez de al primero del catálogo.
+   */
+  const selectCourse = (selected: Course) => {
+    setCourse(selected);
+    try {
+      localStorage.setItem(LAST_COURSE_KEY, selected.id);
+    } catch {
+      /* sin almacenamiento el curso sigue abierto, solo no se recuerda */
+    }
+  };
+
   const loadData = async () => {
     try {
       const setupRequired = await checkSetupStatus();
@@ -110,11 +135,35 @@ export default function App() {
       const userRes = await api.getCurrentUser();
       setCurrentUser(userRes.user);
 
+      // El curso de la última lección marcada. Sirve cuando el navegador no
+      // recuerda nada (otro equipo, datos borrados): es la huella de estudio
+      // que sí viaja con la cuenta.
+      let lastStudiedId: string | null = null;
+      if (userRes.user) {
+        try {
+          lastStudiedId = (await api.getProgress()).lastCourseId ?? null;
+        } catch {
+          /* sin progreso todavía; se abrirá el primero del catálogo */
+        }
+      }
+
       const courseRes = await api.getCourses();
       if (courseRes.courses && courseRes.courses.length > 0) {
-        setCourses(courseRes.courses);
-        setCourse(courseRes.courses[0]);
+        const list = courseRes.courses;
+        setCourses(list);
         setHasAccess(courseRes.hasAccess);
+
+        setCourse((current) => {
+          // Al recargar datos se conserva el curso abierto —antes se volvía
+          // siempre al primero, perdiendo el que el alumno estaba viendo—,
+          // pero apuntando a la instancia recién traída del servidor.
+          const stillOpen = current && list.find((item) => item.id === current.id);
+          if (stillOpen) return stillOpen;
+
+          const remembered = list.find((item) => item.id === readLastCourseId());
+          const lastStudied = list.find((item) => item.id === lastStudiedId);
+          return remembered || lastStudied || list[0];
+        });
       }
 
       // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
@@ -232,7 +281,7 @@ export default function App() {
               setShowAuthModal(true);
             }}
             onExploreCourse={(selectedCourse) => {
-              setCourse(selectedCourse);
+              selectCourse(selectedCourse);
               if (currentUser) navigateTo('courses');
               else {
                 setAuthMode('login');
@@ -275,7 +324,7 @@ export default function App() {
               onOpenPaywall={() => setShowPaywallModal(true)}
               courses={courses}
               onSelectCourse={(selected) => {
-                setCourse(selected);
+                selectCourse(selected);
                 window.scrollTo({ top: 0 });
               }}
               onGoHome={() => navigateTo('landing')}
