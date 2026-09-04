@@ -5,13 +5,6 @@ interface ProgressMeterProps {
   value: number;
   /** Etiqueta accesible; describe de que es el progreso. */
   label: string;
-  /**
-   * 'spectrum' descubre el gradiente de marca completo conforme se avanza y se
-   * reserva al progreso del curso, que es la unica pista lo bastante ancha para
-   * que las seis paradas se distingan. 'accent' pinta un cian plano y es lo que
-   * usan las barras de cada modulo.
-   */
-  tone?: 'spectrum' | 'accent';
   className?: string;
 }
 
@@ -26,7 +19,6 @@ interface ProgressMeterProps {
 export const ProgressMeter: React.FC<ProgressMeterProps> = ({
   value,
   label,
-  tone = 'spectrum',
   className = '',
 }) => {
   const pct = Math.max(0, Math.min(100, Math.round(value)));
@@ -41,9 +33,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
       className={`relative h-1.5 w-full overflow-hidden rounded-full bg-line ${className}`}
     >
       <div
-        className={`absolute inset-0 transition-[clip-path] duration-500 ease-out ${
-          tone === 'spectrum' ? 'bg-brand-gradient' : 'bg-brand-blue'
-        }`}
+        className="bg-brand-gradient absolute inset-0 transition-[clip-path] duration-500 ease-out"
         style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}
       />
     </div>

@@ -14,6 +14,10 @@
   --color-surface: #141420;
   --color-raised: #1a1a2e;
   --color-line: #2d2d44;
+  /* Superficie de las tarjetas dentro de un panel. Matiz 212, casi el mismo que
+     el azul del acento, asi que se llevan bien; contra el panel queda en 1.02:1,
+     de modo que la tarjeta la dibuja el borde y no el relleno. */
+  --color-card: #111820;
 
   /* Texto por rol. Los porcentajes estan elegidos para pasar AA sobre surface:
      ink 18.2:1, ink-soft 10.1:1, ink-muted 6.3:1. ink-faint (4.0:1) queda por

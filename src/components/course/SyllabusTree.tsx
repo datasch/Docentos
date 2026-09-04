@@ -174,7 +174,6 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
           const total = module.videos.length;
           const done = module.videos.filter((video) => completedVideos[video.id]).length;
           const isComplete = total > 0 && done === total;
-          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
           const moduleKey = `m${mIdx}`;
 
           return (
@@ -189,9 +188,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
               tabIndex={tabbableKey === moduleKey ? 0 : -1}
               onFocus={() => setFocusKey(moduleKey)}
               onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
-              className={`overflow-hidden rounded-xl border transition-colors ${
-                isCurrentModule ? 'border-brand-blue/40 bg-raised' : 'border-line bg-raised'
-              } ${isUnlocked ? '' : 'bg-surface'}`}
+              className={`overflow-hidden rounded-xl border bg-card transition-colors ${
+                isCurrentModule ? 'border-brand-blue/40' : 'border-line'
+              }`}
             >
               <div
                 onClick={() => {
@@ -199,7 +198,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                   toggleModule(mIdx);
                 }}
                 className={`flex w-full items-start gap-3 p-3.5 text-left transition-colors ${
-                  isUnlocked ? 'cursor-pointer hover:bg-line/40' : 'cursor-not-allowed'
+                  isUnlocked ? 'cursor-pointer hover:bg-brand-blue/5' : 'cursor-not-allowed'
                 }`}
               >
                 {/* Estado del módulo a la izquierda, como en la referencia: se
@@ -222,6 +221,13 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                         Bloqueado
                       </span>
                     )}
+                    {/* Sin barra propia, el avance del modulo lo lleva este
+                        contador: la misma informacion en una linea de texto. */}
+                    {isUnlocked && (
+                      <span className="ml-auto shrink-0 text-micro text-ink-muted tabular-nums">
+                        {done}/{total}
+                      </span>
+                    )}
                   </span>
 
                   <span
@@ -232,14 +238,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                     {moduleName(module.title)}
                   </span>
 
-                  {isUnlocked ? (
-                    <span className="mt-2 flex items-center gap-2.5">
-                      <ProgressMeter value={pct} tone="accent" label={`Progreso de ${module.title}`} className="flex-1" />
-                      <span className="shrink-0 text-micro text-ink-muted tabular-nums">
-                        {done}/{total}
-                      </span>
-                    </span>
-                  ) : (
+                  {!isUnlocked && (
                     <span className="mt-1 block text-micro leading-snug text-ink-faint">
                       Aprueba el examen del módulo anterior con 80 % para abrirlo.
                     </span>
@@ -294,7 +293,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             }
                             onClick={() => (hasAccess ? onSelectLesson(mIdx, vIdx) : onOpenPaywall())}
                             className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg pr-2.5 text-left transition-colors ${
-                              isCurrent ? 'bg-raised' : 'hover:bg-raised'
+                              isCurrent ? 'bg-brand-blue/10' : 'hover:bg-brand-blue/5'
                             }`}
                           >
                             <button
@@ -359,7 +358,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             href={res.downloadUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-surface hover:text-ink"
+                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-brand-blue/5 hover:text-ink"
                           >
                             <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
                             <span className="min-w-0 flex-1 truncate">{res.title}</span>
@@ -386,7 +385,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                 href={res.downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-raised hover:text-ink"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-brand-blue/5 hover:text-ink"
               >
                 <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
                 <span className="min-w-0 flex-1 truncate">{res.title}</span>
