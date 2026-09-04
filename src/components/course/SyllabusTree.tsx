@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, ChevronRight, Download, Lock, Play } from 'lucide-react';
+import { Check, CheckCircle2, ChevronRight, Download, Lock, Play } from 'lucide-react';
 import { Course, User } from '../../types';
 import { pluginManager } from '../../plugins/PluginManager';
 import { ProgressMeter } from './ProgressMeter';
@@ -268,7 +268,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                                 isDone || isCurrent ? 'bg-(--hue)' : 'border border-line hover:border-(--hue)'
                               }`}
                             >
-                              {isDone && <CheckCircle2 aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3} />}
+                              {isDone && <Check aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3.5} />}
                               {!isDone && isCurrent && (
                                 <Play aria-hidden className="h-2 w-2 fill-canvas text-canvas" />
                               )}
