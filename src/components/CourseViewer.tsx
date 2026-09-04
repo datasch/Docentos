@@ -17,6 +17,7 @@ import {
   ListTree,
   Lock,
   MessageSquare,
+  Minimize2,
   ShieldCheck,
 } from 'lucide-react';
 import { api } from '../lib/api';
@@ -378,7 +379,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               </div>
             )}
 
-            <div className="group relative aspect-video w-full overflow-hidden bg-canvas max-lg:sticky max-lg:top-16 max-lg:z-30 lg:rounded-2xl">
+            {/* El ancho se limita a lo que cabe de alto: un 16:9 a ancho completo
+                en una pantalla apaisada empuja el título de la clase fuera de la
+                vista y obliga a hacer scroll para saber qué se está viendo. */}
+            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas max-lg:sticky max-lg:top-16 max-lg:z-30 lg:w-[min(100%,calc((100dvh-9rem)*16/9))] lg:rounded-2xl">
               {showsPlayer && videoSource ? (
                 <iframe
                   src={videoSource.embedUrl}
@@ -400,6 +404,20 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     Ver opciones de acceso
                   </button>
                 </div>
+              )}
+
+              {/* Salida del modo cine sobre el propio video: el interruptor del
+                  panel no sirve para volver, porque el modo cine oculta el panel
+                  que lo contiene. */}
+              {showsPlayer && theaterMode && (
+                <button
+                  type="button"
+                  onClick={() => setTheaterMode(false)}
+                  className="pointer-events-auto absolute top-3 right-3 hidden items-center gap-1.5 rounded-lg bg-canvas/70 px-3 py-2 text-meta text-ink opacity-0 backdrop-blur-sm transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 lg:flex"
+                >
+                  <Minimize2 aria-hidden className="h-4 w-4" />
+                  Salir del modo cine
+                </button>
               )}
 
               {/* Avanzar sin salir del video: los controles aparecen al apuntar
