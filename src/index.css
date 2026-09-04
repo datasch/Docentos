@@ -9,28 +9,38 @@
  * cambiar la paleta sea editar este archivo y nada mas.
  */
 @theme {
-  /* Superficies, de mas profunda a mas elevada. */
-  --color-canvas: #0a0a0f;
-  --color-surface: #141420;
-  --color-raised: #1a1a2e;
-  --color-line: #2d2d44;
-  /* Superficie de las tarjetas dentro de un panel. Matiz 212, casi el mismo que
-     el azul del acento, asi que se llevan bien; contra el panel queda en 1.02:1,
-     de modo que la tarjeta la dibuja el borde y no el relleno. */
-  --color-card: #111820;
+  /* Superficies. Escala tomada de oferta.giantucchi.com, que es la version mas
+     madura de este mismo sistema: anade un fondo mas profundo que #0a0a0f y
+     empuja el resto un paso, de modo que un panel ya se separa del fondo sin
+     necesidad de dibujarle un borde encima. */
+  --color-canvas: #050505;
+  --color-surface: #0a0a0f;
+  --color-raised: #141420;
+  --color-elevated: #1a1a2e;
 
-  /* Texto por rol. Los porcentajes estan elegidos para pasar AA sobre surface:
-     ink 18.2:1, ink-soft 10.1:1, ink-muted 6.3:1. ink-faint (4.0:1) queda por
-     debajo del umbral a proposito y solo se usa en elementos decorativos o
-     deshabilitados, nunca para informacion que haya que leer. */
+  /* Bordes de luz, no de pintura. Un #2d2d44 solido es un color que se posa
+     sobre la superficie y compite con ella; un blanco al 8% es un canto que
+     recoge luz, y funciona igual sobre cualquiera de las cuatro superficies. */
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-strong: rgb(255 255 255 / 0.22);
+
+  /* Texto por rol. Su sistema baja el apagado hasta el 40%, que sobre #0a0a0f
+     se queda en 3.77:1 y no llega a AA; aqui el escalon util es el 55% (6.28:1)
+     y el 40% se reserva a lo decorativo y lo deshabilitado. */
   --color-ink: #ffffff;
-  --color-ink-soft: rgb(255 255 255 / 0.72);
-  --color-ink-muted: rgb(255 255 255 / 0.58);
-  --color-ink-faint: rgb(255 255 255 / 0.42);
+  --color-ink-soft: rgb(255 255 255 / 0.70);
+  --color-ink-muted: rgb(255 255 255 / 0.55);
+  --color-ink-faint: rgb(255 255 255 / 0.40);
 
-  /* Espectro de marca. El temario asigna uno por modulo, en este orden. */
+  /* Espectro de marca. --brand-violet no estaba en DESIGN_SYSTEM_COLORS.md y es
+     el acento activo de la otra marca; entra aqui con su variante clara, que es
+     la que se usa cuando el acento es texto: #8b5cf6 se queda en 4.31:1 sobre
+     una tarjeta y no pasa AA, asi que el violeta pinta bordes y rellenos y el
+     claro pinta letras. */
   --color-brand-cyan: #06b6d4;
   --color-brand-blue: #3b82f6;
+  --color-brand-violet: #8b5cf6;
+  --color-brand-violet-light: #c4b5fd;
   --color-brand-purple: #a855f7;
   --color-brand-magenta: #ec4899;
   --color-brand-orange: #f97316;
@@ -145,6 +155,24 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.surface-card {
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.08) 0%,
+    rgb(10 10 15 / 0.6) 50%,
+    rgb(5 5 5 / 0.9) 100%
+  );
+}
+
+.surface-card-hover:hover {
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.12) 0%,
+    rgb(15 15 22 / 0.7) 50%,
+    rgb(5 5 5 / 0.95) 100%
+  );
 }
 
 .bg-dark-gradient {

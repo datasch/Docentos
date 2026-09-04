@@ -50,7 +50,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
       aria-pressed={isCompleted}
       className={`hidden shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-meta font-semibold transition-colors lg:flex ${
         isCompleted
-          ? 'bg-raised text-brand-blue hover:bg-line'
+          ? 'bg-raised text-brand-violet-light hover:bg-line'
           : 'bg-raised text-ink hover:bg-line'
       }`}
     >
@@ -117,7 +117,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       onClick={onToggleComplete}
       aria-pressed={isCompleted}
       className={`flex items-center gap-1 rounded-lg px-3 py-2 text-micro font-semibold transition-colors ${
-        isCompleted ? 'text-brand-blue' : 'text-ink-soft'
+        isCompleted ? 'text-brand-violet-light' : 'text-ink-soft'
       }`}
     >
       <Check aria-hidden className="h-4 w-4" strokeWidth={isCompleted ? 3 : 2} />

@@ -53,6 +53,20 @@ interface CourseViewerProps {
   onGoHome?: () => void;
 }
 
+/**
+ * De donde sale el video, dicho para el alumno.
+ *
+ * La lista de cursos no envia embedUrl ni driveFileId —y hace bien, porque eso
+ * expondria la URL cruda del archivo—, envia `source`. Deducir el proveedor de
+ * playbackUrl, que siempre apunta a nuestra propia ruta de acceso, hacia que
+ * todo dijera «Reproductor embebido».
+ */
+const SOURCE_LABELS: Record<string, string> = {
+  GOOGLE_DRIVE: 'Google Drive',
+  EXTERNAL_URL: 'Video externo',
+  DEMO: 'Contenido de demostración',
+};
+
 const PROVIDER_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   drive: 'Google Drive',
@@ -321,9 +335,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const videoSource = currentVideo
     ? parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId)
     : null;
-  const videoOrigin = currentVideo
-    ? parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || currentVideo.playbackUrl)
-    : null;
+  const providerLabel = currentVideo
+    ? SOURCE_LABELS[currentVideo.source || ''] ||
+      PROVIDER_LABELS[parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
+      'Video'
+    : 'Video';
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
   const showsPlayer = hasAccess && currentVideo;
   const showsQuiz = hasAccess && pluginManager.isEnabled('interactive-quizzes') && Boolean(currentModule);
@@ -475,7 +491,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 lessonTitle={currentVideo.title}
                 moduleTitle={currentModule?.title || ''}
                 moduleIndex={activeModuleIndex}
-                providerLabel={PROVIDER_LABELS[videoOrigin?.provider || ''] || 'Video'}
+                providerLabel={providerLabel}
                 lessonNumber={currentLessonIndex + 1}
                 totalLessons={lessons.length}
                 isCompleted={isCurrentCompleted}

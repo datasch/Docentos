@@ -86,7 +86,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
                   <span className="shrink-0 text-micro text-ink-muted tabular-nums">{tab.count}</span>
                 )}
                 {isActive && (
-                  <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-blue" />
+                  <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-violet" />
                 )}
               </button>
             );

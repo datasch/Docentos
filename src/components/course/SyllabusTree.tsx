@@ -188,8 +188,8 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
               tabIndex={tabbableKey === moduleKey ? 0 : -1}
               onFocus={() => setFocusKey(moduleKey)}
               onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
-              className={`overflow-hidden rounded-xl border bg-card transition-colors ${
-                isCurrentModule ? 'border-brand-blue/40' : 'border-line'
+              className={`surface-card overflow-hidden rounded-xl border transition-colors ${
+                isCurrentModule ? 'border-brand-violet/40' : 'border-line'
               }`}
             >
               <div
@@ -198,7 +198,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                   toggleModule(mIdx);
                 }}
                 className={`flex w-full items-start gap-3 p-3.5 text-left transition-colors ${
-                  isUnlocked ? 'cursor-pointer hover:bg-brand-blue/5' : 'cursor-not-allowed'
+                  isUnlocked ? 'cursor-pointer hover:bg-brand-violet/5' : 'cursor-not-allowed'
                 }`}
               >
                 {/* Estado del módulo a la izquierda, como en la referencia: se
@@ -206,7 +206,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                 {!isUnlocked ? (
                   <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-ink-faint" />
                 ) : isComplete ? (
-                  <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" strokeWidth={2.5} />
+                  <Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-violet-light" strokeWidth={2.5} />
                 ) : (
                   <Circle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-line" />
                 )}
@@ -271,7 +271,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <span
                               aria-hidden
                               className={`absolute top-[calc(50%+10px)] left-[1.125rem] h-[calc(100%-20px)] w-0.5 -translate-x-1/2 rounded-full ${
-                                isDone ? 'bg-brand-blue/40' : 'bg-line'
+                                isDone ? 'bg-brand-violet/40' : 'bg-line'
                               }`}
                             />
                           )}
@@ -293,7 +293,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             }
                             onClick={() => (hasAccess ? onSelectLesson(mIdx, vIdx) : onOpenPaywall())}
                             className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg pr-2.5 text-left transition-colors ${
-                              isCurrent ? 'bg-brand-blue/10' : 'hover:bg-brand-blue/5'
+                              isCurrent ? 'bg-brand-violet/10' : 'hover:bg-brand-violet/5'
                             }`}
                           >
                             <button
@@ -314,7 +314,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             >
                               <span
                                 className={`flex h-4 w-4 items-center justify-center rounded-full transition-colors ${
-                                  isDone || isCurrent ? 'bg-brand-blue' : 'border border-line hover:border-brand-blue'
+                                  isDone || isCurrent ? 'bg-brand-violet' : 'border border-line hover:border-brand-violet'
                                 }`}
                               >
                                 {isDone && <Check aria-hidden className="h-3 w-3 text-canvas" strokeWidth={3.5} />}
@@ -327,7 +327,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <span
                               className={`min-w-0 flex-1 truncate text-row ${
                                 isCurrent
-                                  ? 'font-medium text-brand-blue'
+                                  ? 'font-medium text-brand-violet-light'
                                   : isDone
                                     ? 'text-ink-muted'
                                     : 'text-ink-soft'
@@ -358,9 +358,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             href={res.downloadUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-brand-blue/5 hover:text-ink"
+                            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-brand-violet/5 hover:text-ink"
                           >
-                            <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+                            <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-violet-light" />
                             <span className="min-w-0 flex-1 truncate">{res.title}</span>
                             <span className="shrink-0 text-micro text-ink-faint">{res.kind}</span>
                           </a>
@@ -385,9 +385,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                 href={res.downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-brand-blue/5 hover:text-ink"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-ink-soft transition-colors hover:bg-brand-violet/5 hover:text-ink"
               >
-                <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+                <Download aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-violet-light" />
                 <span className="min-w-0 flex-1 truncate">{res.title}</span>
               </a>
             ))}

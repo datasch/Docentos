@@ -53,7 +53,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
             {notes.map((note) => (
               <li key={note.id} className="rounded-xl bg-raised p-3">
                 <div className="flex items-baseline gap-2.5">
-                  <span className="shrink-0 text-micro font-semibold text-brand-blue tabular-nums">
+                  <span className="shrink-0 text-micro font-semibold text-brand-violet-light tabular-nums">
                     {formatTimestamp(note.timestampSeconds)}
                   </span>
                   <p className="min-w-0 flex-1 text-row leading-relaxed text-ink-soft">{note.content}</p>
