@@ -1,5 +1,52 @@
 @import "tailwindcss";
 
+/**
+ * Capa de tokens Giantucchi.
+ *
+ * Los hexadecimales de marca viven UNICAMENTE aqui: DESIGN_SYSTEM_COLORS.md es
+ * la fuente y este bloque su unica traduccion a codigo. Los componentes usan las
+ * utilidades generadas (bg-surface, text-ink-muted, border-line) para que
+ * cambiar la paleta sea editar este archivo y nada mas.
+ */
+@theme {
+  /* Superficies, de mas profunda a mas elevada. */
+  --color-canvas: #0a0a0f;
+  --color-surface: #141420;
+  --color-raised: #1a1a2e;
+  --color-line: #2d2d44;
+
+  /* Texto por rol. Los porcentajes estan elegidos para pasar AA sobre surface:
+     ink 18.2:1, ink-soft 10.1:1, ink-muted 6.3:1. ink-faint (4.0:1) queda por
+     debajo del umbral a proposito y solo se usa en elementos decorativos o
+     deshabilitados, nunca para informacion que haya que leer. */
+  --color-ink: #ffffff;
+  --color-ink-soft: rgb(255 255 255 / 0.72);
+  --color-ink-muted: rgb(255 255 255 / 0.58);
+  --color-ink-faint: rgb(255 255 255 / 0.42);
+
+  /* Espectro de marca. El temario asigna uno por modulo, en este orden. */
+  --color-brand-cyan: #06b6d4;
+  --color-brand-blue: #3b82f6;
+  --color-brand-purple: #a855f7;
+  --color-brand-magenta: #ec4899;
+  --color-brand-orange: #f97316;
+  --color-brand-yellow: #eab308;
+
+  /* Escala tipografica del reproductor. Sustituye a los siete tamanos sueltos
+     entre 9px y 13px que competian entre si. */
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.3;
+  --text-title--letter-spacing: -0.01em;
+  --text-section: 0.875rem;
+  --text-section--line-height: 1.35;
+  --text-row: 0.84375rem;
+  --text-row--line-height: 1.45;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.4;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.3;
+}
+
 @layer base {
   :root {
     --bg-main: #0a0a0f;
@@ -17,9 +64,17 @@
   }
 
   body {
-    background-color: #0a0a0f;
-    color: #ffffff;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  }
+
+  /* Un solo anillo de foco para toda la app: el cian se lee sobre cualquiera de
+     los seis tonos de modulo y sobre las tres superficies. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-cyan);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
   }
 }
 
@@ -30,66 +85,90 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0f;
+  background: var(--color-canvas);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2d2d44;
+  background: var(--color-line);
   border-radius: 9999px;
   transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--color-brand-cyan) 0%, var(--color-brand-purple) 100%);
 }
 
 /* Giantucchi Custom Utility Classes */
 .bg-giantucchi-main {
-  background-color: #0a0a0f;
+  background-color: var(--color-canvas);
 }
 
 .bg-giantucchi-surface {
-  background-color: #141420;
+  background-color: var(--color-surface);
 }
 
 .bg-giantucchi-elevated {
-  background-color: #1a1a2e;
+  background-color: var(--color-raised);
 }
 
 .border-giantucchi {
-  border-color: #2d2d44;
+  border-color: var(--color-line);
 }
 
 /* Gradients */
 .bg-brand-gradient {
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-cyan) 0%,
+    var(--color-brand-blue) 20%,
+    var(--color-brand-purple) 40%,
+    var(--color-brand-magenta) 60%,
+    var(--color-brand-orange) 80%,
+    var(--color-brand-yellow) 100%
+  );
 }
 
 .text-brand-gradient {
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-cyan) 0%,
+    var(--color-brand-blue) 20%,
+    var(--color-brand-purple) 40%,
+    var(--color-brand-magenta) 60%,
+    var(--color-brand-orange) 80%,
+    var(--color-brand-yellow) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .bg-dark-gradient {
-  background: linear-gradient(180deg, #0a0a0f 0%, #141420 100%);
+  background: linear-gradient(180deg, var(--color-canvas) 0%, var(--color-surface) 100%);
 }
 
 /* Primary CTA Button (Giantucchi Spectrum) */
 .btn-brand-primary {
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-cyan) 0%,
+    var(--color-brand-blue) 20%,
+    var(--color-brand-purple) 40%,
+    var(--color-brand-magenta) 60%,
+    var(--color-brand-orange) 80%,
+    var(--color-brand-yellow) 100%
+  );
   color: #ffffff;
   font-weight: 800;
   border-radius: 0.5rem; /* rounded-lg */
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 15px -3px rgba(6, 182, 212, 0.35);
+  box-shadow: 0 4px 15px -3px color-mix(in srgb, var(--color-brand-cyan) 35%, transparent);
 }
 
 .btn-brand-primary:hover {
   opacity: 0.93;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px -2px rgba(168, 85, 247, 0.45);
+  box-shadow: 0 6px 20px -2px color-mix(in srgb, var(--color-brand-purple) 45%, transparent);
 }
 
 .btn-brand-primary:active {
@@ -127,3 +206,30 @@
   animation: pulseSlow 2.8s ease-in-out infinite;
 }
 
+/* El acordeon del temario abre interpolando la fila del grid de 0fr a 1fr: es
+   la unica forma de animar "hasta la altura del contenido" sin medirla en JS. */
+.accordion-shell {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.accordion-shell[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+
+.accordion-shell > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
