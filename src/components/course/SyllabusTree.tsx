@@ -188,7 +188,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
               tabIndex={tabbableKey === moduleKey ? 0 : -1}
               onFocus={() => setFocusKey(moduleKey)}
               onKeyDown={(event) => handleKeyDown(event, { key: moduleKey, kind: 'module', moduleIndex: mIdx })}
-              className={`surface-card overflow-hidden rounded-xl border transition-colors ${
+              className={`overflow-hidden rounded-xl border bg-card transition-colors ${
                 isCurrentModule ? 'border-brand-violet/40' : 'border-line'
               }`}
             >

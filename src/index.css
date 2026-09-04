@@ -21,6 +21,9 @@
   /* Bordes de luz, no de pintura. Un #2d2d44 solido es un color que se posa
      sobre la superficie y compite con ella; un blanco al 8% es un canto que
      recoge luz, y funciona igual sobre cualquiera de las cuatro superficies. */
+  /* Superficie plana de las tarjetas del temario. */
+  --color-card: #111820;
+
   --color-line: rgb(255 255 255 / 0.08);
   --color-line-strong: rgb(255 255 255 / 0.22);
 
@@ -155,24 +158,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.surface-card {
-  background: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 0.08) 0%,
-    rgb(10 10 15 / 0.6) 50%,
-    rgb(5 5 5 / 0.9) 100%
-  );
-}
-
-.surface-card-hover:hover {
-  background: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 0.12) 0%,
-    rgb(15 15 22 / 0.7) 50%,
-    rgb(5 5 5 / 0.95) 100%
-  );
 }
 
 .bg-dark-gradient {
