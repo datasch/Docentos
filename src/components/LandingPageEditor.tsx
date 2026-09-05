@@ -48,8 +48,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
 
   // Form State
   const [config, setConfig] = useState<LandingConfig>({
-    heroTitle: 'El Motor de Aprendizaje Abierto con IA Nativa & Mentoría',
-    heroSubtitle: 'DocentOS es la alternativa moderna, liviana y modular de código abierto frente a plataformas LMS tradicionales monolíticas como Moodle u Odoo LMS.',
+    heroTitle: 'Una nueva forma de aprender | con inteligencia artificial.',
+    heroSubtitle: 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.',
     heroMediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
     heroCtaText: 'Explorar Cursos',
     heroCtaLink: '#courses',
@@ -59,6 +59,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
     bannerEnabled: true,
     bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
     bannerLinkText: 'Ver Novedades',
+    trustRating: '4.9/5',
+    trustAudience: '+12,500',
     bannerLinkUrl: '#',
     benefits: [],
     testimonials: [],
@@ -261,7 +263,12 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
 
           {/* Hero Preview */}
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 text-center space-y-4">
-            <h1 className="text-2xl font-black text-white">{config.heroTitle}</h1>
+            <h1 className="text-2xl font-black text-white">
+              {config.heroTitle.split('|')[0].trim()}{' '}
+              <span className="bg-gradient-to-br from-[#a78bfa] via-[#8b5cf6] to-[#22d3ee] bg-clip-text text-transparent">
+                {config.heroTitle.split('|').slice(1).join('|').trim()}
+              </span>
+            </h1>
             <p className="text-xs text-slate-300 max-w-2xl mx-auto">{config.heroSubtitle}</p>
 
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -365,6 +372,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
                 onChange={(e) => setConfig({ ...config, heroTitle: e.target.value })}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
               />
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Una barra <code className="text-slate-300">|</code> marca dónde empieza el tramo que
+                se pinta en gradiente. Sin barra, el titular va entero en blanco.
+              </p>
             </div>
 
             <div>
@@ -378,6 +389,40 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
                 onChange={(e) => setConfig({ ...config, heroSubtitle: e.target.value })}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
               />
+            </div>
+
+            {/* Prueba social. Deja cualquiera de las dos en blanco y la barra
+                desaparece de la portada: mejor sin cifras que con cifras
+                prestadas. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Valoración
+                </label>
+                <input
+                  type="text"
+                  placeholder="4.9/5"
+                  value={config.trustRating}
+                  onChange={(e) => setConfig({ ...config, trustRating: e.target.value })}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Estudiantes activos
+                </label>
+                <input
+                  type="text"
+                  placeholder="+12,500"
+                  value={config.trustAudience}
+                  onChange={(e) => setConfig({ ...config, trustAudience: e.target.value })}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+              </div>
+              <p className="col-span-2 text-[11px] text-slate-500">
+                Se muestran bajo los botones del hero. Deja cualquiera de las dos en blanco y la
+                barra no se pinta.
+              </p>
             </div>
 
             <div>

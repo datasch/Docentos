@@ -8,7 +8,14 @@
  * reglas puede alcanzar al resto de la aplicacion.
  */
 
-.lp-root {
+/* Los tokens no cuelgan solo de `.lp-root`: la cabecera de la portada se
+   reutiliza tal cual dentro de la aplicacion (panel de estudio y admin), que
+   se monta fuera de ese contenedor. Declararlos tambien en `.lp-header` es lo
+   que hace que la barra se pinte igual en los dos sitios; sin esto las clases
+   `lp-` llegan al header de la app sin ninguna variable resuelta y la barra
+   queda transparente y sin tinta. */
+.lp-root,
+.lp-header {
   /* Superficies. Rampa neutra de tono unico (240 grados, saturacion baja) del
      sistema de color de DocentOS: los pasos son de luminosidad, no de tinte. */
   --lp-bg-main: #07070b;
@@ -51,7 +58,10 @@
   --lp-r-pill: 9999px;
   --lp-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   --lp-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+/* El lienzo de la portada. Solo la portada: la aplicacion trae el suyo. */
+.lp-root {
   position: relative;
   min-height: 100vh;
   background-color: var(--lp-bg-main);
@@ -130,6 +140,18 @@ html:has(.lp-root) {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--lp-border);
+  /* Dentro de la portada esto lo heredaria de `.lp-root`; en la aplicacion la
+     barra es hija del body, asi que la tipografia y la tinta van aqui. */
+  color: var(--lp-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+/* La aplicacion trabaja sobre un lienzo mucho mas ancho que la portada: sus
+   tablas y su reproductor llegan a 1800px, y una barra encajonada a 1380
+   dejaria el avatar flotando en mitad de la pantalla. */
+.lp-container-wide {
+  max-width: 1800px;
 }
 
 .lp-navbar {
@@ -154,6 +176,7 @@ html:has(.lp-root) {
 .lp-logo {
   display: flex;
   align-items: center;
+  cursor: pointer;
   gap: 10px;
   font-weight: 800;
   font-size: 1.3rem;
@@ -226,8 +249,11 @@ html:has(.lp-root) {
 }
 
 .lp-nav-link {
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
+  /* La portada solo pone texto; los destinos de la aplicacion llevan icono. */
+  gap: 7px;
   padding: 8px 12px;
   font-size: 0.92rem;
   font-weight: 500;
@@ -261,6 +287,7 @@ html:has(.lp-root) {
 }
 
 .lp-badge-premium {
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -319,7 +346,7 @@ html:has(.lp-root) {
   background: rgba(23, 23, 33, 0.9);
 }
 
-.lp-search-box svg {
+.lp-search-box > svg {
   color: var(--lp-text-muted);
   width: 18px;
   height: 18px;
@@ -342,6 +369,7 @@ html:has(.lp-root) {
 }
 
 .lp-icon-btn {
+  cursor: pointer;
   position: relative;
   display: flex;
   align-items: center;
@@ -430,6 +458,59 @@ html:has(.lp-root) {
   position: relative;
 }
 
+/* El desplegable del buscador se ancla a la izquierda, bajo la caja, y no a la
+   derecha como los menus de icono: nace del texto que se esta escribiendo. */
+.lp-search-results {
+  right: auto;
+  left: 0;
+  min-width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.lp-search-empty {
+  padding: 10px;
+  font-size: 0.8rem;
+  color: var(--lp-text-muted);
+}
+
+/* Cerrar sesion es la unica accion del menu que no se puede deshacer. */
+.lp-menu-item.is-danger {
+  color: #fb7185;
+}
+
+.lp-menu-item.is-danger:hover {
+  background: rgba(251, 113, 133, 0.12);
+  color: #fda4af;
+}
+
+/* Fila de solo lectura del menu (estado de acceso): no es pulsable. */
+.lp-menu-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 9px 10px;
+  border-top: 1px solid var(--lp-border);
+  border-bottom: 1px solid var(--lp-border);
+  font-size: 0.78rem;
+  color: var(--lp-text-muted);
+}
+
+.lp-menu-note strong {
+  font-weight: 700;
+}
+
+/* Tonos de la paleta de la portada. La cabecera no mezcla los tokens de la
+   aplicacion con los suyos: seria el mismo error de dos sistemas a la vez que
+   dejaba la barra a medio pintar. */
+.lp-tone-accent { color: var(--lp-accent-soft); }
+.lp-tone-cyan { color: var(--lp-cyan); }
+.lp-tone-gold { color: var(--lp-gold); }
+.lp-tone-green { color: var(--lp-green); }
+.lp-tone-warn { color: #fb923c; }
+
 .lp-menu {
   position: absolute;
   right: 0;
@@ -470,6 +551,7 @@ html:has(.lp-root) {
 }
 
 .lp-menu-item {
+  cursor: pointer;
   display: flex;
   width: 100%;
   align-items: center;
@@ -526,24 +608,101 @@ html:has(.lp-root) {
   padding: 0;
 }
 
-.lp-mobile-links a {
-  display: block;
+.lp-mobile-links a,
+.lp-mobile-links button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
   padding: 11px 12px;
   border-radius: var(--lp-r-sm);
   font-size: 0.95rem;
   font-weight: 600;
+  text-align: left;
   color: var(--lp-text-secondary);
 }
 
-.lp-mobile-links a:hover {
+.lp-mobile-links button,
+.lp-mobile-lang-options button {
+  cursor: pointer;
+}
+
+.lp-mobile-links a:hover,
+.lp-mobile-links button:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--lp-text-strong);
+}
+
+.lp-mobile-links button.is-active {
+  color: var(--lp-cyan);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+/* El selector de idioma vive en la barra; por debajo de 1280px hay que
+   ofrecerlo aqui o queda inalcanzable en movil. */
+.lp-mobile-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--lp-border);
+  font-size: 0.8rem;
+  color: var(--lp-text-muted);
+}
+
+.lp-mobile-lang-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lp-mobile-lang-options button {
+  padding: 5px 9px;
+  border-radius: var(--lp-r-sm);
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--lp-text-muted);
+}
+
+.lp-mobile-lang-options button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--lp-text-strong);
+}
+
+.lp-mobile-lang-options button.is-active {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.4);
+  color: var(--lp-cyan);
 }
 
 .lp-mobile-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* En la aplicacion son acciones de cuenta, una por linea y alineadas a la
+   izquierda: apiladas se leen como una lista, no como una botonera. */
+.lp-mobile-actions.is-stacked {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--lp-border);
+}
+
+.lp-mobile-actions.is-stacked > .lp-btn-ghost {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+}
+
+.lp-mobile-actions.is-stacked > .lp-btn-ghost.is-danger {
+  color: #fb7185;
 }
 
 /* ==========================================================================
@@ -693,15 +852,14 @@ html:has(.lp-root) {
 /* ==========================================================================
    4. HERO (VISITANTE)
    ========================================================================== */
+/* El hero no es una tarjeta: es el fondo de la pagina. Estuvo enmarcado en un
+   panel con borde violeta y sombra, y ese marco le robaba al titular los 32px
+   de padding a cada lado ademas de partir la escena en dos planos. Ahora la
+   luz y la rejilla son del propio lienzo y el titular respira. */
 .lp-hero {
   position: relative;
-  margin: 40px 0 8px;
-  padding: 64px 32px 56px;
-  border-radius: var(--lp-r-xl);
-  background: radial-gradient(circle at 50% 0%, #191233 0%, #0f0f17 65%, #07070b 100%);
-  border: 1px solid rgba(139, 92, 246, 0.28);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(139, 92, 246, 0.12);
-  overflow: hidden;
+  margin: 8px 0 0;
+  padding: 52px 0 60px;
   text-align: center;
 }
 
@@ -711,10 +869,10 @@ html:has(.lp-root) {
   top: -45%;
   left: 50%;
   transform: translateX(-50%);
-  width: 720px;
-  height: 380px;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.24) 0%, rgba(139, 92, 246, 0.16) 50%, transparent 80%);
-  filter: blur(40px);
+  width: min(980px, 130%);
+  height: 460px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(34, 211, 238, 0.12) 45%, transparent 75%);
+  filter: blur(50px);
   pointer-events: none;
 }
 
@@ -724,55 +882,126 @@ html:has(.lp-root) {
   inset: 0;
   background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.6;
+  background-size: 34px 34px;
+  opacity: 0.5;
   pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
 }
 
 .lp-hero-content {
   position: relative;
   z-index: 2;
-  max-width: 820px;
+  /* 820px era el ancho de la caja anterior y partia «Una nueva forma de
+     aprender» en dos lineas. El titular pide 1050 para entrar de una. */
+  max-width: 1140px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/* Pildora de cabecera: nucleo de gradiente a la izquierda, texto y una flecha
+   que se desplaza al apuntar. Reemplaza a la insignia plana anterior. */
 .lp-hero-badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
-  margin-bottom: 22px;
+  gap: 10px;
+  padding: 5px 14px 5px 5px;
+  margin-bottom: 26px;
   border-radius: var(--lp-r-pill);
-  background: rgba(34, 211, 238, 0.08);
-  border: 1px solid rgba(34, 211, 238, 0.35);
-  color: var(--lp-cyan);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  background: rgba(15, 15, 23, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.3), inset 0 0 12px rgba(139, 92, 246, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--lp-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: border-color var(--lp-fast), transform var(--lp-fast), box-shadow var(--lp-fast);
 }
 
+.lp-hero-badge:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.45), inset 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.lp-hero-badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--lp-r-pill);
+  background: var(--lp-gradient);
+  color: var(--lp-text-on-fill);
+}
+
+.lp-hero-badge-accent {
+  color: var(--lp-accent-soft);
+  font-weight: 700;
+}
+
+.lp-hero-badge-arrow {
+  color: var(--lp-text-muted);
+  transition: transform var(--lp-fast), color var(--lp-fast);
+}
+
+.lp-hero-badge:hover .lp-hero-badge-arrow {
+  transform: translateX(3px);
+  color: var(--lp-accent-soft);
+}
+
+/* El titular va en blanco y solo la segunda linea lleva el gradiente. Pintarlo
+   entero, como estaba, obliga a leer una frase larga en texto recortado: pesa
+   mas de lo que destaca y el remate cian se pierde entre lo demas. */
 .lp-hero-title {
-  font-size: 3rem;
-  font-weight: 900;
-  letter-spacing: -1.4px;
-  line-height: 1.1;
-  margin-bottom: 18px;
-  background: linear-gradient(135deg, #edeef5 30%, #c4b5fd 70%, #22d3ee 100%);
+  font-size: clamp(2.1rem, 5.5vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  max-width: 1100px;
+  margin: 0 auto 20px;
+  color: var(--lp-text-strong);
+}
+
+/* El tramo en gradiente arranca en su propia linea, como en la referencia: en
+   una sola linea el titular pasa de 55 caracteres y deja de leerse de un golpe. */
+.lp-hero-title-accent {
+  position: relative;
+  display: block;
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 45%, #22d3ee 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(34, 211, 238, 0.25);
+}
+
+/* Subrayado de luz bajo la linea en gradiente: la asienta sin subrayarla. */
+.lp-hero-title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.45), rgba(34, 211, 238, 0.45), transparent);
 }
 
 .lp-hero-sub {
-  font-size: 1.05rem;
-  color: #b4b7c7;
-  max-width: 680px;
+  font-size: clamp(0.98rem, 1.8vw, 1.15rem);
+  color: var(--lp-text-secondary);
+  max-width: 720px;
   line-height: 1.65;
+  letter-spacing: -0.01em;
   margin-bottom: 32px;
+}
+
+.lp-hero-sub strong {
+  color: var(--lp-text-strong);
+  font-weight: 600;
 }
 
 .lp-hero-actions {
@@ -783,38 +1012,168 @@ html:has(.lp-root) {
   flex-wrap: wrap;
 }
 
-.lp-hero-stats {
+/* ==========================================================================
+   4a. PRUEBA SOCIAL
+   ==========================================================================
+   Va pegada a los botones, no separada: es lo que responde a «¿y esto lo usa
+   alguien?» en el mismo golpe de vista en que se decide pulsar. */
+.lp-hero-trust {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 14px 36px;
-  margin-top: 36px;
-  padding-top: 28px;
-  border-top: 1px solid var(--lp-border);
-  width: 100%;
+  gap: 8px 18px;
+  margin-top: 22px;
 }
 
-.lp-hero-stat {
+.lp-trust-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.lp-trust-avatar {
+  width: 28px;
+  height: 28px;
+  margin-left: -9px;
+  border-radius: 50%;
+  border: 2px solid var(--lp-bg-main);
+  background-color: var(--lp-bg-elevated);
+  background-size: cover;
+  background-position: center;
+}
+
+.lp-trust-avatar:first-child {
+  margin-left: 0;
+}
+
+.lp-trust-rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  color: var(--lp-text-secondary);
+}
+
+.lp-trust-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--lp-gold);
+}
+
+.lp-trust-rating strong {
+  color: var(--lp-text-strong);
+  font-weight: 700;
+}
+
+/* Un punto, no una barra: separa dos datos del mismo rango sin jerarquizarlos. */
+.lp-trust-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--lp-text-muted);
+}
+
+.lp-trust-highlight {
+  color: var(--lp-accent-soft) !important;
+}
+
+/* ==========================================================================
+   4b. CIFRAS DEL CATALOGO
+   ==========================================================================
+   Tres tarjetas en vez de la fila de numeros sueltos que habia: las cifras
+   solas no dicen nada —«193 lecciones» no es una promesa— y con una linea de
+   contexto debajo cada una explica que se lleva quien se apunta. */
+.lp-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 46px auto 0;
+  padding-top: 38px;
+  border-top: 1px solid var(--lp-border);
+}
+
+.lp-stat-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  text-align: center;
+  padding: 26px 20px 22px;
+  border-radius: var(--lp-r-lg);
+  border: 1px solid var(--lp-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  overflow: hidden;
+  transition: transform var(--lp-fast), border-color var(--lp-fast), box-shadow var(--lp-fast), background var(--lp-fast);
 }
 
-.lp-hero-stat strong {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: var(--lp-text-strong);
-  line-height: 1.1;
+/* Filo de luz en el borde superior, como el resto de superficies elevadas. */
+.lp-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
 }
 
-.lp-hero-stat span {
-  font-size: 0.72rem;
+.lp-stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: linear-gradient(180deg, rgba(23, 23, 33, 0.6) 0%, rgba(15, 15, 23, 0.7) 100%);
+  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(139, 92, 246, 0.15);
+}
+
+.lp-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 14px;
+  border-radius: var(--lp-r-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--lp-accent-soft);
+  transition: background var(--lp-fast), border-color var(--lp-fast), color var(--lp-fast), transform var(--lp-fast);
+}
+
+.lp-stat-card:hover .lp-stat-icon {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: var(--lp-cyan);
+  transform: scale(1.08);
+}
+
+.lp-stat-number {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #edeef5 30%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-stat-label {
+  margin-top: 6px;
+  font-size: 0.95rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
+  color: var(--lp-text-primary);
+}
+
+.lp-stat-note {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  line-height: 1.45;
   color: var(--lp-text-muted);
+  max-width: 26ch;
 }
 
 /* ==========================================================================
@@ -1759,15 +2118,32 @@ html:has(.lp-root) {
   .lp-container {
     padding: 0 16px;
   }
+  /* A partir de aqui la fila es logo + accion + avatar + hamburguesa, y el
+     selector de idioma es lo primero que la desborda. Sigue disponible: el
+     cajon movil lo lleva entero, con las cinco banderas. */
+  .lp-nav-lang {
+    display: none;
+  }
   .lp-hero {
-    padding: 44px 20px 40px;
+    /* Los 20px laterales eran de cuando esto era una tarjeta; ahora los pone
+       `.lp-container` y sumarlos estrechaba el titular en movil. */
+    padding: 38px 0 44px;
   }
-  .lp-hero-title {
-    font-size: 2.1rem;
-    letter-spacing: -0.8px;
+  .lp-hero-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 34px;
+    padding-top: 28px;
   }
-  .lp-hero-sub {
-    font-size: 0.95rem;
+  .lp-stat-card {
+    padding: 22px 18px 20px;
+  }
+  .lp-hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .lp-hero-actions > * {
+    width: 100%;
   }
   .lp-promo-title {
     font-size: 2.3rem;
@@ -1807,6 +2183,36 @@ html:has(.lp-root) {
   .lp-footer-grid {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .lp-hero-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .lp-stat-number {
+    font-size: 2.1rem;
+  }
+  .lp-stat-note {
+    font-size: 0.76rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .lp-logo {
+    font-size: 1.05rem;
+    gap: 8px;
+  }
+  .lp-logo-badge {
+    width: 32px;
+    height: 32px;
+  }
+  .lp-navbar {
+    gap: 10px;
+  }
+  .lp-nav-right {
+    gap: 8px;
   }
 }
 

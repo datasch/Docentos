@@ -385,8 +385,9 @@ model VideoNote {
 
 model LandingConfig {
   id                   String   @id @default("singleton")
-  heroTitle            String   @default("El Motor de Aprendizaje Abierto con IA Nativa & Mentoría")
-  heroSubtitle         String   @default("DocentOS es la alternativa moderna, liviana y modular de código abierto frente a plataformas LMS tradicionales monolíticas como Moodle u Odoo LMS.")
+  /// La barra marca donde empieza el tramo del titular que va en gradiente.
+  heroTitle            String   @default("Una nueva forma de aprender | con inteligencia artificial.")
+  heroSubtitle         String   @default("Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.")
   heroMediaUrl         String   @default("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop")
   heroCtaText          String   @default("Explorar Cursos")
   heroCtaLink          String   @default("#courses")
@@ -397,6 +398,10 @@ model LandingConfig {
   bannerText           String   @default("🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.")
   bannerLinkText       String   @default("Ver Novedades")
   bannerLinkUrl        String   @default("#")
+  /// Prueba social del hero. Vacio en cualquiera de los dos = barra oculta:
+  /// una instalacion nueva no deberia presumir de cifras que no tiene.
+  trustRating          String   @default("")
+  trustAudience        String   @default("")
   benefitsJson         String   @default("[]")
   testimonialsJson     String   @default("[]")
   footerText           String   @default("Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez)")

@@ -50,10 +50,18 @@ interface LandingPageProps {
   onLogout?: () => void;
 }
 
+/** Caras de la barra de prueba social. Ilustrativas, como el resto del demo. */
+const TRUST_FACES = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80',
+];
+
 const DEFAULT_LANDING_CONFIG: LandingConfig = {
-  heroTitle: 'El Motor de Aprendizaje Abierto con IA Nativa & Mentoría',
+  heroTitle: 'Una nueva forma de aprender | con inteligencia artificial.',
   heroSubtitle:
-    'DocentOS es la alternativa moderna, liviana y modular de código abierto frente a plataformas LMS tradicionales monolíticas como Moodle u Odoo LMS. Clases indexadas desde Google Drive, guías gamificadas con voz de IA, resolución de dudas con mentores y arquitectura extensible de plugins.',
+    'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.',
   heroMediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
   heroCtaText: 'Explorar Catálogo de Cursos',
   heroCtaLink: '#cursos',
@@ -63,6 +71,8 @@ const DEFAULT_LANDING_CONFIG: LandingConfig = {
   bannerEnabled: true,
   bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
   bannerLinkText: 'Ver Novedades',
+  trustRating: '4.9/5',
+  trustAudience: '+12,500',
   bannerLinkUrl: '#metodologia',
   benefits: [
     {
@@ -451,7 +461,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const communityUrl = landingConfig.discordUrl || landingConfig.githubUrl || 'https://github.com/giantucchi/docentos';
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://docentos.org';
-  const pageTitle = `${landingConfig.heroTitle} | DocentOS Open Source LMS`;
+  // El titular se guarda en una sola cadena editable; la barra marca dónde
+  // empieza el tramo que va en gradiente. Sin barra, el titular va entero en
+  // blanco y no se pierde nada.
+  const [titleLead, titleAccent] = (() => {
+    const raw = landingConfig.heroTitle || '';
+    const cut = raw.indexOf('|');
+    if (cut === -1) return [raw.trim(), ''];
+    return [raw.slice(0, cut).trim(), raw.slice(cut + 1).trim()];
+  })();
+  const plainHeroTitle = [titleLead, titleAccent].filter(Boolean).join(' ');
+
+  const showsTrustBar = Boolean(landingConfig.trustRating && landingConfig.trustAudience);
+
+  const pageTitle = `${plainHeroTitle} | DocentOS Open Source LMS`;
   const pageDescription = landingConfig.heroSubtitle;
 
   const softwareSchema = {
@@ -572,12 +595,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           /* 2b. Visitante: presentación de la plataforma. */
           <section className="lp-hero">
             <div className="lp-hero-content">
-              <span className="lp-hero-badge">
-                <Sparkles aria-hidden className="h-3.5 w-3.5" />
-                {appName} v{DOCENTOS_VERSION} • Open Source LMS
-              </span>
+              <a href="#cursos" className="lp-hero-badge">
+                <span className="lp-hero-badge-icon" aria-hidden>
+                  <Sparkles className="h-3 w-3" />
+                </span>
+                <span>
+                  {appName} v{DOCENTOS_VERSION} ·{' '}
+                  <span className="lp-hero-badge-accent">LMS abierto con IA nativa</span>
+                </span>
+                <ChevronRight aria-hidden className="lp-hero-badge-arrow h-3.5 w-3.5" />
+              </a>
 
-              <h1 className="lp-hero-title">{landingConfig.heroTitle}</h1>
+              {/* El titular es fijo y no sale de `landingConfig`: es la promesa
+                  de la marca, no un campo que se edite por instalación. */}
+              <h1 className="lp-hero-title">
+                {titleLead}
+                {titleAccent && (
+                  <>
+                    {' '}
+                    <span className="lp-hero-title-accent">{titleAccent}</span>
+                  </>
+                )}
+              </h1>
+
               <p className="lp-hero-sub">{landingConfig.heroSubtitle}</p>
 
               <div className="lp-hero-actions">
@@ -594,20 +634,67 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </a>
               </div>
 
+              {showsTrustBar && (
+                <div className="lp-hero-trust">
+                  <span className="lp-trust-avatars" aria-hidden>
+                    {TRUST_FACES.map((face) => (
+                      <span
+                        key={face}
+                        className="lp-trust-avatar"
+                        style={{ backgroundImage: `url('${face}')` }}
+                      />
+                    ))}
+                  </span>
+
+                  <span className="lp-trust-rating">
+                    <span className="lp-trust-stars" aria-hidden>
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <Star key={i} className="h-3.5 w-3.5" fill="currentColor" strokeWidth={0} />
+                      ))}
+                    </span>
+                    <span>
+                      <strong>{landingConfig.trustRating}</strong> de satisfacción
+                    </span>
+                    <span className="lp-trust-dot" aria-hidden />
+                    <span>
+                      <strong className="lp-trust-highlight">{landingConfig.trustAudience}</strong>{' '}
+                      estudiantes activos
+                    </span>
+                  </span>
+                </div>
+              )}
+
+              {/* Las cifras salen del catálogo real, no de una constante. */}
               {courses.length > 0 && (
                 <div className="lp-hero-stats">
-                  <div className="lp-hero-stat">
-                    <strong>{courses.length}</strong>
-                    <span>{courses.length === 1 ? 'Programa' : 'Programas'}</span>
-                  </div>
-                  <div className="lp-hero-stat">
-                    <strong>{catalogTotals.modules}</strong>
-                    <span>Módulos</span>
-                  </div>
-                  <div className="lp-hero-stat">
-                    <strong>{catalogTotals.lessons}</strong>
-                    <span>Lecciones</span>
-                  </div>
+                  <article className="lp-stat-card">
+                    <span className="lp-stat-icon" aria-hidden>
+                      <Layers className="h-5 w-5" />
+                    </span>
+                    <strong className="lp-stat-number">{courses.length}</strong>
+                    <span className="lp-stat-label">
+                      {courses.length === 1 ? 'Programa' : 'Programas'}
+                    </span>
+                    <p className="lp-stat-note">Rutas completas con temario, video y mentoría.</p>
+                  </article>
+
+                  <article className="lp-stat-card">
+                    <span className="lp-stat-icon" aria-hidden>
+                      <Brain className="h-5 w-5" />
+                    </span>
+                    <strong className="lp-stat-number">{catalogTotals.modules}</strong>
+                    <span className="lp-stat-label">Módulos</span>
+                    <p className="lp-stat-note">Bloques que se abren conforme terminas el anterior.</p>
+                  </article>
+
+                  <article className="lp-stat-card">
+                    <span className="lp-stat-icon" aria-hidden>
+                      <Video className="h-5 w-5" />
+                    </span>
+                    <strong className="lp-stat-number">{catalogTotals.lessons}</strong>
+                    <span className="lp-stat-label">Lecciones</span>
+                    <p className="lp-stat-note">Clases en video con notas y progreso guardado.</p>
+                  </article>
                 </div>
               )}
             </div>

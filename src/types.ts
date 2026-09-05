@@ -339,6 +339,9 @@ export interface LandingConfig {
   bannerText: string;
   bannerLinkText: string;
   bannerLinkUrl: string;
+  /** Prueba social del hero; si falta cualquiera de las dos, no se pinta. */
+  trustRating: string;
+  trustAudience: string;
   benefits: LandingBenefit[];
   testimonials: LandingTestimonial[];
   footerText: string;

@@ -1,42 +1,84 @@
 /**
- * Navbar Component - Academia Giantucchi
+ * Navbar Component - DocentOS
  * Navegación privada basada en la identidad autenticada y sus permisos RBAC.
  *
- * El gradiente de marca aparece una sola vez, en el logo. En el reproductor el
- * espectro codifica avance —se destapa segun progresas y cada modulo toma su
- * tono—, asi que repetirlo aqui como adorno, tres veces en la misma fila de
- * 64px, vaciaba de significado esa lectura. El resto del header usa cian para
- * decir «estas aqui» y superficies neutras para todo lo demas.
+ * Es la misma barra de la portada (`PublicNavbar`, hoja `styles/landing.css`,
+ * prefijo `lp-`) con otro contenido: quien entra al panel no debería sentir
+ * que ha cambiado de producto. Lo que cambia respecto a la pública:
+ *  - los enlaces son destinos de la aplicación filtrados por rol, no anclas;
+ *  - el buscador salta a un curso del catálogo propio en vez de filtrar la
+ *    rejilla de la portada;
+ *  - el menú de cuenta añade lo que solo existe con sesión abierta (tour,
+ *    contraseña, diploma, estado de acceso).
+ *
+ * El gradiente de marca sigue apareciendo una sola vez, en el logo: en el
+ * reproductor el espectro codifica avance, y repetirlo aquí como adorno vacía
+ * de significado esa lectura. El cian dice «estás aquí» y nada más.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Shield, Crown, UserCheck, PlayCircle, HardDrive, Settings, Menu, X, Sparkles, ChevronDown, Globe, Bot, LogOut, KeyRound, Award } from 'lucide-react';
+import {
+  Shield,
+  Crown,
+  UserCheck,
+  PlayCircle,
+  HardDrive,
+  Home,
+  Menu,
+  X,
+  Search,
+  Sparkles,
+  ChevronDown,
+  Globe,
+  Bot,
+  LogOut,
+  KeyRound,
+  Award,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { User } from '../types';
+import { User, Course } from '../types';
 import { siteConfig } from '../config/theme';
+
+type Tab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
 
 interface NavbarProps {
   currentUser: User;
-  activeTab: 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
-  setActiveTab: (tab: 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip') => void;
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
   hasAccess: boolean;
   onRestartTour?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
   onOpenVerifyModal?: () => void;
+  /** Catálogo al que puede saltar el buscador de la barra. */
+  courses?: Course[];
+  onSelectCourse?: (course: Course) => void;
 }
 
-/** Un destino del nav: apagado por defecto, cian cuando es el que se está viendo. */
-const navItem = (isActive: boolean) =>
-  `flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-meta transition-colors ${
-    isActive ? 'bg-raised font-medium text-brand-violet-light' : 'text-ink-muted hover:bg-raised hover:text-ink'
-  }`;
+const LANGUAGES = [
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+];
 
-/** Fila del cajón móvil. */
-const drawerItem = 'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-section text-ink-soft transition-colors hover:bg-raised hover:text-ink';
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  MENTOR: 'Mentor',
+  MENTEE: 'Mentee',
+  VIP: 'Pase VIP',
+  PUBLIC_USER: 'Estudiante',
+  EXTERNAL: 'Invitado',
+};
 
-/** Acción secundaria del menú de perfil. */
-const menuAction = 'flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-canvas py-2 text-meta text-ink-soft transition-colors hover:bg-raised hover:text-ink';
+/** Iniciales para el avatar de quien no ha subido foto. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
@@ -47,356 +89,487 @@ export const Navbar: React.FC<NavbarProps> = ({
   onChangePassword,
   onLogout,
   onOpenVerifyModal,
+  courses = [],
+  onSelectCourse,
 }) => {
   const { t, i18n } = useTranslation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const handleLanguageChange = (lang: string) => {
-    i18n.changeLanguage(lang);
-    localStorage.setItem('giantucchi_lang', lang);
-  };
+  const langRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const isStaff = currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR';
+  const isAdmin = currentUser.role === 'ADMIN';
+  const displayAppName = siteConfig.appName || 'DocentOS';
+  const currentLangCode = (i18n.language || 'es').substring(0, 2).toUpperCase();
+  const roleLabel = ROLE_LABELS[currentUser.role] || currentUser.role;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileDropdownOpen(false);
-      }
+      const target = event.target as Node;
+      if (langRef.current && !langRef.current.contains(target)) setLangOpen(false);
+      if (profileRef.current && !profileRef.current.contains(target)) setProfileOpen(false);
+      if (searchBoxRef.current && !searchBoxRef.current.contains(target)) setSearchOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const isStaff = currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR';
+  // Ctrl+K / Cmd+K salta al buscador; Escape cierra lo que esté abierto.
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+      if (event.key === 'Escape') {
+        setLangOpen(false);
+        setProfileOpen(false);
+        setMobileOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
+
+  const handleLanguageSelect = (langCode: string) => {
+    i18n.changeLanguage(langCode);
+    localStorage.setItem('giantucchi_lang', langCode);
+    setLangOpen(false);
+  };
+
+  /** Ir a un destino cerrando lo que hubiera abierto encima. */
+  const goTo = (tab: Tab) => {
+    setActiveTab(tab);
+    setMobileOpen(false);
+    setProfileOpen(false);
+  };
+
+  const query = searchQuery.trim().toLowerCase();
+  const matches = query
+    ? courses.filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          (item.description || '').toLowerCase().includes(query),
+      )
+    : [];
+
+  const openCourse = (selected: Course) => {
+    onSelectCourse?.(selected);
+    setActiveTab('courses');
+    setSearchQuery('');
+    setSearchOpen(false);
+  };
+
+  /**
+   * Qué puede ver hoy quien está mirando. Para el personal es su rol —tienen
+   * el catálogo entero— y para el alumnado, si el curso abierto está pagado.
+   */
+  const accessNote = isAdmin
+    ? { label: 'Acceso total', tone: 'lp-tone-accent' }
+    : currentUser.role === 'VIP'
+      ? { label: t('nav.unlimited'), tone: 'lp-tone-gold' }
+      : isStaff
+        ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
+        : hasAccess
+          ? { label: t('nav.unlimited'), tone: 'lp-tone-green' }
+          : { label: t('nav.noPayment'), tone: 'lp-tone-warn' };
+
+  /** Los destinos de la barra, ya filtrados por permisos. */
+  const destinations: { tab: Tab; label: string; icon: React.ReactNode }[] = [
+    { tab: 'courses', label: t('nav.courses'), icon: <PlayCircle aria-hidden className="h-4 w-4" /> },
+    ...(isStaff
+      ? [{ tab: 'mentor' as Tab, label: 'Mentoría', icon: <UserCheck aria-hidden className="h-4 w-4" /> }]
+      : []),
+    ...(isAdmin
+      ? [{ tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> }]
+      : []),
+    ...(isStaff
+      ? [
+          { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
+          { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
+        ]
+      : []),
+  ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-surface/95 text-ink backdrop-blur-md">
-      <div className="mx-auto w-full max-w-[1800px] px-4 sm:px-6">
-        <div className="flex h-16 items-center justify-between gap-4">
-
-          {/* Logo & Brand */}
-          <button
-            type="button"
-            className="flex shrink-0 items-center gap-2.5"
-            onClick={() => setActiveTab('landing')}
-          >
-            {/* La misma marca que la cabecera publica: anillo de gradiente,
-                nucleo oscuro y la inicial recortada sobre cian-morado. La
-                version anterior rellenaba los 36px con el gradiente entero y
-                ponia la letra en blanco, que sobre esas seis paradas se queda
-                entre 1.9:1 y 4:1; sobre el nucleo oscuro no baja de 5:1. */}
-            <span className="bg-brand-gradient shadow-brand-cyan/20 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl p-0.5 shadow-lg">
-              <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-canvas">
-                {siteConfig.logoUrl ? (
-                  <img src={siteConfig.logoUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="bg-gradient-to-r from-brand-cyan to-brand-purple bg-clip-text text-lg font-black text-transparent">
-                    {siteConfig.logoInitial}
-                  </span>
-                )}
-              </span>
-            </span>
-            <span className="text-section font-semibold tracking-tight text-ink">{siteConfig.appName}</span>
-          </button>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden items-center gap-1 lg:flex">
-            <button onClick={() => setActiveTab('courses')} className={navItem(activeTab === 'courses')}>
-              <PlayCircle aria-hidden className="h-4 w-4" />
-              {t('nav.courses')}
-            </button>
-
-            {isStaff && (
-              <button onClick={() => setActiveTab('mentor')} className={navItem(activeTab === 'mentor')}>
-                <UserCheck aria-hidden className="h-4 w-4" />
-                Mentoría
-              </button>
-            )}
-
-            {currentUser.role === 'ADMIN' && (
-              <button onClick={() => setActiveTab('admin')} className={navItem(activeTab === 'admin')}>
-                <Shield aria-hidden className="h-4 w-4" />
-                Administración
-              </button>
-            )}
-
-            {isStaff && (
-              <button onClick={() => setActiveTab('plugins')} className={navItem(activeTab === 'plugins')}>
-                <Sparkles aria-hidden className="h-4 w-4" />
-                Plugins
-              </button>
-            )}
-
-            {isStaff && (
-              <button onClick={() => setActiveTab('drive')} className={navItem(activeTab === 'drive')}>
-                <HardDrive aria-hidden className="h-4 w-4" />
-                Drive
-              </button>
-            )}
-
-            {onOpenVerifyModal && (
-              <button onClick={onOpenVerifyModal} className={navItem(false)}>
-                <Award aria-hidden className="h-4 w-4 text-brand-yellow" />
-                Verificar diploma
-              </button>
-            )}
-
-            <button onClick={() => setActiveTab('vip')} className={navItem(activeTab === 'vip')}>
-              <Crown aria-hidden className="h-4 w-4 text-brand-yellow" />
-              Pase VIP
-            </button>
-          </nav>
-
-          {/* Sleek User Profile Dropdown Button */}
-          <div className="relative hidden shrink-0 items-center md:flex" ref={dropdownRef}>
+    <header className="lp-header">
+      <div className="lp-container lp-container-wide">
+        <nav className="lp-navbar">
+          <div className="lp-nav-left">
+            {/* Mismo logo que la portada; aquí devuelve a la portada. */}
             <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              aria-expanded={profileDropdownOpen}
-              className="flex items-center gap-2.5 rounded-xl py-1.5 pr-2 pl-1.5 transition-colors hover:bg-raised"
+              type="button"
+              onClick={() => goTo('landing')}
+              className="lp-logo"
+              aria-label={`${displayAppName} — ir a la portada`}
             >
-              <img
-                src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                alt=""
-                className="h-7 w-7 rounded-full object-cover"
-              />
-              <span className="text-left">
-                <span className="flex items-center gap-1.5 text-meta font-medium text-ink">
-                  {currentUser.name}
-                  {currentUser.role === 'ADMIN' && <Shield aria-hidden className="h-3 w-3 text-brand-purple" />}
-                  {currentUser.role === 'VIP' && <Crown aria-hidden className="h-3 w-3 text-brand-yellow" />}
+              {siteConfig.logoUrl ? (
+                <img src={siteConfig.logoUrl} alt="" className="lp-logo-img" />
+              ) : (
+                <span className="lp-logo-badge">
+                  <span className="lp-logo-badge-inner">
+                    <span>{siteConfig.logoInitial || displayAppName.charAt(0)}</span>
+                  </span>
                 </span>
-                <span className="block text-micro text-ink-muted">{currentUser.role}</span>
+              )}
+              <span className="lp-logo-text">
+                {displayAppName}
+                <span>.</span>
               </span>
-              <ChevronDown aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
             </button>
 
-            {/* Profile Dropdown Menu */}
-            {profileDropdownOpen && (
-              <div className="animate-fade-in absolute top-14 right-0 z-50 w-72 space-y-3 rounded-2xl border border-line bg-raised p-4 shadow-2xl">
-                <div className="flex items-center gap-3 border-b border-line pb-3">
-                  <img
-                    src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                    alt=""
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-meta font-medium text-ink">{currentUser.name}</p>
-                    <p className="truncate text-micro text-ink-muted">{currentUser.email}</p>
-                    <span className="mt-1 inline-block text-micro text-brand-violet-light">{currentUser.role}</span>
-                  </div>
-                </div>
-
-                {/* Global i18n Language Selector */}
-                <div>
-                  <span className="mb-1.5 flex items-center gap-1.5 text-micro text-ink-muted">
-                    <Globe aria-hidden className="h-3 w-3" /> {t('nav.language')}
-                  </span>
-                  <div className="grid grid-cols-5 gap-1">
-                    {[
-                      { code: 'es', flag: '🇪🇸', label: 'ES' },
-                      { code: 'en', flag: '🇺🇸', label: 'EN' },
-                      { code: 'pt', flag: '🇧🇷', label: 'PT' },
-                      { code: 'fr', flag: '🇫🇷', label: 'FR' },
-                      { code: 'it', flag: '🇮🇹', label: 'IT' },
-                    ].map((item) => {
-                      const isCurrent = i18n.language.startsWith(item.code);
-                      return (
-                        <button
-                          key={item.code}
-                          onClick={() => handleLanguageChange(item.code)}
-                          aria-pressed={isCurrent}
-                          className={`flex flex-col items-center gap-0.5 rounded-lg py-1 text-micro transition-colors ${
-                            isCurrent
-                              ? 'bg-brand-violet font-semibold text-canvas'
-                              : 'border border-line bg-canvas text-ink-muted hover:text-ink'
-                          }`}
-                        >
-                          <span className="text-meta">{item.flag}</span>
-                          <span>{item.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Restart Virtual Assistant Tour Button */}
-                {onRestartTour && (
+            <ul className="lp-nav-links">
+              {destinations.map((destination) => (
+                <li key={destination.tab}>
                   <button
-                    onClick={() => {
-                      onRestartTour();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className={menuAction}
+                    type="button"
+                    onClick={() => goTo(destination.tab)}
+                    aria-current={activeTab === destination.tab ? 'page' : undefined}
+                    className={`lp-nav-link${activeTab === destination.tab ? ' is-active' : ''}`}
                   >
-                    <Bot aria-hidden className="h-4 w-4 text-brand-violet-light" /> {t('nav.restartTour')}
+                    {destination.icon}
+                    <span>{destination.label}</span>
                   </button>
-                )}
+                </li>
+              ))}
 
-                {onOpenVerifyModal && (
-                  <button
-                    onClick={() => {
-                      onOpenVerifyModal();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className={menuAction}
-                  >
-                    <Award aria-hidden className="h-4 w-4 text-brand-yellow" /> Verificar diploma
-                  </button>
-                )}
-
-                {onChangePassword && (
-                  <button
-                    onClick={() => {
-                      onChangePassword();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className={menuAction}
-                  >
-                    <KeyRound aria-hidden className="h-4 w-4 text-brand-violet-light" /> Cambiar contraseña
-                  </button>
-                )}
-
-                {/* Access Status */}
-                <div className="flex items-center justify-between border-t border-line pt-3 text-meta">
-                  <span className="text-ink-muted">{t('nav.accessStatus')}</span>
-                  <span className={hasAccess ? 'text-brand-violet-light' : 'text-brand-orange'}>
-                    {hasAccess ? t('nav.unlimited') : t('nav.noPayment')}
-                  </span>
-                </div>
-
-                {/* Logout Button */}
-                {onLogout && (
-                  <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      onLogout();
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-orange/30 bg-brand-orange/10 py-2 text-meta font-medium text-brand-orange transition-colors hover:bg-brand-orange/20"
-                  >
-                    <LogOut aria-hidden className="h-4 w-4" /> {t('nav.logout')}
-                  </button>
-                )}
-              </div>
-            )}
+              {/* El equivalente del «Premium» de la portada. */}
+              <li>
+                <button type="button" onClick={() => goTo('vip')} className="lp-badge-premium">
+                  <Crown aria-hidden className="h-3 w-3" fill="currentColor" />
+                  Pase VIP
+                </button>
+              </li>
+            </ul>
           </div>
 
-          {/* Mobile Menu Toggle Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
-            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-raised hover:text-ink md:hidden"
-          >
-            {mobileMenuOpen ? <X aria-hidden className="h-6 w-6" /> : <Menu aria-hidden className="h-6 w-6" />}
-          </button>
-        </div>
+          <div className="lp-nav-right">
+            {/* Buscador: salta al curso, no filtra una rejilla. */}
+            <div className="lp-search-box" ref={searchBoxRef}>
+              <Search aria-hidden />
+              <input
+                ref={searchRef}
+                type="search"
+                className="lp-search-input"
+                placeholder="Buscar cursos..."
+                aria-label="Buscar cursos"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+              />
+
+              {searchOpen && query && (
+                <div className="lp-menu lp-search-results" role="menu">
+                  <div className="lp-menu-head">
+                    <span className="lp-menu-role">
+                      {matches.length} {matches.length === 1 ? 'curso' : 'cursos'}
+                    </span>
+                  </div>
+                  {matches.length > 0 ? (
+                    matches.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="menuitem"
+                        className="lp-menu-item"
+                        onClick={() => openCourse(item)}
+                      >
+                        <span className="lp-menu-item-left">
+                          <PlayCircle aria-hidden className="lp-tone-cyan h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.title}</span>
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="lp-search-empty">Ningún curso coincide.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Idioma */}
+            <div className="lp-menu-anchor lp-nav-lang" ref={langRef}>
+              <button
+                type="button"
+                className="lp-icon-btn"
+                onClick={() => {
+                  setLangOpen((open) => !open);
+                  setProfileOpen(false);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={langOpen}
+                title={t('nav.language')}
+              >
+                <Globe aria-hidden className="h-4 w-4" />
+                <span>{currentLangCode}</span>
+                <ChevronDown aria-hidden className="h-3 w-3" />
+              </button>
+
+              {langOpen && (
+                <div className="lp-menu" role="menu">
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleLanguageSelect(lang.code)}
+                      className={`lp-menu-item${i18n.language.startsWith(lang.code) ? ' is-active' : ''}`}
+                    >
+                      <span className="lp-menu-item-left">
+                        <span aria-hidden>{lang.flag}</span>
+                        <span>{lang.label}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cuenta */}
+            <div className="lp-menu-anchor" ref={profileRef}>
+              <button
+                type="button"
+                className="lp-user-profile"
+                onClick={() => {
+                  setProfileOpen((open) => !open);
+                  setLangOpen(false);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
+                aria-label="Menú de cuenta"
+              >
+                <span className="lp-avatar-wrapper">
+                  {currentUser.avatarUrl ? (
+                    <img className="lp-avatar-img" src={currentUser.avatarUrl} alt="" />
+                  ) : (
+                    <span className="lp-avatar-fallback">{initialsOf(currentUser.name)}</span>
+                  )}
+                  <span className="lp-status-badge" title="En línea" />
+                </span>
+                <ChevronDown aria-hidden className="h-3.5 w-3.5 text-slate-400" />
+              </button>
+
+              {profileOpen && (
+                <div className="lp-menu" role="menu">
+                  <div className="lp-menu-head">
+                    <span className="lp-menu-name">{currentUser.name}</span>
+                    <span className="lp-menu-role">{roleLabel}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="lp-menu-item"
+                    onClick={() => goTo('landing')}
+                  >
+                    <span className="lp-menu-item-left">
+                      <Home aria-hidden className="h-4 w-4" />
+                      Ir a la portada
+                    </span>
+                  </button>
+
+                  {onRestartTour && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onRestartTour();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <Bot aria-hidden className="h-4 w-4" />
+                        {t('nav.restartTour')}
+                      </span>
+                    </button>
+                  )}
+
+                  {onOpenVerifyModal && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onOpenVerifyModal();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <Award aria-hidden className="h-4 w-4" />
+                        Verificar diploma
+                      </span>
+                    </button>
+                  )}
+
+                  {onChangePassword && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onChangePassword();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <KeyRound aria-hidden className="h-4 w-4" />
+                        Cambiar contraseña
+                      </span>
+                    </button>
+                  )}
+
+                  <p className="lp-menu-note">
+                    <span>{t('nav.accessStatus')}</span>
+                    <strong className={accessNote.tone}>{accessNote.label}</strong>
+                  </p>
+
+                  {onLogout && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item is-danger"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onLogout();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <LogOut aria-hidden className="h-4 w-4" />
+                        {t('nav.logout')}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="lp-icon-btn lp-mobile-btn"
+              onClick={() => setMobileOpen((open) => !open)}
+              aria-expanded={mobileOpen}
+              aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+            >
+              {mobileOpen ? <X aria-hidden className="h-5 w-5" /> : <Menu aria-hidden className="h-5 w-5" />}
+            </button>
+          </div>
+        </nav>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="animate-fade-in space-y-1 border-b border-line bg-surface p-3 md:hidden">
-          <button
-            onClick={() => {
-              setActiveTab('courses');
-              setMobileMenuOpen(false);
-            }}
-            className={drawerItem}
-          >
-            <PlayCircle aria-hidden className="h-5 w-5 text-brand-violet-light" />
-            Cursos y clases
-          </button>
+      {/* Cajón móvil: los destinos que la barra esconde por debajo de 1280px. */}
+      <div className={`lp-mobile-panel${mobileOpen ? ' is-open' : ''}`}>
+        <ul className="lp-mobile-links">
+          {destinations.map((destination) => (
+            <li key={destination.tab}>
+              <button
+                type="button"
+                onClick={() => goTo(destination.tab)}
+                className={activeTab === destination.tab ? 'is-active' : undefined}
+              >
+                {destination.icon}
+                <span>{destination.label}</span>
+              </button>
+            </li>
+          ))}
 
-          {isStaff && (
+          <li>
             <button
-              onClick={() => {
-                setActiveTab('drive');
-                setMobileMenuOpen(false);
-              }}
-              className={drawerItem}
+              type="button"
+              onClick={() => goTo('vip')}
+              className={activeTab === 'vip' ? 'is-active' : undefined}
             >
-              <HardDrive aria-hidden className="h-5 w-5 text-brand-violet-light" />
-              Buscador de Drive
+              <Crown aria-hidden className="lp-tone-gold h-4 w-4" />
+              <span>Pase VIP</span>
             </button>
-          )}
+          </li>
 
-          {isStaff && (
-            <button
-              onClick={() => {
-                setActiveTab('mentor');
-                setMobileMenuOpen(false);
-              }}
-              className={drawerItem}
-            >
-              <UserCheck aria-hidden className="h-5 w-5 text-brand-violet-light" />
-              Mentoría
-            </button>
+          {onOpenVerifyModal && (
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  onOpenVerifyModal();
+                }}
+              >
+                <Award aria-hidden className="lp-tone-gold h-4 w-4" />
+                <span>Verificar diploma</span>
+              </button>
+            </li>
           )}
+        </ul>
 
-          {currentUser.role === 'ADMIN' && (
-            <button
-              onClick={() => {
-                setActiveTab('admin');
-                setMobileMenuOpen(false);
-              }}
-              className={drawerItem}
-            >
-              <Settings aria-hidden className="h-5 w-5 text-brand-purple" />
-              Administración
-            </button>
-          )}
+        <div className="lp-mobile-lang">
+          <span className="inline-flex items-center gap-2">
+            <Globe aria-hidden className="h-4 w-4" />
+            {t('nav.language')}
+          </span>
+          <span className="lp-mobile-lang-options">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => handleLanguageSelect(lang.code)}
+                aria-pressed={i18n.language.startsWith(lang.code)}
+                className={i18n.language.startsWith(lang.code) ? 'is-active' : undefined}
+              >
+                <span aria-hidden className="mr-1">
+                  {lang.flag}
+                </span>
+                {lang.code.toUpperCase()}
+              </button>
+            ))}
+          </span>
+        </div>
 
-          {isStaff && (
-            <button
-              onClick={() => {
-                setActiveTab('plugins');
-                setMobileMenuOpen(false);
-              }}
-              className={drawerItem}
-            >
-              <Sparkles aria-hidden className="h-5 w-5 text-brand-purple" />
-              Plugins
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              setActiveTab('vip');
-              setMobileMenuOpen(false);
-            }}
-            className={drawerItem}
-          >
-            <Crown aria-hidden className="h-5 w-5 text-brand-yellow" />
-            Pase VIP
+        <div className="lp-mobile-actions is-stacked">
+          <button type="button" className="lp-btn-ghost" onClick={() => goTo('landing')}>
+            <Home aria-hidden className="h-4 w-4" />
+            Ir a la portada
           </button>
 
           {onChangePassword && (
             <button
+              type="button"
+              className="lp-btn-ghost"
               onClick={() => {
-                setMobileMenuOpen(false);
+                setMobileOpen(false);
                 onChangePassword();
               }}
-              className={drawerItem}
             >
-              <KeyRound aria-hidden className="h-5 w-5 text-brand-violet-light" />
+              <KeyRound aria-hidden className="h-4 w-4" />
               Cambiar contraseña
             </button>
           )}
 
           {onLogout && (
             <button
+              type="button"
+              className="lp-btn-ghost is-danger"
               onClick={() => {
-                setMobileMenuOpen(false);
+                setMobileOpen(false);
                 onLogout();
               }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-section text-brand-orange transition-colors hover:bg-brand-orange/10"
             >
-              <LogOut aria-hidden className="h-5 w-5" />
+              <LogOut aria-hidden className="h-4 w-4" />
               {t('nav.logout')}
             </button>
           )}
         </div>
-      )}
+      </div>
     </header>
   );
 };

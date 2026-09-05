@@ -189,7 +189,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
             </div>
 
             {/* Idioma */}
-            <div className="lp-menu-anchor" ref={langRef}>
+            <div className="lp-menu-anchor lp-nav-lang" ref={langRef}>
               <button
                 type="button"
                 className="lp-icon-btn"
@@ -345,6 +345,34 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
             </li>
           ))}
         </ul>
+
+        {/* Por debajo de 768px el selector sale de la barra: aqui es donde
+            queda al alcance. */}
+        <div className="lp-mobile-lang">
+          <span className="inline-flex items-center gap-2">
+            <Globe aria-hidden className="h-4 w-4" />
+            Idioma
+          </span>
+          <span className="lp-mobile-lang-options">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => {
+                  handleLanguageSelect(lang.code);
+                  setMobileOpen(false);
+                }}
+                aria-pressed={i18n.language.startsWith(lang.code)}
+                className={i18n.language.startsWith(lang.code) ? 'is-active' : undefined}
+              >
+                <span aria-hidden className="mr-1">
+                  {lang.flag}
+                </span>
+                {lang.code.toUpperCase()}
+              </button>
+            ))}
+          </span>
+        </div>
 
         <div className="lp-mobile-actions">
           {currentUser ? (

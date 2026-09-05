@@ -263,6 +263,11 @@ export default function App() {
             setVerifyCode('');
             setShowVerifyModal(true);
           }}
+          courses={courses}
+          onSelectCourse={(selected) => {
+            selectCourse(selected);
+            navigateTo('courses');
+          }}
         />
       )}
 
