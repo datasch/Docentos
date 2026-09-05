@@ -469,13 +469,25 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
             {/* El ancho se limita a lo que cabe de alto: un 16:9 a ancho completo
                 en una pantalla apaisada empuja el título de la clase fuera de la
-                vista y obliga a hacer scroll para saber qué se está viendo. */}
-            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas max-lg:sticky max-lg:top-16 max-lg:z-30 lg:w-[min(100%,calc((100dvh-9rem)*16/9))] lg:rounded-2xl">
+                vista y obliga a hacer scroll para saber qué se está viendo.
+
+                En móvil el reproductor NO se queda pegado arriba. Lo estuvo, y
+                se comportaba mal: su contenedor solo llega hasta la barra de la
+                lección, así que se despegaba a los pocos píxeles de scroll y en
+                ese salto el iframe se quedaba en negro. Un video que se corta a
+                media clase es peor que uno que sube con la página. */}
+            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
               {showsPlayer && videoSource ? (
                 <iframe
+                  /* La clave fuerza un iframe nuevo por lección. Sin ella React
+                     reutiliza el elemento y solo le cambia `src`, que el
+                     navegador trata como navegación dentro del marco: el
+                     reproductor se quedaba en blanco al saltar de clase. */
+                  key={videoSource.embedUrl}
                   src={videoSource.embedUrl}
                   title={currentVideo.title}
                   className="h-full w-full border-0"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                   allowFullScreen
                 />
