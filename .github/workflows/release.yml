@@ -130,13 +130,17 @@ jobs:
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           DIGEST: ${{ steps.build_and_push.outputs.digest }}
-        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+        # ${IMAGE,,} pasa el nombre a minusculas: Docker rechaza mayusculas
+        # en la referencia y github.repository conserva las del nombre del repo.
+        run: cosign sign --yes "${IMAGE,,}@${DIGEST}"
 
       - name: Firmar imagen de respaldos con Cosign
         env:
           IMAGE: ghcr.io/${{ github.repository }}-backup
           DIGEST: ${{ steps.build_and_push_backup.outputs.digest }}
-        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+        # ${IMAGE,,} pasa el nombre a minusculas: Docker rechaza mayusculas
+        # en la referencia y github.repository conserva las del nombre del repo.
+        run: cosign sign --yes "${IMAGE,,}@${DIGEST}"
 
       - name: Crear GitHub Release
         uses: softprops/action-gh-release@v2
