@@ -18,9 +18,28 @@ import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
 
 interface AdminDashboardProps {
-  course: Course;
+  /**
+   * Nulo en una instancia recien instalada: el catalogo esta vacio hasta que
+   * el administrador cree el primer curso, y es justo aqui donde lo crea.
+   */
+  course: Course | null;
   onRefreshData: () => void;
 }
+
+/**
+ * Marcador para las secciones que operan sobre un curso mientras todavia no
+ * existe ninguno. Evita que el panel entero se caiga por un catalogo vacio.
+ */
+const CURSO_VACIO: Course = {
+  id: '',
+  title: 'Sin cursos todavia',
+  description: '',
+  price: 0,
+  published: false,
+  category: '',
+  coverImage: '',
+  modules: [],
+};
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
@@ -35,16 +54,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
    * administrador solo podía tocar el primero y no había forma de decir sobre
    * cuál estaba operando. Aquí se carga el catálogo y se elige explícitamente.
    */
-  const [allCourses, setAllCourses] = useState<Course[]>([course]);
-  const [workCourseId, setWorkCourseId] = useState<string>(course.id);
-  const workCourse = allCourses.find((item) => item.id === workCourseId) || course;
+  const [allCourses, setAllCourses] = useState<Course[]>(course ? [course] : []);
+  const [workCourseId, setWorkCourseId] = useState<string>(course?.id || '');
+  const workCourse = allCourses.find((item) => item.id === workCourseId) || course || CURSO_VACIO;
   const workModules = workCourse.modules || [];
 
   // Enrollments State
   const [enrollments, setEnrollments] = useState<CourseEnrollmentRecord[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [newEnrollUserId, setNewEnrollUserId] = useState('');
-  const [newEnrollCourseId, setNewEnrollCourseId] = useState(course.id);
+  const [newEnrollCourseId, setNewEnrollCourseId] = useState(course?.id || '');
   const [newEnrollStatus, setNewEnrollStatus] = useState<'ACTIVE' | 'COMPLETED' | 'REVOKED' | 'EXPIRED'>('ACTIVE');
   const [newEnrollSource, setNewEnrollSource] = useState<'ADMIN' | 'PAYMENT' | 'MENTORSHIP'>('ADMIN');
   const [enrollSuccessMsg, setEnrollSuccessMsg] = useState('');
@@ -68,7 +87,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const [driveVideos, setDriveVideos] = useState<DriveVideoFile[]>([]);
   const [loadingDrive, setLoadingDrive] = useState(false);
   const [driveIsDemo, setDriveIsDemo] = useState(false);
-  const [selectedModuleId, setSelectedModuleId] = useState(course.modules[0]?.id || '');
+  const [selectedModuleId, setSelectedModuleId] = useState(course?.modules[0]?.id || '');
   const [linkingVideo, setLinkingVideo] = useState<DriveVideoFile | null>(null);
   const [linkSuccessMsg, setLinkSuccessMsg] = useState('');
   const [driveErrorMsg, setDriveErrorMsg] = useState('');
@@ -87,7 +106,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const [ttsScript, setTtsScript] = useState('');
   const [ttsVoice, setTtsVoice] = useState('es-ES-Carlos');
   const [ttsSpeed, setTtsSpeed] = useState(1.0);
-  const [ttsTargetVideoId, setTtsTargetVideoId] = useState(course.modules[0]?.videos[0]?.id || '');
+  const [ttsTargetVideoId, setTtsTargetVideoId] = useState(course?.modules[0]?.videos[0]?.id || '');
   const [ttsSuccessMsg, setTtsSuccessMsg] = useState('');
   const [ttsErrorMsg, setTtsErrorMsg] = useState('');
   const [isPreviewingAudio, setIsPreviewingAudio] = useState(false);
@@ -300,6 +319,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   };
 
   const loadTTSGuides = async (courseId: string = workCourse.id) => {
+    // Sin curso todavia no hay guias que pedir y el servidor rechazaria el id vacio.
+    if (!courseId) {
+      setTtsGuides([]);
+      return;
+    }
     setLoadingTtsGuides(true);
     try {
       const res = await api.getTTSGuides({ courseId });
@@ -446,11 +470,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     }
   };
 
-  const [coursePrice, setCoursePrice] = useState<number>(course.price || 49);
+  const [coursePrice, setCoursePrice] = useState<number>(course?.price || 49);
   const [updatingPrice, setUpdatingPrice] = useState(false);
   const [priceSuccessMsg, setPriceSuccessMsg] = useState('');
 
   const handleSaveCoursePrice = async () => {
+    if (!course) return;
     setUpdatingPrice(true);
     try {
       await api.updateCoursePrice(course.id, coursePrice);
@@ -691,6 +716,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
       {activeTab === 'users' && (
         <div className="space-y-6">
           {/* Course Pricing Configuration Card */}
+          {course && (
           <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
               <div>
@@ -703,7 +729,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                     precio al curso equivocado. El precio por curso también se
                     edita, uno a uno, en la pestaña Cursos. */}
                 <p className="text-xs text-slate-400">
-                  Precio público de <span className="font-bold text-slate-200">«{course.title}»</span>.
+                  Precio público de <span className="font-bold text-slate-200">«{course?.title}»</span>.
                   Deja en 0 para que sea completamente público y gratuito.
                 </p>
               </div>
@@ -739,6 +765,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               </button>
             </div>
           </div>
+          )}
 
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">

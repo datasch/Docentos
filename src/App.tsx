@@ -235,7 +235,11 @@ export default function App() {
 
   const isAuthenticated = Boolean(currentUser && activeTab !== 'landing');
 
-  if (loading || !course) {
+  // Solo la carga inicial tapa la aplicacion. Antes tambien lo hacia un
+  // catalogo vacio (`!course`), asi que una instancia recien instalada —sin
+  // ningun curso creado todavia— se quedaba clavada en esta pantalla para
+  // siempre, sin portada y sin manera de entrar a crear el primer curso.
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 rounded-2xl bg-[#141420] border border-[#2d2d44] text-[#06b6d4] flex items-center justify-center animate-pulse">
@@ -322,18 +326,37 @@ export default function App() {
               </div>
             )}
 
-            <CourseViewer
-              course={course}
-              currentUser={currentUser}
-              hasAccess={hasAccess}
-              onOpenPaywall={() => setShowPaywallModal(true)}
-              courses={courses}
-              onSelectCourse={(selected) => {
-                selectCourse(selected);
-                window.scrollTo({ top: 0 });
-              }}
-              onGoHome={() => navigateTo('landing')}
-            />
+            {course ? (
+              <CourseViewer
+                course={course}
+                currentUser={currentUser}
+                hasAccess={hasAccess}
+                onOpenPaywall={() => setShowPaywallModal(true)}
+                courses={courses}
+                onSelectCourse={(selected) => {
+                  selectCourse(selected);
+                  window.scrollTo({ top: 0 });
+                }}
+                onGoHome={() => navigateTo('landing')}
+              />
+            ) : (
+              <div className="mx-auto w-full max-w-3xl px-4 py-20 text-center">
+                <h2 className="text-section font-semibold text-ink">Todavía no hay cursos publicados</h2>
+                <p className="mt-2 text-meta text-ink-muted">
+                  {currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR'
+                    ? 'Crea el primero desde el panel y aparecerá aquí.'
+                    : 'En cuanto se publique el primero lo verás en esta pantalla.'}
+                </p>
+                {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+                  <button
+                    onClick={() => navigateTo(currentUser.role === 'ADMIN' ? 'admin' : 'mentor')}
+                    className="btn-brand-primary mt-6 px-5 py-2.5 text-meta"
+                  >
+                    Ir al panel
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -361,12 +384,12 @@ export default function App() {
         {activeTab === 'drive' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
           <DriveExplorerModal
             userRole={currentUser.role}
-            modules={course.modules}
+            modules={course?.modules || []}
             onVideoLinked={loadData}
           />
         )}
 
-        {activeTab === 'vip' && currentUser && (
+        {activeTab === 'vip' && currentUser && course && (
           <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
             <PaywallModal
               userRole={currentUser.role}
@@ -410,7 +433,7 @@ export default function App() {
         />
 
         {/* Modal overlay if triggered from CourseViewer */}
-        {showPaywallModal && currentUser && (
+        {showPaywallModal && currentUser && course && (
           <div className="fixed inset-0 z-50 bg-[#0a0a0f]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
             <div className="relative max-w-4xl w-full">
               <button
