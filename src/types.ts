@@ -214,6 +214,8 @@ export interface VideoDriveLink {
   embedUrl: string;
   playbackUrl?: string;
   source?: 'GOOGLE_DRIVE' | 'EXTERNAL_URL' | 'DEMO';
+  /** Quien reproduce, resuelto en el servidor a partir de la URL real. */
+  provider?: 'youtube' | 'drive' | 'embed';
   order: number;
 }
 

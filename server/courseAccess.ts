@@ -1,5 +1,6 @@
 import type { AuthenticatedUser, UserRole } from './authMiddleware.js';
 import { prisma } from './prisma.js';
+import { parseVideoSource } from '../src/lib/videoParser.js';
 
 export type CourseAccessReason =
   | 'admin'
@@ -241,6 +242,12 @@ function serializeVideo(video: any) {
     duration: video.duration,
     mimeType: video.mimeType,
     source: video.source,
+    // Quien reproduce, sin decir que archivo. `playbackUrl` apunta a nuestra
+    // ruta de acceso, asi que el navegador no puede deducir el proveedor de
+    // ella, y `source` no basta: hay clases guardadas como EXTERNAL_URL cuya
+    // URL es un `preview` de Drive. El reproductor necesita el dato porque cada
+    // proveedor pide un alto minimo distinto, y sin el se maquetaba a ciegas.
+    provider: parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '').provider,
     order: video.order,
     playbackUrl: `/api/content/videos/${encodeURIComponent(video.id)}`,
     createdAt: video.createdAt,

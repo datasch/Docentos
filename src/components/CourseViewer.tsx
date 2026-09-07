@@ -398,7 +398,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     : null;
   const providerLabel = currentVideo
     ? SOURCE_LABELS[currentVideo.source || ''] ||
-      PROVIDER_LABELS[parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
+      PROVIDER_LABELS[currentVideo.provider || parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
       'Video'
     : 'Video';
   // Última barrera: aunque alguna respuesta traiga un certificado de otro
@@ -475,7 +475,17 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 se comportaba mal: su contenedor solo llega hasta la barra de la
                 lección, así que se despegaba a los pocos píxeles de scroll y en
                 ese salto el iframe se quedaba en negro. Un video que se corta a
-                media clase es peor que uno que sube con la página. */}
+                media clase es peor que uno que sube con la página.
+
+                Por debajo de `lg` la caja no lleva ningun limite atado a la
+                altura de la ventana, y es deliberado. Se probo con
+                `max-width: calc((100dvh - 9rem) * 16/9)` para que un movil
+                girado no dejara el video a medias, y sale caro: en un telefono
+                `dvh` se mueve cada vez que el navegador esconde o enseña su
+                barra al hacer scroll, asi que el limite cambia, el marco se
+                redimensiona y el reproductor de Drive se reinicia a mitad de
+                clase. La misma razon por la que este bloque no es pegajoso.
+                Que en horizontal haya que bajar un poco es un precio menor. */}
             <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
               {showsPlayer && videoSource ? (
                 <iframe
@@ -573,6 +583,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 totalLessons={lessons.length}
                 isCompleted={isCurrentCompleted}
                 onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+                playbackUrl={showsPlayer ? currentVideo.playbackUrl : undefined}
               />
             )}
           </div>
