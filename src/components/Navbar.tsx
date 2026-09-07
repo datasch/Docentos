@@ -1,23 +1,83 @@
 /**
- * Navbar Component - Academia Giantucchi
+ * Navbar Component - DocentOS
  * Navegación privada basada en la identidad autenticada y sus permisos RBAC.
+ *
+ * Es la misma barra de la portada (`PublicNavbar`, hoja `styles/landing.css`,
+ * prefijo `lp-`) con otro contenido: quien entra al panel no debería sentir
+ * que ha cambiado de producto. Lo que cambia respecto a la pública:
+ *  - los enlaces son destinos de la aplicación filtrados por rol, no anclas;
+ *  - el buscador salta a un curso del catálogo propio en vez de filtrar la
+ *    rejilla de la portada;
+ *  - el menú de cuenta añade lo que solo existe con sesión abierta (tour,
+ *    contraseña, diploma, estado de acceso).
+ *
+ * El gradiente de marca sigue apareciendo una sola vez, en el logo: en el
+ * reproductor el espectro codifica avance, y repetirlo aquí como adorno vacía
+ * de significado esa lectura. El cian dice «estás aquí» y nada más.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Shield, Crown, UserCheck, PlayCircle, HardDrive, Settings, Menu, X, Sparkles, ChevronDown, Globe, Bot, LogOut, KeyRound, Award } from 'lucide-react';
+import {
+  Shield,
+  Crown,
+  UserCheck,
+  PlayCircle,
+  HardDrive,
+  Home,
+  Menu,
+  X,
+  Search,
+  Sparkles,
+  ChevronDown,
+  Globe,
+  Bot,
+  LogOut,
+  KeyRound,
+  Award,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { User } from '../types';
+import { User, Course } from '../types';
 import { siteConfig } from '../config/theme';
+
+type Tab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
 
 interface NavbarProps {
   currentUser: User;
-  activeTab: 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
-  setActiveTab: (tab: 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip') => void;
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
   hasAccess: boolean;
   onRestartTour?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
   onOpenVerifyModal?: () => void;
+  /** Catálogo al que puede saltar el buscador de la barra. */
+  courses?: Course[];
+  onSelectCourse?: (course: Course) => void;
+}
+
+const LANGUAGES = [
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+  { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+];
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  MENTOR: 'Mentor',
+  MENTEE: 'Mentee',
+  VIP: 'Pase VIP',
+  PUBLIC_USER: 'Estudiante',
+  EXTERNAL: 'Invitado',
+};
+
+/** Iniciales para el avatar de quien no ha subido foto. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,391 +89,487 @@ export const Navbar: React.FC<NavbarProps> = ({
   onChangePassword,
   onLogout,
   onOpenVerifyModal,
+  courses = [],
+  onSelectCourse,
 }) => {
   const { t, i18n } = useTranslation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  const handleLanguageChange = (lang: string) => {
-    i18n.changeLanguage(lang);
-    localStorage.setItem('giantucchi_lang', lang);
-  };
+  const langRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const isStaff = currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR';
+  const isAdmin = currentUser.role === 'ADMIN';
+  const displayAppName = siteConfig.appName || 'DocentOS';
+  const currentLangCode = (i18n.language || 'es').substring(0, 2).toUpperCase();
+  const roleLabel = ROLE_LABELS[currentUser.role] || currentUser.role;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileDropdownOpen(false);
-      }
+      const target = event.target as Node;
+      if (langRef.current && !langRef.current.contains(target)) setLangOpen(false);
+      if (profileRef.current && !profileRef.current.contains(target)) setProfileOpen(false);
+      if (searchBoxRef.current && !searchBoxRef.current.contains(target)) setSearchOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Ctrl+K / Cmd+K salta al buscador; Escape cierra lo que esté abierto.
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+      if (event.key === 'Escape') {
+        setLangOpen(false);
+        setProfileOpen(false);
+        setMobileOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
+
+  const handleLanguageSelect = (langCode: string) => {
+    i18n.changeLanguage(langCode);
+    localStorage.setItem('giantucchi_lang', langCode);
+    setLangOpen(false);
+  };
+
+  /** Ir a un destino cerrando lo que hubiera abierto encima. */
+  const goTo = (tab: Tab) => {
+    setActiveTab(tab);
+    setMobileOpen(false);
+    setProfileOpen(false);
+  };
+
+  const query = searchQuery.trim().toLowerCase();
+  const matches = query
+    ? courses.filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          (item.description || '').toLowerCase().includes(query),
+      )
+    : [];
+
+  const openCourse = (selected: Course) => {
+    onSelectCourse?.(selected);
+    setActiveTab('courses');
+    setSearchQuery('');
+    setSearchOpen(false);
+  };
+
+  /**
+   * Qué puede ver hoy quien está mirando. Para el personal es su rol —tienen
+   * el catálogo entero— y para el alumnado, si el curso abierto está pagado.
+   */
+  const accessNote = isAdmin
+    ? { label: 'Acceso total', tone: 'lp-tone-accent' }
+    : currentUser.role === 'VIP'
+      ? { label: t('nav.unlimited'), tone: 'lp-tone-gold' }
+      : isStaff
+        ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
+        : hasAccess
+          ? { label: t('nav.unlimited'), tone: 'lp-tone-green' }
+          : { label: t('nav.noPayment'), tone: 'lp-tone-warn' };
+
+  /** Los destinos de la barra, ya filtrados por permisos. */
+  const destinations: { tab: Tab; label: string; icon: React.ReactNode }[] = [
+    { tab: 'courses', label: t('nav.courses'), icon: <PlayCircle aria-hidden className="h-4 w-4" /> },
+    ...(isStaff
+      ? [{ tab: 'mentor' as Tab, label: 'Mentoría', icon: <UserCheck aria-hidden className="h-4 w-4" /> }]
+      : []),
+    ...(isAdmin
+      ? [{ tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> }]
+      : []),
+    ...(isStaff
+      ? [
+          { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
+          { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
+        ]
+      : []),
+  ];
+
   return (
-    <header className="sticky top-0 z-50 bg-[#141420]/95 backdrop-blur-md border-b border-[#2d2d44] text-white shadow-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo & Brand */}
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            title="Ir al inicio"
-            onClick={() => setActiveTab('landing')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center text-white font-extrabold shadow-lg shadow-[#06b6d4]/20 ring-1 ring-white/20 overflow-hidden shrink-0">
+    <header className="lp-header">
+      <div className="lp-container lp-container-wide">
+        <nav className="lp-navbar">
+          <div className="lp-nav-left">
+            {/* Mismo logo que la portada; aquí devuelve a la portada. */}
+            <button
+              type="button"
+              onClick={() => goTo('landing')}
+              className="lp-logo"
+              aria-label={`${displayAppName} — ir a la portada`}
+            >
               {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} alt={siteConfig.appName} className="w-full h-full object-cover" />
+                <img src={siteConfig.logoUrl} alt="" className="lp-logo-img" />
               ) : (
-                <span className="text-xl tracking-tighter font-black text-white">{siteConfig.logoInitial}</span>
+                <span className="lp-logo-badge">
+                  <span className="lp-logo-badge-inner">
+                    <span>{siteConfig.logoInitial || displayAppName.charAt(0)}</span>
+                  </span>
+                </span>
               )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight text-white uppercase">
-                  {siteConfig.appName}
-                </span>
-                <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-gradient text-white uppercase tracking-widest shadow-sm">
-                  {siteConfig.appTagline}
-                </span>
-              </div>
-            </div>
+              <span className="lp-logo-text">
+                {displayAppName}
+                <span>.</span>
+              </span>
+            </button>
+
+            <ul className="lp-nav-links">
+              {destinations.map((destination) => (
+                <li key={destination.tab}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(destination.tab)}
+                    aria-current={activeTab === destination.tab ? 'page' : undefined}
+                    className={`lp-nav-link${activeTab === destination.tab ? ' is-active' : ''}`}
+                  >
+                    {destination.icon}
+                    <span>{destination.label}</span>
+                  </button>
+                </li>
+              ))}
+
+              {/* El equivalente del «Premium» de la portada. */}
+              <li>
+                <button type="button" onClick={() => goTo('vip')} className="lp-badge-premium">
+                  <Crown aria-hidden className="h-3 w-3" fill="currentColor" />
+                  Pase VIP
+                </button>
+              </li>
+            </ul>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1 bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44]">
-            <button
-              onClick={() => setActiveTab('courses')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'courses'
-                  ? 'btn-brand-primary'
-                  : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-              }`}
-            >
-              <PlayCircle className="w-3.5 h-3.5" />
-              {t('nav.courses')}
-            </button>
-
-            {(currentUser.role === 'MENTOR' || currentUser.role === 'ADMIN') && (
-              <button
-                onClick={() => setActiveTab('mentor')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'mentor'
-                    ? 'bg-[#a855f7] text-white shadow-md shadow-[#a855f7]/30'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5 text-[#06b6d4]" />
-                Panel Mentor
-              </button>
-            )}
-
-            {currentUser.role === 'ADMIN' && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'admin'
-                    ? 'bg-[#a855f7] text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5 text-amber-400" />
-                Admin Roles
-              </button>
-            )}
-
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => setActiveTab('plugins')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'plugins'
-                    ? 'bg-[#06b6d4] text-black font-extrabold shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Plugins
-              </button>
-            )}
-
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => setActiveTab('drive')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeTab === 'drive'
-                    ? 'btn-brand-primary'
-                    : 'text-slate-400 hover:text-white hover:bg-[#141420]'
-                }`}
-              >
-                <HardDrive className="w-3.5 h-3.5" />
-                Drive
-              </button>
-            )}
-
-            {onOpenVerifyModal && (
-              <button
-                onClick={onOpenVerifyModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-[#141420] transition-all"
-                title="Verificar autenticidad de un certificado"
-              >
-                <Award className="w-3.5 h-3.5 text-[#eab308]" />
-                Verificar Diploma
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab('vip')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'vip'
-                  ? 'bg-brand-gradient text-white shadow-md'
-                  : 'text-[#06b6d4] hover:bg-[#141420]'
-              }`}
-            >
-              <Crown className="w-3.5 h-3.5 text-[#eab308]" />
-              Pase VIP
-            </button>
-          </nav>
-
-          {/* Sleek User Profile Dropdown Button */}
-          <div className="hidden md:flex items-center relative" ref={dropdownRef}>
-            <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2.5 bg-[#0a0a0f] hover:bg-[#1a1a2e] p-1.5 pr-3 rounded-xl border border-[#2d2d44] transition-all hover:border-[#06b6d4]/50"
-            >
-              <img
-                src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                alt={currentUser.name}
-                className="w-7 h-7 rounded-full ring-2 ring-[#06b6d4]/40 object-cover"
+          <div className="lp-nav-right">
+            {/* Buscador: salta al curso, no filtra una rejilla. */}
+            <div className="lp-search-box" ref={searchBoxRef}>
+              <Search aria-hidden />
+              <input
+                ref={searchRef}
+                type="search"
+                className="lp-search-input"
+                placeholder="Buscar cursos..."
+                aria-label="Buscar cursos"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
               />
-              <div className="text-left text-xs">
-                <p className="font-bold text-white leading-tight flex items-center gap-1.5">
-                  {currentUser.name}
-                  {currentUser.role === 'ADMIN' && <Shield className="w-3 h-3 text-[#a855f7]" />}
-                  {currentUser.role === 'VIP' && <Crown className="w-3 h-3 text-[#eab308]" />}
-                </p>
-                <span className="text-[10px] text-slate-400 uppercase font-mono">{currentUser.role}</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
-            </button>
 
-            {/* Profile Dropdown Menu */}
-            {profileDropdownOpen && (
-              <div className="absolute right-0 top-12 w-72 bg-[#1a1a2e] border border-[#2d2d44] rounded-2xl p-4 shadow-2xl z-50 animate-fade-in space-y-3">
-                <div className="flex items-center gap-3 border-b border-[#2d2d44] pb-3">
-                  <img
-                    src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                    alt={currentUser.name}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-[#06b6d4]"
-                  />
-                  <div>
-                    <p className="font-bold text-xs text-white">{currentUser.name}</p>
-                    <p className="text-[10px] text-slate-400">{currentUser.email}</p>
-                    <span className="inline-block mt-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[#06b6d4]/10 text-[#06b6d4] border border-[#06b6d4]/30 uppercase">
-                      Rol: {currentUser.role}
+              {searchOpen && query && (
+                <div className="lp-menu lp-search-results" role="menu">
+                  <div className="lp-menu-head">
+                    <span className="lp-menu-role">
+                      {matches.length} {matches.length === 1 ? 'curso' : 'cursos'}
                     </span>
                   </div>
-                </div>
-
-                {/* Global i18n Language Selector */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Globe className="w-3 h-3 text-[#06b6d4]" /> {t('nav.language')} (i18n)
-                  </label>
-                  <div className="grid grid-cols-5 gap-1">
-                    {[
-                      { code: 'es', flag: '🇪🇸', label: 'ES' },
-                      { code: 'en', flag: '🇺🇸', label: 'EN' },
-                      { code: 'pt', flag: '🇧🇷', label: 'PT' },
-                      { code: 'fr', flag: '🇫🇷', label: 'FR' },
-                      { code: 'it', flag: '🇮🇹', label: 'IT' },
-                    ].map((item) => (
+                  {matches.length > 0 ? (
+                    matches.map((item) => (
                       <button
-                        key={item.code}
-                        onClick={() => handleLanguageChange(item.code)}
-                        className={`py-1 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center gap-0.5 ${
-                          i18n.language.startsWith(item.code)
-                            ? 'bg-[#06b6d4] text-black shadow-sm font-extrabold'
-                            : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
-                        }`}
+                        key={item.id}
+                        type="button"
+                        role="menuitem"
+                        className="lp-menu-item"
+                        onClick={() => openCourse(item)}
                       >
-                        <span className="text-xs">{item.flag}</span>
-                        <span>{item.label}</span>
+                        <span className="lp-menu-item-left">
+                          <PlayCircle aria-hidden className="lp-tone-cyan h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.title}</span>
+                        </span>
                       </button>
-                    ))}
+                    ))
+                  ) : (
+                    <p className="lp-search-empty">Ningún curso coincide.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Idioma */}
+            <div className="lp-menu-anchor lp-nav-lang" ref={langRef}>
+              <button
+                type="button"
+                className="lp-icon-btn"
+                onClick={() => {
+                  setLangOpen((open) => !open);
+                  setProfileOpen(false);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={langOpen}
+                title={t('nav.language')}
+              >
+                <Globe aria-hidden className="h-4 w-4" />
+                <span>{currentLangCode}</span>
+                <ChevronDown aria-hidden className="h-3 w-3" />
+              </button>
+
+              {langOpen && (
+                <div className="lp-menu" role="menu">
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleLanguageSelect(lang.code)}
+                      className={`lp-menu-item${i18n.language.startsWith(lang.code) ? ' is-active' : ''}`}
+                    >
+                      <span className="lp-menu-item-left">
+                        <span aria-hidden>{lang.flag}</span>
+                        <span>{lang.label}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cuenta */}
+            <div className="lp-menu-anchor" ref={profileRef}>
+              <button
+                type="button"
+                className="lp-user-profile"
+                onClick={() => {
+                  setProfileOpen((open) => !open);
+                  setLangOpen(false);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
+                aria-label="Menú de cuenta"
+              >
+                <span className="lp-avatar-wrapper">
+                  {currentUser.avatarUrl ? (
+                    <img className="lp-avatar-img" src={currentUser.avatarUrl} alt="" />
+                  ) : (
+                    <span className="lp-avatar-fallback">{initialsOf(currentUser.name)}</span>
+                  )}
+                  <span className="lp-status-badge" title="En línea" />
+                </span>
+                <ChevronDown aria-hidden className="h-3.5 w-3.5 text-slate-400" />
+              </button>
+
+              {profileOpen && (
+                <div className="lp-menu" role="menu">
+                  <div className="lp-menu-head">
+                    <span className="lp-menu-name">{currentUser.name}</span>
+                    <span className="lp-menu-role">{roleLabel}</span>
                   </div>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="lp-menu-item"
+                    onClick={() => goTo('landing')}
+                  >
+                    <span className="lp-menu-item-left">
+                      <Home aria-hidden className="h-4 w-4" />
+                      Ir a la portada
+                    </span>
+                  </button>
+
+                  {onRestartTour && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onRestartTour();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <Bot aria-hidden className="h-4 w-4" />
+                        {t('nav.restartTour')}
+                      </span>
+                    </button>
+                  )}
+
+                  {onOpenVerifyModal && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onOpenVerifyModal();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <Award aria-hidden className="h-4 w-4" />
+                        Verificar diploma
+                      </span>
+                    </button>
+                  )}
+
+                  {onChangePassword && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onChangePassword();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <KeyRound aria-hidden className="h-4 w-4" />
+                        Cambiar contraseña
+                      </span>
+                    </button>
+                  )}
+
+                  <p className="lp-menu-note">
+                    <span>{t('nav.accessStatus')}</span>
+                    <strong className={accessNote.tone}>{accessNote.label}</strong>
+                  </p>
+
+                  {onLogout && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item is-danger"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onLogout();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <LogOut aria-hidden className="h-4 w-4" />
+                        {t('nav.logout')}
+                      </span>
+                    </button>
+                  )}
                 </div>
+              )}
+            </div>
 
-                {/* Restart Virtual Assistant Tour Button */}
-                {onRestartTour && (
-                  <button
-                    onClick={() => {
-                      onRestartTour();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-[#06b6d4] text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Bot className="w-4 h-4" /> {t('nav.restartTour')}
-                  </button>
-                )}
-
-                {onOpenVerifyModal && (
-                  <button
-                    onClick={() => {
-                      onOpenVerifyModal();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#eab308] text-amber-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Award className="w-4 h-4 text-[#eab308]" /> Verificar Certificado
-                  </button>
-                )}
-
-                {onChangePassword && (
-                  <button
-                    onClick={() => {
-                      onChangePassword();
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="w-full py-2 bg-[#0a0a0f] hover:bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
-                  >
-                    <KeyRound className="w-4 h-4 text-[#06b6d4]" /> Cambiar contraseña
-                  </button>
-                )}
-
-                {/* Access Status */}
-                <div className="pt-2 border-t border-[#2d2d44] flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">{t('nav.accessStatus')}:</span>
-                  <strong className={hasAccess ? 'text-[#06b6d4]' : 'text-[#f97316]'}>
-                    {hasAccess ? t('nav.unlimited') : t('nav.noPayment')}
-                  </strong>
-                </div>
-
-                {/* Logout Button */}
-                {onLogout && (
-                  <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      onLogout();
-                    }}
-                    className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all mt-2"
-                  >
-                    <LogOut className="w-4 h-4" /> {t('nav.logout')}
-                  </button>
-                )}
-              </div>
-            )}
+            <button
+              type="button"
+              className="lp-icon-btn lp-mobile-btn"
+              onClick={() => setMobileOpen((open) => !open)}
+              aria-expanded={mobileOpen}
+              aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+            >
+              {mobileOpen ? <X aria-hidden className="h-5 w-5" /> : <Menu aria-hidden className="h-5 w-5" />}
+            </button>
           </div>
-
-          {/* Mobile Menu Toggle Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a1a2e]"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
+        </nav>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
+      {/* Cajón móvil: los destinos que la barra esconde por debajo de 1280px. */}
+      <div className={`lp-mobile-panel${mobileOpen ? ' is-open' : ''}`}>
+        <ul className="lp-mobile-links">
+          {destinations.map((destination) => (
+            <li key={destination.tab}>
+              <button
+                type="button"
+                onClick={() => goTo(destination.tab)}
+                className={activeTab === destination.tab ? 'is-active' : undefined}
+              >
+                {destination.icon}
+                <span>{destination.label}</span>
+              </button>
+            </li>
+          ))}
 
-        <div className="md:hidden bg-[#141420] border-b border-[#2d2d44] p-4 space-y-3 animate-fade-in">
-          <div className="space-y-1">
+          <li>
             <button
-              onClick={() => {
-                setActiveTab('courses');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
+              type="button"
+              onClick={() => goTo('vip')}
+              className={activeTab === 'vip' ? 'is-active' : undefined}
             >
-              <PlayCircle className="w-5 h-5 text-[#06b6d4]" />
-              Cursos & Clases
+              <Crown aria-hidden className="lp-tone-gold h-4 w-4" />
+              <span>Pase VIP</span>
             </button>
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+          </li>
+
+          {onOpenVerifyModal && (
+            <li>
               <button
+                type="button"
                 onClick={() => {
-                  setActiveTab('drive');
-                  setMobileMenuOpen(false);
+                  setMobileOpen(false);
+                  onOpenVerifyModal();
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
               >
-                <HardDrive className="w-5 h-5 text-[#06b6d4]" />
-                Buscador Google Drive
+                <Award aria-hidden className="lp-tone-gold h-4 w-4" />
+                <span>Verificar diploma</span>
               </button>
-            )}
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
+            </li>
+          )}
+        </ul>
+
+        <div className="lp-mobile-lang">
+          <span className="inline-flex items-center gap-2">
+            <Globe aria-hidden className="h-4 w-4" />
+            {t('nav.language')}
+          </span>
+          <span className="lp-mobile-lang-options">
+            {LANGUAGES.map((lang) => (
               <button
-                onClick={() => {
-                  setActiveTab('mentor');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
+                key={lang.code}
+                type="button"
+                onClick={() => handleLanguageSelect(lang.code)}
+                aria-pressed={i18n.language.startsWith(lang.code)}
+                className={i18n.language.startsWith(lang.code) ? 'is-active' : undefined}
               >
-                <UserCheck className="w-5 h-5 text-[#06b6d4]" />
-                Panel Mentor
+                <span aria-hidden className="mr-1">
+                  {lang.flag}
+                </span>
+                {lang.code.toUpperCase()}
               </button>
-            )}
-            {currentUser.role === 'ADMIN' && (
-              <button
-                onClick={() => {
-                  setActiveTab('admin');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-              >
-                <Settings className="w-5 h-5 text-[#a855f7]" />
-                Panel Admin / Mentor
-              </button>
-            )}
-            {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-              <button
-                onClick={() => {
-                  setActiveTab('plugins');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 hover:bg-[#1a1a2e]"
-              >
-                <Sparkles className="w-5 h-5 text-[#a855f7]" />
-                Plugins
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setActiveTab('vip');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white bg-brand-gradient"
-            >
-              <Crown className="w-5 h-5 text-[#eab308]" />
-              Activar Pase VIP
-            </button>
-            {onLogout && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onLogout();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/30"
-              >
-                <LogOut className="w-5 h-5" />
-                {t('nav.logout')}
-              </button>
-            )}
-            {onChangePassword && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onChangePassword();
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-200 bg-[#1a1a2e] border border-[#2d2d44]"
-              >
-                <KeyRound className="w-5 h-5 text-[#06b6d4]" />
-                Cambiar contraseña
-              </button>
-            )}
-          </div>
+            ))}
+          </span>
         </div>
-      )}
+
+        <div className="lp-mobile-actions is-stacked">
+          <button type="button" className="lp-btn-ghost" onClick={() => goTo('landing')}>
+            <Home aria-hidden className="h-4 w-4" />
+            Ir a la portada
+          </button>
+
+          {onChangePassword && (
+            <button
+              type="button"
+              className="lp-btn-ghost"
+              onClick={() => {
+                setMobileOpen(false);
+                onChangePassword();
+              }}
+            >
+              <KeyRound aria-hidden className="h-4 w-4" />
+              Cambiar contraseña
+            </button>
+          )}
+
+          {onLogout && (
+            <button
+              type="button"
+              className="lp-btn-ghost is-danger"
+              onClick={() => {
+                setMobileOpen(false);
+                onLogout();
+              }}
+            >
+              <LogOut aria-hidden className="h-4 w-4" />
+              {t('nav.logout')}
+            </button>
+          )}
+        </div>
+      </div>
     </header>
   );
 };

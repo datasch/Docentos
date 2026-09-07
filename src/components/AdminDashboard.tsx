@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search } from 'lucide-react';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
 import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
@@ -27,11 +27,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  /**
+   * El catálogo completo, no solo el curso abierto.
+   *
+   * El panel recibe un único `course` por props, y Recursos, Videos Drive y
+   * Guías TTS trabajaban siempre sobre él: con varios cursos publicados, el
+   * administrador solo podía tocar el primero y no había forma de decir sobre
+   * cuál estaba operando. Aquí se carga el catálogo y se elige explícitamente.
+   */
+  const [allCourses, setAllCourses] = useState<Course[]>([course]);
+  const [workCourseId, setWorkCourseId] = useState<string>(course.id);
+  const workCourse = allCourses.find((item) => item.id === workCourseId) || course;
+  const workModules = workCourse.modules || [];
+
   // Enrollments State
   const [enrollments, setEnrollments] = useState<CourseEnrollmentRecord[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
   const [newEnrollUserId, setNewEnrollUserId] = useState('');
-  const [enrollableCourses, setEnrollableCourses] = useState<Course[]>([]);
   const [newEnrollCourseId, setNewEnrollCourseId] = useState(course.id);
   const [newEnrollStatus, setNewEnrollStatus] = useState<'ACTIVE' | 'COMPLETED' | 'REVOKED' | 'EXPIRED'>('ACTIVE');
   const [newEnrollSource, setNewEnrollSource] = useState<'ADMIN' | 'PAYMENT' | 'MENTORSHIP'>('ADMIN');
@@ -49,14 +61,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const [resKind, setResKind] = useState<'FILE' | 'LINK'>('FILE');
   const [resModuleId, setResModuleId] = useState<string>('');
   const [resSuccessMsg, setResSuccessMsg] = useState('');
+  const [resErrorMsg, setResErrorMsg] = useState('');
 
   // Drive Linker State
   const [searchQuery, setSearchQuery] = useState('');
   const [driveVideos, setDriveVideos] = useState<DriveVideoFile[]>([]);
   const [loadingDrive, setLoadingDrive] = useState(false);
+  const [driveIsDemo, setDriveIsDemo] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState(course.modules[0]?.id || '');
   const [linkingVideo, setLinkingVideo] = useState<DriveVideoFile | null>(null);
   const [linkSuccessMsg, setLinkSuccessMsg] = useState('');
+  const [driveErrorMsg, setDriveErrorMsg] = useState('');
+  // Alta directa por enlace: sin credenciales de Drive el buscador no ve la
+  // cuenta del administrador, y pegar el enlace de «Compartir» es el único
+  // camino que siempre funciona.
+  const [manualVideoUrl, setManualVideoUrl] = useState('');
+  const [manualVideoTitle, setManualVideoTitle] = useState('');
+  const [manualVideoDuration, setManualVideoDuration] = useState('');
+  const [addingManualVideo, setAddingManualVideo] = useState(false);
 
   // TTS Gamified Guides Management State
   const [ttsGuides, setTtsGuides] = useState<TTSGuide[]>([]);
@@ -67,34 +89,81 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const [ttsSpeed, setTtsSpeed] = useState(1.0);
   const [ttsTargetVideoId, setTtsTargetVideoId] = useState(course.modules[0]?.videos[0]?.id || '');
   const [ttsSuccessMsg, setTtsSuccessMsg] = useState('');
+  const [ttsErrorMsg, setTtsErrorMsg] = useState('');
   const [isPreviewingAudio, setIsPreviewingAudio] = useState(false);
   const [isGeneratingAiScript, setIsGeneratingAiScript] = useState(false);
 
   useEffect(() => {
     loadUsers();
     loadDriveVideos();
-    loadTTSGuides();
     loadEnrollments();
     loadCertificates();
-    loadEnrollableCourses();
+    loadCatalog();
   }, []);
 
   /**
-   * Los cursos que se pueden asignar. Sin esta lista el formulario matriculaba
-   * siempre en el curso abierto, sin decir en cual, y no habia forma de elegir.
+   * El catálogo que alimenta al selector de curso de todas las pestañas.
+   * Sin esta lista el panel matriculaba y publicaba siempre sobre el curso
+   * abierto, sin decir en cuál, y no había forma de elegir otro.
    */
-  const loadEnrollableCourses = async () => {
+  const loadCatalog = async () => {
     try {
       const res = await api.getCourses();
       const list = res.courses || [];
-      setEnrollableCourses(list);
+      if (list.length === 0) return;
+      setAllCourses(list);
       setNewEnrollCourseId((current) =>
         list.some((item) => item.id === current) ? current : list[0]?.id || '',
       );
+      setWorkCourseId((current) =>
+        list.some((item) => item.id === current) ? current : list[0]?.id || '',
+      );
     } catch (err) {
-      console.error('Error loading courses for enrollment:', err);
+      console.error('Error loading courses:', err);
     }
   };
+
+  /** Tras crear o borrar algo hay que releer las dos fuentes: props y catálogo. */
+  const refreshEverything = () => {
+    onRefreshData();
+    loadCatalog();
+  };
+
+  // Al cambiar de curso, los desplegables que apuntaban a módulos y clases del
+  // anterior quedan señalando identificadores que ya no existen: se reencuadran
+  // sobre el curso elegido y se recargan sus guías.
+  useEffect(() => {
+    const modules = workCourse.modules || [];
+    setResModuleId('');
+    setSelectedModuleId(modules[0]?.id || '');
+    setTtsTargetVideoId(modules.flatMap((m) => m.videos)[0]?.id || '');
+    setResSuccessMsg('');
+    setResErrorMsg('');
+    setLinkSuccessMsg('');
+    setDriveErrorMsg('');
+    setTtsSuccessMsg('');
+    setTtsErrorMsg('');
+    loadTTSGuides(workCourse.id);
+  }, [workCourse.id]);
+
+  // Reparación, no reencuadre: al releer el catálogo tras cada alta, el módulo
+  // que el administrador había elegido debe seguir elegido —obligarle a
+  // volver a marcarlo por cada video que enlaza es una tortura—. Solo se toca
+  // la selección cuando lo que apuntaba ya no existe.
+  useEffect(() => {
+    const modules = workCourse.modules || [];
+    const lessons = modules.flatMap((m) => m.videos);
+
+    if (!modules.some((m) => m.id === selectedModuleId)) {
+      setSelectedModuleId(modules[0]?.id || '');
+    }
+    if (resModuleId && !modules.some((m) => m.id === resModuleId)) {
+      setResModuleId('');
+    }
+    if (!lessons.some((v) => v.id === ttsTargetVideoId)) {
+      setTtsTargetVideoId(lessons[0]?.id || '');
+    }
+  }, [workCourse.modules]);
 
   const loadEnrollments = async () => {
     setLoadingEnrollments(true);
@@ -131,7 +200,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         source: newEnrollSource,
       });
       const enrolledUser = users.find((item) => item.id === newEnrollUserId);
-      const enrolledCourse = enrollableCourses.find((item) => item.id === newEnrollCourseId);
+      const enrolledCourse = allCourses.find((item) => item.id === newEnrollCourseId);
       setEnrollSuccessMsg(
         `${enrolledUser?.name || 'El usuario'} queda matriculado en «${enrolledCourse?.title || 'el curso'}».`,
       );
@@ -166,20 +235,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const handleAddResource = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resTitle.trim() || !resPrivateUrl.trim()) return;
+    setResErrorMsg('');
     try {
-      await api.createCourseResource(course.id, {
+      await api.createCourseResource(workCourse.id, {
         moduleId: resModuleId || null,
         title: resTitle.trim(),
         privateUrl: resPrivateUrl.trim(),
         kind: resKind,
       });
-      setResSuccessMsg('¡Recurso añadido exitosamente!');
+      const target = workModules.find((m) => m.id === resModuleId);
+      setResSuccessMsg(
+        `«${resTitle.trim()}» añadido a ${target ? target.title : 'General del Curso'} en «${workCourse.title}».`,
+      );
       setResTitle('');
       setResPrivateUrl('');
-      setTimeout(() => setResSuccessMsg(''), 3000);
-      onRefreshData();
+      setTimeout(() => setResSuccessMsg(''), 4000);
+      refreshEverything();
     } catch (err: any) {
-      alert(err.message || 'Error al agregar recurso');
+      setResErrorMsg(err.message || 'Error al agregar recurso');
     }
   };
 
@@ -187,9 +260,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     if (!confirm('¿Deseas eliminar este recurso?')) return;
     try {
       await api.deleteCourseResource(resourceId);
-      onRefreshData();
+      refreshEverything();
     } catch (err: any) {
-      alert(err.message || 'Error al eliminar recurso');
+      setResErrorMsg(err.message || 'Error al eliminar recurso');
     }
   };
 
@@ -198,7 +271,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     try {
       // Find selected video title
       let targetVideoTitle = 'Lección de Mentoría Técnica';
-      for (const mod of course.modules) {
+      for (const mod of workModules) {
         const foundVid = mod.videos.find((v) => v.id === ttsTargetVideoId);
         if (foundVid) {
           targetVideoTitle = `${mod.title}: ${foundVid.title}`;
@@ -226,13 +299,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     }
   };
 
-  const loadTTSGuides = async () => {
+  const loadTTSGuides = async (courseId: string = workCourse.id) => {
     setLoadingTtsGuides(true);
     try {
-      const res = await api.getTTSGuides({ courseId: course.id });
+      const res = await api.getTTSGuides({ courseId });
       setTtsGuides(res.guides || []);
     } catch (error) {
       console.error('Error loading TTS guides:', error);
+      setTtsGuides([]);
     } finally {
       setLoadingTtsGuides(false);
     }
@@ -271,14 +345,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     e.preventDefault();
     if (!ttsScript.trim()) return;
 
+    // Una guía sin clase destino no se le puede reproducir a nadie: el
+    // servidor la aceptaba y caía en un `videoId` por defecto de otro curso.
+    if (!ttsTargetVideoId) {
+      setTtsErrorMsg('Elige primero un curso con clases y la lección a la que acompaña la guía.');
+      return;
+    }
+    setTtsErrorMsg('');
+
     try {
-      const selectedModule = course.modules.find((m) =>
+      const selectedModule = workModules.find((m) =>
         m.videos.some((v) => v.id === ttsTargetVideoId)
       );
 
       const res = await api.createTTSGuide({
-        courseId: course.id,
-        moduleId: selectedModule?.id || course.modules[0]?.id,
+        courseId: workCourse.id,
+        moduleId: selectedModule?.id || workModules[0]?.id,
         videoId: ttsTargetVideoId,
         title: ttsTitle.trim() || 'Guía de Orientación de Mentoría',
         scriptText: ttsScript.trim(),
@@ -288,14 +370,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
       });
 
       if (res.success) {
-        setTtsSuccessMsg('¡Guía de mentoría TTS creada y guardada con éxito!');
+        setTtsSuccessMsg(`Guía guardada en «${workCourse.title}».`);
         setTtsScript('');
         setTtsTitle('');
         loadTTSGuides();
         setTimeout(() => setTtsSuccessMsg(''), 3500);
       }
-    } catch (error) {
-      console.error('Error creating TTS guide:', error);
+    } catch (error: any) {
+      setTtsErrorMsg(error?.message || 'No se pudo guardar la guía TTS.');
     }
   };
 
@@ -303,8 +385,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     try {
       await api.deleteTTSGuide(id);
       loadTTSGuides();
-    } catch (error) {
-      console.error('Error deleting TTS guide:', error);
+    } catch (error: any) {
+      setTtsErrorMsg(error?.message || 'No se pudo eliminar la guía.');
     }
   };
 
@@ -323,11 +405,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
 
   const loadDriveVideos = async (q?: string) => {
     setLoadingDrive(true);
+    setDriveErrorMsg('');
     try {
       const res = await api.searchDriveVideos(q);
       setDriveVideos(res.videos || []);
-    } catch (error) {
-      console.error('Error searching drive:', error);
+      // Sin credenciales el servidor responde con un catálogo de demostración
+      // cuyos identificadores no existen: enlazarlos deja el reproductor negro.
+      setDriveIsDemo(Boolean(res.isDemo));
+    } catch (error: any) {
+      setDriveErrorMsg(error?.message || 'No se pudo consultar Google Drive.');
     } finally {
       setLoadingDrive(false);
     }
@@ -379,19 +465,131 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   };
 
   const handleLinkDriveVideo = async (video: DriveVideoFile) => {
-    if (!selectedModuleId) return;
+    if (!selectedModuleId) {
+      setDriveErrorMsg('Elige antes el curso y el módulo de destino.');
+      return;
+    }
     setLinkingVideo(video);
+    setDriveErrorMsg('');
     try {
       await api.addDriveVideoToModule(selectedModuleId, video);
-      setLinkSuccessMsg(`¡Video "${video.name}" enlazado correctamente al módulo!`);
-      onRefreshData();
-      setTimeout(() => setLinkSuccessMsg(''), 3500);
-    } catch (error) {
-      console.error('Error linking video:', error);
+      const target = workModules.find((m) => m.id === selectedModuleId);
+      setLinkSuccessMsg(
+        `«${video.name}» enlazado a ${target?.title || 'el módulo'} de «${workCourse.title}».`,
+      );
+      refreshEverything();
+      setTimeout(() => setLinkSuccessMsg(''), 4000);
+    } catch (error: any) {
+      setDriveErrorMsg(error?.message || 'No se pudo enlazar el video.');
     } finally {
       setLinkingVideo(null);
     }
   };
+
+  /**
+   * Alta de una clase pegando el enlace del archivo.
+   *
+   * El buscador solo ve la carpeta de la cuenta de servicio configurada en el
+   * servidor; si no hay credenciales, o el video vive en otra carpeta, este es
+   * el camino. El servidor extrae el identificador del enlace de «Compartir».
+   */
+  const handleAddManualVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualVideoUrl.trim() || !manualVideoTitle.trim()) return;
+    if (!selectedModuleId) {
+      setDriveErrorMsg('Elige antes el curso y el módulo de destino.');
+      return;
+    }
+
+    setAddingManualVideo(true);
+    setDriveErrorMsg('');
+    try {
+      // Un enlace de Drive se guarda como archivo de Drive (el servidor extrae
+      // el identificador); cualquier otra URL se guarda como reproducción
+      // externa, que es como el propio servidor distingue los dos orígenes.
+      const raw = manualVideoUrl.trim();
+      const isDriveLink = /drive\.google\.com/i.test(raw) || /^[A-Za-z0-9_-]{10,}$/.test(raw);
+
+      await api.addDriveVideoToModule(selectedModuleId, {
+        id: isDriveLink ? raw : '',
+        embedUrl: isDriveLink ? undefined : raw,
+        name: manualVideoTitle.trim(),
+        duration: manualVideoDuration.trim() || undefined,
+      });
+      const target = workModules.find((m) => m.id === selectedModuleId);
+      setLinkSuccessMsg(
+        `«${manualVideoTitle.trim()}» añadido a ${target?.title || 'el módulo'} de «${workCourse.title}».`,
+      );
+      setManualVideoUrl('');
+      setManualVideoTitle('');
+      setManualVideoDuration('');
+      refreshEverything();
+      setTimeout(() => setLinkSuccessMsg(''), 4000);
+    } catch (error: any) {
+      setDriveErrorMsg(error?.message || 'No se pudo añadir el video.');
+    } finally {
+      setAddingManualVideo(false);
+    }
+  };
+
+  const workLessonCount = workModules.reduce((acc, m) => acc + m.videos.length, 0);
+
+  /**
+   * Todos los recursos del curso, generales y de módulo.
+   *
+   * El servidor los reparte en dos sitios: `course.resources` solo trae los que
+   * no cuelgan de ningún módulo, y los demás viajan dentro de cada módulo. El
+   * panel leía únicamente el primero, así que un recurso asignado a un módulo
+   * desaparecía del listado en cuanto se guardaba.
+   */
+  const workResources = [
+    ...(workCourse.resources || []).map((resource) => ({ resource, moduleTitle: '' })),
+    ...workModules.flatMap((m) =>
+      (m.resources || []).map((resource) => ({ resource, moduleTitle: m.title })),
+    ),
+  ];
+
+  /**
+   * Sobre qué curso se está trabajando.
+   *
+   * Recursos, Videos Drive y Guías TTS escriben en un curso concreto; sin este
+   * selector escribían siempre en el primero del catálogo y el administrador no
+   * tenía manera de saberlo hasta abrir el curso equivocado.
+   */
+  const courseScopeBar = (
+    <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+          Curso sobre el que trabajas
+        </label>
+        <select
+          value={workCourseId}
+          onChange={(e) => setWorkCourseId(e.target.value)}
+          className="w-full sm:w-96 bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
+        >
+          {allCourses.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.title}{item.published ? '' : ' — borrador'}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <span className="text-[11px] font-mono text-slate-500 shrink-0">
+        {workModules.length} módulos · {workLessonCount} clases
+      </span>
+    </div>
+  );
+
+  const noModulesNotice = workModules.length === 0 && (
+    <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-xl flex items-start gap-2">
+      <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+      <span>
+        «{workCourse.title}» todavía no tiene módulos. Créalos en la pestaña Cursos o importando
+        una carpeta de Drive antes de asignarle contenido.
+      </span>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
@@ -500,8 +698,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                   <Crown className="w-5 h-5 text-[#eab308]" />
                   Monetización y Precio del Programa de Mentoría
                 </h3>
+                {/* Esta tarjeta edita el curso que abre el panel, no el que se
+                    elige en las demás pestañas: nombrarlo evita cambiarle el
+                    precio al curso equivocado. El precio por curso también se
+                    edita, uno a uno, en la pestaña Cursos. */}
                 <p className="text-xs text-slate-400">
-                  Configura el precio público del curso. Deja en 0 para ser completamente público y gratuito.
+                  Precio público de <span className="font-bold text-slate-200">«{course.title}»</span>.
+                  Deja en 0 para que sea completamente público y gratuito.
                 </p>
               </div>
               {priceSuccessMsg && (
@@ -664,6 +867,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
 
       {/* TAB 2: LINK GOOGLE DRIVE VIDEOS TO COURSE MODULES */}
       {activeTab === 'drive' && (
+        <div className="space-y-6">
+        {courseScopeBar}
         <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
             <div>
@@ -672,7 +877,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                 Enlazar Contenido de Google Drive al Temario
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Selecciona un módulo del curso y asóciale videos alojados en Google Drive en tiempo real.
+                Elige el módulo de «{workCourse.title}» y asóciale videos alojados en Google Drive.
               </p>
             </div>
 
@@ -681,9 +886,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               <select
                 value={selectedModuleId}
                 onChange={(e) => setSelectedModuleId(e.target.value)}
-                className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
+                disabled={workModules.length === 0}
+                className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
               >
-                {course.modules.map((m) => (
+                {workModules.length === 0 && <option value="">Sin módulos</option>}
+                {workModules.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.title}
                   </option>
@@ -692,10 +899,136 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
             </div>
           </div>
 
+          {noModulesNotice}
+
           {linkSuccessMsg && (
             <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 animate-fade-in font-semibold">
               <CheckCircle2 className="w-4 h-4" /> {linkSuccessMsg}
             </div>
+          )}
+
+          {driveErrorMsg && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{driveErrorMsg}</span>
+            </div>
+          )}
+
+          {/* De dónde salen estos videos. Sin decirlo, un catálogo de
+              demostración se confunde con la cuenta de Drive del centro y se
+              enlazan archivos que no existen. */}
+          {driveIsDemo ? (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 space-y-1.5">
+              <p className="font-bold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Google Drive no está conectado: esto es un catálogo de demostración
+              </p>
+              <p className="text-amber-200/80 leading-relaxed">
+                Los videos de abajo son ejemplos y sus identificadores no existen; si los enlazas, el
+                reproductor saldrá vacío. Para ver los archivos reales de tu cuenta, configura en el
+                servidor <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
+                <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code> (cuenta de servicio) o{' '}
+                <code className="font-mono">GOOGLE_DRIVE_API_KEY</code>, más{' '}
+                <code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code> con la carpeta a listar, y
+                comparte esa carpeta con la cuenta de servicio. Mientras tanto, usa el alta por enlace.
+              </p>
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-500">
+              Listando los videos de la carpeta de Drive configurada en el servidor
+              (<code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code>). Si el video vive en otra
+              carpeta, añádelo por enlace.
+            </p>
+          )}
+
+          {/* Alta por enlace: el camino que funciona con o sin credenciales. */}
+          <form
+            onSubmit={handleAddManualVideo}
+            className="bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-4 space-y-3"
+          >
+            <h4 className="text-xs font-bold text-white flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div className="md:col-span-2">
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                  Enlace de Drive o URL de reproducción
+                </label>
+                <input
+                  type="text"
+                  value={manualVideoUrl}
+                  onChange={(e) => setManualVideoUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/ABC123.../view"
+                  className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block mb-1">Título de la clase</label>
+                <input
+                  type="text"
+                  value={manualVideoTitle}
+                  onChange={(e) => setManualVideoTitle(e.target.value)}
+                  placeholder="Ej. 03. Índices en PostgreSQL"
+                  className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Duración</label>
+                  <input
+                    type="text"
+                    value={manualVideoDuration}
+                    onChange={(e) => setManualVideoDuration(e.target.value)}
+                    placeholder="20:00"
+                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={addingManualVideo || workModules.length === 0}
+                  className="btn-brand-primary h-[38px] px-3 text-xs font-bold flex items-center justify-center gap-1.5 self-end disabled:opacity-50"
+                >
+                  {addingManualVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Añadir
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {/* Buscador de la carpeta configurada. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              loadDriveVideos(searchQuery);
+            }}
+            className="flex items-center gap-2"
+          >
+            <div className="flex-1 flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3">
+              <Search className="w-4 h-4 text-slate-500 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por nombre en la carpeta de Drive..."
+                className="w-full bg-transparent py-2 text-xs text-white focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loadingDrive}
+              className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> Buscar
+            </button>
+          </form>
+
+          {!loadingDrive && driveVideos.length === 0 && (
+            <p className="text-xs text-slate-500 py-6 text-center">
+              No hay videos que mostrar para esa búsqueda.
+            </p>
           )}
 
           {/* Drive Videos Grid */}
@@ -725,7 +1058,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                   <span className="text-[10px] text-slate-500 font-mono">ID: {video.id.substring(0, 12)}...</span>
                   <button
                     onClick={() => handleLinkDriveVideo(video)}
-                    disabled={linkingVideo?.id === video.id}
+                    disabled={linkingVideo?.id === video.id || workModules.length === 0}
                     className="px-3 py-1.5 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
                   >
                     {linkingVideo?.id === video.id ? (
@@ -741,12 +1074,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
             ))}
           </div>
         </div>
+        </div>
       )}
 
       {/* TAB 3: GESTIÓN DE GUÍAS DE MENTORÍA (TTS GAMIFICADO) */}
       {activeTab === 'tts' && (
         <div className="space-y-6">
-          
+
+          {/* La guía se guarda contra una clase concreta, así que el curso se
+              elige antes que nada: sin esto el desplegable de lecciones sólo
+              ofrecía las del primer curso del catálogo. */}
+          {courseScopeBar}
+
           {/* Form Box */}
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
             <div className="border-b border-[#2d2d44] pb-4">
@@ -755,13 +1094,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                 <h3 className="font-bold text-base text-white">Gestión de Guías de Mentoría (TTS Gamificado)</h3>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada módulo o lección y recompénsalos con XP por escuchar la introducción.
+                Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada lección de
+                «{workCourse.title}» y recompénsalos con XP por escuchar la introducción.
               </p>
             </div>
+
+            {noModulesNotice}
 
             {ttsSuccessMsg && (
               <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 font-semibold animate-fade-in">
                 <CheckCircle2 className="w-4 h-4" /> {ttsSuccessMsg}
+              </div>
+            )}
+
+            {ttsErrorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{ttsErrorMsg}</span>
               </div>
             )}
 
@@ -791,9 +1139,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                   <select
                     value={ttsTargetVideoId}
                     onChange={(e) => setTtsTargetVideoId(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4]"
+                    disabled={workLessonCount === 0}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
                   >
-                    {course.modules.flatMap((m) =>
+                    {workLessonCount === 0 && <option value="">Este curso aún no tiene clases</option>}
+                    {workModules.flatMap((m) =>
                       m.videos.map((v) => (
                         <option key={v.id} value={v.id}>
                           {m.title} → {v.title}
@@ -925,7 +1275,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
 
                 <button
                   type="submit"
-                  className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
+                  disabled={!ttsTargetVideoId}
+                  className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20 disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4 text-[#eab308]" /> Generar y Guardar Guía TTS
                 </button>
@@ -937,11 +1288,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
           {/* List of Existing TTS Guides */}
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
             <h4 className="font-bold text-sm text-white flex items-center gap-2 border-b border-[#2d2d44] pb-3">
-              <Award className="w-4 h-4 text-[#a855f7]" /> Guías de Mentoría Creadas ({ttsGuides.length})
+              <Award className="w-4 h-4 text-[#a855f7]" /> Guías de «{workCourse.title}» ({ttsGuides.length})
             </h4>
 
-            {ttsGuides.length === 0 ? (
-              <p className="text-xs text-slate-500 py-4 text-center">No se han creado guías TTS aún.</p>
+            {loadingTtsGuides ? (
+              <p className="text-xs text-slate-500 py-4 text-center">Cargando guías...</p>
+            ) : ttsGuides.length === 0 ? (
+              <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene guías TTS.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {ttsGuides.map((guide) => (
@@ -1004,6 +1357,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         <PluginManagerView />
       )}
 
+      {/* TAB: EDITOR DE PORTADA. La pestaña existia y el editor estaba
+          importado, pero nadie lo pintaba: pulsar "Portada" dejaba la pagina en
+          blanco por debajo de las pestañas. */}
+      {activeTab === 'landing' && (
+        <LandingPageEditor onSaved={onRefreshData} />
+      )}
+
       {/* TAB: MATRÍCULAS (ENROLLMENTS) */}
       {activeTab === 'enrollments' && (
         <div className="space-y-6 animate-fade-in">
@@ -1050,7 +1410,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                   required
                 >
                   <option value="">Selecciona curso...</option>
-                  {enrollableCourses.map((item) => (
+                  {allCourses.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.title}{item.published === false ? ' (borrador)' : ''}
                     </option>
@@ -1296,6 +1656,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
       {/* TAB: RECURSOS DESCARGABLES (RESOURCES) */}
       {activeTab === 'resources' && (
         <div className="space-y-6 animate-fade-in">
+          {/* El recurso se cuelga de un curso concreto; elegirlo va primero. */}
+          {courseScopeBar}
+
           {/* Agregar Recurso */}
           <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -1303,12 +1666,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               <span>Agregar Recurso Descargable Protegido</span>
             </h3>
             <p className="text-xs text-slate-400">
-              Sube o enlaza material complementario (guías, PDF, repositorios o archivos ZIP). La URL privada estará protegida y sólo será accesible mediante token de sesión autorizado.
+              Material complementario (guías, PDF, repositorios o archivos ZIP) para
+              «{workCourse.title}». La URL privada queda protegida y sólo será accesible mediante
+              token de sesión autorizado.
             </p>
 
             {resSuccessMsg && (
               <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" /> {resSuccessMsg}
+              </div>
+            )}
+
+            {resErrorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{resErrorMsg}</span>
               </div>
             )}
 
@@ -1345,7 +1716,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                   className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 >
                   <option value="">General del Curso</option>
-                  {course.modules.map((m) => (
+                  {workModules.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
@@ -1363,32 +1734,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
           <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#06b6d4]" />
-              <span>Recursos del Curso Actual</span>
+              <span>Recursos de «{workCourse.title}» ({workResources.length})</span>
             </h3>
 
-            <div className="space-y-2">
-              {course.resources && course.resources.length > 0 ? (
-                course.resources.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between p-3 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
-                    <div className="flex items-center gap-3">
-                      <Download className="w-4 h-4 text-cyan-400" />
-                      <div>
-                        <p className="text-xs font-bold text-white">{r.title}</p>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {r.downloadUrl} • {r.kind}
+            <div className="space-y-2 max-h-[32rem] overflow-y-auto">
+              {workResources.length > 0 ? (
+                workResources.map(({ resource, moduleTitle }) => (
+                  <div key={resource.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Download className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white truncate">{resource.title}</p>
+                        <span className="text-[10px] text-slate-500 font-mono truncate block">
+                          {moduleTitle || 'General del Curso'} • {resource.kind} • {resource.downloadUrl}
                         </span>
                       </div>
                     </div>
                     <button
-                      onClick={() => handleDeleteResource(r.id)}
-                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                      onClick={() => handleDeleteResource(resource.id)}
+                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-500 py-4 text-center">No hay recursos generales configurados en este curso.</p>
+                <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene recursos.</p>
               )}
             </div>
           </div>

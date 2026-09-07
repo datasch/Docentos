@@ -164,6 +164,8 @@ function toLandingConfig(config: any) {
     bannerText: config.bannerText,
     bannerLinkText: config.bannerLinkText,
     bannerLinkUrl: config.bannerLinkUrl,
+    trustRating: config.trustRating,
+    trustAudience: config.trustAudience,
     benefits: parseJsonArray(config.benefitsJson),
     testimonials: parseJsonArray(config.testimonialsJson),
     footerText: config.footerText,
@@ -1497,9 +1499,21 @@ app.get(
       }),
     ]);
     const completedVideos = Object.fromEntries(progress.map((item) => [item.videoId, true]));
+
+    // El curso que el alumno estaba estudiando. Sin este dato la aplicacion
+    // abre siempre por el primero del catalogo, que en cuanto hay mas de un
+    // curso deja de ser el que le interesa. Se deduce de la ultima leccion
+    // marcada, que es la unica huella de estudio que ya se guarda.
+    const lastCompleted = await prisma.userProgress.findFirst({
+      where: { userId: req.user!.id, completed: true },
+      orderBy: { completedAt: 'desc' },
+      select: { video: { select: { module: { select: { courseId: true } } } } },
+    });
+
     res.json({
       success: true,
       completedVideos,
+      lastCourseId: lastCompleted?.video.module.courseId || null,
       certificates: certificates.map((c) => ({
         ...c,
         issuedAt: c.issuedAt.toISOString(),
@@ -2159,16 +2173,37 @@ app.post(
   }),
 );
 
+/**
+ * Bandeja de consultas del mentor.
+ *
+ * Devuelve los hilos de todo el catalogo, no los de un video suelto: el mentor
+ * entra aqui para saber que hay pendiente, y una pregunta sin la clase de la
+ * que salio no se puede responder. Las pendientes van primero porque son las
+ * unicas que piden accion.
+ */
 app.get(
   '/api/mentor/qna',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (_req, res) => {
     const comments = await prisma.mentorshipComment.findMany({
       where: { parentId: null },
-      include: { user: true, replies: { include: { user: true }, orderBy: { createdAt: 'asc' } } },
-      orderBy: { createdAt: 'desc' },
+      include: {
+        user: true,
+        replies: { include: { user: true }, orderBy: { createdAt: 'asc' } },
+        video: { include: { module: { include: { course: { select: { id: true, title: true } } } } } },
+      },
+      orderBy: [{ isResolved: 'asc' }, { createdAt: 'desc' }],
     });
-    res.json({ success: true, comments: comments.map(toApiComment) });
+    res.json({
+      success: true,
+      comments: comments.map((comment) => ({
+        ...toApiComment(comment),
+        videoTitle: comment.video?.title || null,
+        moduleTitle: comment.video?.module?.title || null,
+        courseId: comment.video?.module?.course?.id || null,
+        courseTitle: comment.video?.module?.course?.title || null,
+      })),
+    });
   }),
 );
 
@@ -2270,6 +2305,8 @@ app.put(
         bannerText: String(merged.bannerText),
         bannerLinkText: String(merged.bannerLinkText),
         bannerLinkUrl: String(merged.bannerLinkUrl),
+        trustRating: String(merged.trustRating || ''),
+        trustAudience: String(merged.trustAudience || ''),
         benefitsJson: JSON.stringify(merged.benefits || []),
         testimonialsJson: JSON.stringify(merged.testimonials || []),
         footerText: String(merged.footerText),
@@ -2377,6 +2414,7 @@ app.post(
         coverImage: String(req.body.coverImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'),
         category: String(req.body.category || 'Mentoría Elite').trim(),
         isDemo: Boolean(req.body.isDemo),
+        sequentialUnlock: Boolean(req.body.sequentialUnlock),
       },
     });
 
@@ -2410,6 +2448,9 @@ app.put(
         ...(req.body.currency !== undefined ? { currency: String(req.body.currency).toUpperCase() } : {}),
         ...(req.body.coverImage !== undefined ? { coverImage: String(req.body.coverImage).trim() } : {}),
         ...(req.body.category !== undefined ? { category: String(req.body.category).trim() } : {}),
+        ...(req.body.sequentialUnlock !== undefined
+          ? { sequentialUnlock: Boolean(req.body.sequentialUnlock) }
+          : {}),
         published,
         publishedAt,
       },

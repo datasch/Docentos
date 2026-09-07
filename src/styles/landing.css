@@ -1,0 +1,2244 @@
+/**
+ * Sistema visual de la portada publica de DocentOS.
+ *
+ * Vive aparte de la capa de tokens de la aplicacion (src/index.css) porque la
+ * portada es otra pieza: el panel de estudio es una herramienta y se pinta en
+ * gris casi negro, mientras que la portada es el escaparate y se pinta en el
+ * azul de marca con neon. Todo cuelga de `.lp-root`, asi que ninguna de estas
+ * reglas puede alcanzar al resto de la aplicacion.
+ */
+
+/* Los tokens no cuelgan solo de `.lp-root`: la cabecera de la portada se
+   reutiliza tal cual dentro de la aplicacion (panel de estudio y admin), que
+   se monta fuera de ese contenedor. Declararlos tambien en `.lp-header` es lo
+   que hace que la barra se pinte igual en los dos sitios; sin esto las clases
+   `lp-` llegan al header de la app sin ninguna variable resuelta y la barra
+   queda transparente y sin tinta. */
+.lp-root,
+.lp-header {
+  /* Superficies. Rampa neutra de tono unico (240 grados, saturacion baja) del
+     sistema de color de DocentOS: los pasos son de luminosidad, no de tinte. */
+  --lp-bg-main: #07070b;
+  --lp-bg-surface: #0f0f17;
+  --lp-bg-elevated: #171721;
+  --lp-bg-card: rgba(15, 15, 23, 0.72);
+  --lp-bg-card-hover: rgba(32, 32, 44, 0.85);
+
+  /* Acento primario: violeta, la identidad. Es el unico color que rellena.
+     El cian no compite con el: es interaccion, foco y enlace. */
+  --lp-accent: #8b5cf6;
+  --lp-accent-soft: #c4b5fd;
+  --lp-text-on-fill: #07070b;
+  --lp-cyan: #22d3ee;
+  --lp-gradient: linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%);
+  --lp-purple: #a855f7;
+  --lp-green: #10b981;
+  --lp-gold: #f59e0b;
+  --lp-gold-gradient: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+
+  /* Tinta. `--lp-text-strong` es #edeef5 y no blanco puro: sobre un fondo casi
+     negro el blanco puro vibra (halation) en lecturas largas. */
+  --lp-text-strong: #edeef5;
+  --lp-text-primary: #edeef5;
+  --lp-text-secondary: #b4b7c7;
+  --lp-text-muted: #8a8ea3;
+
+  /* Bordes y brillos */
+  --lp-border: rgba(255, 255, 255, 0.08);
+  --lp-glow-accent: 0 0 25px rgba(139, 92, 246, 0.3);
+  --lp-glow-cyan: 0 0 30px rgba(34, 211, 238, 0.3);
+  --lp-glow-gold: 0 0 20px rgba(245, 158, 11, 0.3);
+  --lp-glow-green: 0 0 20px rgba(16, 185, 129, 0.4);
+
+  /* Radios y transiciones */
+  --lp-r-sm: 6px;
+  --lp-r-md: 12px;
+  --lp-r-lg: 18px;
+  --lp-r-xl: 24px;
+  --lp-r-pill: 9999px;
+  --lp-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --lp-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* El lienzo de la portada. Solo la portada: la aplicacion trae el suyo. */
+.lp-root {
+  position: relative;
+  /* `clip` y no `hidden`: recorta lo que se sale por los lados sin convertir la
+     portada en un contenedor de scroll, asi que la barra pegajosa sigue
+     pegandose. Sin esto, los resplandores que sobresalen de sus secciones
+     —el del hero, el de las tarjetas de cifra, el del banner— ensanchaban el
+     documento en movil y con el el viewport de maquetacion. */
+  overflow-x: clip;
+  min-height: 100vh;
+  background-color: var(--lp-bg-main);
+  color: var(--lp-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* El scroll de rebote deja ver el fondo del documento, que en la aplicacion es
+   casi negro: sin esto la portada azul termina en una franja de otro color.
+   El recorte horizontal va aqui y no en `.lp-root`: en un elemento normal,
+   `overflow-x` lo convierte en contenedor de scroll y la barra pegajosa deja
+   de pegarse; en `body` el navegador lo propaga al viewport, que es lo que
+   queremos. */
+body:has(.lp-root) {
+  background-color: #07070b;
+  overflow-x: hidden;
+}
+
+/* Los enlaces de ancla de la portada se desplazan, no saltan. La regla de
+   `prefers-reduced-motion` de index.css lo anula con !important para quien
+   pide menos movimiento. */
+html:has(.lp-root) {
+  scroll-behavior: smooth;
+}
+
+/* Luz ambiental. Fija, para que el degradado no viaje con el scroll.
+
+   Su ancho se limita al de la ventana a proposito. Son elementos `fixed`, y el
+   `overflow-x: hidden` del body los recorta pero no los descuenta: seguian
+   contando para el ancho desplazable del documento y, en un movil, eso ensancha
+   el viewport de maquetacion. El sintoma no era el degradado —invisible— sino
+   que cualquier `position: fixed` de la aplicacion, empezando por el modal de
+   sesion, se centraba sobre 839px y salia medio fuera de la pantalla. */
+.lp-root::before,
+.lp-root::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.lp-root::before {
+  top: -20%;
+  left: 10%;
+  width: min(800px, 90vw);
+  height: 600px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.07) 0%, rgba(7, 7, 11, 0) 70%);
+}
+
+.lp-root::after {
+  top: 40%;
+  right: 0;
+  width: min(700px, 90vw);
+  height: 700px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.05) 0%, rgba(7, 7, 11, 0) 70%);
+}
+
+.lp-root ::selection {
+  background: var(--lp-cyan);
+  color: var(--lp-text-on-fill);
+}
+
+.lp-container {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   1. NAVBAR
+   ========================================================================== */
+.lp-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(7, 7, 11, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--lp-border);
+  /* Dentro de la portada esto lo heredaria de `.lp-root`; en la aplicacion la
+     barra es hija del body, asi que la tipografia y la tinta van aqui. */
+  color: var(--lp-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+/* La aplicacion trabaja sobre un lienzo mucho mas ancho que la portada: sus
+   tablas y su reproductor llegan a 1800px, y una barra encajonada a 1380
+   dejaria el avatar flotando en mitad de la pantalla. */
+.lp-container-wide {
+  max-width: 1800px;
+}
+
+.lp-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  gap: 16px;
+}
+
+/* El bloque de la izquierda no se encoge: con `min-width: 0` los enlaces se
+   desbordaban de su caja y se montaban encima del buscador. Quien cede espacio
+   es el buscador, mas abajo. */
+.lp-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-shrink: 0;
+}
+
+/* Logo DocentOS: la unica pieza de marca que se conserva del sistema anterior. */
+.lp-logo {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.5px;
+  color: var(--lp-text-strong);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.lp-logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  padding: 2px;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  box-shadow: var(--lp-glow-accent);
+  flex-shrink: 0;
+}
+
+.lp-logo-badge-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  background: var(--lp-bg-main);
+  font-size: 1.05rem;
+  font-weight: 900;
+  background-clip: padding-box;
+}
+
+.lp-logo-badge-inner span {
+  background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-logo-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.lp-logo-text {
+  white-space: nowrap;
+}
+
+.lp-logo-text span {
+  background: var(--lp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-nav-links {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.lp-nav-link {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  /* La portada solo pone texto; los destinos de la aplicacion llevan icono. */
+  gap: 7px;
+  padding: 8px 12px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--lp-text-secondary);
+  border-radius: var(--lp-r-sm);
+  transition: color var(--lp-fast), background var(--lp-fast);
+  position: relative;
+  white-space: nowrap;
+}
+
+.lp-nav-link:hover {
+  color: var(--lp-text-strong);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lp-nav-link.is-active {
+  color: var(--lp-cyan);
+  font-weight: 600;
+}
+
+.lp-nav-link.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -16px;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: var(--lp-cyan);
+  box-shadow: 0 0 10px var(--lp-cyan);
+  border-radius: 2px;
+}
+
+.lp-badge-premium {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--lp-gold-gradient);
+  color: var(--lp-text-on-fill);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--lp-r-pill);
+  box-shadow: var(--lp-glow-gold);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  margin-left: 4px;
+  transition: transform var(--lp-fast), box-shadow var(--lp-fast);
+}
+
+.lp-badge-premium:hover {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.6);
+}
+
+.lp-nav-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Botones e iconos mantienen su tamano; el hueco lo da el buscador. */
+.lp-nav-right > * {
+  flex-shrink: 0;
+}
+
+/* Buscador: filtra el catalogo en vivo, no es decorativo. */
+.lp-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 260px;
+  min-width: 0;
+  background: rgba(15, 15, 23, 0.8);
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-r-md);
+  padding: 0 12px;
+  height: 40px;
+  transition: flex-basis var(--lp-smooth), border-color var(--lp-smooth), box-shadow var(--lp-smooth), background var(--lp-smooth);
+}
+
+.lp-search-box:focus-within {
+  flex-basis: 300px;
+  border-color: var(--lp-cyan);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15), var(--lp-glow-cyan);
+  background: rgba(23, 23, 33, 0.9);
+}
+
+.lp-search-box > svg {
+  color: var(--lp-text-muted);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.lp-search-input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--lp-text-strong);
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.lp-search-input::placeholder {
+  color: var(--lp-text-muted);
+}
+
+.lp-icon-btn {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 10px;
+  border-radius: var(--lp-r-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--lp-border);
+  color: var(--lp-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: background var(--lp-fast), color var(--lp-fast), border-color var(--lp-fast);
+}
+
+.lp-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lp-text-strong);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Perfil del alumno */
+.lp-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 4px 4px;
+  border-radius: var(--lp-r-pill);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--lp-border);
+  cursor: pointer;
+  transition: background var(--lp-fast), border-color var(--lp-fast);
+}
+
+.lp-user-profile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.lp-avatar-wrapper {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.lp-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--lp-cyan);
+}
+
+.lp-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--lp-cyan);
+  background: linear-gradient(135deg, #171721 0%, #20202c 100%);
+  color: var(--lp-cyan);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.lp-status-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 2px solid var(--lp-bg-main);
+  box-shadow: 0 0 8px #10b981;
+}
+
+/* Menus flotantes del navbar (idioma y perfil) */
+.lp-menu-anchor {
+  position: relative;
+}
+
+/* El desplegable del buscador se ancla a la izquierda, bajo la caja, y no a la
+   derecha como los menus de icono: nace del texto que se esta escribiendo. */
+.lp-search-results {
+  right: auto;
+  left: 0;
+  min-width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.lp-search-empty {
+  padding: 10px;
+  font-size: 0.8rem;
+  color: var(--lp-text-muted);
+}
+
+/* Cerrar sesion es la unica accion del menu que no se puede deshacer. */
+.lp-menu-item.is-danger {
+  color: #fb7185;
+}
+
+.lp-menu-item.is-danger:hover {
+  background: rgba(251, 113, 133, 0.12);
+  color: #fda4af;
+}
+
+/* Fila de solo lectura del menu (estado de acceso): no es pulsable. */
+.lp-menu-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 9px 10px;
+  border-top: 1px solid var(--lp-border);
+  border-bottom: 1px solid var(--lp-border);
+  font-size: 0.78rem;
+  color: var(--lp-text-muted);
+}
+
+.lp-menu-note strong {
+  font-weight: 700;
+}
+
+/* Tonos de la paleta de la portada. La cabecera no mezcla los tokens de la
+   aplicacion con los suyos: seria el mismo error de dos sistemas a la vez que
+   dejaba la barra a medio pintar. */
+.lp-tone-accent { color: var(--lp-accent-soft); }
+.lp-tone-cyan { color: var(--lp-cyan); }
+.lp-tone-gold { color: var(--lp-gold); }
+.lp-tone-green { color: var(--lp-green); }
+.lp-tone-warn { color: #fb923c; }
+
+.lp-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 210px;
+  padding: 6px;
+  background: var(--lp-bg-elevated);
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-r-md);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  z-index: 120;
+}
+
+.lp-menu-head {
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--lp-border);
+  margin-bottom: 6px;
+}
+
+.lp-menu-name {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--lp-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-menu-role {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--lp-cyan);
+  margin-top: 2px;
+}
+
+.lp-menu-item {
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--lp-r-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--lp-text-secondary);
+  text-align: left;
+  transition: background var(--lp-fast), color var(--lp-fast);
+}
+
+.lp-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lp-text-strong);
+}
+
+.lp-menu-item.is-active {
+  color: var(--lp-cyan);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.lp-menu-item-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* Menu movil */
+.lp-mobile-btn {
+  display: none;
+}
+
+.lp-mobile-panel {
+  display: none;
+  border-top: 1px solid var(--lp-border);
+  background: rgba(7, 7, 11, 0.97);
+  backdrop-filter: blur(16px);
+  padding: 14px 24px 20px;
+}
+
+.lp-mobile-panel.is-open {
+  display: block;
+}
+
+.lp-mobile-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.lp-mobile-links a,
+.lp-mobile-links button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: var(--lp-r-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  color: var(--lp-text-secondary);
+}
+
+.lp-mobile-links button,
+.lp-mobile-lang-options button {
+  cursor: pointer;
+}
+
+.lp-mobile-links a:hover,
+.lp-mobile-links button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--lp-text-strong);
+}
+
+.lp-mobile-links button.is-active {
+  color: var(--lp-cyan);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+/* El selector de idioma vive en la barra; por debajo de 1280px hay que
+   ofrecerlo aqui o queda inalcanzable en movil. */
+.lp-mobile-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--lp-border);
+  font-size: 0.8rem;
+  color: var(--lp-text-muted);
+}
+
+.lp-mobile-lang-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lp-mobile-lang-options button {
+  padding: 5px 9px;
+  border-radius: var(--lp-r-sm);
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--lp-text-muted);
+}
+
+.lp-mobile-lang-options button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--lp-text-strong);
+}
+
+.lp-mobile-lang-options button.is-active {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.4);
+  color: var(--lp-cyan);
+}
+
+.lp-mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* En la aplicacion son acciones de cuenta, una por linea y alineadas a la
+   izquierda: apiladas se leen como una lista, no como una botonera. */
+.lp-mobile-actions.is-stacked {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--lp-border);
+}
+
+.lp-mobile-actions.is-stacked > .lp-btn-ghost {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+}
+
+.lp-mobile-actions.is-stacked > .lp-btn-ghost.is-danger {
+  color: #fb7185;
+}
+
+/* ==========================================================================
+   2. BOTONES
+   ========================================================================== */
+.lp-btn-primary,
+.lp-btn-secondary,
+.lp-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: var(--lp-r-pill);
+  transition: transform var(--lp-fast), box-shadow var(--lp-fast), background var(--lp-fast), border-color var(--lp-fast);
+  white-space: nowrap;
+}
+
+.lp-btn-primary {
+  background: var(--lp-gradient);
+  color: var(--lp-text-on-fill);
+  box-shadow: var(--lp-glow-accent);
+}
+
+.lp-btn-primary:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.45), 0 0 40px rgba(34, 211, 238, 0.35);
+}
+
+.lp-btn-secondary {
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--lp-text-strong);
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+.lp-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.lp-btn-ghost {
+  padding: 10px 18px;
+  background: transparent;
+  border: 1px solid var(--lp-border);
+  color: var(--lp-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lp-btn-ghost:hover {
+  color: var(--lp-text-strong);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Version compacta para la barra de navegacion */
+.lp-btn-sm {
+  padding: 10px 20px;
+  font-size: 0.85rem;
+}
+
+.lp-btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* ==========================================================================
+   3. BIENVENIDA (SESION INICIADA)
+   ========================================================================== */
+.lp-welcome {
+  padding: 36px 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.lp-welcome-text h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--lp-text-strong);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.lp-welcome-text h1 span {
+  background: var(--lp-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-welcome-text p {
+  color: var(--lp-text-secondary);
+  font-size: 0.95rem;
+}
+
+.lp-streak-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(15, 15, 23, 0.8);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 12px 20px;
+  border-radius: var(--lp-r-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.lp-streak-flame {
+  font-size: 1.8rem;
+  line-height: 1;
+  animation: lpPulseFlame 1.8s infinite ease-in-out;
+}
+
+@keyframes lpPulseFlame {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #f59e0b); }
+  50% { transform: scale(1.15); filter: drop-shadow(0 0 12px #fb923c); }
+}
+
+.lp-streak-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-streak-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--lp-gold);
+}
+
+.lp-streak-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--lp-text-strong);
+}
+
+/* ==========================================================================
+   4. HERO (VISITANTE)
+   ========================================================================== */
+/* El hero no es una tarjeta: es el fondo de la pagina. Estuvo enmarcado en un
+   panel con borde violeta y sombra, y ese marco le robaba al titular los 32px
+   de padding a cada lado ademas de partir la escena en dos planos. Ahora la
+   luz y la rejilla son del propio lienzo y el titular respira. */
+.lp-hero {
+  position: relative;
+  margin: 8px 0 0;
+  padding: 52px 0 60px;
+  text-align: center;
+}
+
+.lp-hero::before {
+  content: '';
+  position: absolute;
+  top: -45%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(980px, 130%);
+  height: 460px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(34, 211, 238, 0.12) 45%, transparent 75%);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.lp-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 34px 34px;
+  opacity: 0.5;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
+}
+
+.lp-hero-content {
+  position: relative;
+  z-index: 2;
+  /* 820px era el ancho de la caja anterior y partia «Una nueva forma de
+     aprender» en dos lineas. El titular pide 1050 para entrar de una. */
+  max-width: 1140px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Pildora de cabecera: nucleo de gradiente a la izquierda, texto y una flecha
+   que se desplaza al apuntar. Reemplaza a la insignia plana anterior. */
+.lp-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 5px;
+  margin-bottom: 26px;
+  border-radius: var(--lp-r-pill);
+  background: rgba(15, 15, 23, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.3), inset 0 0 12px rgba(139, 92, 246, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--lp-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: border-color var(--lp-fast), transform var(--lp-fast), box-shadow var(--lp-fast);
+}
+
+.lp-hero-badge:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.45), inset 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.lp-hero-badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--lp-r-pill);
+  background: var(--lp-gradient);
+  color: var(--lp-text-on-fill);
+}
+
+.lp-hero-badge-accent {
+  color: var(--lp-accent-soft);
+  font-weight: 700;
+}
+
+.lp-hero-badge-arrow {
+  color: var(--lp-text-muted);
+  transition: transform var(--lp-fast), color var(--lp-fast);
+}
+
+.lp-hero-badge:hover .lp-hero-badge-arrow {
+  transform: translateX(3px);
+  color: var(--lp-accent-soft);
+}
+
+/* El titular va en blanco y solo la segunda linea lleva el gradiente. Pintarlo
+   entero, como estaba, obliga a leer una frase larga en texto recortado: pesa
+   mas de lo que destaca y el remate cian se pierde entre lo demas. */
+.lp-hero-title {
+  font-size: clamp(2.1rem, 5.5vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  max-width: 1100px;
+  margin: 0 auto 20px;
+  color: var(--lp-text-strong);
+}
+
+/* El tramo en gradiente arranca en su propia linea, como en la referencia: en
+   una sola linea el titular pasa de 55 caracteres y deja de leerse de un golpe. */
+.lp-hero-title-accent {
+  position: relative;
+  display: block;
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 45%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Subrayado de luz bajo la linea en gradiente: la asienta sin subrayarla. */
+.lp-hero-title-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.45), rgba(34, 211, 238, 0.45), transparent);
+}
+
+.lp-hero-sub {
+  font-size: clamp(0.98rem, 1.8vw, 1.15rem);
+  color: var(--lp-text-secondary);
+  max-width: 720px;
+  line-height: 1.65;
+  letter-spacing: -0.01em;
+  margin-bottom: 32px;
+}
+
+.lp-hero-sub strong {
+  color: var(--lp-text-strong);
+  font-weight: 600;
+}
+
+.lp-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   4a. PRUEBA SOCIAL
+   ==========================================================================
+   Va pegada a los botones, no separada: es lo que responde a «¿y esto lo usa
+   alguien?» en el mismo golpe de vista en que se decide pulsar. */
+.lp-hero-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 22px;
+}
+
+.lp-trust-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.lp-trust-avatar {
+  width: 28px;
+  height: 28px;
+  margin-left: -9px;
+  border-radius: 50%;
+  border: 2px solid var(--lp-bg-main);
+  background-color: var(--lp-bg-elevated);
+  background-size: cover;
+  background-position: center;
+}
+
+.lp-trust-avatar:first-child {
+  margin-left: 0;
+}
+
+.lp-trust-rating {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  color: var(--lp-text-secondary);
+}
+
+.lp-trust-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--lp-gold);
+}
+
+.lp-trust-rating strong {
+  color: var(--lp-text-strong);
+  font-weight: 700;
+}
+
+/* Un punto, no una barra: separa dos datos del mismo rango sin jerarquizarlos. */
+.lp-trust-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--lp-text-muted);
+}
+
+.lp-trust-highlight {
+  color: var(--lp-accent-soft) !important;
+}
+
+/* ==========================================================================
+   4b. CIFRAS DEL CATALOGO
+   ==========================================================================
+   Tres tarjetas en vez de la fila de numeros sueltos que habia: las cifras
+   solas no dicen nada —«193 lecciones» no es una promesa— y con una linea de
+   contexto debajo cada una explica que se lleva quien se apunta. */
+.lp-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 46px auto 0;
+  padding-top: 38px;
+  border-top: 1px solid var(--lp-border);
+}
+
+.lp-stat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 26px 20px 22px;
+  border-radius: var(--lp-r-lg);
+  border: 1px solid var(--lp-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  overflow: hidden;
+  transition: transform var(--lp-fast), border-color var(--lp-fast), box-shadow var(--lp-fast), background var(--lp-fast);
+}
+
+/* Filo de luz en el borde superior, como el resto de superficies elevadas. */
+.lp-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+}
+
+.lp-stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.4);
+  background: linear-gradient(180deg, rgba(23, 23, 33, 0.6) 0%, rgba(15, 15, 23, 0.7) 100%);
+  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(139, 92, 246, 0.15);
+}
+
+.lp-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 14px;
+  border-radius: var(--lp-r-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--lp-accent-soft);
+  transition: background var(--lp-fast), border-color var(--lp-fast), color var(--lp-fast), transform var(--lp-fast);
+}
+
+.lp-stat-card:hover .lp-stat-icon {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: var(--lp-cyan);
+  transform: scale(1.08);
+}
+
+.lp-stat-number {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #edeef5 30%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-stat-label {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--lp-text-primary);
+}
+
+.lp-stat-note {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--lp-text-muted);
+  max-width: 26ch;
+}
+
+/* ==========================================================================
+   5. PILDORAS DE CATEGORIA
+   ========================================================================== */
+.lp-pills {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0 28px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lp-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.lp-pill {
+  padding: 8px 18px;
+  border-radius: var(--lp-r-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--lp-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--lp-border);
+  white-space: nowrap;
+  transition: color var(--lp-fast), background var(--lp-fast), border-color var(--lp-fast), box-shadow var(--lp-fast);
+}
+
+.lp-pill-emoji {
+  margin-right: 6px;
+  font-size: 0.95em;
+}
+
+.lp-pill:hover,
+.lp-pill.is-active {
+  color: var(--lp-text-strong);
+  background: rgba(139, 92, 246, 0.15);
+  border-color: var(--lp-accent);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+}
+
+/* ==========================================================================
+   6. CABECERA DE SECCION
+   ========================================================================== */
+.lp-section {
+  margin-bottom: 56px;
+  scroll-margin-top: 96px;
+}
+
+.lp-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.lp-section-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lp-section-indicator {
+  width: 4px;
+  height: 24px;
+  margin-top: 4px;
+  background: var(--lp-gradient);
+  border-radius: 4px;
+  box-shadow: var(--lp-glow-cyan);
+  flex-shrink: 0;
+}
+
+.lp-section-indicator.is-gold {
+  background: var(--lp-gold-gradient);
+  box-shadow: var(--lp-glow-gold);
+}
+
+.lp-section-indicator.is-violet {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  box-shadow: 0 0 22px rgba(168, 85, 247, 0.35);
+}
+
+.lp-section-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--lp-text-strong);
+  letter-spacing: -0.3px;
+  line-height: 1.25;
+}
+
+.lp-section-sub {
+  font-size: 0.85rem;
+  color: var(--lp-text-secondary);
+  margin-top: 4px;
+  max-width: 62ch;
+}
+
+.lp-see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--lp-cyan);
+  transition: gap var(--lp-fast), color var(--lp-fast);
+  white-space: nowrap;
+}
+
+.lp-see-all:hover {
+  color: #a78bfa;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   7. TARJETAS DE CURSO
+   ========================================================================== */
+.lp-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 24px;
+}
+
+.lp-course-card {
+  position: relative;
+  border-radius: var(--lp-r-lg);
+  background: var(--lp-bg-card);
+  border: 1px solid var(--lp-border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  backdrop-filter: blur(10px);
+  transition: transform var(--lp-smooth), background var(--lp-smooth), border-color var(--lp-smooth), box-shadow var(--lp-smooth);
+}
+
+/* Borde de luz en degradado. El truco de la mascara pinta solo el canto. */
+.lp-course-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--lp-r-lg);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.4), rgba(139, 92, 246, 0.1), transparent 70%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity var(--lp-smooth);
+  z-index: 3;
+}
+
+.lp-course-card:hover {
+  transform: translateY(-6px);
+  background: var(--lp-bg-card-hover);
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.7), var(--lp-glow-accent);
+}
+
+.lp-course-card:hover::before {
+  opacity: 1;
+}
+
+.lp-card-cover {
+  position: relative;
+  width: 100%;
+  height: 165px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f0f17 0%, #20202c 100%);
+  flex-shrink: 0;
+}
+
+.lp-card-cover-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+  transition: transform var(--lp-smooth), opacity var(--lp-smooth);
+}
+
+.lp-course-card:hover .lp-card-cover-bg {
+  transform: scale(1.08);
+  opacity: 0.75;
+}
+
+.lp-card-cover-glow {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.4) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.lp-card-badges {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.lp-cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--lp-r-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: rgba(7, 7, 11, 0.75);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--lp-text-strong);
+}
+
+/* Familias de color por indice de categoria, para que dos cursos distintos no
+   se lean como el mismo bloque de contenido. */
+.lp-cat-badge.tone-0 { color: #22d3ee; border-color: rgba(6, 182, 212, 0.4); }
+.lp-cat-badge.tone-1 { color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); }
+.lp-cat-badge.tone-2 { color: #c4b5fd; border-color: rgba(168, 85, 247, 0.4); }
+.lp-cat-badge.tone-3 { color: #f472b6; border-color: rgba(236, 72, 153, 0.4); }
+.lp-cat-badge.tone-4 { color: #fb923c; border-color: rgba(249, 115, 22, 0.4); }
+.lp-cat-badge.tone-5 { color: #facc15; border-color: rgba(234, 179, 8, 0.4); }
+
+.lp-price-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: var(--lp-r-pill);
+  background: var(--lp-gradient);
+  color: var(--lp-text-on-fill);
+  box-shadow: var(--lp-glow-accent);
+  white-space: nowrap;
+}
+
+.lp-price-badge.is-free {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+}
+
+.lp-play-btn {
+  position: absolute;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.9);
+  color: var(--lp-text-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity var(--lp-smooth), transform var(--lp-smooth);
+}
+
+.lp-course-card:hover .lp-play-btn,
+.lp-course-card:has(.lp-card-link:focus-visible) .lp-play-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Enlace estirado: el foco y el nombre accesible viven en el titulo, pero la
+   zona pulsable es la tarjeta entera. Asi la tarjeta no tiene que ser un
+   <button> con parrafos dentro, que no es HTML valido. */
+.lp-card-link {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.lp-card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+.lp-card-link:focus-visible {
+  outline: none;
+}
+
+.lp-course-card:has(.lp-card-link:focus-visible) {
+  outline: 2px solid var(--lp-cyan);
+  outline-offset: 2px;
+}
+
+.lp-card-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.lp-course-title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--lp-text-strong);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  transition: color var(--lp-fast);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lp-course-card:hover .lp-course-title {
+  color: var(--lp-cyan);
+}
+
+.lp-course-desc {
+  font-size: 0.82rem;
+  color: var(--lp-text-secondary);
+  line-height: 1.55;
+  margin-bottom: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lp-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--lp-border);
+}
+
+.lp-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--lp-text-muted);
+}
+
+.lp-meta-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--lp-cyan);
+}
+
+.lp-meta-item.is-violet svg {
+  color: var(--lp-accent-soft);
+}
+
+/* Estado vacio del catalogo */
+.lp-empty {
+  padding: 56px 24px;
+  border: 1px dashed var(--lp-border);
+  border-radius: var(--lp-r-lg);
+  background: rgba(15, 15, 23, 0.4);
+  text-align: center;
+  color: var(--lp-text-secondary);
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   8. PILARES / BENEFICIOS
+   ========================================================================== */
+.lp-benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.lp-benefit-card {
+  position: relative;
+  padding: 26px 22px;
+  border-radius: var(--lp-r-lg);
+  background: var(--lp-bg-card);
+  border: 1px solid var(--lp-border);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: transform var(--lp-smooth), border-color var(--lp-smooth), box-shadow var(--lp-smooth);
+}
+
+.lp-benefit-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.7), var(--lp-glow-accent);
+}
+
+.lp-benefit-num {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 2.4rem;
+  font-weight: 900;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.05);
+  line-height: 1;
+  user-select: none;
+}
+
+.lp-benefit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 16px;
+  border-radius: var(--lp-r-md);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: var(--lp-cyan);
+  box-shadow: inset 0 0 20px rgba(34, 211, 238, 0.08);
+}
+
+.lp-benefit-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--lp-text-strong);
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.lp-benefit-desc {
+  font-size: 0.84rem;
+  color: var(--lp-text-secondary);
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   9. TESTIMONIOS
+   ========================================================================== */
+.lp-testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.lp-testimonial {
+  padding: 24px;
+  border-radius: var(--lp-r-lg);
+  background: var(--lp-bg-card);
+  border: 1px solid var(--lp-border);
+  backdrop-filter: blur(10px);
+  transition: border-color var(--lp-smooth), box-shadow var(--lp-smooth), transform var(--lp-smooth);
+}
+
+.lp-testimonial:hover {
+  transform: translateY(-4px);
+  border-color: rgba(168, 85, 247, 0.35);
+  box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.7), 0 0 28px rgba(168, 85, 247, 0.18);
+}
+
+.lp-testimonial-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lp-testimonial-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lp-testimonial-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(34, 211, 238, 0.4);
+  flex-shrink: 0;
+}
+
+.lp-testimonial-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--lp-text-strong);
+}
+
+.lp-testimonial-role {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--lp-cyan);
+  margin-top: 1px;
+}
+
+.lp-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--lp-gold);
+  flex-shrink: 0;
+}
+
+.lp-testimonial-text {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: #b4b7c7;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   10. PLANES
+   ========================================================================== */
+.lp-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.lp-plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 24px;
+  border-radius: var(--lp-r-lg);
+  background: var(--lp-bg-card);
+  border: 1px solid var(--lp-border);
+  backdrop-filter: blur(10px);
+  transition: transform var(--lp-smooth), border-color var(--lp-smooth), box-shadow var(--lp-smooth);
+}
+
+.lp-plan:hover {
+  transform: translateY(-4px);
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.lp-plan.is-featured {
+  background: linear-gradient(180deg, rgba(23, 23, 33, 0.9) 0%, rgba(15, 15, 23, 0.9) 100%);
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.9), var(--lp-glow-cyan);
+}
+
+.lp-plan-flag {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: var(--lp-r-pill);
+  background: var(--lp-gradient);
+  color: var(--lp-text-on-fill);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  box-shadow: var(--lp-glow-accent);
+  white-space: nowrap;
+}
+
+.lp-plan-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--lp-text-muted);
+  margin-bottom: 10px;
+}
+
+.lp-plan-kicker.is-cyan { color: var(--lp-cyan); }
+.lp-plan-kicker.is-violet { color: var(--lp-accent-soft); }
+
+.lp-plan-price {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--lp-text-strong);
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin-bottom: 12px;
+}
+
+.lp-plan-price small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--lp-text-muted);
+  letter-spacing: 0;
+}
+
+.lp-plan-price small.is-accent {
+  color: #34d399;
+}
+
+.lp-plan-desc {
+  font-size: 0.85rem;
+  color: var(--lp-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+.lp-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+}
+
+.lp-plan-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.85rem;
+  color: #b4b7c7;
+  line-height: 1.45;
+}
+
+.lp-plan-list svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--lp-cyan);
+}
+
+.lp-plan.is-mentor .lp-plan-list svg {
+  color: var(--lp-accent-soft);
+}
+
+.lp-plan-cta {
+  margin-top: auto;
+}
+
+/* ==========================================================================
+   11. BANNER PROMOCIONAL INFERIOR
+   ========================================================================== */
+.lp-promo-section {
+  margin: 40px 0 80px;
+}
+
+.lp-promo-banner {
+  position: relative;
+  border-radius: var(--lp-r-xl);
+  background: radial-gradient(circle at 50% 0%, #211640 0%, #0f0f17 70%, #07070b 100%);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  padding: 56px 36px;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 85, 247, 0.2);
+}
+
+.lp-promo-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 650px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.25) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 80%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.lp-promo-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.lp-promo-content {
+  position: relative;
+  z-index: 2;
+  max-width: 780px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lp-promo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--lp-gold-gradient);
+  color: var(--lp-text-on-fill);
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 6px 18px;
+  border-radius: var(--lp-r-pill);
+  box-shadow: var(--lp-glow-gold);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  animation: lpBounceSoft 2.5s infinite ease-in-out;
+}
+
+@keyframes lpBounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.lp-promo-title {
+  font-size: 3.2rem;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, #edeef5 30%, #c4b5fd 70%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 30px rgba(34, 211, 238, 0.3);
+}
+
+.lp-promo-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--lp-cyan);
+  margin-bottom: 16px;
+}
+
+.lp-promo-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lp-promo-desc {
+  font-size: 1.05rem;
+  color: #b4b7c7;
+  max-width: 640px;
+  line-height: 1.65;
+  margin-bottom: 32px;
+}
+
+.lp-promo-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   12. PIE
+   ========================================================================== */
+.lp-footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--lp-border);
+  background: #07070b;
+  padding: 48px 0 32px;
+  color: var(--lp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.lp-footer-grid {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lp-footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lp-footer-motto {
+  font-size: 0.85rem;
+  color: var(--lp-text-muted);
+  max-width: 46ch;
+}
+
+.lp-footer-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lp-footer-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--lp-fast);
+}
+
+.lp-footer-links a:hover {
+  color: var(--lp-text-strong);
+}
+
+.lp-footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding-top: 24px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--lp-text-muted);
+}
+
+.lp-footer-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   13. BOTON FLOTANTE DE SOPORTE
+   ========================================================================== */
+.lp-support {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 999;
+  width: 58px;
+  height: 58px;
+  background: var(--lp-green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lp-text-on-fill);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35), var(--lp-glow-green);
+  transition: transform var(--lp-fast), box-shadow var(--lp-fast);
+}
+
+.lp-support:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6), 0 0 35px rgba(16, 185, 129, 0.5);
+}
+
+.lp-support::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--lp-green);
+  animation: lpPulseRadar 2s infinite cubic-bezier(0.25, 0.8, 0.25, 1);
+  pointer-events: none;
+}
+
+@keyframes lpPulseRadar {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.lp-support svg {
+  width: 28px;
+  height: 28px;
+}
+
+.lp-support-tooltip {
+  position: absolute;
+  right: 70px;
+  background: var(--lp-bg-elevated);
+  color: var(--lp-text-strong);
+  padding: 8px 14px;
+  border-radius: var(--lp-r-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--lp-border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity var(--lp-fast), transform var(--lp-fast);
+}
+
+.lp-support:hover .lp-support-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ==========================================================================
+   14. RESPONSIVE
+   ========================================================================== */
+@media (max-width: 1280px) {
+  .lp-nav-links {
+    display: none;
+  }
+  .lp-mobile-btn {
+    display: flex;
+  }
+  .lp-search-box {
+    flex-basis: 200px;
+  }
+  .lp-search-box:focus-within {
+    flex-basis: 240px;
+  }
+  .lp-nav-cta-desktop {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .lp-container {
+    padding: 0 16px;
+  }
+  /* A partir de aqui la fila es logo + accion + avatar + hamburguesa, y el
+     selector de idioma es lo primero que la desborda. Sigue disponible: el
+     cajon movil lo lleva entero, con las cinco banderas. */
+  .lp-nav-lang {
+    display: none;
+  }
+  /* El boton de accion tampoco cabe: a 390px «Registrarse» ocupaba mas ancho
+     que el logo y empujaba a la hamburguesa contra el borde. Las dos acciones
+     —entrar y registrarse— viven completas dentro del cajon movil. */
+  .lp-nav-cta-compact {
+    display: none;
+  }
+  .lp-hero {
+    /* Los 20px laterales eran de cuando esto era una tarjeta; ahora los pone
+       `.lp-container` y sumarlos estrechaba el titular en movil. */
+    padding: 38px 0 44px;
+  }
+  .lp-hero-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 34px;
+    padding-top: 28px;
+  }
+  .lp-stat-card {
+    padding: 22px 18px 20px;
+  }
+  .lp-hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .lp-hero-actions > * {
+    width: 100%;
+  }
+  .lp-promo-title {
+    font-size: 2.3rem;
+  }
+  .lp-promo-banner {
+    padding: 40px 20px;
+  }
+  .lp-welcome {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .lp-welcome-text h1 {
+    font-size: 1.6rem;
+  }
+  .lp-streak-card {
+    width: 100%;
+  }
+  .lp-search-box {
+    display: none;
+  }
+  .lp-support {
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+  }
+  .lp-courses-grid,
+  .lp-benefits-grid,
+  .lp-testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+  .lp-btn-primary,
+  .lp-btn-secondary {
+    padding: 13px 24px;
+    font-size: 0.9rem;
+  }
+  .lp-footer-grid {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .lp-hero-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .lp-stat-number {
+    font-size: 2.1rem;
+  }
+  .lp-stat-note {
+    font-size: 0.76rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .lp-logo {
+    font-size: 1.05rem;
+    gap: 8px;
+  }
+  .lp-logo-badge {
+    width: 32px;
+    height: 32px;
+  }
+  .lp-navbar {
+    gap: 10px;
+  }
+  .lp-nav-right {
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-streak-flame,
+  .lp-promo-badge,
+  .lp-support::after {
+    animation: none;
+  }
+}

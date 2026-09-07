@@ -1,30 +1,47 @@
 /**
- * Componente de Visualización de Cursos & Reproductor Google Drive
- * Academia Giantucchi
+ * Reproductor de curso.
  *
- * Incluye:
- * 1. Lista de módulos a la izquierda (colapsable en móvil)
- * 2. Reproductor principal de videos de Drive
- * 3. Área de comentarios y preguntas de mentoría interactiva
+ * Reparte la vista en dos: el video y su identidad a la izquierda, y a la
+ * derecha un solo panel con pestanas donde conviven temario, notas y mentoria.
+ * Antes esos tres bloques se apilaban en vertical, lo que dejaba una columna
+ * vacia en escritorio y enterraba el video bajo el temario en movil.
  */
 
-import React, { useState, useEffect } from 'react';
-import { PlayCircle, CheckCircle2, ChevronLeft, ChevronRight, Home, MessageSquare, Send, ShieldCheck, ThumbsUp, Sparkles, HelpCircle, HardDrive, Maximize2, Lock, Youtube, Code, Award, CheckSquare, Bookmark, FileText, Clock, Download, FileCode, ExternalLink, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Award,
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  ListTree,
+  Lock,
+  MessageSquare,
+  Minimize2,
+  ShieldCheck,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import {
   countCompleted,
   findResumePosition,
   flattenLessons,
   indexOfLesson,
+  isModuleOpen,
+  moduleLockStates,
   stepLesson,
 } from '../lib/courseNavigation';
-import { Course, Module, VideoDriveLink, MentorshipComment, User, UserRole, TTSGuide, VideoNote, CertificateRecord, CourseResource } from '../types';
+import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
+import { CoursePanel, PanelTabId } from './course/CoursePanel';
+import { SyllabusTree } from './course/SyllabusTree';
+import { NotesPanel } from './course/NotesPanel';
+import { MentorshipPanel } from './course/MentorshipPanel';
+import { LessonMetaBar, MobileLessonBar } from './course/LessonMetaBar';
 
 interface CourseViewerProps {
 
@@ -36,6 +53,42 @@ interface CourseViewerProps {
   courses?: Course[];
   onSelectCourse?: (course: Course) => void;
   onGoHome?: () => void;
+}
+
+/**
+ * De donde sale el video, dicho para el alumno.
+ *
+ * La lista de cursos no envia embedUrl ni driveFileId —y hace bien, porque eso
+ * expondria la URL cruda del archivo—, envia `source`. Deducir el proveedor de
+ * playbackUrl, que siempre apunta a nuestra propia ruta de acceso, hacia que
+ * todo dijera «Reproductor embebido».
+ */
+const SOURCE_LABELS: Record<string, string> = {
+  GOOGLE_DRIVE: 'Google Drive',
+  EXTERNAL_URL: 'Video externo',
+  DEMO: 'Contenido de demostración',
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  drive: 'Google Drive',
+  embed: 'Reproductor embebido',
+};
+
+/**
+ * El diploma que corresponde al curso abierto, y solo ese.
+ *
+ * El progreso del alumno llega con todos sus certificados; quedarse con uno de
+ * otro curso no era un adorno mal puesto: la tarjeta anunciaba «Curso
+ * completado» bajo el título del curso que se estaba viendo y el botón de
+ * descarga componía el PDF con ese título y el código de verificación ajeno, un
+ * diploma que no corresponde a nada.
+ */
+export function certificateForCourse(
+  certificate: CertificateRecord | null | undefined,
+  courseId: string,
+): CertificateRecord | null {
+  return certificate && certificate.courseId === courseId ? certificate : null;
 }
 
 export const CourseViewer: React.FC<CourseViewerProps> = ({
@@ -51,7 +104,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   // Mientras nadie elija lección a mano, el curso se abre por donde se dejó.
   const [pickedByUser, setPickedByUser] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activePanel, setActivePanel] = useState<PanelTabId>('syllabus');
   const [theaterMode, setTheaterMode] = useState(false);
 
   // Mentorship Q&A State
@@ -84,6 +137,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setPickedByUser(false);
     setActiveModuleIndex(0);
     setActiveVideoIndex(0);
+    // El diploma es de un curso concreto. Arrastrar el del curso anterior
+    // mientras carga el progreso anuncia «Curso completado» nada más entrar.
+    setCertificate(null);
     loadUserProgress();
   }, [course.id]);
 
@@ -93,10 +149,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       if (res.completedVideos) {
         setCompletedVideos(res.completedVideos);
       }
-      if (res.certificates && res.certificates.length > 0) {
-        const found = res.certificates.find((c) => c.courseId === course.id);
-        if (found) setCertificate(found);
-      }
+      // Siempre se asigna, también cuando no hay: `if (found)` dejaba en pie
+      // el diploma del curso anterior, y la tarjeta lo anunciaba bajo el
+      // título del curso abierto y con el código del otro.
+      const found = res.certificates?.find((c) => c.courseId === course.id);
+      setCertificate(found || null);
     } catch (error) {
       console.error('Error loading saved progress:', error);
     }
@@ -113,10 +170,31 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setActiveVideoIndex(resume.videoIndex);
   }, [course.id, completedVideos, pickedByUser]);
 
-  const goToLesson = (moduleIndex: number, videoIndex: number) => {
+  /** El filtro del plugin de exámenes, que es independiente del curso. */
+  const isQuizGateOpen = (moduleIndex: number) =>
+    pluginManager.isModuleUnlocked(course.modules, moduleIndex, currentUser.id);
+
+  // Estado del temario: qué módulos están abiertos y por qué no lo están los
+  // demás. Se calcula aquí una sola vez para que el temario, las flechas del
+  // reproductor y el salto automático al marcar una clase digan lo mismo.
+  // `quizPassKey` entra en las dependencias porque aprobar un examen abre el
+  // módulo siguiente sin que cambie ninguna otra pieza del estado.
+  const moduleLocks = useMemo(
+    () => moduleLockStates(course, completedVideos, isQuizGateOpen),
+    [course, completedVideos, currentUser.id, quizPassKey],
+  );
+
+  const openLesson = (moduleIndex: number, videoIndex: number) => {
     setPickedByUser(true);
     setActiveModuleIndex(moduleIndex);
     setActiveVideoIndex(videoIndex);
+  };
+
+  const goToLesson = (moduleIndex: number, videoIndex: number) => {
+    // El temario no ofrece las lecciones de un módulo cerrado, pero las flechas
+    // y el avance automático sí pueden apuntar a una: aquí se para el salto.
+    if (!isModuleOpen(moduleLocks, moduleIndex)) return;
+    openLesson(moduleIndex, videoIndex);
   };
 
   const lessons = flattenLessons(course);
@@ -125,7 +203,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     videoIndex: activeVideoIndex,
   });
   const previousLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, -1);
-  const nextLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+  const rawNextLesson = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+  // Hacia atrás siempre hay paso: lo ya abierto no se vuelve a cerrar. Hacia
+  // delante, la siguiente lección puede caer en un módulo aún cerrado, y
+  // entonces no hay a dónde ir: el botón se apaga como en el final del curso.
+  const nextLesson = rawNextLesson && isModuleOpen(moduleLocks, rawNextLesson.moduleIndex) ? rawNextLesson : null;
 
   // Calculate overall course progress metrics
   const totalCourseVideos = course.modules.reduce((acc, m) => acc + m.videos.length, 0);
@@ -209,7 +291,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       const res = await api.addComment(currentVideo.id, newQuestion);
       if (res.comment) {
         setComments([res.comment, ...comments]);
-        
+
         // Execute Plugin Hook
         pluginManager.onCommentSubmit(currentUser, {
           videoTitle: currentVideo.title,
@@ -283,6 +365,20 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         if (totalCourseVideos > 0 && completedCount === totalCourseVideos) {
           pluginManager.onCourseComplete(currentUser, course);
         }
+
+        // Dar una clase por terminada es decir «sigo»: quedarse en el video ya
+        // visto obliga a buscar el siguiente a mano en cada lección. Solo
+        // avanza al marcar la clase que se está viendo, no al marcar otra
+        // cualquiera desde el temario, y nunca al desmarcar.
+        //
+        // El destino se recalcula con el progreso recién guardado: marcar la
+        // última clase de un módulo es justo lo que abre el siguiente, y
+        // `nextLesson` todavía lo ve cerrado.
+        const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+        const locksAfterMarking = moduleLockStates(course, newCompletedMap, isQuizGateOpen);
+        if (videoId === currentVideo.id && target && isModuleOpen(locksAfterMarking, target.moduleIndex)) {
+          openLesson(target.moduleIndex, target.videoIndex);
+        }
       }
     } catch (error) {
       console.error('Error toggling video progress:', error);
@@ -293,24 +389,47 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     ? comments.filter((c) => c.isMentorResponse || (c.replies && c.replies.some((r) => r.isMentorResponse)))
     : comments;
 
+  // La fuente que se reproduce y la que da nombre al proveedor no son la misma:
+  // playbackUrl apunta a /api/content/videos/<id>, que es nuestro control de
+  // acceso y redirige al archivo. Deducir el proveedor de ahi hacia que todo
+  // dijera «Reproductor embebido», incluidos los videos de Drive.
+  const videoSource = currentVideo
+    ? parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId)
+    : null;
+  const providerLabel = currentVideo
+    ? SOURCE_LABELS[currentVideo.source || ''] ||
+      PROVIDER_LABELS[currentVideo.provider || parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
+      'Video'
+    : 'Video';
+  // Última barrera: aunque alguna respuesta traiga un certificado de otro
+  // curso, de aquí no pasa a la pantalla.
+  const courseCertificate = certificateForCourse(certificate, course.id);
+
+  const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
+  const showsPlayer = hasAccess && currentVideo;
+  const showsQuiz = hasAccess && pluginManager.isEnabled('interactive-quizzes') && Boolean(currentModule);
+  const showsCertificate =
+    hasAccess && pluginManager.isEnabled('pdf-certificates') && (courseProgressPct === 100 || Boolean(courseCertificate));
+  const showsExtras = showsQuiz || showsCertificate;
+
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col animate-fade-in">
-      
-      {/* Top Banner / Course Header */}
-      <div className="bg-[#141420] border-b border-[#2d2d44] px-4 py-3 sm:px-6 flex items-center justify-between text-xs text-slate-300">
-        <div className="flex items-center gap-2 overflow-hidden">
-          {/* Desde dentro de un curso no habia manera de volver ni de cambiar a
-              otro: el alumno quedaba encerrado en el que abrio. */}
+    <div className="animate-fade-in min-h-screen bg-canvas text-ink">
+      <div className="mx-auto w-full max-w-[1800px] lg:px-6 lg:pt-6">
+
+        {/* Ruta y cambio de curso. Sin esta fila, entrar en un curso encerraba
+            al alumno dentro de él. */}
+        <div className="flex items-center gap-2 px-4 py-3 lg:px-0 lg:pt-0">
           {onGoHome && (
             <button
+              type="button"
               onClick={onGoHome}
-              title="Volver al inicio"
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold transition-all shrink-0"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-meta text-ink-muted transition-colors hover:text-ink"
             >
-              <Home className="w-3.5 h-3.5 text-[#06b6d4]" />
-              <span className="hidden sm:inline">Inicio</span>
+              <Home aria-hidden className="h-3.5 w-3.5" />
+              Inicio
             </button>
           )}
+          <span aria-hidden className="text-ink-faint">/</span>
 
           {courses.length > 1 && onSelectCourse ? (
             <select
@@ -320,715 +439,315 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 if (selected) onSelectCourse(selected);
               }}
               aria-label="Cambiar de curso"
-              className="max-w-[16rem] bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] rounded-lg px-2 py-1.5 text-xs font-bold text-[#06b6d4] focus:outline-none focus:border-[#06b6d4] truncate"
+              className="min-w-0 max-w-[24rem] truncate rounded-lg bg-transparent px-1.5 py-1.5 text-meta font-medium text-ink hover:bg-raised focus:outline-none"
             >
               {courses.map((item) => (
-                <option key={item.id} value={item.id} className="bg-[#141420] text-white">
+                <option key={item.id} value={item.id} className="bg-surface text-ink">
                   {item.title}
                 </option>
               ))}
             </select>
           ) : (
-            <span className="font-bold text-[#06b6d4] truncate">{course.title}</span>
+            <span className="min-w-0 truncate px-1.5 text-meta font-medium text-ink">{course.title}</span>
           )}
-          <span className="text-slate-600 hidden sm:inline">•</span>
-          <span className="text-slate-400 hidden sm:inline truncate">{currentModule?.title}</span>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-medium transition-all"
-          >
-            {sidebarOpen ? <ChevronLeft className="w-4 h-4 text-[#06b6d4]" /> : <ChevronRight className="w-4 h-4 text-[#06b6d4]" />}
-            <span className="hidden sm:inline">{sidebarOpen ? 'Ocultar Temario' : 'Ver Temario'}</span>
-          </button>
-        </div>
-      </div>
+        <div className={`lg:grid lg:gap-6 ${theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}>
 
-      {/* Main Course Layout: Sidebar + Central Video + Mentorship QA */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        
-        {/* Left Sidebar: Modules & Lessons */}
-        <div
-          className={`bg-[#141420] border-r border-[#2d2d44] transition-all duration-300 flex flex-col shrink-0 ${
-            sidebarOpen ? 'w-full lg:w-80' : 'w-0 hidden lg:flex overflow-hidden opacity-0'
-          }`}
-        >
-          {/* Sidebar Header with Overall Course Progress Bar */}
-          <div className="p-4 border-b border-[#2d2d44] bg-[#1a1a2e]">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <PlayCircle className="w-4 h-4 text-[#06b6d4]" /> Temario del Programa
-              </h3>
-              <span className="text-[11px] font-bold text-white bg-brand-gradient px-2.5 py-0.5 rounded-lg shadow-sm">
-                {courseProgressPct}% Completado
-              </span>
-            </div>
-
-            {/* Overall Course Progress Bar */}
-            <div className="w-full bg-[#0a0a0f] rounded-full h-2 border border-[#2d2d44] overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-[#06b6d4] to-[#a855f7] h-full transition-all duration-500 rounded-full"
-                style={{ width: `${courseProgressPct}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 font-mono">
-              <span>{completedCourseVideos} de {totalCourseVideos} lecciones</span>
-              <span>{course.modules.length} Módulos</span>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto divide-y divide-[#2d2d44]">
-            {course.modules.map((module, mIdx) => {
-              const isCurrentModule = mIdx === activeModuleIndex;
-              const isUnlocked = pluginManager.isModuleUnlocked(course.modules, mIdx, currentUser.id);
-
-              // Module Progress Metrics
-              const modTotal = module.videos.length;
-              const modCompletedCount = module.videos.filter((v) => completedVideos[v.id]).length;
-              const isModComplete = modTotal > 0 && modCompletedCount === modTotal;
-              const modPct = modTotal > 0 ? Math.round((modCompletedCount / modTotal) * 100) : 0;
-
-              return (
-                <div key={module.id} className="bg-[#141420]">
-                  <button
-                    onClick={() => {
-                      if (!isUnlocked) {
-                        alert('🔒 Este módulo se encuentra bloqueado. Debes aprobar el examen del módulo anterior con al menos 80% para desbloquearlo.');
-                        return;
-                      }
-                      goToLesson(mIdx, 0);
-                    }}
-                    className={`w-full p-3.5 text-left flex items-start justify-between gap-2 transition-colors ${
-                      !isUnlocked ? 'opacity-60 cursor-not-allowed bg-[#0f0f18]' : 'hover:bg-[#1a1a2e]'
-                    } ${isCurrentModule ? 'bg-[#1a1a2e] border-l-4 border-[#a855f7]' : ''}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase text-[#06b6d4] tracking-wider">
-                          Módulo 0{mIdx + 1}
-                        </span>
-                        {!isUnlocked && (
-                          <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.2 rounded flex items-center gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Bloqueado
-                          </span>
-                        )}
-                        {isUnlocked && isModComplete && (
-                          <span className="text-[9px] font-extrabold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-1.5 py-0.2 rounded">
-                            Completado
-                          </span>
-                        )}
-                      </div>
-
-                      <h4 className="font-semibold text-xs text-slate-200 line-clamp-2 mt-0.5">
-                        {module.title}
-                      </h4>
-
-                      {/* Mini Module Progress Bar */}
-                      <div className="w-full bg-[#0a0a0f] rounded-full h-1 mt-2 overflow-hidden border border-[#2d2d44]">
-                        <div
-                          className={`h-full transition-all duration-300 ${
-                            isModComplete ? 'bg-[#06b6d4]' : 'bg-[#a855f7]'
-                          }`}
-                          style={{ width: `${modPct}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      {!isUnlocked ? (
-                        <Lock className="w-4 h-4 text-slate-500" />
-                      ) : isModComplete ? (
-                        <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" />
-                      ) : (
-                        <span className="text-[10px] bg-[#0a0a0f] text-slate-400 px-1.5 py-0.5 rounded-lg font-mono border border-[#2d2d44]">
-                          {modCompletedCount}/{modTotal}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-
-                  {/* Module Lessons List */}
-                  {isCurrentModule && (
-                    <div className="bg-[#0a0a0f] divide-y divide-[#2d2d44] pl-2">
-                      {module.videos.map((video, vIdx) => {
-                        const isCurrentVideo = vIdx === activeVideoIndex;
-                        const isCompleted = completedVideos[video.id];
-
-                        return (
-                          <div
-                            key={video.id}
-                            onClick={() => {
-                              if (!hasAccess) {
-                                onOpenPaywall();
-                              } else {
-                                goToLesson(mIdx, vIdx);
-                              }
-                            }}
-                            className={`w-full p-3 text-left flex items-center justify-between gap-2 hover:bg-[#141420] transition-colors text-xs cursor-pointer ${
-                              isCurrentVideo ? 'bg-[#1a1a2e] text-[#06b6d4] font-semibold border-l-2 border-[#06b6d4]' : 'text-slate-400'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleVideoCompletion(video.id);
-                                }}
-                                className="shrink-0 focus:outline-none transition-transform hover:scale-110"
-                                title={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-                              >
-                                {isCompleted ? (
-                                  <CheckCircle2 className="w-4 h-4 text-[#06b6d4] fill-[#06b6d4]/10" />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full border border-[#2d2d44] hover:border-[#06b6d4]" />
-                                )}
-                              </button>
-                              <span className={`truncate ${isCompleted ? 'text-slate-300' : ''}`}>
-                                {video.title}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {isCompleted && (
-                                <span className="text-[9px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-1.5 py-0.2 rounded">
-                                  ✓ Completado
-                                </span>
-                              )}
-                              {!hasAccess && <Lock className="w-3 h-3 text-[#f97316]" />}
-                              {video.duration && <span className="text-[10px] text-slate-400 font-mono">{video.duration}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Module Resources */}
-                      {hasAccess && module.resources && module.resources.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-[#2d2d44]/50 space-y-1">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-1">
-                            Recursos del Módulo
-                          </span>
-                          {module.resources.map((res) => (
-                            <a
-                              key={res.id}
-                              href={res.downloadUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-between p-2 rounded-lg bg-[#141420] hover:bg-[#202034] text-slate-300 hover:text-white transition-all text-xs border border-[#2d2d44]/60 group"
-                            >
-                              <div className="flex items-center gap-2 truncate">
-                                <Download className="w-3.5 h-3.5 text-[#06b6d4] shrink-0" />
-                                <span className="truncate">{res.title}</span>
-                              </div>
-                              <span className="text-[9px] font-mono bg-[#0a0a0f] text-slate-400 px-1.5 py-0.5 rounded shrink-0">
-                                {res.kind}
-                              </span>
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Course-wide Resources */}
-            {hasAccess && course.resources && course.resources.length > 0 && (
-              <div className="mt-4 p-3 rounded-xl bg-[#141420] border border-[#2d2d44] space-y-2">
-                <span className="text-[11px] font-extrabold text-[#06b6d4] uppercase tracking-wider flex items-center gap-1.5">
-                  <FileCode className="w-3.5 h-3.5" /> Recursos del Programa
-                </span>
-                <div className="space-y-1">
-                  {course.resources.map((res) => (
-                    <a
-                      key={res.id}
-                      href={res.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-2 rounded-lg bg-[#0a0a0f] hover:bg-[#1a1a2e] text-slate-300 hover:text-white text-xs border border-[#2d2d44]/50 group transition-all"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Download className="w-3.5 h-3.5 text-[#a855f7] shrink-0" />
-                        <span className="truncate">{res.title}</span>
-                      </div>
-                      <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-white shrink-0" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Central Content Column: Video Player & Mentorship Section */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
-          
-          {/* Active TTS Mentorship Guide Widget */}
-          {hasAccess && currentTtsGuide && (
-            <MentorTTSGuideWidget
-              guide={currentTtsGuide}
-              onRewardEarned={(xp) => {
-                console.log(`Earned ${xp} XP for completing TTS guide!`);
-              }}
-            />
-          )}
-
-          {/* Main Multi-Provider Video Player Container */}
-          <div className="bg-[#141420] rounded-2xl border border-[#2d2d44] overflow-hidden shadow-2xl">
-            
-            {hasAccess && currentVideo ? (
-              <div className="relative">
-                {/* 16:9 Responsive Embed Player */}
-                <div className={`relative w-full bg-black ${theaterMode ? 'aspect-[21/9]' : 'aspect-video'}`}>
-                  <iframe
-                    src={parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId).embedUrl}
-                    title={currentVideo.title}
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                    allowFullScreen
-                  />
-                </div>
-
-                {/* Video Info Bar below player */}
-                <div className="p-4 bg-[#141420] border-t border-[#2d2d44] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-xs font-semibold mb-1">
-                      {parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId).provider === 'youtube' && (
-                        <span className="text-red-400 flex items-center gap-1">
-                          <Youtube className="w-3.5 h-3.5" /> YouTube HD Stream
-                        </span>
-                      )}
-                      {parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId).provider === 'drive' && (
-                        <span className="text-[#06b6d4] flex items-center gap-1">
-                          <HardDrive className="w-3.5 h-3.5" /> Google Drive Video Engine
-                        </span>
-                      )}
-                      {parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId).provider === 'embed' && (
-                        <span className="text-purple-400 flex items-center gap-1">
-                          <Code className="w-3.5 h-3.5" /> Reproductor Embebido HTML
-                        </span>
-                      )}
-                      <span className="text-slate-400">• Módulo {activeModuleIndex + 1}</span>
-                    </div>
-                    <h1 className="text-lg font-bold text-white tracking-tight">{currentVideo.title}</h1>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    {/* Sin estos dos botones, avanzar exigía buscar la lección
-                        siguiente en la lista lateral, una por una. */}
-                    <button
-                      onClick={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
-                      disabled={!previousLesson}
-                      title={previousLesson ? 'Lección anterior' : 'Estás en la primera lección'}
-                      className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:hover:border-[#2d2d44] disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      <span className="hidden sm:inline">Anterior</span>
-                    </button>
-
-                    {currentLessonIndex >= 0 && lessons.length > 0 && (
-                      <span className="text-[11px] font-mono text-slate-500 px-1">
-                        {currentLessonIndex + 1}/{lessons.length}
-                      </span>
-                    )}
-
-                    <button
-                      onClick={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
-                      disabled={!nextLesson}
-                      title={nextLesson ? 'Lección siguiente' : 'Es la última lección del curso'}
-                      className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:hover:border-[#2d2d44] disabled:cursor-not-allowed"
-                    >
-                      <span className="hidden sm:inline">Siguiente</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => setTheaterMode(!theaterMode)}
-                      className="px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 text-xs flex items-center gap-1.5 transition-all"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Modo Cine</span>
-                    </button>
-
-                    <button
-                      onClick={() => toggleVideoCompletion(currentVideo.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-                        completedVideos[currentVideo.id]
-                          ? 'bg-[#06b6d4]/20 text-[#06b6d4] border border-[#06b6d4]/40'
-                          : 'btn-brand-primary'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {completedVideos[currentVideo.id] ? 'Completada' : 'Marcar Completada'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* Paywall Preview Card when locked */
-              <div className="p-10 text-center space-y-4">
-                <div className="w-16 h-16 rounded-xl bg-brand-gradient text-white flex items-center justify-center mx-auto shadow-lg shadow-[#a855f7]/20">
-                  <Lock className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold text-white">Contenido Bloqueado por Muro de Pago</h3>
-                <p className="text-sm text-slate-400 max-w-lg mx-auto">
-                  Accede a los videos de Google Drive y la caja de mentoría directa con el Profesor Giantucchi realizando la suscripción o activando tu Pase VIP.
-                </p>
-                <button
-                  onClick={onOpenPaywall}
-                  className="btn-brand-primary px-6 py-3 text-sm font-extrabold shadow-xl"
-                >
-                  Ver Opciones de Acceso y Pase VIP
-                </button>
-              </div>
-            )}
-
-          </div>
-
-          {/* Certificate Download Banner when Course Completed */}
-          {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
-              anunciaba «Disponible» desde la primera clase. */}
-          {hasAccess &&
-            pluginManager.isEnabled('pdf-certificates') &&
-            (courseProgressPct === 100 || certificate) && (
-            <div className="bg-gradient-to-r from-[#0a0a0f] via-[#141420] to-[#1a1a2e] border-2 border-[#eab308] rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#eab308]/20 border border-[#eab308]/40 rounded-2xl text-[#eab308] shrink-0">
-                  <Award className="w-8 h-8" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-extrabold text-base text-white">Certificado Oficial de Formación</h3>
-                    <span className="text-[10px] font-black bg-[#eab308] text-black px-2 py-0.5 rounded-full uppercase">
-                      {courseProgressPct === 100 ? '100% Completado' : 'Disponible'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    Acredita tus competencias técnicas con el diploma oficial emitido por la Academia Giantucchi.
-                  </p>
-                  {certificate?.verificationCode && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400">Código de Verificación:</span>
-                      <span className="font-mono text-xs font-bold text-amber-400 bg-black/60 px-2 py-0.5 rounded border border-[#eab308]/30">
-                        {certificate.verificationCode}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-                {certificate?.verificationCode && (
-                  <button
-                    onClick={() => setShowVerifyModal(true)}
-                    className="px-4 py-3 bg-[#1a1a2e] hover:bg-[#25253e] text-amber-300 border border-[#eab308]/40 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-amber-400" />
-                    <span>Verificar Código</span>
-                  </button>
-                )}
-                <button
-                  onClick={() =>
-                    downloadCertificate({
-                      studentName: currentUser.name,
-                      courseTitle: course.title,
-                      certificateId: certificate?.verificationCode,
-                    })
-                  }
-                  className="px-5 py-3 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2 transition-all"
-                >
-                  <Award className="w-4 h-4" />
-                  <span>Descargar Diploma</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Plugin: Interactive Module Quiz Card */}
-          {hasAccess && pluginManager.isEnabled('interactive-quizzes') && currentModule && (
-            <ModuleQuizCard
-              key={`${currentModule.id}_${quizPassKey}`}
-              module={currentModule}
-              user={currentUser}
-              onPassed={(score) => {
-                console.log(`Quiz passed with ${score}% score!`);
-                setQuizPassKey((prev) => prev + 1);
-              }}
-            />
-          )}
-
-          {/* Video Notes (Notas de Lección Temporizadas) */}
-          {hasAccess && (
-            <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-5 md:p-6 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                  <Bookmark className="w-5 h-5 text-[#06b6d4]" />
-                  <span>Notas Personales de la Lección</span>
-                  <span className="text-xs bg-[#06b6d4]/10 text-[#06b6d4] font-mono px-2 py-0.5 rounded-md border border-[#06b6d4]/20">
-                    {videoNotes.length}
-                  </span>
-                </div>
-                <span className="text-xs text-slate-400">Guarda apuntes vinculados al minuto del video</span>
-              </div>
-
-              <form onSubmit={handleAddVideoNote} className="flex flex-col sm:flex-row gap-2">
-                <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-1.5 shrink-0">
-                  <Clock className="w-4 h-4 text-[#a855f7]" />
-                  <input
-                    type="text"
-                    value={noteTimestampStr}
-                    onChange={(e) => setNoteTimestampStr(e.target.value)}
-                    placeholder="01:30"
-                    className="w-16 bg-transparent text-xs text-white font-mono focus:outline-none"
-                  />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Escribe un apunte importante sobre este segundo..."
-                  value={newNoteContent}
-                  onChange={(e) => setNewNoteContent(e.target.value)}
-                  className="flex-1 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4]"
+          {/* Columna del reproductor */}
+          <div className={theaterMode ? '' : 'lg:col-span-8'}>
+            {hasAccess && currentTtsGuide && (
+              <div className="px-4 pb-3 lg:px-0">
+                <MentorTTSGuideWidget
+                  guide={currentTtsGuide}
+                  onRewardEarned={(xp) => {
+                    console.log(`Earned ${xp} XP for completing TTS guide!`);
+                  }}
                 />
-                <button
-                  type="submit"
-                  disabled={!newNoteContent.trim()}
-                  className="px-4 py-2 bg-[#06b6d4] hover:bg-[#06b6d4]/80 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shrink-0"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Guardar Nota</span>
-                </button>
-              </form>
+              </div>
+            )}
 
-              {videoNotes.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  {videoNotes.map((note) => {
-                    const min = Math.floor(note.timestampSeconds / 60);
-                    const sec = note.timestampSeconds % 60;
-                    const timeLabel = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-                    return (
-                      <div
-                        key={note.id}
-                        className="bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4]/40 rounded-xl p-3 flex items-start gap-3 transition-all"
-                      >
-                        <span className="px-2 py-1 rounded-lg bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#a855f7] font-mono text-xs font-bold shrink-0">
-                          ⏱ {timeLabel}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-slate-200 font-medium leading-relaxed truncate">
-                            {note.content}
-                          </p>
-                          <span className="text-[10px] text-slate-500 block mt-1">
-                            {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* El ancho se limita a lo que cabe de alto: un 16:9 a ancho completo
+                en una pantalla apaisada empuja el título de la clase fuera de la
+                vista y obliga a hacer scroll para saber qué se está viendo.
+
+                En móvil el reproductor NO se queda pegado arriba. Lo estuvo, y
+                se comportaba mal: su contenedor solo llega hasta la barra de la
+                lección, así que se despegaba a los pocos píxeles de scroll y en
+                ese salto el iframe se quedaba en negro. Un video que se corta a
+                media clase es peor que uno que sube con la página.
+
+                Por debajo de `lg` la caja no lleva ningun limite atado a la
+                altura de la ventana, y es deliberado. Se probo con
+                `max-width: calc((100dvh - 9rem) * 16/9)` para que un movil
+                girado no dejara el video a medias, y sale caro: en un telefono
+                `dvh` se mueve cada vez que el navegador esconde o enseña su
+                barra al hacer scroll, asi que el limite cambia, el marco se
+                redimensiona y el reproductor de Drive se reinicia a mitad de
+                clase. La misma razon por la que este bloque no es pegajoso.
+                Que en horizontal haya que bajar un poco es un precio menor. */}
+            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
+              {showsPlayer && videoSource ? (
+                <iframe
+                  /* La clave fuerza un iframe nuevo por lección. Sin ella React
+                     reutiliza el elemento y solo le cambia `src`, que el
+                     navegador trata como navegación dentro del marco: el
+                     reproductor se quedaba en blanco al saltar de clase. */
+                  key={videoSource.embedUrl}
+                  src={videoSource.embedUrl}
+                  title={currentVideo.title}
+                  className="h-full w-full border-0"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  allowFullScreen
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
+                  <Lock aria-hidden className="h-7 w-7 text-ink-muted" />
+                  <div>
+                    <h2 className="text-section font-semibold text-ink">Esta clase requiere acceso</h2>
+                    <p className="mx-auto mt-1.5 max-w-sm text-meta leading-relaxed text-ink-muted">
+                      Con el curso activo se abren los videos, las notas y la mentoría.
+                    </p>
+                  </div>
+                  <button type="button" onClick={onOpenPaywall} className="btn-brand-primary px-5 py-2.5 text-meta">
+                    Ver opciones de acceso
+                  </button>
+                </div>
+              )}
+
+              {/* Salida del modo cine sobre el propio video: el interruptor del
+                  panel no sirve para volver, porque el modo cine oculta el panel
+                  que lo contiene. */}
+              {showsPlayer && theaterMode && (
+                <button
+                  type="button"
+                  onClick={() => setTheaterMode(false)}
+                  className="pointer-events-auto absolute top-3 right-3 hidden items-center gap-1.5 rounded-lg bg-canvas/70 px-3 py-2 text-meta text-ink opacity-0 backdrop-blur-sm transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 lg:flex"
+                >
+                  <Minimize2 aria-hidden className="h-4 w-4" />
+                  Salir del modo cine
+                </button>
+              )}
+
+              {/* Avanzar sin salir del video: los controles aparecen al apuntar
+                  al reproductor y al tabular hasta ellos. */}
+              {showsPlayer && (
+                <div className="pointer-events-none absolute inset-x-0 top-1/2 hidden -translate-y-1/2 justify-between px-3 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 lg:flex">
+                  {previousLesson ? (
+                    <button
+                      type="button"
+                      onClick={() => goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
+                      aria-label="Lección anterior"
+                      className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
+                    >
+                      <ChevronLeft aria-hidden className="h-5 w-5" />
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {nextLesson && (
+                    <button
+                      type="button"
+                      onClick={() => goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
+                      aria-label="Lección siguiente"
+                      className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
+                    >
+                      <ChevronRight aria-hidden className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-          )}
-          <div className="bg-[#141420] rounded-xl border border-[#2d2d44] p-5 md:p-6 space-y-6 shadow-xl">
-            
-            {/* Header with Filter options */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2d2d44] pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-[#06b6d4]" />
-                  <h3 className="font-bold text-base text-white">Caja de Mentoría y Preguntas</h3>
-                  <span className="text-xs font-bold bg-[#1a1a2e] border border-[#2d2d44] text-[#a855f7] px-2 py-0.5 rounded-full animate-pulse-slow">
-                    {comments.length}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Haz tus consultas de esta clase directamente a los mentores de la Academia Giantucchi.
-                </p>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setFilterMentorOnly(!filterMentorOnly)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                    filterMentorOnly
-                      ? 'bg-brand-gradient text-white shadow-md'
-                      : 'bg-[#1a1a2e] border border-[#2d2d44] text-slate-300 hover:text-white'
-                  }`}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#a855f7]" />
-                  Respuestas del Mentor
-                </button>
-              </div>
-            </div>
-
-            {/* Post New Question Box */}
-            {hasAccess ? (
-              <form onSubmit={handlePostQuestion} className="space-y-3 bg-[#1a1a2e] p-4 rounded-xl border border-[#2d2d44]">
-                <div className="flex items-center gap-2 text-xs text-[#06b6d4] font-semibold">
-                  <HelpCircle className="w-4 h-4 text-[#06b6d4]" /> Realizar una Pregunta de Mentoría:
-                </div>
-                <textarea
-                  rows={2}
-                  placeholder="Escribe tu duda técnica o consulta sobre esta lección..."
-                  value={newQuestion}
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4]"
-                />
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={!newQuestion.trim()}
-                    className="btn-brand-primary px-4 py-2 text-xs font-extrabold flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    Publicar Consulta
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="p-4 bg-[#1a1a2e] rounded-xl border border-[#2d2d44] text-xs text-slate-400 text-center">
-                Debes tener un pase activo o VIP para realizar preguntas de mentoría en esta lección.
-              </div>
+            {currentVideo && (
+              <MobileLessonBar
+                lessonNumber={currentLessonIndex + 1}
+                totalLessons={lessons.length}
+                hasPrevious={Boolean(previousLesson)}
+                hasNext={Boolean(nextLesson)}
+                isCompleted={isCurrentCompleted}
+                onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
+                onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
+                onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+              />
             )}
 
-            {/* Comments & Replies List */}
-            <div className="space-y-4">
-              {filteredComments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3"
-                >
-                  {/* User Author Bar */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={comment.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                        alt={comment.userName}
-                        className="w-7 h-7 rounded-full object-cover ring-1 ring-[#2d2d44]"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs text-white">{comment.userName}</span>
-                          {comment.userRole === 'ADMIN' && (
-                            <span className="text-[10px] bg-[#a855f7]/20 text-[#a855f7] font-bold px-2 py-0.5 rounded-lg border border-[#a855f7]/30 flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3 text-[#a855f7]" /> MENTOR OFICIAL
-                            </span>
-                          )}
-                          {comment.userRole === 'VIP' && (
-                            <span className="text-[10px] bg-brand-gradient text-white font-bold px-1.5 py-0.5 rounded-lg shadow-sm">
-                              VIP
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(comment.createdAt).toLocaleDateString('es-ES', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleLikeComment(comment.id)}
-                      className="flex items-center gap-1 text-xs text-slate-400 hover:text-[#06b6d4] transition-colors bg-[#0a0a0f] px-2.5 py-1 rounded-lg border border-[#2d2d44]"
-                    >
-                      <ThumbsUp className="w-3.5 h-3.5" />
-                      <span>{comment.likes}</span>
-                    </button>
-                  </div>
-
-                  {/* Comment Body */}
-                  <p className="text-xs md:text-sm text-slate-200 leading-relaxed pl-9">
-                    {comment.content}
-                  </p>
-
-                  {/* Mentor Replies List */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="pl-9 space-y-2 pt-2 border-t border-[#2d2d44]">
-                      {comment.replies.map((reply) => (
-                        <div
-                          key={reply.id}
-                          className="bg-[#141420] border border-[#a855f7]/40 rounded-xl p-3 space-y-1.5"
-                        >
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={reply.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
-                              alt={reply.userName}
-                              className="w-6 h-6 rounded-full object-cover"
-                            />
-                            <span className="font-bold text-xs text-[#a855f7]">{reply.userName}</span>
-                            <span className="text-[9px] bg-[#a855f7]/20 text-[#a855f7] font-extrabold px-1.5 py-0.5 rounded-lg uppercase tracking-wider">
-                              Respuesta Oficial Giantucchi
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-200 leading-normal pl-8">
-                            {reply.content}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Admin / Mentor Reply Form */}
-                  {currentUser.role === 'ADMIN' && (
-                    <div className="pl-9 pt-2">
-                      {replyingToId === comment.id ? (
-                        <div className="space-y-2">
-                          <textarea
-                            rows={2}
-                            placeholder="Escribe una respuesta como Mentor Giantucchi..."
-                            value={replyTextMap[comment.id] || ''}
-                            onChange={(e) =>
-                              setReplyTextMap({ ...replyTextMap, [comment.id]: e.target.value })
-                            }
-                            className="w-full bg-[#0a0a0f] border border-[#a855f7]/50 rounded-xl p-2 text-xs text-white focus:outline-none"
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => setReplyingToId(null)}
-                              className="text-xs text-slate-400 hover:text-white px-2 py-1"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              onClick={() => handlePostReply(comment.id)}
-                              className="px-3 py-1 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-md"
-                            >
-                              <ShieldCheck className="w-3 h-3" /> Responder como Mentor
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setReplyingToId(comment.id)}
-                          className="text-xs text-[#a855f7] hover:underline font-semibold flex items-center gap-1"
-                        >
-                          <MessageSquare className="w-3 h-3" /> Responder como Mentor Giantucchi
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                </div>
-              ))}
-            </div>
-
+            {currentVideo && (
+              <LessonMetaBar
+                lessonTitle={currentVideo.title}
+                moduleTitle={currentModule?.title || ''}
+                moduleIndex={activeModuleIndex}
+                providerLabel={providerLabel}
+                lessonNumber={currentLessonIndex + 1}
+                totalLessons={lessons.length}
+                isCompleted={isCurrentCompleted}
+                onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+                playbackUrl={showsPlayer ? currentVideo.playbackUrl : undefined}
+              />
+            )}
           </div>
 
-        </div>
+          {/* Panel lateral. En escritorio se posiciona en absoluto dentro de su
+              celda para que la fila la marque el video y no el largo del
+              temario; en móvil es un bloque de altura acotada. */}
+          <div className={theaterMode ? 'lg:hidden' : 'lg:relative lg:col-span-4'}>
+            <div className="h-[70dvh] px-4 lg:absolute lg:inset-0 lg:h-auto lg:px-0">
+              <CoursePanel
+                active={activePanel}
+                onChange={setActivePanel}
+                theaterMode={theaterMode}
+                onToggleTheater={() => setTheaterMode(!theaterMode)}
+                tabs={[
+                  {
+                    id: 'syllabus',
+                    label: 'Temario',
+                    icon: ListTree,
+                    content: (
+                      <div className="min-h-0 flex-1 overflow-y-auto">
+                        <SyllabusTree
+                          course={course}
+                          hasAccess={hasAccess}
+                          completedVideos={completedVideos}
+                          activeModuleIndex={activeModuleIndex}
+                          activeVideoIndex={activeVideoIndex}
+                          moduleLocks={moduleLocks}
+                          courseProgressPct={courseProgressPct}
+                          completedCourseVideos={completedCourseVideos}
+                          totalCourseVideos={totalCourseVideos}
+                          onSelectLesson={goToLesson}
+                          onToggleComplete={toggleVideoCompletion}
+                          onOpenPaywall={onOpenPaywall}
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'notes',
+                    label: 'Notas',
+                    icon: Bookmark,
+                    count: videoNotes.length,
+                    content: (
+                      <NotesPanel
+                        notes={videoNotes}
+                        hasAccess={hasAccess}
+                        content={newNoteContent}
+                        timestamp={noteTimestampStr}
+                        onContentChange={setNewNoteContent}
+                        onTimestampChange={setNoteTimestampStr}
+                        onSubmit={handleAddVideoNote}
+                      />
+                    ),
+                  },
+                  {
+                    id: 'mentorship',
+                    label: 'Mentoría',
+                    icon: MessageSquare,
+                    count: comments.length,
+                    content: (
+                      <MentorshipPanel
+                        comments={filteredComments}
+                        currentUser={currentUser}
+                        hasAccess={hasAccess}
+                        filterMentorOnly={filterMentorOnly}
+                        onToggleFilter={() => setFilterMentorOnly(!filterMentorOnly)}
+                        question={newQuestion}
+                        onQuestionChange={setNewQuestion}
+                        onPostQuestion={handlePostQuestion}
+                        replyTextMap={replyTextMap}
+                        onReplyTextChange={(commentId, value) =>
+                          setReplyTextMap({ ...replyTextMap, [commentId]: value })
+                        }
+                        replyingToId={replyingToId}
+                        onStartReply={setReplyingToId}
+                        onPostReply={handlePostReply}
+                        onLike={handleLikeComment}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </div>
 
+          {/* Segunda fila: lo que se gana al terminar. Queda bajo el video y
+              nunca compite con él. Sin quiz ni diploma no se monta, para no
+              dejar una banda de relleno vacía al pie de la página. */}
+          {showsExtras && (
+          <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
+            {hasAccess && pluginManager.isEnabled('interactive-quizzes') && currentModule && (
+              <ModuleQuizCard
+                key={`${currentModule.id}_${quizPassKey}`}
+                module={currentModule}
+                user={currentUser}
+                onPassed={(score) => {
+                  console.log(`Quiz passed with ${score}% score!`);
+                  setQuizPassKey((prev) => prev + 1);
+                }}
+              />
+            )}
+
+            {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
+                anunciaba «Disponible» desde la primera clase. */}
+            {hasAccess &&
+              pluginManager.isEnabled('pdf-certificates') &&
+              (courseProgressPct === 100 || courseCertificate) && (
+              <div className="flex flex-col gap-4 rounded-2xl border border-brand-yellow/40 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3.5">
+                  <Award aria-hidden className="h-7 w-7 shrink-0 text-brand-yellow" />
+                  <div>
+                    <h2 className="text-section font-semibold text-ink">Curso completado</h2>
+                    <p className="mt-1 text-meta text-ink-muted">
+                      Tu diploma de {course.title} está listo.
+                      {courseCertificate?.verificationCode && (
+                        <>
+                          {' '}
+                          Código{' '}
+                          <span className="text-ink-soft tabular-nums">{courseCertificate.verificationCode}</span>.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {courseCertificate?.verificationCode && (
+                    <button
+                      type="button"
+                      onClick={() => setShowVerifyModal(true)}
+                      className="flex items-center gap-1.5 rounded-lg bg-raised px-3.5 py-2.5 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
+                    >
+                      <ShieldCheck aria-hidden className="h-4 w-4" />
+                      Verificar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadCertificate({
+                        studentName: currentUser.name,
+                        courseTitle: course.title,
+                        certificateId: courseCertificate?.verificationCode,
+                      })
+                    }
+                    className="rounded-lg bg-brand-yellow px-4 py-2.5 text-meta font-semibold text-canvas transition-opacity hover:opacity-90"
+                  >
+                    Descargar diploma
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
+
+        </div>
       </div>
 
       {/* Certificate Public Verification Modal */}
       <CertificateVerifyModal
         isOpen={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}
-        initialCode={certificate?.verificationCode}
+        initialCode={courseCertificate?.verificationCode}
       />
     </div>
   );

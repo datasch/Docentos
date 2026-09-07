@@ -15,7 +15,6 @@ import {
   Eye,
   Search,
   Star,
-  Megaphone,
   Globe,
   Layers,
   Brain,
@@ -49,8 +48,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
 
   // Form State
   const [config, setConfig] = useState<LandingConfig>({
-    heroTitle: 'El Motor de Aprendizaje Abierto con IA Nativa & Mentoría',
-    heroSubtitle: 'DocentOS es la alternativa moderna, liviana y modular de código abierto frente a plataformas LMS tradicionales monolíticas como Moodle u Odoo LMS.',
+    heroTitle: 'Una nueva forma de aprender | con inteligencia artificial.',
+    heroSubtitle: 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.',
     heroMediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
     heroCtaText: 'Explorar Cursos',
     heroCtaLink: '#courses',
@@ -60,6 +59,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
     bannerEnabled: true,
     bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
     bannerLinkText: 'Ver Novedades',
+    trustRating: '4.9/5',
+    trustAudience: '+12,500',
     bannerLinkUrl: '#',
     benefits: [],
     testimonials: [],
@@ -260,22 +261,14 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
             <span className="text-[10px] text-slate-500 font-mono">Modo Live Preview</span>
           </div>
 
-          {/* Banner Promo Preview */}
-          {config.bannerEnabled && (
-            <div className="bg-gradient-to-r from-[#06b6d4]/20 via-[#a855f7]/20 to-[#06b6d4]/20 border border-[#06b6d4]/30 rounded-xl p-3 text-center text-xs text-white font-semibold flex items-center justify-center gap-2">
-              <Megaphone className="w-4 h-4 text-[#06b6d4]" />
-              <span>{config.bannerText}</span>
-              {config.bannerLinkText && (
-                <span className="underline text-[#06b6d4] cursor-pointer font-bold ml-1">
-                  {config.bannerLinkText} →
-                </span>
-              )}
-            </div>
-          )}
-
           {/* Hero Preview */}
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 text-center space-y-4">
-            <h1 className="text-2xl font-black text-white">{config.heroTitle}</h1>
+            <h1 className="text-2xl font-black text-white">
+              {config.heroTitle.split('|')[0].trim()}{' '}
+              <span className="bg-gradient-to-br from-[#a78bfa] via-[#8b5cf6] to-[#22d3ee] bg-clip-text text-transparent">
+                {config.heroTitle.split('|').slice(1).join('|').trim()}
+              </span>
+            </h1>
             <p className="text-xs text-slate-300 max-w-2xl mx-auto">{config.heroSubtitle}</p>
 
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -288,15 +281,18 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
             </div>
 
             {config.heroMediaUrl && (
-              <div className="mt-4 max-w-xl mx-auto rounded-xl overflow-hidden border border-[#2d2d44] aspect-video bg-black">
+              <div className="mt-4 max-w-xs mx-auto rounded-xl overflow-hidden border border-[#2d2d44] aspect-video bg-black relative">
                 <img
                   src={config.heroMediaUrl}
-                  alt="Hero Preview"
+                  alt="Miniatura al compartir"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
                 />
+                <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold text-slate-300 bg-black/80 rounded px-1.5 py-0.5">
+                  Miniatura al compartir · no se pinta en la portada
+                </span>
               </div>
             )}
           </div>
@@ -376,6 +372,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
                 onChange={(e) => setConfig({ ...config, heroTitle: e.target.value })}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
               />
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Una barra <code className="text-slate-300">|</code> marca dónde empieza el tramo que
+                se pinta en gradiente. Sin barra, el titular va entero en blanco.
+              </p>
             </div>
 
             <div>
@@ -391,10 +391,48 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
               />
             </div>
 
+            {/* Prueba social. Deja cualquiera de las dos en blanco y la barra
+                desaparece de la portada: mejor sin cifras que con cifras
+                prestadas. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Valoración
+                </label>
+                <input
+                  type="text"
+                  placeholder="4.9/5"
+                  value={config.trustRating}
+                  onChange={(e) => setConfig({ ...config, trustRating: e.target.value })}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Estudiantes activos
+                </label>
+                <input
+                  type="text"
+                  placeholder="+12,500"
+                  value={config.trustAudience}
+                  onChange={(e) => setConfig({ ...config, trustAudience: e.target.value })}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+              </div>
+              <p className="col-span-2 text-[11px] text-slate-500">
+                Se muestran bajo los botones del hero. Deja cualquiera de las dos en blanco y la
+                barra no se pinta.
+              </p>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                URL de Imagen / Banner de Portada
+                Imagen al compartir el enlace
               </label>
+              <p className="text-[11px] text-slate-400 mb-2">
+                La miniatura que aparece al pegar la dirección de la portada en WhatsApp, X o LinkedIn
+                (Open Graph). Ya no se pinta dentro de la página.
+              </p>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <ImageIcon className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -775,61 +813,6 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
           </div>
 
           {/* Banner Toggle */}
-          <div className="bg-[#0a0a0f] border border-[#2d2d44] p-4 rounded-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-[#06b6d4]" />
-                  Activar Banner de Anuncios Promocionales
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Muestra una barra superior fija en la portada para anuncios o lanzamientos.
-                </p>
-              </div>
-
-              <input
-                type="checkbox"
-                checked={config.bannerEnabled}
-                onChange={(e) => setConfig({ ...config, bannerEnabled: e.target.checked })}
-                className="w-5 h-5 accent-[#06b6d4] rounded cursor-pointer"
-              />
-            </div>
-
-            {config.bannerEnabled && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Texto del Anuncio</label>
-                  <input
-                    type="text"
-                    value={config.bannerText}
-                    onChange={(e) => setConfig({ ...config, bannerText: e.target.value })}
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-lg p-2.5 text-xs text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Texto del Enlace</label>
-                  <input
-                    type="text"
-                    value={config.bannerLinkText}
-                    onChange={(e) => setConfig({ ...config, bannerLinkText: e.target.value })}
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-lg p-2.5 text-xs text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">URL de Destino</label>
-                  <input
-                    type="text"
-                    value={config.bannerLinkUrl}
-                    onChange={(e) => setConfig({ ...config, bannerLinkUrl: e.target.value })}
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-lg p-2.5 text-xs text-white font-mono"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Footer Texts & Links */}
           <div className="space-y-4">
             <div>

@@ -45,6 +45,18 @@ function tabFromPath(pathname: string): ActiveTab {
   return 'landing';
 }
 
+/** Dónde estaba estudiando el alumno en este navegador. */
+const LAST_COURSE_KEY = 'docentos_last_course_id';
+
+function readLastCourseId(): string | null {
+  try {
+    return localStorage.getItem(LAST_COURSE_KEY);
+  } catch {
+    // Navegación privada o almacenamiento bloqueado: se recurre al progreso.
+    return null;
+  }
+}
+
 const releaseChannelLabel =
   DOCENTOS_RELEASE_CHANNEL.charAt(0).toUpperCase() + DOCENTOS_RELEASE_CHANNEL.slice(1);
 
@@ -102,6 +114,19 @@ export default function App() {
     return false;
   };
 
+  /**
+   * Abrir un curso lo deja apuntado como el último en el que se estudió, para
+   * volver a él en la siguiente visita en vez de al primero del catálogo.
+   */
+  const selectCourse = (selected: Course) => {
+    setCourse(selected);
+    try {
+      localStorage.setItem(LAST_COURSE_KEY, selected.id);
+    } catch {
+      /* sin almacenamiento el curso sigue abierto, solo no se recuerda */
+    }
+  };
+
   const loadData = async () => {
     try {
       const setupRequired = await checkSetupStatus();
@@ -110,11 +135,35 @@ export default function App() {
       const userRes = await api.getCurrentUser();
       setCurrentUser(userRes.user);
 
+      // El curso de la última lección marcada. Sirve cuando el navegador no
+      // recuerda nada (otro equipo, datos borrados): es la huella de estudio
+      // que sí viaja con la cuenta.
+      let lastStudiedId: string | null = null;
+      if (userRes.user) {
+        try {
+          lastStudiedId = (await api.getProgress()).lastCourseId ?? null;
+        } catch {
+          /* sin progreso todavía; se abrirá el primero del catálogo */
+        }
+      }
+
       const courseRes = await api.getCourses();
       if (courseRes.courses && courseRes.courses.length > 0) {
-        setCourses(courseRes.courses);
-        setCourse(courseRes.courses[0]);
+        const list = courseRes.courses;
+        setCourses(list);
         setHasAccess(courseRes.hasAccess);
+
+        setCourse((current) => {
+          // Al recargar datos se conserva el curso abierto —antes se volvía
+          // siempre al primero, perdiendo el que el alumno estaba viendo—,
+          // pero apuntando a la instancia recién traída del servidor.
+          const stillOpen = current && list.find((item) => item.id === current.id);
+          if (stillOpen) return stillOpen;
+
+          const remembered = list.find((item) => item.id === readLastCourseId());
+          const lastStudied = list.find((item) => item.id === lastStudiedId);
+          return remembered || lastStudied || list[0];
+        });
       }
 
       // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
@@ -214,6 +263,11 @@ export default function App() {
             setVerifyCode('');
             setShowVerifyModal(true);
           }}
+          courses={courses}
+          onSelectCourse={(selected) => {
+            selectCourse(selected);
+            navigateTo('courses');
+          }}
         />
       )}
 
@@ -232,7 +286,7 @@ export default function App() {
               setShowAuthModal(true);
             }}
             onExploreCourse={(selectedCourse) => {
-              setCourse(selectedCourse);
+              selectCourse(selectedCourse);
               if (currentUser) navigateTo('courses');
               else {
                 setAuthMode('login');
@@ -246,25 +300,23 @@ export default function App() {
         {activeTab === 'courses' && currentUser && (
           <div>
             {!hasAccess && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-                <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3 shadow-xl">
+              <div className="mx-auto w-full max-w-[1800px] px-4 pt-6 lg:px-6">
+                <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center shrink-0 shadow-md">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
+                    <Sparkles aria-hidden className="h-5 w-5 shrink-0 text-brand-cyan" />
                     <div>
-                      <h4 className="text-sm font-bold text-white">Muro de Pago Activo (Usuario Externo)</h4>
-                      <p className="text-xs text-slate-400">
-                        Paga el curso o activa tu Pase VIP para desbloquear las clases y mentorías.
+                      <h2 className="text-section font-semibold text-ink">Estás viendo una vista previa</h2>
+                      <p className="mt-0.5 text-meta text-ink-muted">
+                        Las clases y la mentoría se abren al activar tu acceso.
                       </p>
                     </div>
                   </div>
 
                   <button
                     onClick={() => setShowPaywallModal(true)}
-                    className="btn-brand-primary px-4 py-2 text-xs font-extrabold shrink-0"
+                    className="btn-brand-primary shrink-0 px-4 py-2.5 text-meta"
                   >
-                    Activar Pase VIP / Comprar Acceso
+                    Activar acceso
                   </button>
                 </div>
               </div>
@@ -277,7 +329,7 @@ export default function App() {
               onOpenPaywall={() => setShowPaywallModal(true)}
               courses={courses}
               onSelectCourse={(selected) => {
-                setCourse(selected);
+                selectCourse(selected);
                 window.scrollTo({ top: 0 });
               }}
               onGoHome={() => navigateTo('landing')}
@@ -382,39 +434,47 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#0a0a0f] border-t border-[#2d2d44] py-6 px-4 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col md:flex-row items-center gap-2 font-bold text-slate-200">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-lg bg-brand-gradient text-white font-black text-[10px] flex items-center justify-center shadow-sm">
-                {siteConfig.logoInitial}
-              </div>
-              <span className="text-white uppercase">{siteConfig.appName}</span>
-              <span className="text-slate-500 font-normal">© {new Date().getFullYear()}</span>
-            </div>
-            <span className="text-[11px] text-slate-500 font-normal hidden md:inline">
-              • {siteConfig.authorCredit}
+      {/* El pie cierra la pagina, asi que comparte su fondo. Pintarlo de
+          #0a0a0f lo dejaba mas claro que el suelo #050505 y se leia como una
+          banda encendida al final en vez de como un remate.
+          La portada trae el suyo propio, en su propio sistema visual: sin este
+          filtro salian dos pies seguidos al final de `/`. */}
+      {activeTab !== 'landing' && (
+      <footer className="border-t border-line px-4 py-6 sm:px-6">
+        <div className="mx-auto flex w-full max-w-[1800px] flex-col items-center gap-3 text-meta text-ink-muted md:flex-row md:justify-between">
+          <div className="flex flex-col items-center gap-2 md:flex-row">
+            <span className="flex items-center gap-2">
+              <span className="bg-brand-gradient flex h-5 w-5 shrink-0 items-center justify-center rounded-md p-px">
+                <span className="flex h-full w-full items-center justify-center rounded-[5px] bg-canvas">
+                  <span className="bg-gradient-to-r from-brand-cyan to-brand-purple bg-clip-text text-micro font-black text-transparent">
+                    {siteConfig.logoInitial}
+                  </span>
+                </span>
+              </span>
+              <span className="text-ink">{siteConfig.appName}</span>
+              <span>© {new Date().getFullYear()}</span>
             </span>
+            <span className="hidden md:inline">· {siteConfig.authorCredit}</span>
           </div>
 
           {/* White-Label Credit */}
-          <div className="flex items-center gap-2">
-            <a
-              href={siteConfig.poweredByLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-300 hover:text-white transition-all text-[11px] font-medium group shadow-sm"
-            >
-              <span>{siteConfig.poweredByText}</span>
-              <ExternalLink className="w-3 h-3 text-[#06b6d4] group-hover:scale-110 transition-transform" />
-            </a>
-          </div>
+          <a
+            href={siteConfig.poweredByLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
+          >
+            {siteConfig.poweredByText}
+            <ExternalLink aria-hidden className="h-3 w-3" />
+          </a>
 
-          <div className="flex items-center gap-2 text-[10px] text-[#06b6d4]">
-            <CheckCircle2 className="w-3.5 h-3.5" /> {siteConfig.appName} v{DOCENTOS_VERSION} · {releaseChannelLabel}
-          </div>
+          <span className="flex items-center gap-1.5 tabular-nums">
+            <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-brand-violet" />
+            v{DOCENTOS_VERSION} · {releaseChannelLabel}
+          </span>
         </div>
       </footer>
+      )}
 
       {/* Onboarding Assistant Ian Tour */}
       {showTour && currentUser && activeTab !== 'landing' && (

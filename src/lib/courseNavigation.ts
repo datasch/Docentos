@@ -89,3 +89,56 @@ export function countCompleted(
 ): number {
   return flattenLessons(course).filter((lesson) => completedVideos[lesson.videoId]).length;
 }
+
+/**
+ * Por qué un módulo está cerrado. `null` cuando está abierto.
+ *
+ * - `progress`: el curso avanza de módulo en módulo y el anterior tiene
+ *   lecciones sin ver.
+ * - `quiz`: el plugin de exámenes exige aprobar el examen del módulo anterior.
+ */
+export type ModuleLockReason = 'progress' | 'quiz' | null;
+
+export interface ModuleLockState {
+  unlocked: boolean;
+  reason: ModuleLockReason;
+}
+
+/**
+ * Estado de cada módulo del temario: abierto o cerrado, y por qué.
+ *
+ * El primer módulo nunca se cierra —si no, el curso no tendría por dónde
+ * empezar—. Los siguientes pasan dos filtros independientes: el examen del
+ * módulo anterior, que gestiona el plugin de exámenes y llega en
+ * `isQuizUnlocked`, y la progresión secuencial del propio curso, que exige
+ * tener vistas todas las lecciones de los módulos anteriores. Con
+ * `sequentialUnlock` apagado el segundo filtro no interviene y el temario se ve
+ * entero, que es como se comportaban los cursos antes de esta opción.
+ */
+export function moduleLockStates(
+  course: Pick<Course, 'modules'> & { sequentialUnlock?: boolean } | null | undefined,
+  completedVideos: Record<string, boolean>,
+  isQuizUnlocked: (moduleIndex: number) => boolean = () => true,
+): ModuleLockState[] {
+  const modules = course?.modules ?? [];
+  const sequential = Boolean(course?.sequentialUnlock);
+
+  return modules.map((_, moduleIndex) => {
+    if (moduleIndex === 0) return { unlocked: true, reason: null };
+    if (!isQuizUnlocked(moduleIndex)) return { unlocked: false, reason: 'quiz' };
+    if (!sequential) return { unlocked: true, reason: null };
+
+    // Un módulo sin lecciones no puede terminarse, así que tampoco bloquea:
+    // exigirlo dejaría el resto del temario cerrado sin forma de abrirlo.
+    const pendingBefore = modules
+      .slice(0, moduleIndex)
+      .some((previous) => previous.videos.some((video) => !completedVideos[video.id]));
+
+    return pendingBefore ? { unlocked: false, reason: 'progress' } : { unlocked: true, reason: null };
+  });
+}
+
+/** Atajo para preguntar por un solo módulo sin recorrer el temario a mano. */
+export function isModuleOpen(states: ModuleLockState[], moduleIndex: number): boolean {
+  return states[moduleIndex]?.unlocked ?? true;
+}

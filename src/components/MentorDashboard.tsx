@@ -13,23 +13,18 @@ import {
   UserCheck,
   BookOpen,
   Plus,
-  Video,
   MessageSquare,
   CheckCircle2,
   Users,
-  Search,
-  Sparkles,
-  PlayCircle,
   Clock,
-  Layers,
   Send,
-  HelpCircle,
-  TrendingUp,
-  Award,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+  Inbox,
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { Course, User, MenteeStudent, MentorshipComment, DriveVideoFile } from '../types';
+import { Course, User, MenteeStudent, MentorshipComment } from '../types';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -37,12 +32,29 @@ interface MentorDashboardProps {
   onRefreshCourses: () => void;
 }
 
+/** La fecha cruda ISO del servidor no se lee; en la bandeja importa el cuándo. */
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** De qué clase salió la consulta, dicho en una línea. */
+function questionOrigin(comment: MentorshipComment): string {
+  const parts = [comment.courseTitle, comment.moduleTitle, comment.videoTitle].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : 'Clase no identificada';
+}
+
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   currentUser,
   courses,
   onRefreshCourses,
 }) => {
-  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna'>('courses');
 
   // Mentees State
@@ -51,6 +63,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [showAssignMenteeModal, setShowAssignMenteeModal] = useState<boolean>(false);
   const [newMenteeName, setNewMenteeName] = useState<string>('');
   const [newMenteeEmail, setNewMenteeEmail] = useState<string>('');
+  const [assigningMentee, setAssigningMentee] = useState<boolean>(false);
+  const [assignError, setAssignError] = useState<string>('');
 
   // Course Creation State
   const [showCreateCourseModal, setShowCreateCourseModal] = useState<boolean>(false);
@@ -58,15 +72,31 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [newCourseDescription, setNewCourseDescription] = useState<string>('');
   const [newCoursePrice, setNewCoursePrice] = useState<number>(149);
   const [newCourseCategory, setNewCourseCategory] = useState<string>('Mentoría Elite');
+  const [newCoursePublished, setNewCoursePublished] = useState<boolean>(false);
+  const [creatingCourse, setCreatingCourse] = useState<boolean>(false);
+  const [createCourseError, setCreateCourseError] = useState<string>('');
 
   // Q&A State
   const [qnaComments, setQnaComments] = useState<MentorshipComment[]>([]);
+  const [loadingQna, setLoadingQna] = useState<boolean>(true);
+  const [qnaError, setQnaError] = useState<string>('');
+  const [qnaFilter, setQnaFilter] = useState<'pending' | 'all'>('pending');
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyErrorMap, setReplyErrorMap] = useState<Record<string, string>>({});
+
+  // Mensaje de confirmación compartido por las acciones de la cabecera.
+  const [actionNotice, setActionNotice] = useState<string>('');
 
   useEffect(() => {
     loadMenteesData();
     loadQnaData();
   }, []);
+
+  const announce = (message: string) => {
+    setActionNotice(message);
+    setTimeout(() => setActionNotice(''), 4000);
+  };
 
   const loadMenteesData = async () => {
     try {
@@ -82,14 +112,24 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     }
   };
 
+  /**
+   * La bandeja lee `/api/mentor/qna`, que recorre todo el catálogo.
+   *
+   * Antes pedía los comentarios de un único video fijo (`video-intro-01`) que
+   * ni siquiera existe en la base: el centro de consultas salía siempre vacío
+   * por muchas preguntas que hubiera publicado el alumnado.
+   */
   const loadQnaData = async () => {
+    setLoadingQna(true);
+    setQnaError('');
     try {
-      const res = await api.getVideoComments('video-intro-01');
-      if (res.comments) {
-        setQnaComments(res.comments);
-      }
-    } catch (error) {
+      const res = await api.getMentorQna();
+      setQnaComments(res.comments || []);
+    } catch (error: any) {
       console.error('Error al cargar preguntas:', error);
+      setQnaError(error?.message || 'No se pudieron cargar las consultas.');
+    } finally {
+      setLoadingQna(false);
     }
   };
 
@@ -97,14 +137,59 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     e.preventDefault();
     if (!newMenteeName.trim() || !newMenteeEmail.trim()) return;
 
+    setAssigningMentee(true);
+    setAssignError('');
     try {
       await api.assignMentee(newMenteeName.trim(), newMenteeEmail.trim(), currentUser.id);
       setNewMenteeName('');
       setNewMenteeEmail('');
       setShowAssignMenteeModal(false);
+      announce(`${newMenteeName.trim()} queda asignado a tu mentoría.`);
       loadMenteesData();
-    } catch (error) {
-      console.error('Error al asignar mentee:', error);
+    } catch (error: any) {
+      // El servidor rechaza con un motivo concreto (cuenta administrativa,
+      // cuenta desactivada, permisos). Tragárselo dejaba el formulario
+      // aparentemente muerto: se pulsaba «Asignar» y no ocurría nada.
+      setAssignError(error?.message || 'No se pudo asignar el mentee.');
+    } finally {
+      setAssigningMentee(false);
+    }
+  };
+
+  /**
+   * Alta de un programa nuevo.
+   *
+   * El botón de la cabecera abría un estado que ningún modal leía, así que no
+   * pasaba nada al pulsarlo. El curso nace sin publicar salvo que se marque:
+   * publicar uno vacío lo pone en el escaparate sin una sola clase dentro.
+   */
+  const handleCreateCourseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCourseTitle.trim()) return;
+
+    setCreatingCourse(true);
+    setCreateCourseError('');
+    try {
+      await api.createCourse({
+        title: newCourseTitle.trim(),
+        description: newCourseDescription.trim(),
+        price: newCoursePrice,
+        category: newCourseCategory.trim() || 'Mentoría Elite',
+        published: newCoursePublished,
+      });
+      setNewCourseTitle('');
+      setNewCourseDescription('');
+      setNewCoursePrice(149);
+      setNewCourseCategory('Mentoría Elite');
+      setNewCoursePublished(false);
+      setShowCreateCourseModal(false);
+      setActiveTab('courses');
+      announce('Programa creado. Añádele módulos y clases desde Administración › Cursos.');
+      onRefreshCourses();
+    } catch (error: any) {
+      setCreateCourseError(error?.message || 'No se pudo crear el programa.');
+    } finally {
+      setCreatingCourse(false);
     }
   };
 
@@ -112,18 +197,32 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     const replyText = replyTextMap[commentId];
     if (!replyText || !replyText.trim()) return;
 
+    setReplyingId(commentId);
+    setReplyErrorMap((prev) => ({ ...prev, [commentId]: '' }));
     try {
       await api.replyToComment(commentId, replyText.trim());
       setReplyTextMap((prev) => ({ ...prev, [commentId]: '' }));
       loadQnaData();
-    } catch (error) {
-      console.error('Error al enviar respuesta:', error);
+    } catch (error: any) {
+      setReplyErrorMap((prev) => ({
+        ...prev,
+        [commentId]: error?.message || 'No se pudo enviar la respuesta.',
+      }));
+    } finally {
+      setReplyingId(null);
     }
   };
 
+  const pendingQuestions = qnaComments.filter((c) => !c.isResolved);
+  const visibleQuestions = qnaFilter === 'pending' ? pendingQuestions : qnaComments;
+  const answeredPct =
+    qnaComments.length > 0
+      ? Math.round(((qnaComments.length - pendingQuestions.length) / qnaComments.length) * 100)
+      : 0;
+
   return (
     <div className="min-h-screen bg-[#000000] text-slate-100 p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
-      
+
       {/* Header Banner */}
       <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="space-y-2 z-10">
@@ -142,7 +241,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         {/* Quick Actions */}
         <div className="flex flex-wrap items-center gap-3 z-10">
           <button
-            onClick={() => setShowAssignMenteeModal(true)}
+            onClick={() => {
+              setAssignError('');
+              setShowAssignMenteeModal(true);
+            }}
             className="px-4 py-2.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2"
           >
             <Users className="w-4 h-4 text-[#06b6d4]" />
@@ -150,7 +252,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           </button>
 
           <button
-            onClick={() => setShowCreateCourseModal(true)}
+            onClick={() => {
+              setCreateCourseError('');
+              setShowCreateCourseModal(true);
+            }}
             className="px-4 py-2.5 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black text-xs font-extrabold rounded-xl shadow-lg transition-all flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -159,13 +264,29 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </div>
       </div>
 
+      {actionNotice && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4" /> {actionNotice}
+        </div>
+      )}
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { title: 'Programas Creados', value: courses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
           { title: 'Mentees Asignados', value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
-          { title: 'Preguntas Respondidas', value: '94%', icon: CheckCircle2, color: 'text-emerald-400' },
-          { title: 'Horas de Mentoría', value: '320h', icon: Clock, color: 'text-amber-400' },
+          {
+            title: 'Consultas Respondidas',
+            value: qnaComments.length > 0 ? `${answeredPct}%` : '—',
+            icon: CheckCircle2,
+            color: 'text-emerald-400',
+          },
+          {
+            title: 'Consultas Pendientes',
+            value: pendingQuestions.length,
+            icon: Clock,
+            color: 'text-amber-400',
+          },
         ].map((card, idx) => {
           const Icon = card.icon;
           return (
@@ -221,40 +342,55 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <MessageSquare className="w-4 h-4" />
-          <span>Centro de Consultas Q&A</span>
+          <span>Centro de Consultas Q&A ({pendingQuestions.length})</span>
         </button>
       </div>
 
       {/* Tab Content 1: Courses Management */}
       {activeTab === 'courses' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <div key={course.id} className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-5 space-y-4 hover:border-[#06b6d4] transition-all">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg">
-                    {course.category}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-400">
-                    Publicado
-                  </span>
+          {courses.length === 0 ? (
+            <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-10 text-center space-y-3">
+              <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
+              <p className="text-xs text-slate-400">
+                Todavía no hay programas. Crea el primero desde «Crear Nuevo Programa».
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses.map((course) => (
+                <div key={course.id} className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-5 space-y-4 hover:border-[#06b6d4] transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg">
+                      {course.category}
+                    </span>
+                    {/* Un curso recién creado nace sin publicar: decir siempre
+                        «Publicado» mentía sobre lo que ve el alumnado. */}
+                    <span
+                      className={`text-xs font-mono font-bold ${
+                        course.published ? 'text-emerald-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {course.published ? 'Publicado' : 'Borrador'}
+                    </span>
+                  </div>
+
+                  <h3 className="font-extrabold text-base text-white line-clamp-2">
+                    {course.title}
+                  </h3>
+
+                  <p className="text-xs text-slate-400 line-clamp-2">
+                    {course.description}
+                  </p>
+
+                  <div className="pt-3 border-t border-[#262626] flex items-center justify-between text-xs font-mono text-slate-400">
+                    <span>{course.modules?.length || 0} Módulos</span>
+                    <span>${course.price} USD</span>
+                  </div>
                 </div>
-
-                <h3 className="font-extrabold text-base text-white line-clamp-2">
-                  {course.title}
-                </h3>
-
-                <p className="text-xs text-slate-400 line-clamp-2">
-                  {course.description}
-                </p>
-
-                <div className="pt-3 border-t border-[#262626] flex items-center justify-between text-xs font-mono text-slate-400">
-                  <span>{course.modules?.length || 0} Módulos</span>
-                  <span>${course.price} USD</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -267,7 +403,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               <p className="text-xs text-slate-400">Progreso individual y estado de estudio de alumnos asignados</p>
             </div>
             <button
-              onClick={() => setShowAssignMenteeModal(true)}
+              onClick={() => {
+                setAssignError('');
+                setShowAssignMenteeModal(true);
+              }}
               className="px-3.5 py-1.5 bg-[#06b6d4] text-black font-extrabold text-xs rounded-xl flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> Asignar Mentee
@@ -275,6 +414,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           </div>
 
           <div className="divide-y divide-[#262626]">
+            {loadingMentees && (
+              <p className="p-6 text-center text-xs text-slate-500">Cargando mentees...</p>
+            )}
+
+            {!loadingMentees && mentees.length === 0 && (
+              <p className="p-6 text-center text-xs text-slate-500">
+                Aún no tienes mentees asignados.
+              </p>
+            )}
+
             {mentees.map((m) => (
               <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#141420]/50 transition-colors">
                 <div className="flex items-center gap-3">
@@ -320,26 +469,84 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {activeTab === 'qna' && (
         <div className="space-y-4">
           <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-5">
-            <h3 className="font-extrabold text-sm text-white mb-1">Centro de Consultas de Mentoría</h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div>
+                <h3 className="font-extrabold text-sm text-white mb-1">Centro de Consultas de Mentoría</h3>
+                <p className="text-xs text-slate-400">
+                  Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Pendientes primero: es lo único que pide acción. */}
+                <div className="flex bg-[#141420] border border-[#262626] rounded-xl p-1">
+                  {(['pending', 'all'] as const).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setQnaFilter(option)}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                        qnaFilter === option ? 'bg-[#06b6d4] text-black' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {option === 'pending' ? `Pendientes (${pendingQuestions.length})` : `Todas (${qnaComments.length})`}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={loadQnaData}
+                  disabled={loadingQna}
+                  className="p-2 bg-[#141420] border border-[#262626] rounded-xl text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                  title="Actualizar consultas"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingQna ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {qnaError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {qnaError}
+              </div>
+            )}
 
             <div className="space-y-4">
-              {qnaComments.map((comment) => (
+              {loadingQna && qnaComments.length === 0 && (
+                <p className="py-8 text-center text-xs text-slate-500">Cargando consultas...</p>
+              )}
+
+              {!loadingQna && visibleQuestions.length === 0 && (
+                <div className="py-10 text-center space-y-2">
+                  <Inbox className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="text-xs text-slate-500">
+                    {qnaFilter === 'pending'
+                      ? 'No hay consultas pendientes. Todo respondido.'
+                      : 'Todavía no hay consultas publicadas por el alumnado.'}
+                  </p>
+                </div>
+              )}
+
+              {visibleQuestions.map((comment) => (
                 <div key={comment.id} className="p-4 bg-[#141420] border border-[#262626] rounded-xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  {/* Sin saber de qué clase salió, la pregunta no se puede responder. */}
+                  <div className="text-[10px] font-bold text-[#a855f7] uppercase tracking-wider">
+                    {questionOrigin(comment)}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
                       <img
                         src={comment.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
                         alt={comment.userName}
-                        className="w-7 h-7 rounded-full object-cover"
+                        className="w-7 h-7 rounded-full object-cover shrink-0"
                       />
-                      <span className="font-bold text-xs text-white">{comment.userName}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">{comment.createdAt}</span>
+                      <span className="font-bold text-xs text-white truncate">{comment.userName}</span>
+                      <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                        {formatDate(comment.createdAt)}
+                      </span>
                     </div>
 
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded ${
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shrink-0 ${
                       comment.isResolved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                     }`}>
                       {comment.isResolved ? 'Resuelta por Mentor' : 'Pendiente'}
@@ -360,8 +567,20 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     </div>
                   )}
 
+                  {replyErrorMap[comment.id] && (
+                    <div className="p-2.5 bg-red-500/10 border border-red-500/30 text-red-300 text-[11px] rounded-lg flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {replyErrorMap[comment.id]}
+                    </div>
+                  )}
+
                   {/* Mentor Reply Input */}
-                  <div className="flex items-center gap-2 pt-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleReplySubmit(comment.id);
+                    }}
+                    className="flex items-center gap-2 pt-2"
+                  >
                     <input
                       type="text"
                       placeholder="Escribe tu respuesta como Mentor..."
@@ -372,12 +591,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       className="flex-1 py-2 px-3 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none"
                     />
                     <button
-                      onClick={() => handleReplySubmit(comment.id)}
-                      className="px-4 py-2 bg-[#06b6d4] text-black font-extrabold text-xs rounded-xl flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                      type="submit"
+                      disabled={replyingId === comment.id || !(replyTextMap[comment.id] || '').trim()}
+                      className="px-4 py-2 bg-[#06b6d4] text-black font-extrabold text-xs rounded-xl flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-40"
                     >
-                      <Send className="w-3.5 h-3.5" /> Responder
+                      {replyingId === comment.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      Responder
                     </button>
-                  </div>
+                  </form>
                 </div>
               ))}
             </div>
@@ -391,6 +616,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 w-full max-w-md space-y-4">
             <h3 className="font-extrabold text-base text-white">Asignar Nuevo Mentee</h3>
             <p className="text-xs text-slate-400">Ingresa los datos del estudiante para asignarle mentoría prioritaria.</p>
+
+            {assignError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> <span>{assignError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleAssignMenteeSubmit} className="space-y-3">
               <div>
@@ -427,9 +658,106 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl"
+                  disabled={assigningMentee}
+                  className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
+                  {assigningMentee && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Asignar Mentee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Course Modal */}
+      {showCreateCourseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 w-full max-w-lg space-y-4">
+            <h3 className="font-extrabold text-base text-white">Crear Nuevo Programa</h3>
+            <p className="text-xs text-slate-400">
+              Se crea la ficha del programa. Los módulos y las clases se añaden después desde
+              Administración › Cursos o importando una carpeta de Google Drive.
+            </p>
+
+            {createCourseError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> <span>{createCourseError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCourseSubmit} className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Título del Programa</label>
+                <input
+                  type="text"
+                  value={newCourseTitle}
+                  onChange={(e) => setNewCourseTitle(e.target.value)}
+                  placeholder="Ej. Mentoría Elite: Arquitectura Cloud"
+                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Descripción</label>
+                <textarea
+                  rows={3}
+                  value={newCourseDescription}
+                  onChange={(e) => setNewCourseDescription(e.target.value)}
+                  placeholder="Qué aprende el alumno y para quién es este programa."
+                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Categoría</label>
+                  <input
+                    type="text"
+                    value={newCourseCategory}
+                    onChange={(e) => setNewCourseCategory(e.target.value)}
+                    className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Precio (USD)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newCoursePrice}
+                    onChange={(e) => setNewCoursePrice(Math.max(0, Number(e.target.value) || 0))}
+                    className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={newCoursePublished}
+                  onChange={(e) => setNewCoursePublished(e.target.checked)}
+                  className="accent-[#06b6d4]"
+                />
+                Publicar de inmediato (visible en el catálogo, aún sin clases)
+              </label>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateCourseModal(false)}
+                  className="px-4 py-2 bg-[#141420] text-slate-400 text-xs font-bold rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingCourse}
+                  className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {creatingCourse ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Crear Programa
                 </button>
               </div>
             </form>

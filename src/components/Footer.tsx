@@ -12,22 +12,20 @@ export const Footer: React.FC<FooterProps> = ({ appName, githubUrl }) => {
   const targetGithubUrl = githubUrl || siteConfig.poweredByLink || 'https://github.com/giantucchi/docentos';
 
   return (
-    <footer className="border-t border-[#262626] bg-[#0a0a0f] py-6 px-4 sm:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-        <div>
+    <footer className="border-t border-line px-4 py-6 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[1800px] flex-col items-center gap-3 text-meta text-ink-muted sm:flex-row sm:justify-between">
+        <span>
           © {currentYear} {displayAppName}. Todos los derechos reservados.
-        </div>
+        </span>
 
-        <div>
-          <a
-            href={targetGithubUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-500 hover:text-gray-300 transition-colors text-xs"
-          >
-            Powered by DocentOS
-          </a>
-        </div>
+        <a
+          href={targetGithubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
+        >
+          Powered by DocentOS
+        </a>
       </div>
     </footer>
   );

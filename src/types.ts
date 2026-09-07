@@ -214,6 +214,8 @@ export interface VideoDriveLink {
   embedUrl: string;
   playbackUrl?: string;
   source?: 'GOOGLE_DRIVE' | 'EXTERNAL_URL' | 'DEMO';
+  /** Quien reproduce, resuelto en el servidor a partir de la URL real. */
+  provider?: 'youtube' | 'drive' | 'embed';
   order: number;
 }
 
@@ -237,6 +239,11 @@ export interface Course {
   isDemo?: boolean;
   category: string;
   coverImage: string;
+  /**
+   * Progresion secuencial: el temario se abre de modulo en modulo, y cada uno
+   * espera a que el anterior este terminado. Apagado, el curso se ve entero.
+   */
+  sequentialUnlock?: boolean;
   modules: Module[];
   resources?: CourseResource[];
   hasAccess?: boolean;
@@ -257,6 +264,15 @@ export interface MentorshipComment {
   likes: number;
   createdAt: string;
   replies?: MentorshipComment[];
+  /**
+   * De donde salio la pregunta. Solo lo rellena la bandeja del mentor, que
+   * recorre todo el catalogo: en el reproductor el contexto es la propia
+   * pantalla y el servidor no lo repite.
+   */
+  videoTitle?: string | null;
+  moduleTitle?: string | null;
+  courseId?: string | null;
+  courseTitle?: string | null;
 }
 
 export interface DriveVideoFile {
@@ -325,6 +341,9 @@ export interface LandingConfig {
   bannerText: string;
   bannerLinkText: string;
   bannerLinkUrl: string;
+  /** Prueba social del hero; si falta cualquiera de las dos, no se pinta. */
+  trustRating: string;
+  trustAudience: string;
   benefits: LandingBenefit[];
   testimonials: LandingTestimonial[];
   footerText: string;

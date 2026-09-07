@@ -120,16 +120,20 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end max-w-sm sm:max-w-md w-full animate-fade-in pointer-events-auto">
+    /* En movil la tarjeta se ancla a los dos lados: con `right-6` y un ancho
+       fijo de 24rem se salia 18px por la izquierda de una pantalla de 390px y
+       los puntos de progreso quedaban fuera. A partir de `sm` vuelve a ser la
+       ficha flotante de la esquina. */
+    <div className="pointer-events-auto fixed inset-x-3 bottom-3 z-50 flex flex-col items-stretch animate-fade-in sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-md sm:items-end">
       
       {/* JARVIS STYLE FLOATING DIALOG CARD */}
-      <div className="bg-[#141420]/95 backdrop-blur-xl border border-[#06b6d4]/40 rounded-2xl p-5 shadow-2xl shadow-[#06b6d4]/20 text-white space-y-4 w-full relative overflow-hidden">
+      <div className="bg-[#141420]/95 backdrop-blur-xl border border-[#06b6d4]/40 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-[#06b6d4]/20 text-white space-y-4 w-full relative max-h-[80dvh] overflow-y-auto overscroll-contain">
         
         {/* Glow Ring & Close Button */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#06b6d4]/20 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-2 border-b border-[#2d2d44] pb-3">
+          <div className="flex min-w-0 items-center gap-2.5">
             {/* Glowing Assistant Avatar */}
             <div className="relative">
               <div className={`w-9 h-9 rounded-full bg-brand-gradient p-0.5 shadow-lg ${isPlayingAudio ? 'ring-2 ring-[#06b6d4] animate-pulse' : ''}`}>
@@ -140,8 +144,8 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#06b6d4] rounded-full border-2 border-[#141420]" />
             </div>
 
-            <div>
-              <div className="flex items-center gap-1.5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <h4 className="font-extrabold text-xs text-white uppercase tracking-wider">{assistantName} AI</h4>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#06b6d4]/10 text-[#06b6d4] border border-[#06b6d4]/30">
                   ONBOARDING
@@ -153,7 +157,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
 
           <button
             onClick={handleCloseTour}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#1a1a2e] transition-all"
+            className="shrink-0 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#1a1a2e] transition-all"
             title={t('tour.skipTour')}
           >
             <X className="w-4 h-4" />
@@ -174,22 +178,22 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
             </div>
 
             {/* Audio Waveform Equalizer */}
-            <div className="bg-[#0a0a0f] p-2.5 rounded-xl border border-[#2d2d44] flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-400">
+            <div className="bg-[#0a0a0f] p-2.5 rounded-xl border border-[#2d2d44] flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex min-w-0 items-center gap-2 text-slate-400">
                 <Volume2 className={`w-4 h-4 ${isPlayingAudio ? 'text-[#06b6d4] animate-bounce' : ''}`} />
                 <span className="text-[11px] font-mono">{isPlayingAudio ? 'Hablando...' : 'Audio Pausado'}</span>
               </div>
               <button
                 onClick={() => playStepVoice(currentStep)}
-                className="text-[10px] font-bold text-[#06b6d4] hover:underline"
+                className="shrink-0 text-[10px] font-bold text-[#06b6d4] hover:underline"
               >
                 Replay Audio
               </button>
             </div>
 
             {/* Tour Navigation Controls */}
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex gap-1">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex shrink-0 gap-1">
                 {[0, 1, 2, 3].map((idx) => (
                   <div
                     key={idx}
@@ -200,16 +204,16 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                 ))}
               </div>
 
-              <div className="flex gap-2">
+              <div className="ml-auto flex gap-2">
                 <button
                   onClick={handleCloseTour}
-                  className="px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:text-white"
+                  className="px-3 py-2 text-[11px] font-bold text-slate-400 hover:text-white"
                 >
                   {t('tour.skipTour')}
                 </button>
                 <button
                   onClick={handleNextStep}
-                  className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1 shadow-md"
+                  className="btn-brand-primary px-4 py-2 text-xs font-bold flex items-center gap-1 shadow-md"
                 >
                   {t('tour.next')} <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -260,7 +264,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                   placeholder={t('tour.feedbackPlaceholder')}
                   value={feedbackComment}
                   onChange={(e) => setFeedbackComment(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-2.5 text-base sm:text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 />
 
                 <button

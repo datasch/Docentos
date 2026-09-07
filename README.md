@@ -126,6 +126,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
+* **Reproductor nativo (propuesta):** [docs/PLAN_REPRODUCTOR_NATIVO.md](docs/PLAN_REPRODUCTOR_NATIVO.md).
 * **Historial de cambios:** [CHANGELOG.md](CHANGELOG.md).
 
 Las Fases 0 a 5 del plan funcional están implementadas, más la importación de

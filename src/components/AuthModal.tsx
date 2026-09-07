@@ -159,9 +159,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       aria-modal="true"
       aria-labelledby="auth-modal-title"
     >
-      <div className="flex min-h-full items-center justify-center p-4 sm:p-6" onMouseDown={onClose}>
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-6" onMouseDown={onClose}>
         <div
-          className="relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl p-6 sm:p-8"
+          className="relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl p-5 pt-12 sm:p-8 sm:pt-8"
           onMouseDown={(event) => event.stopPropagation()}
         >
         
@@ -261,13 +261,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 Nombre Completo
               </label>
               <div className="relative">
-                <UserIcon className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
+                <UserIcon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej. Carlos Mendoza"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                   autoComplete="name"
                   required={mode === 'register'}
                 />
@@ -280,13 +280,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Correo Electrónico
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                 autoComplete="email"
                 required
               />
@@ -298,13 +298,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {recoveryMode === 'reset' ? 'Nueva Contraseña' : 'Contraseña'}
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                 autoComplete={recoveryMode === 'reset' || mode === 'register' ? 'new-password' : 'current-password'}
                 minLength={recoveryMode === 'reset' || mode === 'register' ? 8 : 1}
                 required
@@ -331,13 +331,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 Confirmar Nueva Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                   autoComplete="new-password"
                   minLength={8}
                   required
@@ -378,7 +378,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               Cargar Credenciales de Prueba (Demo RBAC)
             </span>
           </div>
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             {[
               { role: 'ADMIN' as UserRole, label: 'Admin', color: 'hover:border-[#06b6d4] text-[#06b6d4]' },
               { role: 'MENTOR' as UserRole, label: 'Mentor', color: 'hover:border-[#a855f7] text-[#a855f7]' },
@@ -389,7 +389,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 key={btn.role}
                 type="button"
                 onClick={() => handleDemoFill(btn.role)}
-                className={`py-1.5 bg-[#141420] border border-[#262626] rounded-lg text-[10px] font-bold transition-all ${btn.color}`}
+                className={`py-2 sm:py-1.5 bg-[#141420] border border-[#262626] rounded-lg text-[10px] font-bold transition-all ${btn.color}`}
               >
                 {btn.label}
               </button>
