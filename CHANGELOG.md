@@ -14,6 +14,26 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.3 - 2026-09-07
+
+### Fixed
+
+- Una instalación sin cursos ya no se queda encerrada en la pantalla de carga.
+  `App.tsx` tapaba la aplicación mientras no hubiera un curso abierto, y en una
+  instancia recién instalada el catálogo está vacío por definición: no se veía
+  la portada, no había forma de iniciar sesión y el administrador no podía
+  llegar al panel donde se crea el primer curso. Ahora la pantalla de carga
+  cubre solo la carga inicial, el catálogo vacío muestra un aviso con acceso
+  directo al panel, y el panel de administración acepta trabajar sin curso.
+- El contenedor de copias de seguridad hacía copias de nada. El manifiesto le
+  pasaba `BACKUP_RETENTION_DAYS/WEEKS/MONTHS`, `BACKUP_SCHEDULE_CRON` y las
+  claves `S3_*`, pero los scripts leen `BACKUP_RETENTION_DAILY/WEEKLY/MONTHLY`,
+  `BACKUP_INTERVAL_SECONDS` y las variables estándar `AWS_*`. Sin las de
+  retención el script abortaba con código 1 antes de tocar la base de datos y
+  reintentaba en bucle cada cinco minutos; con las de S3 mal nombradas la
+  subida remota se saltaba en silencio. El servicio se declaraba `healthy`
+  igualmente porque su comprobación solo mira que exista `/backups`.
+
 ## 0.5.0-beta.2 - 2026-09-07
 
 ### Changed

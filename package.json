@@ -2,7 +2,7 @@
   "name": "docentos-lms",
   "description": "DocentOS - The AI-Native, Open-Source Learning Engine. Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez).",
   "private": true,
-  "version": "0.5.0-beta.2",
+  "version": "0.5.0-beta.3",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

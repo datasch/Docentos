@@ -22,7 +22,7 @@ services:
       retries: 10
 
   app:
-    image: ${DOCENTOS_IMAGE:-ghcr.io/datasch/docentos:0.5.0-beta.2}
+    image: ${DOCENTOS_IMAGE:-ghcr.io/datasch/docentos:0.5.0-beta.3}
     container_name: docentos_app
     restart: unless-stopped
     ports:
@@ -91,7 +91,7 @@ services:
       start_period: 15s
 
   backup:
-    image: ${DOCENTOS_BACKUP_IMAGE:-ghcr.io/datasch/docentos-backup:0.5.0-beta.2}
+    image: ${DOCENTOS_BACKUP_IMAGE:-ghcr.io/datasch/docentos-backup:0.5.0-beta.3}
     container_name: docentos_backup
     restart: unless-stopped
     environment:

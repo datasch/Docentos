@@ -48,7 +48,7 @@ RUN npm ci --omit=dev --ignore-scripts
 FROM node:22.23.2-alpine3.24 AS runner
 
 ARG GIT_COMMIT_SHA=development
-ARG VERSION=0.5.0-beta.2
+ARG VERSION=0.5.0-beta.3
 
 LABEL org.opencontainers.image.title="DocentOS" \
       org.opencontainers.image.description="The AI-Native, Open-Source Learning Engine" \
