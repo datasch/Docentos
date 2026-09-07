@@ -69,8 +69,8 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
       <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-[#a855f7]/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           
           {/* Animated Mentor Avatar with Audio Reactive Pulse Ring */}
           <div className="relative shrink-0">
@@ -89,8 +89,8 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             </span>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-white">{guide.title}</span>
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-gradient text-white uppercase tracking-wider shadow-sm flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-[#eab308]" /> Guía TTS
@@ -103,10 +103,10 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
         </div>
 
         {/* Right Controls: Play Button & Expand Toggle */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
           <button
             onClick={handlePlayTTS}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all shadow-md ${
+            className={`flex-1 justify-center sm:flex-none px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all shadow-md ${
               isPlaying
                 ? 'bg-[#a855f7] text-white shadow-[#a855f7]/30 ring-2 ring-[#a855f7]/50'
                 : 'btn-brand-primary shadow-[#06b6d4]/20'
@@ -127,7 +127,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
 
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 rounded-xl bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 hover:text-white"
+            className="shrink-0 p-2 rounded-xl bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 hover:text-white"
           >
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -176,8 +176,8 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
           </div>
 
           {/* Gamified Reward Banner */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#1a1a2e] border border-[#2d2d44] text-xs">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[#1a1a2e] border border-[#2d2d44] text-xs">
+            <div className="flex min-w-0 items-center gap-2">
               <Award className="w-4 h-4 text-[#eab308]" />
               <span className="text-slate-300">Recompensa Gamificada de Lección:</span>
               <strong className="text-[#06b6d4]">+{guide.xpReward || 50} XP</strong>
