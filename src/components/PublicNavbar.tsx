@@ -310,10 +310,13 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   {t('nav.login') || 'Iniciar Sesión'}
                 </button>
 
+                {/* En movil no se pinta: ocupaba media barra y competia con el
+                    logo. La hamburguesa de al lado lo lleva, junto a
+                    «Iniciar sesion», a tamano de dedo. */}
                 <button
                   type="button"
                   onClick={() => onOpenAuth('register')}
-                  className="lp-btn-primary lp-btn-sm"
+                  className="lp-btn-primary lp-btn-sm lp-nav-cta-compact"
                 >
                   <span>{t('nav.register') || 'Registrarse'}</span>
                   <ArrowRight aria-hidden className="h-4 w-4" />

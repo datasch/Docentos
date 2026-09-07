@@ -63,6 +63,12 @@
 /* El lienzo de la portada. Solo la portada: la aplicacion trae el suyo. */
 .lp-root {
   position: relative;
+  /* `clip` y no `hidden`: recorta lo que se sale por los lados sin convertir la
+     portada en un contenedor de scroll, asi que la barra pegajosa sigue
+     pegandose. Sin esto, los resplandores que sobresalen de sus secciones
+     —el del hero, el de las tarjetas de cifra, el del banner— ensanchaban el
+     documento en movil y con el el viewport de maquetacion. */
+  overflow-x: clip;
   min-height: 100vh;
   background-color: var(--lp-bg-main);
   color: var(--lp-text-primary);
@@ -90,7 +96,14 @@ html:has(.lp-root) {
   scroll-behavior: smooth;
 }
 
-/* Luz ambiental. Fija, para que el degradado no viaje con el scroll. */
+/* Luz ambiental. Fija, para que el degradado no viaje con el scroll.
+
+   Su ancho se limita al de la ventana a proposito. Son elementos `fixed`, y el
+   `overflow-x: hidden` del body los recorta pero no los descuenta: seguian
+   contando para el ancho desplazable del documento y, en un movil, eso ensancha
+   el viewport de maquetacion. El sintoma no era el degradado —invisible— sino
+   que cualquier `position: fixed` de la aplicacion, empezando por el modal de
+   sesion, se centraba sobre 839px y salia medio fuera de la pantalla. */
 .lp-root::before,
 .lp-root::after {
   content: '';
@@ -102,15 +115,15 @@ html:has(.lp-root) {
 .lp-root::before {
   top: -20%;
   left: 10%;
-  width: 800px;
+  width: min(800px, 90vw);
   height: 600px;
   background: radial-gradient(circle, rgba(139, 92, 246, 0.07) 0%, rgba(7, 7, 11, 0) 70%);
 }
 
 .lp-root::after {
   top: 40%;
-  right: -10%;
-  width: 700px;
+  right: 0;
+  width: min(700px, 90vw);
   height: 700px;
   background: radial-gradient(circle, rgba(34, 211, 238, 0.05) 0%, rgba(7, 7, 11, 0) 70%);
 }
@@ -2122,6 +2135,12 @@ html:has(.lp-root) {
      selector de idioma es lo primero que la desborda. Sigue disponible: el
      cajon movil lo lleva entero, con las cinco banderas. */
   .lp-nav-lang {
+    display: none;
+  }
+  /* El boton de accion tampoco cabe: a 390px «Registrarse» ocupaba mas ancho
+     que el logo y empujaba a la hamburguesa contra el borde. Las dos acciones
+     —entrar y registrarse— viven completas dentro del cajon movil. */
+  .lp-nav-cta-compact {
     display: none;
   }
   .lp-hero {
