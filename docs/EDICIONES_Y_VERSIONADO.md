@@ -28,7 +28,11 @@ vulnerables o incompatibles con sus datos.
 
 - Contiene el núcleo DocentOS.
 - Publica versiones estables y documentación comunitaria.
-- Publica la imagen ghcr.io/giantucchi-org/docentos.
+- Publica la imagen ghcr.io/datasch/docentos y ghcr.io/datasch/docentos-backup.
+  Desde el 7 de septiembre de 2026 la publicación se hace desde
+  `datasch/Docentos`: los paquetes de GHCR heredan la visibilidad del
+  repositorio en su primera publicación, y bajo la organización nacían privados,
+  de modo que ningún despliegue podía descargarlos sin credenciales.
 - No contiene secretos, datos de clientes ni módulos privados.
 
 ### Repositorio privado

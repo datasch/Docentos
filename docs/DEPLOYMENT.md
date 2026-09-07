@@ -296,6 +296,18 @@ docker compose logs --tail=100 backup
 Un backup que solo existe en el mismo servidor no cubre la pérdida del host.
 Configura S3, replica el volumen fuera del servidor o usa snapshots de RDS.
 
+**Comprueba que las copias existen, no que el contenedor esté «healthy».** Su
+healthcheck se limita a verificar que el directorio `/backups` exista, de modo
+que un servicio que falla en cada ejecución sigue declarándose correcto. Ocurrió:
+entre el 3 y el 7 de septiembre de 2026 el manifiesto comunitario entregaba las
+variables con nombres que los guiones no leen —`BACKUP_RETENTION_DAYS` en lugar
+de `BACKUP_RETENTION_DAILY`, una expresión de cron en lugar de un intervalo en
+segundos, y claves `S3_*` en lugar de `AWS_*`—, el guion abortaba antes de tocar
+la base de datos y reintentaba cada cinco minutos sin escribir una sola copia.
+Los nombres de esta tabla son los que los guiones leen de verdad; el manifiesto
+se corrigió en `0.5.0-beta.3`. Verifícalo con `docker compose logs backup` y
+listando el volumen.
+
 ## 6. Restaurar en un servidor limpio
 
 Conserva siempre juntos el archivo `.dump.enc`, su `.sha256` y la misma frase
@@ -363,62 +375,189 @@ vacía: checksum correcto, `7` usuarios, `1` curso, `1` configuración de
 instancia y `3` migraciones aplicadas. La base temporal se eliminó después de
 la prueba; la base original permaneció activa y saludable.
 
-## 8. Publicación multi-arquitectura (pendiente)
+## 8. Publicación de imágenes: registro, arquitectura y firma
 
-**Estado:** sin resolver. `release.yml` no ha llegado a publicar ninguna imagen.
+**Estado:** resuelto el 7 de septiembre de 2026, en la versión `0.5.0-beta.3`.
+Este apartado recoge los tres obstáculos que impidieron publicar imágenes
+durante cuatro días, porque ninguno de ellos es evidente desde el error que
+muestran.
 
-### Qué ocurre
+### 8.1. El registro exige un repositorio público
 
-El paso «Construir y Publicar Imagen Multi-Arquitectura» compila `linux/amd64` y
-`linux/arm64` en el mismo trabajo. El runner de GitHub es Intel, así que la mitad
-ARM se construye emulando ese procesador con QEMU. Este proyecto instala
-dependencias nativas (`python3`, `make`, `g++`) y compila con Vite dentro de esa
-mitad emulada, y el conjunto no termina dentro del límite de 30 minutos.
+Un despliegue que no puede descargar la imagen falla con
+`error from registry: denied`, un mensaje que sugiere credenciales incorrectas.
+La causa era otra: **la visibilidad de un paquete de GHCR se hereda del
+repositorio en su primera publicación**, y el repositorio de origen era privado.
+Los paquetes nacieron privados y ningún despliegue anónimo podía leerlos.
 
-Resultado del intento del 3 de septiembre de 2026 sobre la etiqueta
-`v0.5.0-beta.1` (ejecución `33817925536`): los trece pasos previos en verde y el
-trabajo cancelado a los 30 minutos exactos durante la construcción. **No se
-publicó ninguna imagen, ni se firmó nada, ni se creó el Release.** La etiqueta
-`v0.5.0-beta.1` existe en el repositorio pero no tiene artefactos asociados.
+Cambiar la visibilidad del repositorio *después* no cambia la de los paquetes ya
+publicados; hay que ajustarla en cada paquete o volver a publicar desde un
+repositorio público. Las imágenes se publican hoy desde `datasch/Docentos`, que
+es público, y ambas se descargan sin autenticación.
 
-### Opción recomendada: runners ARM nativos
+Al cambiar de repositorio no hay rutas que corregir: los flujos de trabajo
+componen el nombre con `ghcr.io/${{ github.repository }}`, de forma dinámica.
+Solo hay que actualizar las dos líneas `image:` del manifiesto.
 
-El repositorio es público, y GitHub ofrece runners ARM gratuitos para
-repositorios públicos (`ubuntu-24.04-arm`). En lugar de emular, se construye cada
-arquitectura en su propia máquina y en paralelo, y después se combinan ambas en
-una única imagen mediante una lista de manifiestos. La forma habitual es un
-trabajo con matriz de plataformas que publica por digest, seguido de un trabajo
-de fusión que crea las etiquetas finales.
+### 8.2. La emulación de `arm64` agota el límite de tiempo
 
-Consideraciones al implementarlo:
+El paso de construcción compilaba `linux/amd64` y `linux/arm64` en el mismo
+trabajo. El runner de GitHub es Intel, así que la mitad ARM se construía
+emulando con QEMU. Este proyecto instala dependencias nativas (`python3`,
+`make`, `g++`) y ejecuta `npm ci` **dos veces** —una en la fase de compilación y
+otra en la de dependencias de producción—, además de compilar con Vite. Bajo
+emulación, cada `npm ci` tarda entre cinco y diez veces más.
 
-- La firma con Cosign debe aplicarse sobre el digest de la lista de manifiestos
-  resultante, no sobre el de cada arquitectura por separado.
+Dos intentos lo confirmaron: la ejecución `33817925536` (3 de septiembre) se
+canceló a los 30 minutos exactos sin publicar nada, y la `34145964877`
+(7 de septiembre) llevaba 21 minutos y seguía en la primera imagen.
+
+**Se optó por publicar solo `linux/amd64`**, que es la arquitectura del servidor
+de destino. `platforms: linux/amd64` en ambos pasos de construcción. El tiempo
+del trabajo completo pasó de más de 30 minutos, sin terminar, a **3 minutos y 4
+segundos** (ejecución `34155685748`).
+
+Se pierde con ello la posibilidad de desplegar en servidores ARM (Graviton de
+AWS, Ampere de Oracle) y de ejecutar la imagen en equipos Apple con chip propio.
+Si alguna vez hace falta recuperar `arm64`, la vía correcta **no** es reactivar
+la emulación sino usar runners ARM nativos: el repositorio es público y GitHub
+ofrece `ubuntu-24.04-arm` gratis para repositorios públicos. Se construye cada
+arquitectura en su propia máquina, en paralelo, publicando por digest, y un
+trabajo posterior las fusiona en una lista de manifiestos. Al hacerlo:
+
+- La firma con Cosign debe aplicarse sobre el digest de la **lista de
+  manifiestos**, no sobre el de cada arquitectura por separado.
 - El SBOM y la procedencia se generan por plataforma; conviene comprobar que la
   fusión los conserva.
-- La imagen de respaldos (`ops/backup/Dockerfile`) tiene el mismo problema y debe
-  migrarse igual.
+- La imagen de respaldos (`ops/backup/Dockerfile`) tiene el mismo problema y
+  debe migrarse igual.
 
-### Opción alternativa: publicar solo amd64
+### 8.3. Las referencias de imagen no admiten mayúsculas
 
-Basta con dejar `platforms: linux/amd64` en ambos pasos de construcción. Es lo
-que ya hace la publicación continua de `:edge`, y resuelve el problema en una
-línea. Se pierde la posibilidad de desplegar en servidores ARM (Graviton de AWS,
-Ampere de Oracle) y de ejecutar la imagen en equipos Apple con chip propio.
+Resueltos los dos anteriores, la publicación seguía fallando, ahora en el paso
+de firma: `parsing reference: could not parse reference`.
 
-### Al retomarlo
+`github.repository` conserva las mayúsculas del nombre del repositorio
+—`datasch/Docentos`—, y **el formato de referencias de contenedor solo admite
+minúsculas**. Los pasos que usan `docker/metadata-action` convierten el nombre
+automáticamente y por eso funcionaban; los dos pasos de firma, escritos como
+órdenes de consola, no. Se corrige con la expansión de Bash `${IMAGE,,}`:
 
-El workflow se dispara al recibir una etiqueta, de modo que corregirlo no basta:
-hay que rehacer la etiqueta para que vuelva a ejecutarse.
-
-```bash
-git tag -d v0.5.0-beta.1
-git push origin :refs/tags/v0.5.0-beta.1
-# corregir release.yml, confirmar y subir
-git tag -a v0.5.0-beta.1 -m "DocentOS 0.5.0-beta.1"
-git push origin v0.5.0-beta.1
+```yaml
+- name: Firmar imagen publicada con Cosign
+  env:
+    IMAGE: ghcr.io/${{ github.repository }}
+    DIGEST: ${{ steps.build_and_push.outputs.digest }}
+  run: cosign sign --yes "${IMAGE,,}@${DIGEST}"
 ```
 
-Mientras tanto, la publicación continua sigue funcionando con normalidad: cada
-integración en `main` que supera las comprobaciones publica
-`ghcr.io/giantucchi-org/docentos:edge` para amd64.
+Este fallo se produce **después** de que las imágenes ya estén publicadas, de
+modo que una ejecución en rojo por esta causa sí ha dejado imágenes utilizables,
+pero sin firmar y sin Release asociado.
+
+Queda pendiente la misma corrección en el cuerpo de las notas del Release
+(`release.yml`, las líneas que componen el texto), que sigue imprimiendo el
+nombre con mayúsculas. No afecta al despliegue, pero quien copie de ahí la orden
+`docker pull` obtendrá un error.
+
+### 8.4. Rehacer una etiqueta
+
+El workflow se dispara al recibir una etiqueta, de modo que corregirlo no basta:
+hay que volver a etiquetar para que vuelva a ejecutarse. Si el commit ha
+cambiado —lo habitual, porque la corrección es un commit nuevo—, **publica una
+versión nueva en vez de mover la etiqueta**: `scripts/check-version.mjs` solo
+compara `package.json` con `src/version.ts` y no mira la etiqueta de git, así
+que subir el número es barato y deja un historial honesto.
+
+## 9. Despliegue detrás de un proxy gestionado (Coolify, Traefik)
+
+Este apartado recoge lo aprendido al desplegar sobre Coolify el 7 de septiembre
+de 2026. Aplica en lo esencial a cualquier panel que gestione Traefik por ti.
+
+### 9.1. El manifiesto se pega, el repositorio no se clona
+
+En un servicio de tipo «Docker Compose» se pega el **texto** del manifiesto. El
+panel no clona el repositorio en ningún momento, así que:
+
+- Cambiar de repositorio de GitHub no obliga a tocar nada salvo las líneas
+  `image:`.
+- Cualquier cambio en `docker-compose.community.yml` exige **volver a pegarlo**;
+  no llega solo al actualizar el repositorio.
+
+### 9.2. Las variables declaradas en el manifiesto no se pueden borrar
+
+El panel muestra como variables de entorno todas las que el manifiesto declara,
+y **se niega a eliminarlas** («Cannot delete environment variable … Please
+remove it from the Docker Compose file first»). Es el comportamiento correcto:
+la variable existe porque el manifiesto la nombra. Para dejarla sin efecto se
+**cambia el valor**, no se elimina. Solo desaparecen del panel al retirarlas del
+manifiesto y volver a pegarlo.
+
+### 9.3. El orden de arranque con HTTPS: el huevo y la gallina
+
+`server/config.ts` **aborta el arranque** si `DOCENTOS_ENV=production` y
+`APP_URL` no usa HTTPS, salvo que apunte a `localhost`, `127.0.0.1` o `::1`. El
+síntoma es un contenedor que se reinicia hasta agotar los reintentos, mientras
+la base de datos y los respaldos funcionan con normalidad.
+
+Esto crea una dependencia circular en la primera instalación: no hay certificado
+hasta que el sitio responde, y el sitio no arranca si declara HTTP. La salida es
+arrancar con la dirección local y cambiarla después:
+
+1. `APP_URL=http://localhost:3000` y `ALLOWED_ORIGIN=http://localhost:3000`.
+   La aplicación arranca, y el dominio sigue funcionando: `server/authService.ts`
+   añade siempre el host de cada petición a los orígenes válidos, de modo que el
+   dominio real se acepta aunque no esté declarado.
+2. Esperar a que el proxy obtenga el certificado de Let's Encrypt.
+3. Cambiar ambas a `https://tu-dominio` y reiniciar.
+
+**No lo hagas al revés.** `useSecureCookie()` marca la cookie de sesión como
+`Secure` en cuanto `APP_URL` empieza por `https://`; si el dominio todavía no
+sirve HTTPS, el navegador descarta la cookie y nadie puede iniciar sesión.
+
+### 9.4. El campo «Path» del dominio restringe el enrutado
+
+Si el dominio devuelve el `404 page not found` en texto plano de Traefik —no la
+página de error de la aplicación—, el destino no existe para el proxy. La causa
+más probable es que el dominio tenga un **Path** configurado: Traefik enruta
+entonces solo ese prefijo. DocentOS sirve desde la raíz; el campo debe quedar
+**vacío**.
+
+Distínguelo del `503`, que significa lo contrario: la ruta existe y el contenedor
+de destino no responde.
+
+### 9.5. Cloudflare: «solo DNS» frente a proxy, y `TRUST_PROXY`
+
+El valor de `TRUST_PROXY` depende de cuántos proxies haya **realmente** delante,
+y Cloudflare cuenta solo si el registro está proxificado:
+
+| Configuración del registro | Saltos | `TRUST_PROXY` |
+|---|---:|---|
+| Solo DNS (nube gris) | Traefik | `1` |
+| Proxificado (nube naranja) | Cloudflare + Traefik | `2` |
+
+Para averiguar en cuál estás, sin entrar al panel de Cloudflare:
+
+```bash
+# Si devuelve la IP real del servidor, es «solo DNS».
+dig +short tu-dominio A
+
+# Si no aparece ninguna cabecera cf-ray ni server: cloudflare, no hay proxy.
+curl -sSI https://tu-dominio/ | grep -i "cf-ray\|server"
+
+# Emisor del certificado: Let's Encrypt significa que lo gestiona Traefik.
+echo | openssl s_client -connect tu-dominio:443 -servername tu-dominio 2>/dev/null \
+  | openssl x509 -noout -issuer -dates
+```
+
+Nunca dejes `TRUST_PROXY=true`: confía en cualquier `X-Forwarded-For`, de modo
+que un tercero puede rotar su IP aparente en cada petición y esquivar los
+límites de intentos de inicio de sesión. La aplicación lo advierte en cada
+arranque.
+
+### 9.6. Reiniciar frente a reiniciar descargando
+
+«Restart» reutiliza la imagen que ya está en el servidor; «Restart (pull
+latest)» vuelve a descargarla. Si solo has cambiado configuración, basta el
+primero. Si has subido la versión de la imagen en el manifiesto, hace falta el
+segundo o seguirás ejecutando la anterior.
