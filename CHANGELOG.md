@@ -11,9 +11,21 @@ cuando alcance su primera versión estable.
 
 - Entrega real de correo para recuperación de contraseña.
 - Publicación de la primera versión estable v1.0.0.
-- Reescribir la construcción multi-arquitectura de `release.yml` sobre runners
-  ARM nativos. La emulación con QEMU agota el límite de tiempo del trabajo y
-  ninguna imagen llega a publicarse.
+- Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
+  algún despliegue llega a necesitarla.
+
+## 0.5.0-beta.2 - 2026-09-07
+
+### Changed
+
+- Las imágenes de contenedor se construyen únicamente para `linux/amd64`. La
+  variante `arm64` se emulaba con QEMU, cada `npm ci` del `Dockerfile` tardaba
+  varios minutos y el trabajo agotaba su límite de treinta minutos antes de
+  firmar nada: ninguna imagen llegaba a publicarse. El servidor de despliegue
+  es x86_64, así que la variante emulada no compraba nada con ese gasto.
+- `docker-compose.community.yml` y las instrucciones de descarga del README
+  apuntan a `ghcr.io/datasch/docentos`, que es donde ahora se publican las
+  imágenes.
 
 ## 0.5.0-beta.1 - 2026-09-03
 

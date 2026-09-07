@@ -2,7 +2,7 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 0.5.0-beta.1](https://img.shields.io/badge/Version-0.5.0--beta.1-a855f7.svg)
+![Version: 0.5.0-beta.2](https://img.shields.io/badge/Version-0.5.0--beta.2-a855f7.svg)
 ![Status: Beta](https://img.shields.io/badge/Status-Beta-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
@@ -122,7 +122,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v0.5.0-beta.1.
+* **Versión actual:** v0.5.0-beta.2.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -177,18 +177,18 @@ en lugar de un nombre móvil.
 
 ```bash
 # Última versión publicada
-docker pull ghcr.io/giantucchi-org/docentos:0.5.0-beta.1
+docker pull ghcr.io/datasch/docentos:0.5.0-beta.2
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/giantucchi-org/docentos:0.5.0-beta.1 \
-  --certificate-identity-regexp '^https://github.com/giantucchi-org/docentos/' \
+cosign verify ghcr.io/datasch/docentos:0.5.0-beta.2 \
+  --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/giantucchi-org/docentos:0.5.0-beta.1 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.2 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -208,8 +208,8 @@ DOCENTOS_IMAGE=ghcr.io/giantucchi-org/docentos:0.5.0-beta.1 \
 
 ```bash
 npm run verify                       # versión consistente, tipado y compilación
-git tag -a v0.5.0-beta.1 -m "DocentOS 0.5.0-beta.1"
-git push origin v0.5.0-beta.1
+git tag -a v0.5.0-beta.2 -m "DocentOS 0.5.0-beta.2"
+git push origin v0.5.0-beta.2
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,
