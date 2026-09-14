@@ -1,5 +1,6 @@
 import React from 'react';
 import { Send, ShieldCheck, ThumbsUp } from 'lucide-react';
+import { DEFAULT_AVATAR } from '../../lib/avatar.js';
 import { MentorshipComment, User } from '../../types';
 
 interface MentorshipPanelProps {
@@ -19,7 +20,7 @@ interface MentorshipPanelProps {
   onLike: (commentId: string) => void;
 }
 
-const AVATAR_FALLBACK = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+const AVATAR_FALLBACK = DEFAULT_AVATAR;
 
 /** Consultas de la clase y respuestas del mentor, en la columna lateral. */
 export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({

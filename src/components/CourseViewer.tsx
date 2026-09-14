@@ -84,6 +84,24 @@ const PROVIDER_LABELS: Record<string, string> = {
  * descarga componía el PDF con ese título y el código de verificación ajeno, un
  * diploma que no corresponde a nada.
  */
+/**
+ * Los cursos entre los que se puede saltar desde el selector de la cabecera.
+ *
+ * Solo los que esa persona puede abrir. Ofrecer el catalogo entero hacia que
+ * elegir un curso ajeno llevara a una pantalla bloqueada: el desplegable
+ * prometia una navegacion que no existia.
+ *
+ * El curso abierto se mantiene siempre, aunque no se tenga acceso: se llega a
+ * el desde la portada para verlo por fuera, y quitarlo de su propio selector
+ * dejaria la cabecera sin nombre.
+ */
+export function switchableCourses<T extends { id: string; hasAccess?: boolean }>(
+  courses: T[],
+  currentCourseId: string,
+): T[] {
+  return courses.filter((course) => course.hasAccess === true || course.id === currentCourseId);
+}
+
 export function certificateForCourse(
   certificate: CertificateRecord | null | undefined,
   courseId: string,
@@ -183,6 +201,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     () => moduleLockStates(course, completedVideos, isQuizGateOpen),
     [course, completedVideos, currentUser.id, quizPassKey],
   );
+
+  /** Los cursos entre los que ofrece saltar la cabecera: solo los suyos. */
+  const switchable = useMemo(() => switchableCourses(courses, course.id), [courses, course.id]);
 
   const openLesson = (moduleIndex: number, videoIndex: number) => {
     setPickedByUser(true);
@@ -431,17 +452,17 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           )}
           <span aria-hidden className="text-ink-faint">/</span>
 
-          {courses.length > 1 && onSelectCourse ? (
+          {switchable.length > 1 && onSelectCourse ? (
             <select
               value={course.id}
               onChange={(event) => {
-                const selected = courses.find((item) => item.id === event.target.value);
+                const selected = switchable.find((item) => item.id === event.target.value);
                 if (selected) onSelectCourse(selected);
               }}
               aria-label="Cambiar de curso"
               className="min-w-0 max-w-[24rem] truncate rounded-lg bg-transparent px-1.5 py-1.5 text-meta font-medium text-ink hover:bg-raised focus:outline-none"
             >
-              {courses.map((item) => (
+              {switchable.map((item) => (
                 <option key={item.id} value={item.id} className="bg-surface text-ink">
                   {item.title}
                 </option>

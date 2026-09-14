@@ -1,7 +1,11 @@
 /**
  * LandingPageEditor.tsx - Editor CMS de Portada de DocentOS
  * Permite al Administrador personalizar completamente la Landing Page pública:
- * - Hero, Cursos Destacados, Beneficios, Testimonios, Banner de Anuncios y Footer.
+ * - Hero, Cursos Destacados, Beneficios, Banner de Anuncios y Footer.
+ *
+ * Los testimonios son la excepcion: ya no se escriben aqui. Los redactan las
+ * personas que usan la plataforma desde la propia portada y esta pestaña es su
+ * cola de moderacion; lo unico que se decide es si se publican o no.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -27,9 +31,12 @@ import {
   RefreshCw,
   Image as ImageIcon,
   ArrowRight,
+  Clock,
+  X,
 } from 'lucide-react';
+import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
-import { LandingConfig, LandingBenefit, LandingTestimonial, Course } from '../types';
+import { LandingConfig, LandingBenefit, ModeratedTestimonial, TestimonialStatus, Course } from '../types';
 
 interface LandingPageEditorProps {
   onSaved?: () => void;
@@ -37,6 +44,12 @@ interface LandingPageEditorProps {
 
 export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved }) => {
   const [activeTab, setActiveTab] = useState<'hero' | 'courses' | 'benefits' | 'testimonials' | 'footer'>('hero');
+
+  // Cola de moderacion de testimonios. Vive fuera de `config` a proposito: no
+  // se guarda con el boton de la portada, cada decision se aplica al momento.
+  const [testimonials, setTestimonials] = useState<ModeratedTestimonial[]>([]);
+  const [testimonialFilter, setTestimonialFilter] = useState<TestimonialStatus | 'ALL'>('PENDING');
+  const [loadingTestimonials, setLoadingTestimonials] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -152,26 +165,51 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
     setConfig({ ...config, benefits: config.benefits.filter((b) => b.id !== id) });
   };
 
-  // Testimonials Handlers
-  const addTestimonial = () => {
-    const newT: LandingTestimonial = {
-      id: `t-${Date.now()}`,
-      name: 'Estudiante / Graduado',
-      role: 'Desarrollador Software',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      comment: 'DocentOS transformó mi proceso de aprendizaje con clases interactiva y mentoría técnica.',
-      rating: 5,
-    };
-    setConfig({ ...config, testimonials: [...config.testimonials, newT] });
+  // Moderacion de testimonios
+  const loadTestimonials = async (filter: TestimonialStatus | 'ALL') => {
+    setLoadingTestimonials(true);
+    try {
+      const res = await api.getTestimonialsForModeration(filter === 'ALL' ? undefined : filter);
+      setTestimonials(res.testimonials || []);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'No se pudieron cargar los testimonios');
+    } finally {
+      setLoadingTestimonials(false);
+    }
   };
 
-  const updateTestimonial = (id: string, field: keyof LandingTestimonial, val: any) => {
-    const updated = config.testimonials.map((t) => (t.id === id ? { ...t, [field]: val } : t));
-    setConfig({ ...config, testimonials: updated });
+  // Solo se pide la lista al abrir la pestaña: el resto del editor no la usa.
+  useEffect(() => {
+    if (activeTab === 'testimonials') {
+      loadTestimonials(testimonialFilter);
+    }
+  }, [activeTab, testimonialFilter]);
+
+  /** Aprobar o rechazar. Se recarga para que la ficha salga del filtro actual. */
+  const moderateTestimonial = async (id: string, status: TestimonialStatus) => {
+    try {
+      await api.moderateTestimonial(id, status);
+      setSuccessMsg(status === 'APPROVED' ? 'Testimonio publicado' : 'Testimonio retirado de la portada');
+      setTimeout(() => setSuccessMsg(''), 2500);
+      await loadTestimonials(testimonialFilter);
+      onSaved?.();
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'No se pudo moderar el testimonio');
+    }
   };
 
-  const deleteTestimonial = (id: string) => {
-    setConfig({ ...config, testimonials: config.testimonials.filter((t) => t.id !== id) });
+  /** Borrar de verdad. Rechazar basta para que no se vea; esto no se deshace. */
+  const removeTestimonial = async (id: string) => {
+    if (!window.confirm('Se borrará la opinión de esta persona y no se puede deshacer. ¿Continuar?')) {
+      return;
+    }
+    try {
+      await api.deleteTestimonial(id);
+      await loadTestimonials(testimonialFilter);
+      onSaved?.();
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'No se pudo eliminar el testimonio');
+    }
   };
 
   if (loading) {
@@ -203,7 +241,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
             Personalización de Landing Page
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Edita títulos, hero visual, cursos destacados, testimonios y secciones públicas del LMS.
+            Edita títulos, hero visual, cursos destacados y secciones públicas del LMS, y modera los testimonios.
           </p>
         </div>
 
@@ -334,7 +372,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
             activeTab === 'testimonials' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Star className="w-4 h-4 text-[#eab308]" /> Testimonios ({config.testimonials.length})
+          <Star className="w-4 h-4 text-[#eab308]" /> Testimonios
         </button>
 
         <button
@@ -683,119 +721,131 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
         </div>
       )}
 
-      {/* TAB 4: TESTIMONIALS EDITOR */}
+      {/* TAB 4: MODERACION DE TESTIMONIOS */}
       {activeTab === 'testimonials' && (
         <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-          <div className="flex justify-between items-center border-b border-[#2d2d44] pb-4">
-            <div>
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <Star className="w-5 h-5 text-[#eab308]" />
-                Sección de Testimonios & Reseñas
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Agrega y gestiona reseñas de graduados, estudiantes VIP y mentores.
-              </p>
-            </div>
-
-            <button
-              onClick={addTestimonial}
-              className="px-3.5 py-2 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md"
-            >
-              <Plus className="w-4 h-4" /> Agregar Testimonio
-            </button>
+          <div className="border-b border-[#2d2d44] pb-4">
+            <h3 className="font-bold text-base text-white flex items-center gap-2">
+              <Star className="w-5 h-5 text-[#eab308]" />
+              Testimonios de la portada
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Los escriben las personas usuarias desde la portada. Aquí solo decides cuáles se
+              publican: el texto es suyo y no se edita.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {config.testimonials.map((t) => (
-              <div key={t.id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3 relative">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={t.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                      alt={t.name}
-                      className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
-                    />
-                    <span className="text-xs font-bold text-white">{t.name}</span>
-                  </div>
-
-                  <button
-                    onClick={() => deleteTestimonial(t.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
-                    title="Eliminar testimonio"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nombre</label>
-                    <input
-                      type="text"
-                      value={t.name}
-                      onChange={(e) => updateTestimonial(t.id, 'name', e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg p-2 text-xs text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo / Rol</label>
-                    <input
-                      type="text"
-                      value={t.role}
-                      onChange={(e) => updateTestimonial(t.id, 'role', e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg p-2 text-xs text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">URL Avatar / Foto</label>
-                  <input
-                    type="url"
-                    value={t.avatarUrl}
-                    onChange={(e) => updateTestimonial(t.id, 'avatarUrl', e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg p-2 text-xs text-white font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Comentario / Opinión</label>
-                  <textarea
-                    rows={2}
-                    value={t.comment}
-                    onChange={(e) => updateTestimonial(t.id, 'comment', e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg p-2 text-xs text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    Calificación (Estrellas: {t.rating})
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    step="1"
-                    value={t.rating}
-                    onChange={(e) => updateTestimonial(t.id, 'rating', parseInt(e.target.value))}
-                    className="w-full accent-[#eab308] cursor-pointer"
-                  />
-                </div>
-              </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {([
+              { key: 'PENDING', label: 'Pendientes' },
+              { key: 'APPROVED', label: 'Publicados' },
+              { key: 'REJECTED', label: 'Rechazados' },
+              { key: 'ALL', label: 'Todos' },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setTestimonialFilter(tab.key)}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  testimonialFilter === tab.key ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
             ))}
-          </div>
 
-          <div className="flex justify-end pt-4 border-t border-[#2d2d44]">
             <button
-              onClick={() => handleSave()}
-              disabled={saving}
-              className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
+              onClick={() => loadTestimonials(testimonialFilter)}
+              className="ml-auto p-2 text-slate-400 hover:text-white rounded-lg hover:bg-[#1a1a2e]"
+              title="Actualizar lista"
             >
-              <Save className="w-4 h-4" /> Guardar Testimonios
+              <RefreshCw className={`w-4 h-4 ${loadingTestimonials ? 'animate-spin' : ''}`} />
             </button>
           </div>
+
+          {testimonials.length === 0 ? (
+            <p className="text-center text-xs text-slate-500 py-10">
+              {loadingTestimonials
+                ? 'Cargando…'
+                : testimonialFilter === 'PENDING'
+                  ? 'No hay opiniones esperando revisión.'
+                  : 'No hay testimonios en este estado.'}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {testimonials.map((t) => (
+                <div key={t.id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <img
+                        src={avatarSrc(t.avatarUrl)}
+                        alt=""
+                        className="w-9 h-9 rounded-full object-cover ring-1 ring-[#2d2d44] flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white truncate">{t.name}</p>
+                        <p className="text-[10px] font-semibold text-[#06b6d4]">{t.role}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[#eab308] flex-shrink-0">
+                      {Array.from({ length: t.rating }).map((_, i) => (
+                        <Star key={i} className="w-3.5 h-3.5" fill="currentColor" />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-300 leading-relaxed italic">“{t.comment}”</p>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#2d2d44]">
+                    <span
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${
+                        t.status === 'APPROVED'
+                          ? 'text-emerald-400'
+                          : t.status === 'REJECTED'
+                            ? 'text-red-400'
+                            : 'text-amber-400'
+                      }`}
+                    >
+                      {t.status === 'APPROVED' ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : t.status === 'REJECTED' ? (
+                        <X className="w-3.5 h-3.5" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5" />
+                      )}
+                      {t.status === 'APPROVED' ? 'Publicado' : t.status === 'REJECTED' ? 'Rechazado' : 'Pendiente'}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      {t.status !== 'APPROVED' && (
+                        <button
+                          onClick={() => moderateTestimonial(t.id, 'APPROVED')}
+                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 font-bold rounded-lg text-[11px]"
+                        >
+                          Publicar
+                        </button>
+                      )}
+                      {t.status !== 'REJECTED' && (
+                        <button
+                          onClick={() => moderateTestimonial(t.id, 'REJECTED')}
+                          className="px-3 py-1.5 bg-[#141420] hover:bg-[#0a0a0f] text-slate-300 font-bold rounded-lg text-[11px]"
+                        >
+                          {t.status === 'APPROVED' ? 'Retirar' : 'Rechazar'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => removeTestimonial(t.id)}
+                        className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
+                        title="Eliminar definitivamente"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

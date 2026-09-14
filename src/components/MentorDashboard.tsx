@@ -22,9 +22,13 @@ import {
   Loader2,
   RefreshCw,
   Inbox,
+  GraduationCap,
+  Search,
+  X,
 } from 'lucide-react';
+import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
-import { Course, User, MenteeStudent, MentorshipComment } from '../types';
+import { Course, User, MenteeStudent, MenteeCandidate, MentorshipComment } from '../types';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -56,6 +60,23 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   onRefreshCourses,
 }) => {
   const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna'>('courses');
+
+  /**
+   * Reparto de cursos. El mismo selector sirve en los dos sentidos: desde un
+   * curso se marcan mentees, y desde un mentee se marcan cursos. Lo que cambia
+   * es `rosterMode`; la lista marcada siempre es `rosterSelection`.
+   */
+  const [rosterMode, setRosterMode] = useState<'course' | 'mentee' | null>(null);
+  const [rosterCourse, setRosterCourse] = useState<Course | null>(null);
+  const [rosterMentee, setRosterMentee] = useState<MenteeStudent | null>(null);
+  const [rosterSelection, setRosterSelection] = useState<string[]>([]);
+  const [rosterQuery, setRosterQuery] = useState<string>('');
+  const [candidates, setCandidates] = useState<MenteeCandidate[]>([]);
+  const [savingRoster, setSavingRoster] = useState<boolean>(false);
+  const [rosterError, setRosterError] = useState<string>('');
+
+  /** Curso al que entra un mentee recién dado de alta. */
+  const [newMenteeCourseId, setNewMenteeCourseId] = useState<string>('');
 
   // Mentees State
   const [mentees, setMentees] = useState<MenteeStudent[]>([]);
@@ -133,6 +154,89 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     }
   };
 
+  /** Quién está ya en un curso, para marcar las casillas al abrir. */
+  const menteesOfCourse = (courseId: string) =>
+    mentees.filter((m) => m.courses.some((c) => c.courseId === courseId)).map((m) => m.id);
+
+  const openCourseRoster = async (course: Course) => {
+    setRosterMode('course');
+    setRosterCourse(course);
+    setRosterMentee(null);
+    setRosterSelection(menteesOfCourse(course.id));
+    setRosterQuery('');
+    setRosterError('');
+    try {
+      const res = await api.getMenteeCandidates();
+      setCandidates(res.candidates || []);
+    } catch (error: any) {
+      setRosterError(error?.message || 'No se pudo cargar la lista de mentees.');
+    }
+  };
+
+  const openMenteeRoster = (mentee: MenteeStudent) => {
+    setRosterMode('mentee');
+    setRosterMentee(mentee);
+    setRosterCourse(null);
+    setRosterSelection(mentee.courses.map((c) => c.courseId));
+    setRosterQuery('');
+    setRosterError('');
+  };
+
+  const closeRoster = () => {
+    setRosterMode(null);
+    setRosterCourse(null);
+    setRosterMentee(null);
+    setRosterSelection([]);
+    setRosterError('');
+  };
+
+  const toggleRosterItem = (id: string) => {
+    setRosterSelection((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  /**
+   * Guarda el reparto. Se manda la lista completa, no un «añade este»: el
+   * servidor deja el curso (o el mentee) exactamente con lo marcado, así que
+   * desmarcar retira la asignación en el mismo paso.
+   */
+  const handleSaveRoster = async () => {
+    setSavingRoster(true);
+    setRosterError('');
+    try {
+      const res =
+        rosterMode === 'course' && rosterCourse
+          ? await api.setCourseMentees(rosterCourse.id, rosterSelection)
+          : rosterMentee
+            ? await api.setMenteeCourses(rosterMentee.id, rosterSelection)
+            : null;
+      if (!res) return;
+      setMentees(res.mentees);
+      const partes = [];
+      // «asignación» pierde la tilde en plural: asignaciones, no asignaciónes.
+      if (res.added > 0) {
+        partes.push(res.added === 1 ? '1 asignación nueva' : `${res.added} asignaciones nuevas`);
+      }
+      if (res.removed > 0) {
+        partes.push(res.removed === 1 ? '1 retirada' : `${res.removed} retiradas`);
+      }
+      let aviso = partes.length > 0 ? partes.join(' y ') + '.' : 'No había cambios que guardar.';
+      // El servidor descarta lo que no cumple la regla; decirlo evita que
+      // alguien crea que asignó a una persona que en realidad quedó fuera.
+      if (res.ignored > 0) aviso += ` ${res.ignored} no se pudo aplicar.`;
+      // Retirar la mentoría no quita una matrícula pagada ni una dada de alta a
+      // mano: si alguien sigue entrando al curso por esa vía, se dice.
+      if (res.stillHaveAccess.length > 0) {
+        aviso += ` Ojo: ${res.stillHaveAccess.join(', ')} conserva el acceso por matrícula o pago.`;
+      }
+      announce(aviso);
+      closeRoster();
+    } catch (error: any) {
+      setRosterError(error?.message || 'No se pudo guardar el reparto.');
+    } finally {
+      setSavingRoster(false);
+    }
+  };
+
   const handleAssignMenteeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMenteeName.trim() || !newMenteeEmail.trim()) return;
@@ -140,7 +244,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     setAssigningMentee(true);
     setAssignError('');
     try {
-      await api.assignMentee(newMenteeName.trim(), newMenteeEmail.trim(), currentUser.id);
+      await api.assignMentee(newMenteeName.trim(), newMenteeEmail.trim(), currentUser.id, newMenteeCourseId || undefined);
       setNewMenteeName('');
       setNewMenteeEmail('');
       setShowAssignMenteeModal(false);
@@ -387,6 +491,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     <span>{course.modules?.length || 0} Módulos</span>
                     <span>${course.price} USD</span>
                   </div>
+
+                  {/* Reparto de plazas: se elige el curso y se marcan las
+                      personas, que es como se piensa al planificar un grupo. */}
+                  <button
+                    onClick={() => openCourseRoster(course)}
+                    className="w-full py-2 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Users className="w-3.5 h-3.5 text-[#06b6d4]" />
+                    Mentees asignados ({menteesOfCourse(course.id).length})
+                  </button>
                 </div>
               ))}
             </div>
@@ -428,7 +542,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#141420]/50 transition-colors">
                 <div className="flex items-center gap-3">
                   <img
-                    src={m.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                    src={avatarSrc(m.avatarUrl)}
                     alt={m.name}
                     className="w-10 h-10 rounded-xl object-cover border border-[#262626]"
                   />
@@ -458,6 +572,35 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <div className="text-[9px] text-slate-500 font-mono text-right">
                     {m.completedVideosCount} de {m.totalVideosCount} lecciones • Activo {m.lastActiveDate}
                   </div>
+                </div>
+
+                {/* Sus cursos, con nombre. Antes esta persona salía repetida
+                    una vez por curso y ninguna fila decía de cuál hablaba. */}
+                <div className="w-full sm:w-auto sm:max-w-xs space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.courses.length === 0 ? (
+                      <span className="text-[10px] text-slate-500 italic">Sin cursos asignados</span>
+                    ) : (
+                      m.courses.map((c) => (
+                        <span
+                          key={c.assignmentId}
+                          title={`${c.courseProgress}% · ${c.completedVideosCount} de ${c.totalVideosCount} lecciones`}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#a855f7] bg-[#a855f7]/10 border border-[#a855f7]/30 px-2 py-0.5 rounded-lg max-w-[180px]"
+                        >
+                          <GraduationCap className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{c.courseTitle}</span>
+                          <span className="font-mono text-slate-400">{c.courseProgress}%</span>
+                        </span>
+                      ))
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => openMenteeRoster(m)}
+                    className="w-full sm:w-auto px-3 py-1.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
+                  >
+                    Editar cursos
+                  </button>
                 </div>
               </div>
             ))}
@@ -536,7 +679,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <img
-                        src={comment.userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                        src={avatarSrc(comment.userAvatar)}
                         alt={comment.userName}
                         className="w-7 h-7 rounded-full object-cover shrink-0"
                       />
@@ -611,6 +754,146 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       )}
 
       {/* Assign Mentee Modal */}
+      {/* Selector de reparto. En modo «curso» se marcan mentees; en modo
+          «mentee», cursos. Lo marcado es el estado final: lo que se desmarca
+          se retira al guardar. */}
+      {rosterMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-[#262626] flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="font-extrabold text-base text-white">
+                  {rosterMode === 'course' ? 'Asignar mentees al curso' : 'Cursos de este mentee'}
+                </h3>
+                <p className="text-xs text-slate-400 truncate">
+                  {rosterMode === 'course' ? rosterCourse?.title : rosterMentee?.name}
+                </p>
+              </div>
+              <button
+                onClick={closeRoster}
+                className="p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-[#141420] shrink-0"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {rosterError && (
+              <div className="mx-5 mt-4 p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> <span>{rosterError}</span>
+              </div>
+            )}
+
+            <div className="p-5 pb-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="search"
+                  value={rosterQuery}
+                  onChange={(e) => setRosterQuery(e.target.value)}
+                  placeholder={rosterMode === 'course' ? 'Buscar mentee por nombre o correo…' : 'Buscar curso…'}
+                  className="w-full py-2 pl-9 pr-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 space-y-1.5">
+              {rosterMode === 'course'
+                ? (() => {
+                    const filtrados = candidates.filter((c) => {
+                      const q = rosterQuery.trim().toLowerCase();
+                      return !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+                    });
+                    if (filtrados.length === 0) {
+                      return (
+                        <p className="py-8 text-center text-xs text-slate-500">
+                          {candidates.length === 0
+                            ? 'No hay cuentas mentee todavía. Da de alta a alguien con «Asignar Mentee».'
+                            : 'Ningún mentee coincide con la búsqueda.'}
+                        </p>
+                      );
+                    }
+                    return filtrados.map((c) => (
+                      <label
+                        key={c.id}
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#141420] cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={rosterSelection.includes(c.id)}
+                          onChange={() => toggleRosterItem(c.id)}
+                          className="w-4 h-4 accent-[#06b6d4] cursor-pointer"
+                        />
+                        <img
+                          src={avatarSrc(c.avatarUrl)}
+                          alt=""
+                          className="w-8 h-8 rounded-lg object-cover border border-[#262626]"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{c.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{c.email}</p>
+                        </div>
+                      </label>
+                    ));
+                  })()
+                : (() => {
+                    const filtrados = courses.filter((course) => {
+                      const q = rosterQuery.trim().toLowerCase();
+                      return !q || course.title.toLowerCase().includes(q);
+                    });
+                    if (filtrados.length === 0) {
+                      return <p className="py-8 text-center text-xs text-slate-500">Ningún curso coincide.</p>;
+                    }
+                    return filtrados.map((course) => (
+                      <label
+                        key={course.id}
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#141420] cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={rosterSelection.includes(course.id)}
+                          onChange={() => toggleRosterItem(course.id)}
+                          className="w-4 h-4 accent-[#a855f7] cursor-pointer"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{course.title}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {course.category} · {course.modules?.length || 0} módulos
+                          </p>
+                        </div>
+                        {!course.published && (
+                          <span className="text-[9px] font-bold text-amber-400 shrink-0">Borrador</span>
+                        )}
+                      </label>
+                    ));
+                  })()}
+            </div>
+
+            <div className="p-5 border-t border-[#262626] flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-400">
+                {rosterSelection.length} seleccionado{rosterSelection.length === 1 ? '' : 's'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={closeRoster}
+                  className="px-4 py-2 bg-[#141420] text-slate-400 text-xs font-bold rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveRoster}
+                  disabled={savingRoster}
+                  className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {savingRoster && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Guardar cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAssignMenteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 w-full max-w-md space-y-4">
@@ -646,6 +929,24 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   required
                 />
+              </div>
+
+              {/* Antes entraban siempre al primer curso publicado, fuera el
+                  que fuera. Ahora se elige, y se pueden añadir más después. */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Curso inicial</label>
+                <select
+                  value={newMenteeCourseId}
+                  onChange={(e) => setNewMenteeCourseId(e.target.value)}
+                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                >
+                  <option value="">Primer curso publicado</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">

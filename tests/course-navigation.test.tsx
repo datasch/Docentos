@@ -19,8 +19,13 @@ import {
   moduleLockStates,
   stepLesson,
 } from '../src/lib/courseNavigation.js';
-import { resolveLandingCta } from '../src/components/LandingPage.js';
-import { certificateForCourse } from '../src/components/CourseViewer.js';
+import {
+  resolveLandingCta,
+  shouldShowTestimonials,
+  visibleCourses,
+} from '../src/components/LandingPage.js';
+import { DEFAULT_AVATAR, avatarSrc } from '../src/lib/avatar.js';
+import { certificateForCourse, switchableCourses } from '../src/components/CourseViewer.js';
 import type { CertificateRecord, Course } from '../src/types.js';
 
 /** Curso de tres módulos: 2 + 1 + 2 lecciones. */
@@ -174,10 +179,11 @@ test('Portada: los botones del encabezado llevan a algún sitio', async (t) => {
       'La configuración guardada apuntaba a #courses, que no existe en la portada',
     );
     assert.equal(resolveLandingCta('/courses', '#cursos'), '#cursos');
-    // Planes y testimonios estan ocultos en la portada: sus anclas caen al catalogo.
+    // Los planes estan ocultos en la portada: sus anclas caen al catalogo.
     assert.equal(resolveLandingCta('#vip', '#planes'), '#cursos');
     assert.equal(resolveLandingCta('/vip', '#planes'), '#cursos');
-    assert.equal(resolveLandingCta('#testimonios', '#cursos'), '#cursos');
+    // Los testimonios volvieron: su ancla lleva otra vez a su seccion.
+    assert.equal(resolveLandingCta('#testimonios', '#cursos'), '#testimonios');
   });
 
   await t.test('2. Un ancla propia de la portada se respeta', () => {
@@ -239,5 +245,108 @@ test('Curso: la progresión secuencial cierra los módulos que aún no tocan', a
   await t.test('8. Un curso vacío no produce candados, y un índice fuera de rango se da por abierto', () => {
     assert.deepEqual(moduleLockStates(null, {}), []);
     assert.equal(isModuleOpen([], 3), true);
+  });
+});
+
+test('Portada: la sección de testimonios se pinta solo cuando hay algo que enseñar', async (t) => {
+  await t.test('1. Con opiniones publicadas se ve, haya sesión o no', () => {
+    assert.equal(shouldShowTestimonials(3, false), true);
+    assert.equal(shouldShowTestimonials(3, true), true);
+  });
+
+  await t.test('2. Sin ninguna publicada, quien tiene sesión la ve para poder escribir la primera', () => {
+    assert.equal(shouldShowTestimonials(0, true), true);
+  });
+
+  await t.test('3. A un visitante de una instalación recién montada no se le enseña el hueco vacío', () => {
+    assert.equal(
+      shouldShowTestimonials(0, false),
+      false,
+      'Un titular sin testimonios debajo hace que la portada parezca rota',
+    );
+  });
+});
+
+test('Portada: con sesión se ven los cursos propios, no el escaparate', async (t) => {
+  const catalogo = [
+    { id: 'c1', hasAccess: true },
+    { id: 'c2', hasAccess: false },
+    { id: 'c3' },
+  ];
+
+  await t.test('1. Sin sesión se enseña el catálogo entero: es lo que invita a registrarse', () => {
+    assert.equal(visibleCourses(catalogo, false).length, 3);
+  });
+
+  await t.test('2. Con sesión solo quedan los cursos con acceso', () => {
+    assert.deepEqual(
+      visibleCourses(catalogo, true).map((c) => c.id),
+      ['c1'],
+      'Entrar y seguir viendo cursos ajenos con candado convierte la portada en un anuncio',
+    );
+  });
+
+  await t.test('3. Un curso sin el dato de acceso no se cuela', () => {
+    assert.equal(visibleCourses([{ id: 'c3' } as (typeof catalogo)[number]], true).length, 0);
+  });
+
+  await t.test('4. Quien no tiene ningún curso ve la lista vacía, no el catálogo', () => {
+    assert.deepEqual(visibleCourses([{ id: 'c2', hasAccess: false }] as typeof catalogo, true), []);
+  });
+});
+
+test('Perfil: quien no sube foto sale con el logo de la escuela', async (t) => {
+  await t.test('1. Sin foto se usa el logo', () => {
+    assert.equal(avatarSrc(undefined), DEFAULT_AVATAR);
+    assert.equal(avatarSrc(null), DEFAULT_AVATAR);
+    assert.equal(avatarSrc('   '), DEFAULT_AVATAR);
+  });
+
+  await t.test('2. Los retratos de archivo que quedaron en la base también', () => {
+    // Las instalaciones anteriores sembraron caras de banco de imágenes: hacían
+    // pensar que detrás de esa ficha había una persona concreta.
+    assert.equal(
+      avatarSrc('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'),
+      DEFAULT_AVATAR,
+    );
+    assert.equal(
+      avatarSrc('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'),
+      DEFAULT_AVATAR,
+    );
+  });
+
+  await t.test('3. Una foto de verdad no se toca', () => {
+    const propia = 'https://cdn.giantucchi.com/avatars/ricky.jpg';
+    assert.equal(avatarSrc(propia), propia);
+  });
+});
+
+test('Curso: el selector de la cabecera solo ofrece los cursos propios', async (t) => {
+  const catalogo = [
+    { id: 'abierto', hasAccess: true },
+    { id: 'ajeno', hasAccess: false },
+    { id: 'otro-mio', hasAccess: true },
+  ];
+
+  await t.test('1. Un curso sin acceso no se ofrece', () => {
+    assert.deepEqual(
+      switchableCourses(catalogo, 'abierto').map((c) => c.id),
+      ['abierto', 'otro-mio'],
+      'Elegirlo llevaba a una pantalla bloqueada: el desplegable prometía una navegación que no existía',
+    );
+  });
+
+  await t.test('2. El curso abierto se mantiene aunque no se tenga acceso', () => {
+    // Se llega a él desde la portada para verlo por fuera; quitarlo de su propio
+    // selector dejaría la cabecera sin nombre.
+    assert.deepEqual(
+      switchableCourses(catalogo, 'ajeno').map((c) => c.id),
+      ['abierto', 'ajeno', 'otro-mio'],
+    );
+  });
+
+  await t.test('3. Con un solo curso propio no hay nada entre lo que saltar', () => {
+    const solo = switchableCourses([{ id: 'mio', hasAccess: true }, { id: 'ajeno' }], 'mio');
+    assert.equal(solo.length, 1, 'Con una sola opción la cabecera pinta el título, no un desplegable');
   });
 });

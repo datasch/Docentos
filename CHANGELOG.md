@@ -14,6 +14,71 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.5 - 2026-09-14
+
+### Added
+
+- Los testimonios de la portada los escriben ahora las personas que usan la
+  plataforma, con su valoración de una a cinco estrellas. Hasta aquí eran un
+  JSON que se redactaba a mano en el editor de portada: texto inventado sin
+  nadie detrás. Nada se publica solo —la portada es pública y cualquiera con
+  cuenta puede escribir—, así que toda opinión nace pendiente y se aprueba en
+  Administración → Portada → Testimonios. El texto no se puede editar desde ahí:
+  si administración pudiera reescribirlo volverían a ser inventados con otro
+  nombre encima. El nombre, el cargo y la foto se leen de la ficha de cada
+  persona en cada carga, de modo que un cambio de foto se refleja solo.
+- Reparto de cursos entre mentees desde el panel de mentoría, en los dos
+  sentidos: desde un curso se marcan las personas, y desde la ficha de una
+  persona se marcan sus cursos. Un mentee puede llevar uno o varios. El alta de
+  un mentee nuevo permite además elegir a qué curso entra.
+- Las cuentas sin foto de perfil salen con el logo de la escuela
+  (`public/logo.avif`) en lugar de un retrato de banco de imágenes, que hacía
+  pensar que detrás de esa ficha había una persona concreta.
+
+### Fixed
+
+- Retirar a un mentee de un curso dejaba de contar como mentoría pero la persona
+  seguía entrando: además de la asignación había una matrícula
+  (`CourseEnrollment`) que también concede acceso y se quedaba viva. Ahora se
+  anula junto con la asignación, pero solo si su origen es `MENTORSHIP`, que es
+  la misma concesión con otro nombre; una matrícula pagada o dada de alta a mano
+  no se toca, y si alguien conserva el acceso por esa vía el panel lo dice.
+- «Mentees Asignados» contaba asignaciones en vez de personas: quien llevaba
+  tres cursos aparecía tres veces y ninguna fila decía de qué curso hablaba. El
+  porcentaje global pasa a calcularse sobre el total de lecciones de todos sus
+  cursos; promediando porcentajes, terminar un curso de tres clases pesaba lo
+  mismo que uno de ciento treinta.
+- Repartir cursos como administración dejaba de mentor a quien pulsaba el botón,
+  robándole los mentees a su mentor. Ahora se respeta el mentor que ya lleva a
+  esa persona.
+- El desplegable «Cambiar de curso» y el buscador de la barra interna ofrecían
+  el catálogo entero: elegir un curso ajeno llevaba a una pantalla bloqueada.
+  Ahora solo aparece lo que quien mira puede abrir. Mentores y administración
+  conservan el catálogo completo, que es lo que gestionan.
+- El modal público de inicio de sesión mostraba, bajo «Cargar Credenciales de
+  Prueba (Demo RBAC)», el correo y la contraseña de las cuatro cuentas de
+  demostración. Cualquiera que pulsara «Iniciar Sesión» las veía. El bloque se
+  ha eliminado.
+
+### Changed
+
+- Con la sesión abierta, la portada deja de ser un escaparate: la sección pasa a
+  llamarse «Tus cursos» y solo muestra los programas a los que esa persona tiene
+  acceso. Se ocultan también «Nuevos cursos», que repetía las mismas tarjetas, y
+  el enlace «ver todo el catálogo». Sin sesión todo sigue igual, porque es lo
+  que invita a registrarse. El marcado para buscadores mantiene el catálogo
+  completo: quien lo lee nunca tiene sesión.
+- Desaparece el distintivo «Premium» de la barra pública.
+
+### Migration
+
+- `20260914120000_public_testimonials` añade el estado de moderación a la tabla
+  `Feedback`. Es aditiva (`ADD COLUMN IF NOT EXISTS`, `CREATE TYPE` condicional)
+  y no borra ni reescribe ninguna fila. Las opiniones que ya existían quedan en
+  `PENDING`: se recogieron en el recorrido de bienvenida, para uso interno, sin
+  avisar de que pudieran acabar en la portada, así que se aprueban una a una
+  desde el panel o no se publican.
+
 ## 0.5.0-beta.4 - 2026-09-14
 
 ### Changed

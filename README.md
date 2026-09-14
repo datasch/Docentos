@@ -2,7 +2,7 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 0.5.0-beta.4](https://img.shields.io/badge/Version-0.5.0--beta.4-a855f7.svg)
+![Version: 0.5.0-beta.5](https://img.shields.io/badge/Version-0.5.0--beta.5-a855f7.svg)
 ![Status: Beta](https://img.shields.io/badge/Status-Beta-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
@@ -21,6 +21,8 @@
 * 🧠 **AI-Native Learning Engine:** Asistente conversacional "Ian", generación automática de guiones de mentoría con Google Gemini AI y locución sintetizada TTS.
 * 🎥 **Google Drive Video Streaming:** Reproductor nativo optimizado con indexación de archivos en tiempo real directamente desde carpetas conectadas.
 * 📥 **Importación de cursos desde Drive:** Pega el enlace de una carpeta y DocentOS construye el temario completo: subcarpetas como módulos, vídeos como lecciones y ZIP, PDF o subtítulos como recursos descargables. Revisas el plan antes de crear nada, y opcionalmente dejas que OpenAI o DeepSeek pulan los títulos.
+* ⭐ **Testimonios de verdad:** los escribe el alumnado desde la portada, con su
+  valoración, y se publican tras pasar por moderación.
 * 👥 **Sistema RBAC & Mentorías:** Roles flexibles (Superadmin, Mentor, Mentee VIP, Público General) con seguimiento personalizado del progreso de estudiantes.
 * 🧩 **Arquitectura Modular de Plugins:** Extensible en tiempo real con plugins para Certificados PDF firmados, Evaluaciones/Exámenes interactivos y Webhooks para Discord/Slack.
 * 🎨 **100% White-Label:** Personaliza nombre, lema, isotipo e idioma mediante configuración cargada en tiempo de ejecución, sin recompilar el frontend.
@@ -118,11 +120,17 @@ Estas credenciales no se crean en una instalación normal. El seed solo se
 ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 `DOCENTOS_ENV=production`.
 
+> **Si sembraste datos de demostración alguna vez, cambia estas contraseñas.**
+> Hasta la v0.5.0-beta.4 el modal público de inicio de sesión ofrecía un botón
+> «Cargar Credenciales de Prueba» que las mostraba a cualquiera que abriera la
+> pantalla de acceso. El botón ya no existe, pero eso no cambia una contraseña
+> que siga puesta.
+
 ---
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v0.5.0-beta.4.
+* **Versión actual:** v0.5.0-beta.5.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -177,10 +185,10 @@ en lugar de un nombre móvil.
 
 ```bash
 # Última versión publicada
-docker pull ghcr.io/datasch/docentos:0.5.0-beta.4
+docker pull ghcr.io/datasch/docentos:0.5.0-beta.5
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/datasch/docentos:0.5.0-beta.4 \
+cosign verify ghcr.io/datasch/docentos:0.5.0-beta.5 \
   --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -188,7 +196,7 @@ cosign verify ghcr.io/datasch/docentos:0.5.0-beta.4 \
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.4 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.5 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -208,8 +216,8 @@ DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.4 \
 
 ```bash
 npm run verify                       # versión consistente, tipado y compilación
-git tag -a v0.5.0-beta.4 -m "DocentOS 0.5.0-beta.4"
-git push origin v0.5.0-beta.4
+git tag -a v0.5.0-beta.5 -m "DocentOS 0.5.0-beta.5"
+git push datasch v0.5.0-beta.5    # el remoto de este repositorio
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,

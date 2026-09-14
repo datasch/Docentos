@@ -13,7 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -127,28 +127,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError(err.message || 'Error al autenticar');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemoFill = (role: UserRole) => {
-    setError(null);
-    setSuccessMessage(null);
-    if (role === 'ADMIN') {
-      setEmail('giantucchi@academia.com');
-      setPassword('admin123');
-      setName('Prof. Giantucchi');
-    } else if (role === 'MENTOR') {
-      setEmail('sofia.mentor@giantucchi.com');
-      setPassword('mentor123');
-      setName('Ing. Sofia Ruiz');
-    } else if (role === 'MENTEE') {
-      setEmail('carlos.vip@giantucchi.com');
-      setPassword('vip123');
-      setName('Carlos Mendoza');
-    } else {
-      setEmail('estudiante@gmail.com');
-      setPassword('user123');
-      setName('Ana Silva');
     }
   };
 
@@ -370,32 +348,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </form>
         )}
-
-        {/* Quick Demo Autofill Section */}
-        {!recoveryMode && <div className="mt-6 pt-5 border-t border-[#262626]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Cargar Credenciales de Prueba (Demo RBAC)
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-            {[
-              { role: 'ADMIN' as UserRole, label: 'Admin', color: 'hover:border-[#06b6d4] text-[#06b6d4]' },
-              { role: 'MENTOR' as UserRole, label: 'Mentor', color: 'hover:border-[#a855f7] text-[#a855f7]' },
-              { role: 'MENTEE' as UserRole, label: 'Mentee', color: 'hover:border-emerald-400 text-emerald-400' },
-              { role: 'PUBLIC_USER' as UserRole, label: 'Público', color: 'hover:border-slate-400 text-slate-300' },
-            ].map((btn) => (
-              <button
-                key={btn.role}
-                type="button"
-                onClick={() => handleDemoFill(btn.role)}
-                className={`py-2 sm:py-1.5 bg-[#141420] border border-[#262626] rounded-lg text-[10px] font-bold transition-all ${btn.color}`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        </div>}
 
         {recoveryMode && recoveryMode !== 'sent' && (
           <button

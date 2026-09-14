@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search } from 'lucide-react';
+import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
 import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
@@ -800,7 +801,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                       <tr key={u.id} className="hover:bg-[#1a1a2e] transition-colors">
                         <td className="p-3.5 flex items-center gap-3">
                           <img
-                            src={u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                            src={avatarSrc(u.avatarUrl)}
                             alt={u.name}
                             className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
                           />

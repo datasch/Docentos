@@ -9,9 +9,14 @@ import {
   MentorshipComment,
   DriveVideoFile,
   CourseAccessStatus,
+  MenteeStudent,
+  MenteeCandidate,
   UserRole,
   TTSGuide,
   LandingConfig,
+  LandingTestimonial,
+  ModeratedTestimonial,
+  TestimonialStatus,
   CertificateRecord,
   CourseEnrollmentRecord,
   CourseResource,
@@ -361,6 +366,123 @@ export const api = {
     return res.json();
   },
 
+  // Testimonios de la portada
+  /** Los aprobados. Es publico: no hace falta sesion. */
+  async getTestimonials(): Promise<{ testimonials: LandingTestimonial[] }> {
+    const res = await fetch('/api/testimonials');
+    if (!res.ok) throw new Error('Error al obtener los testimonios');
+    return res.json();
+  },
+
+  /** El propio, en cualquier estado, para saber si ya se escribio uno. */
+  async getMyTestimonial(): Promise<{ testimonial: ModeratedTestimonial | null }> {
+    const res = await fetch('/api/testimonials/mine');
+    if (!res.ok) throw new Error('Error al obtener tu opinión');
+    return res.json();
+  },
+
+  async submitTestimonial(data: { rating: number; comment: string }): Promise<{
+    success: boolean;
+    testimonial: ModeratedTestimonial;
+    message: string;
+  }> {
+    const res = await fetch('/api/testimonials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al enviar tu opinión');
+    }
+    return res.json();
+  },
+
+  /** Cola de moderacion. Sin estado salen todas. */
+  async getTestimonialsForModeration(
+    status?: TestimonialStatus,
+  ): Promise<{ testimonials: ModeratedTestimonial[] }> {
+    const query = status ? `?status=${status}` : '';
+    const res = await fetch(`/api/testimonials/pending${query}`);
+    if (!res.ok) throw new Error('Error al obtener los testimonios pendientes');
+    return res.json();
+  },
+
+  async moderateTestimonial(
+    id: string,
+    status: TestimonialStatus,
+  ): Promise<{ success: boolean; testimonial: ModeratedTestimonial }> {
+    const res = await fetch(`/api/testimonials/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error('Error al moderar el testimonio');
+    return res.json();
+  },
+
+  async deleteTestimonial(id: string): Promise<{ success: boolean }> {
+    const res = await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar el testimonio');
+    return res.json();
+  },
+
+  // Reparto de cursos entre mentees
+  /** Cuentas mentee a las que se puede asignar un curso. */
+  async getMenteeCandidates(): Promise<{ candidates: MenteeCandidate[] }> {
+    const res = await fetch('/api/mentor/mentee-candidates');
+    if (!res.ok) throw new Error('Error al obtener la lista de mentees');
+    return res.json();
+  },
+
+  /** Deja el curso con exactamente estos mentees: añade y quita en un paso. */
+  async setCourseMentees(
+    courseId: string,
+    menteeIds: string[],
+  ): Promise<{
+    success: boolean;
+    added: number;
+    removed: number;
+    ignored: number;
+    stillHaveAccess: string[];
+    mentees: MenteeStudent[];
+  }> {
+    const res = await fetch(`/api/mentor/courses/${courseId}/mentees`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menteeIds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al asignar los mentees');
+    }
+    return res.json();
+  },
+
+  /** Lo mismo visto desde la ficha del mentee: sus cursos, en un paso. */
+  async setMenteeCourses(
+    menteeId: string,
+    courseIds: string[],
+  ): Promise<{
+    success: boolean;
+    added: number;
+    removed: number;
+    ignored: number;
+    stillHaveAccess: string[];
+    mentees: MenteeStudent[];
+  }> {
+    const res = await fetch(`/api/mentor/mentees/${menteeId}/courses`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseIds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar los cursos del mentee');
+    }
+    return res.json();
+  },
+
   async getFeedback(): Promise<{ feedback: any[] }> {
     const res = await fetch('/api/feedback');
     if (!res.ok) throw new Error('Error al obtener lista de opiniones');
@@ -401,11 +523,16 @@ export const api = {
     return res.json();
   },
 
-  async assignMentee(name: string, email: string, mentorId?: string): Promise<{ success: boolean; mentee: any }> {
+  async assignMentee(
+    name: string,
+    email: string,
+    mentorId?: string,
+    courseId?: string,
+  ): Promise<{ success: boolean; mentee: any }> {
     const res = await fetch('/api/mentor/assign-mentee', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, mentorId }),
+      body: JSON.stringify({ name, email, mentorId, courseId }),
     });
     if (!res.ok) {
       // El servidor explica por qué rechaza la asignación («esa cuenta es un

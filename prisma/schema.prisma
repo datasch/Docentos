@@ -52,6 +52,15 @@ enum ResourceKind {
   LINK
 }
 
+/// Un testimonio no se publica solo: pasa por moderacion. La portada es
+/// publica y cualquiera con cuenta puede escribir, asi que PENDING es el
+/// estado de partida y solo APPROVED se pinta.
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -427,11 +436,21 @@ model TTSGuide {
   createdAt  DateTime @default(now())
 }
 
+/// Opinion de una persona usuaria. Nace en el recorrido de bienvenida y, si
+/// quien administra la aprueba, se convierte en el testimonio que se ve en la
+/// portada. El nombre, el cargo y el avatar salen del usuario, no se copian:
+/// asi un testimonio nunca queda con datos que ya no son ciertos.
 model Feedback {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating    Int      @default(5)
-  comment   String   @default("")
-  createdAt DateTime @default(now())
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating      Int               @default(5)
+  comment     String            @default("")
+  status      TestimonialStatus @default(PENDING)
+  moderatedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }

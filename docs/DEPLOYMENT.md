@@ -561,3 +561,81 @@ arranque.
 latest)» vuelve a descargarla. Si solo has cambiado configuración, basta el
 primero. Si has subido la versión de la imagen en el manifiesto, hace falta el
 segundo o seguirás ejecutando la anterior.
+
+## 10. Despliegue de 0.5.0-beta.5
+
+Esta versión **sí toca el esquema**, a diferencia de `0.5.0-beta.4`. Conviene
+leer esta sección entera antes de pulsar nada.
+
+### 10.1. Qué cambia en la base
+
+La migración `20260914120000_public_testimonials` añade a la tabla `Feedback`
+tres columnas (`status`, `moderatedAt`, `updatedAt`), el tipo
+`TestimonialStatus` y dos índices. Es aditiva: usa `ADD COLUMN IF NOT EXISTS` y
+un `CREATE TYPE` condicional, y **no borra ni reescribe ninguna fila**. Se
+aplica sola al arrancar, dentro del `prisma migrate deploy` del `entrypoint.sh`.
+
+Las opiniones que ya existieran quedan en `PENDING`, es decir, **no se publican
+en la portada** hasta que alguien las apruebe una a una desde
+Administración → Portada → Testimonios.
+
+### 10.2. Antes de tocar nada
+
+```bash
+# Punto de recuperación. No es opcional: esta versión migra el esquema.
+docker compose exec backup /usr/local/bin/docentos-backup
+```
+
+Y, si hay gente conectada, descargar la imagen por adelantado para que el corte
+se reduzca al reinicio (el contenedor viejo sigue sirviendo mientras baja):
+
+```bash
+docker pull ghcr.io/datasch/docentos:0.5.0-beta.5
+```
+
+### 10.3. El despliegue
+
+En Coolify, sobre el servicio de tipo «Docker Compose»:
+
+1. `DOCENTOS_IMAGE` → `ghcr.io/datasch/docentos:0.5.0-beta.5`
+2. `DOCENTOS_BACKUP_IMAGE` → `ghcr.io/datasch/docentos-backup:0.5.0-beta.5`
+3. **«Restart (pull latest)»**, no «Restart» a secas: el segundo reutiliza la
+   imagen que ya está en el servidor y seguirías ejecutando la anterior.
+
+Hay corte de servicio: es un único contenedor sin réplica, así que durante el
+reinicio el sitio devuelve error. Con la imagen ya descargada son unos 15-20
+segundos; sin descargar, entre 30 y 90. Hazlo en una hora valle.
+
+### 10.4. Comprobar que salió bien
+
+```bash
+# La migración se aplicó y el arranque no se quedó a medias.
+docker compose logs --tail=150 app | grep -i "migrat\|error"
+docker compose ps
+curl --fail --silent --show-error https://docentos.giantucchi.com/api/health
+```
+
+El `/api/health` debe responder `"version":"0.5.0-beta.5"`. En la portada, sin
+iniciar sesión, deben verse la sección «Lo que opinan nuestros mentees» —vacía
+mientras no se apruebe ninguna opinión— y el logo en lugar de los retratos de
+banco de imágenes.
+
+### 10.5. Lo que hay que hacer después, una sola vez
+
+- **Cambiar la contraseña de la cuenta de administración.** Hasta esta versión,
+  el modal público de inicio de sesión mostraba las credenciales de las cuentas
+  de demostración a cualquiera que abriera la pantalla de acceso. Quitar el
+  botón no cambia una contraseña que siga puesta. Revisa también si existen las
+  cuentas `sofia.mentor@`, `carlos.vip@` o `estudiante@gmail.com` y suspéndelas
+  si nadie las usa.
+- **Revisar la cola de testimonios** en Administración → Portada → Testimonios.
+  Lo que haya ahí son opiniones recogidas en el recorrido de bienvenida, para
+  uso interno y sin avisar a esas personas de que podrían acabar en la portada;
+  por eso no se publican solas.
+
+### 10.6. Si hay que volver atrás
+
+El esquema de `0.5.0-beta.5` es compatible hacia atrás: las columnas nuevas
+tienen valor por defecto y la versión anterior no las lee. Basta con devolver
+`DOCENTOS_IMAGE` a `ghcr.io/datasch/docentos:0.5.0-beta.4` y volver a pulsar
+«Restart (pull latest)». No hace falta restaurar la base.

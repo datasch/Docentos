@@ -17,9 +17,9 @@ import {
   LogOut,
   Menu,
   Search,
-  Star,
   X,
 } from 'lucide-react';
+import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../config/theme';
 
@@ -164,12 +164,6 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   </a>
                 </li>
               ))}
-              <li>
-                <a href="#cursos" className="lp-badge-premium">
-                  <Star aria-hidden className="h-3 w-3" fill="currentColor" />
-                  Premium
-                </a>
-              </li>
             </ul>
           </div>
 
@@ -251,7 +245,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   >
                     <span className="lp-avatar-wrapper">
                       {currentUser.avatarUrl ? (
-                        <img className="lp-avatar-img" src={currentUser.avatarUrl} alt="" />
+                        <img className="lp-avatar-img" src={avatarSrc(currentUser.avatarUrl)} alt="" />
                       ) : (
                         <span className="lp-avatar-fallback">{initialsOf(currentUser.name)}</span>
                       )}

@@ -71,6 +71,7 @@ import {
   serializeCourseForViewer,
   serializeCourseForAdmin,
 } from './server/courseAccess.js';
+import { groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import {
   createCheckoutSession,
@@ -88,7 +89,10 @@ import { escapeHtml, isCrawlerUserAgent, renderSeoLandingHtml } from './server/s
 
 const app = express();
 const PORT = config.PORT;
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+// Foto de perfil de quien no sube ninguna: el logo de la escuela, servido
+// desde `public/`. Un retrato de banco de imagenes hacia pensar que detras de
+// esa ficha habia una persona concreta.
+const DEFAULT_AVATAR = '/logo.avif';
 const ADMIN_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
 const VALID_ROLES = ['ADMIN', 'MENTOR', 'MENTEE', 'PUBLIC_USER', 'VIP', 'EXTERNAL'] as const;
 const DUMMY_PASSWORD_HASH = '$2b$12$ctNbBMxeBgkvW2dkZ.wCJu.3B2.bDvDg9xvBPVVBofTsF3/Fx4rTW';
@@ -173,6 +177,49 @@ function toLandingConfig(config: any) {
     discordUrl: config.discordUrl,
     twitterUrl: config.twitterUrl,
     linkedinUrl: config.linkedinUrl,
+  };
+}
+
+/** Un testimonio de portada no es un ensayo: cabe en un parrafo corto. */
+const TESTIMONIAL_MAX_CHARS = 400;
+/** Cuantos se pintan en la portada como mucho. */
+const TESTIMONIAL_PUBLIC_LIMIT = 12;
+
+const TESTIMONIAL_ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  MENTOR: 'Mentor',
+  MENTEE: 'Mentee',
+  VIP: 'Pase VIP',
+  PUBLIC_USER: 'Estudiante',
+  EXTERNAL: 'Invitado',
+};
+
+/**
+ * Forma publica de un testimonio. El nombre, el cargo y el avatar se leen del
+ * usuario en cada peticion en lugar de copiarse al aprobarlo: si alguien se
+ * cambia el nombre o la foto, la portada lo refleja sola.
+ *
+ * El correo no sale nunca de aqui.
+ */
+function toPublicTestimonial(item: any) {
+  return {
+    id: item.id,
+    name: item.user?.name || 'Persona usuaria',
+    role: TESTIMONIAL_ROLE_LABELS[item.user?.role] || 'Estudiante',
+    avatarUrl: item.user?.avatarUrl || DEFAULT_AVATAR,
+    comment: item.comment,
+    rating: item.rating,
+    createdAt: item.createdAt.toISOString(),
+  };
+}
+
+/** La misma ficha, mas el estado y la fecha: solo para quien modera. */
+function toModerationTestimonial(item: any) {
+  return {
+    ...toPublicTestimonial(item),
+    userId: item.userId,
+    status: item.status,
+    moderatedAt: item.moderatedAt ? item.moderatedAt.toISOString() : null,
   };
 }
 
@@ -2080,30 +2127,306 @@ app.post(
 );
 
 // Mentor dashboard
+
+/**
+ * Cuantas lecciones tiene un curso. Se guarda en la asignacion para poder
+ * pintar "3 de 12" sin recorrer el temario entero en cada listado.
+ */
+async function courseLessonCount(courseId: string) {
+  return prisma.videoDriveLink.count({ where: { module: { courseId } } });
+}
+
+/**
+ * Quien figura como mentor de una asignacion nueva.
+ *
+ * Se respeta el mentor que ya lleva a esa persona en otros cursos. Poner
+ * siempre a quien pulsa el boton hacia que administracion, al repartir cursos,
+ * se quedara de mentora de mentees que en realidad lleva otra persona.
+ */
+/**
+ * Condicion para poder llevar un curso como mentee: cuenta activa que o bien
+ * tiene el rol MENTEE, o bien ya es mentee de alguien en otro curso.
+ *
+ * Lo segundo existe porque en la base hay cuentas con otro rol (VIP) y
+ * asignaciones vivas. Exigir solo el rol dejaba a esas personas fuera del
+ * selector y, peor, hacia que guardar el reparto les retirase el curso.
+ */
+async function assignableMenteeFilter() {
+  const asignados = await prisma.menteeAssignment.findMany({ select: { menteeId: true } });
+  return {
+    isActive: true,
+    OR: [{ role: 'MENTEE' as const }, { id: { in: asignados.map((a) => a.menteeId) } }],
+  };
+}
+
+/**
+ * Retira el acceso que venia de la mentoria y cuenta quien lo conserva por otra
+ * via.
+ *
+ * Quitar a alguien de un curso en el panel borraba la asignacion, pero la
+ * persona seguia entrando: ademas de la asignacion hay una matricula
+ * (`CourseEnrollment`) que tambien concede acceso, y se quedaba viva. El panel
+ * decia "retirado" y el alumno seguia dentro.
+ *
+ * Solo se anulan las matriculas de origen MENTORSHIP, que son la misma
+ * concesion por otro nombre. Una matricula pagada, o dada de alta a mano por
+ * administracion, no se toca: no es de este panel decidir sobre un pago. Quien
+ * conserve el acceso asi se devuelve en `retienenAcceso` para poder decirlo.
+ */
+async function revokeMentorshipAccess(courseId: string, menteeIds: string[]) {
+  if (menteeIds.length === 0) return { revoked: 0, retienenAcceso: [] as string[] };
+
+  const { count } = await prisma.courseEnrollment.updateMany({
+    where: {
+      courseId,
+      userId: { in: menteeIds },
+      source: 'MENTORSHIP',
+      status: { in: ['ACTIVE', 'COMPLETED'] },
+    },
+    data: { status: 'REVOKED' },
+  });
+
+  // Lo que queda concediendo acceso despues de retirar la mentoria.
+  const [matriculas, pagos] = await Promise.all([
+    prisma.courseEnrollment.findMany({
+      where: {
+        courseId,
+        userId: { in: menteeIds },
+        status: { in: ['ACTIVE', 'COMPLETED'] },
+      },
+      select: { user: { select: { name: true } } },
+    }),
+    // Los mismos estados que `courseAccess.ts` considera pago valido.
+    prisma.payment.findMany({
+      where: {
+        courseId,
+        userId: { in: menteeIds },
+        status: { in: ['COMPLETED', 'PARTIALLY_REFUNDED'] },
+      },
+      select: { user: { select: { name: true } } },
+    }),
+  ]);
+
+  const nombres = new Set<string>();
+  for (const fila of [...matriculas, ...pagos]) nombres.add(fila.user?.name || 'Una persona');
+
+  return { revoked: count, retienenAcceso: Array.from(nombres) };
+}
+
+async function mentorForNewAssignment(menteeId: string, fallbackMentorId: string) {
+  const previa = await prisma.menteeAssignment.findFirst({
+    where: { menteeId },
+    orderBy: { createdAt: 'asc' },
+    select: { mentorId: true },
+  });
+  return previa?.mentorId || fallbackMentorId;
+}
+
 app.get(
   '/api/mentor/mentees',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
     const assignments = await prisma.menteeAssignment.findMany({
       where: req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : undefined,
-      include: { mentee: true },
+      include: { mentee: true, course: true },
       orderBy: { createdAt: 'asc' },
     });
-    const mentees = assignments.map((assignment) => ({
-      id: assignment.mentee.id,
-      name: assignment.mentee.name,
-      email: assignment.mentee.email,
-      avatarUrl: assignment.mentee.avatarUrl,
-      assignedMentorId: assignment.mentorId,
-      courseProgress: assignment.courseProgress,
-      completedVideosCount: assignment.completedVideosCount,
-      totalVideosCount: assignment.totalVideosCount,
-      lastActiveDate: assignment.lastActiveDate,
-      status: assignment.status,
-      strikes: assignment.mentee.strikes,
-      isActive: assignment.mentee.isActive,
-    }));
-    res.json({ success: true, mentees });
+    res.json({ success: true, mentees: groupAssignmentsByMentee(assignments) });
+  }),
+);
+
+/**
+ * A quien se puede asignar un curso: las cuentas que ya son mentee.
+ *
+ * Dar de alta a alguien nuevo sigue siendo cosa de "Asignar Mentee", que ademas
+ * convierte la cuenta; esta lista es para repartir cursos entre quienes ya
+ * estan, sin cambiarle el rol a nadie sin querer.
+ */
+app.get(
+  '/api/mentor/mentee-candidates',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const candidatos = await prisma.user.findMany({
+      where: await assignableMenteeFilter(),
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+    res.json({ success: true, candidates: candidatos });
+  }),
+);
+
+/**
+ * Deja las asignaciones de un curso exactamente en la lista que se envia:
+ * da de alta las que faltan y retira las que se han desmarcado.
+ *
+ * Un mentor solo toca las suyas; si un mentee esta asignado a ese curso con
+ * otro mentor, ni lo ve ni puede quitarlo. Quien administra los ve todos.
+ */
+app.put(
+  '/api/mentor/courses/:courseId/mentees',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const courseId = req.params.courseId;
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) {
+      res.status(404).json({ error: 'Curso no encontrado' });
+      return;
+    }
+
+    const pedidos: string[] = Array.isArray(req.body.menteeIds)
+      ? Array.from(new Set(req.body.menteeIds.map((id: any) => String(id))))
+      : [];
+
+    const ambito = req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : {};
+    const actuales = await prisma.menteeAssignment.findMany({
+      where: { courseId, ...ambito },
+    });
+    const yaAsignados = new Set(actuales.map((a) => a.menteeId));
+
+    // Un alta nueva tiene que pasar el mismo filtro que alimenta el selector; si
+    // no, esto valdria para dar acceso a un curso a cualquier cuenta.
+    const permitidos = await prisma.user.findMany({
+      where: { id: { in: pedidos }, ...(await assignableMenteeFilter()) },
+      select: { id: true },
+    });
+    const cambios = resolveRosterChanges(
+      pedidos,
+      Array.from(yaAsignados),
+      permitidos.map((u) => u.id),
+    );
+    const aAnadir = cambios.toAdd;
+    const ignorados = cambios.ignored.length;
+    const aQuitar = actuales
+      .filter((a) => cambios.toRemove.includes(a.menteeId))
+      .map((a) => a.id);
+
+    const totalVideosCount = await courseLessonCount(courseId);
+
+    const retirados = actuales.filter((a) => aQuitar.includes(a.id)).map((a) => a.menteeId);
+    if (aQuitar.length > 0) {
+      await prisma.menteeAssignment.deleteMany({ where: { id: { in: aQuitar } } });
+    }
+    const acceso = await revokeMentorshipAccess(courseId, retirados);
+
+    for (const menteeId of aAnadir) {
+      const mentorId = await mentorForNewAssignment(menteeId, req.user!.id);
+      await prisma.menteeAssignment.upsert({
+        where: { menteeId_courseId: { menteeId, courseId } },
+        update: {},
+        create: { menteeId, mentorId, courseId, totalVideosCount },
+      });
+    }
+
+    // Asignar un curso da acceso a su contenido, asi que queda registrado.
+    if (aQuitar.length > 0 || aAnadir.length > 0) {
+      await recordAuditEvent(req, {
+        action: 'mentorship.course_roster_updated',
+        targetType: 'Course',
+        targetId: courseId,
+        metadata: { added: aAnadir.length, removed: aQuitar.length },
+      });
+    }
+
+    const assignments = await prisma.menteeAssignment.findMany({
+      where: req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : undefined,
+      include: { mentee: true, course: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({
+      success: true,
+      added: aAnadir.length,
+      removed: aQuitar.length,
+      ignored: ignorados,
+      stillHaveAccess: acceso.retienenAcceso,
+      mentees: groupAssignmentsByMentee(assignments),
+    });
+  }),
+);
+
+/**
+ * El mismo reparto visto del otro lado: los cursos que lleva un mentee.
+ * Sirve para el boton "Editar cursos" de la ficha.
+ */
+app.put(
+  '/api/mentor/mentees/:menteeId/courses',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const menteeId = req.params.menteeId;
+    const mentee = await prisma.user.findFirst({ where: { id: menteeId, role: 'MENTEE' } });
+    if (!mentee) {
+      res.status(404).json({ error: 'Mentee no encontrado' });
+      return;
+    }
+
+    const pedidos: string[] = Array.isArray(req.body.courseIds)
+      ? Array.from(new Set(req.body.courseIds.map((id: any) => String(id))))
+      : [];
+    const cursos = await prisma.course.findMany({
+      where: { id: { in: pedidos } },
+      select: { id: true },
+    });
+    const ambito = req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : {};
+    const actuales = await prisma.menteeAssignment.findMany({ where: { menteeId, ...ambito } });
+
+    // Aqui lo que se valida es que el curso exista; el permiso ya lo resolvio
+    // requireRole y el ambito del mentor limita sobre que filas se actua.
+    const cambios = resolveRosterChanges(
+      pedidos,
+      actuales.map((a) => a.courseId),
+      cursos.map((c) => c.id),
+    );
+    const aAnadir = cambios.toAdd;
+    const ignorados = cambios.ignored.length;
+    const aQuitar = actuales
+      .filter((a) => cambios.toRemove.includes(a.courseId))
+      .map((a) => a.id);
+
+    const cursosRetirados = actuales.filter((a) => aQuitar.includes(a.id)).map((a) => a.courseId);
+    if (aQuitar.length > 0) {
+      await prisma.menteeAssignment.deleteMany({ where: { id: { in: aQuitar } } });
+    }
+    const retienenAcceso = new Set<string>();
+    for (const cursoId of cursosRetirados) {
+      const acceso = await revokeMentorshipAccess(cursoId, [menteeId]);
+      for (const nombre of acceso.retienenAcceso) retienenAcceso.add(nombre);
+    }
+
+    const mentorId = await mentorForNewAssignment(menteeId, req.user!.id);
+    for (const courseId of aAnadir) {
+      await prisma.menteeAssignment.upsert({
+        where: { menteeId_courseId: { menteeId, courseId } },
+        update: {},
+        create: {
+          menteeId,
+          mentorId,
+          courseId,
+          totalVideosCount: await courseLessonCount(courseId),
+        },
+      });
+    }
+
+    if (aQuitar.length > 0 || aAnadir.length > 0) {
+      await recordAuditEvent(req, {
+        action: 'mentorship.mentee_courses_updated',
+        targetType: 'User',
+        targetId: menteeId,
+        metadata: { added: aAnadir.length, removed: aQuitar.length },
+      });
+    }
+
+    const assignments = await prisma.menteeAssignment.findMany({
+      where: req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : undefined,
+      include: { mentee: true, course: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({
+      success: true,
+      added: aAnadir.length,
+      removed: aQuitar.length,
+      ignored: ignorados,
+      stillHaveAccess: Array.from(retienenAcceso),
+      mentees: groupAssignmentsByMentee(assignments),
+    });
   }),
 );
 
@@ -2122,7 +2445,16 @@ app.post(
         : { role: { in: ['ADMIN', 'MENTOR'] }, isActive: true },
       orderBy: { createdAt: 'asc' },
     });
-    const course = await prisma.course.findFirst({ where: { published: true }, orderBy: { createdAt: 'asc' } });
+    // El curso se elige desde el panel. Sin indicarlo se cae al primero
+    // publicado, que es lo que hacia antes siempre: daba igual a que programa
+    // quisieras meter a la persona, siempre entraba al mismo.
+    const requestedCourseId = req.body.courseId ? String(req.body.courseId) : null;
+    const course = requestedCourseId
+      ? await prisma.course.findUnique({ where: { id: requestedCourseId } })
+      : await prisma.course.findFirst({ where: { published: true }, orderBy: { createdAt: 'asc' } });
+    if (requestedCourseId && !course) {
+      return res.status(404).json({ error: 'El curso indicado no existe.' });
+    }
     if (!mentor || !course) return res.status(400).json({ error: 'No existe mentor o curso disponible para la asignación.' });
 
     const existingMentee = await prisma.user.findUnique({ where: { email } });
@@ -2152,7 +2484,7 @@ app.post(
         metadata: { previousRole: existingMentee.role, role: mentee.role, via: 'mentor.assign_mentee' },
       });
     }
-    const totalVideosCount = await prisma.videoDriveLink.count({ where: { module: { courseId: course.id } } });
+    const totalVideosCount = await courseLessonCount(course.id);
     const assignment = await prisma.menteeAssignment.upsert({
       where: { menteeId_courseId: { menteeId: mentee.id, courseId: course.id } },
       update: { mentorId: mentor.id },
@@ -2807,18 +3139,34 @@ app.delete(
   }),
 );
 
+/**
+ * La opinion que se pide al terminar el recorrido de bienvenida. Comparte tabla
+ * con los testimonios de la portada, asi que respeta la misma regla: una por
+ * persona. Antes creaba una fila cada vez y quien repetia el recorrido dejaba
+ * duplicados que luego habia que moderar dos veces.
+ */
 app.post(
   '/api/feedback',
   requireAuthenticated,
   asyncRoute(async (req, res) => {
-    const feedback = await prisma.feedback.create({
-      data: {
-        userId: req.user!.id,
-        rating: Math.min(5, Math.max(1, Number(req.body.rating) || 5)),
-        comment: String(req.body.comment || ''),
-      },
-      include: { user: true },
+    const datos = {
+      rating: Math.min(5, Math.max(1, Number(req.body.rating) || 5)),
+      comment: String(req.body.comment || '').slice(0, TESTIMONIAL_MAX_CHARS),
+    };
+    const previo = await prisma.feedback.findFirst({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: 'desc' },
     });
+    const feedback = previo
+      ? await prisma.feedback.update({
+          where: { id: previo.id },
+          data: { ...datos, status: 'PENDING', moderatedAt: null },
+          include: { user: true },
+        })
+      : await prisma.feedback.create({
+          data: { userId: req.user!.id, ...datos },
+          include: { user: true },
+        });
     res.json({
       success: true,
       feedback: {
@@ -2846,9 +3194,154 @@ app.get(
         userName: item.user.name,
         rating: item.rating,
         comment: item.comment,
+        status: item.status,
         createdAt: item.createdAt.toISOString(),
       })),
     });
+  }),
+);
+
+// --- Testimonios de la portada --------------------------------------------
+//
+// Antes eran un JSON que se escribia a mano en el editor de portada. Ahora los
+// escriben las personas que usan la plataforma y alguien de administracion los
+// aprueba antes de que se vean.
+
+/**
+ * Lo que pinta la portada. Es publico y sin sesion: solo lo aprobado, y solo
+ * los campos que se enseñan.
+ */
+app.get(
+  '/api/testimonials',
+  asyncRoute(async (_req, res) => {
+    const items = await prisma.feedback.findMany({
+      where: { status: 'APPROVED', comment: { not: '' } },
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+      take: TESTIMONIAL_PUBLIC_LIMIT,
+    });
+    res.json({ testimonials: items.map(toPublicTestimonial) });
+  }),
+);
+
+/**
+ * El testimonio de quien pregunta, en cualquier estado. Lo usa el formulario
+ * de la portada para saber si ya escribio y si esta esperando aprobacion.
+ */
+app.get(
+  '/api/testimonials/mine',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const mine = await prisma.feedback.findFirst({
+      where: { userId: req.user!.id },
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ testimonial: mine ? toModerationTestimonial(mine) : null });
+  }),
+);
+
+/**
+ * Dejar o corregir la propia opinion. Una por persona: si ya habia una se
+ * reescribe, para que nadie llene la portada a base de repetirse.
+ *
+ * Reescribir devuelve el testimonio a PENDING aunque ya estuviera aprobado; si
+ * no, se podria colar cualquier texto editando uno ya publicado.
+ */
+app.post(
+  '/api/testimonials',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const comment = String(req.body.comment || '').trim();
+    if (!comment) {
+      res.status(400).json({ error: 'Escribe tu opinión antes de enviarla' });
+      return;
+    }
+    if (comment.length > TESTIMONIAL_MAX_CHARS) {
+      res.status(400).json({ error: `La opinión no puede pasar de ${TESTIMONIAL_MAX_CHARS} caracteres` });
+      return;
+    }
+    const rating = Math.min(5, Math.max(1, Math.round(Number(req.body.rating) || 5)));
+
+    const previo = await prisma.feedback.findFirst({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const guardado = previo
+      ? await prisma.feedback.update({
+          where: { id: previo.id },
+          data: { comment, rating, status: 'PENDING', moderatedAt: null },
+          include: { user: true },
+        })
+      : await prisma.feedback.create({
+          data: { userId: req.user!.id, comment, rating, status: 'PENDING' },
+          include: { user: true },
+        });
+
+    res.json({
+      success: true,
+      testimonial: toModerationTestimonial(guardado),
+      message: 'Gracias. Tu opinión se publicará en cuanto la revisemos.',
+    });
+  }),
+);
+
+/** La cola de moderacion. Sin filtro salen todas, la mas nueva primero. */
+app.get(
+  '/api/testimonials/pending',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const estado = String(req.query.status || '').toUpperCase();
+    const valido = ['PENDING', 'APPROVED', 'REJECTED'].includes(estado);
+    const items = await prisma.feedback.findMany({
+      where: valido ? { status: estado as any } : {},
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ testimonials: items.map(toModerationTestimonial) });
+  }),
+);
+
+/** Aprobar o rechazar. Es lo unico que administracion puede tocar: el texto */
+/** que se publica es el que escribio la persona, palabra por palabra. */
+app.patch(
+  '/api/testimonials/:id',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const estado = String(req.body.status || '').toUpperCase();
+    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(estado)) {
+      res.status(400).json({ error: 'Estado no válido' });
+      return;
+    }
+    const existe = await prisma.feedback.findUnique({ where: { id: req.params.id } });
+    if (!existe) {
+      res.status(404).json({ error: 'Testimonio no encontrado' });
+      return;
+    }
+    const actualizado = await prisma.feedback.update({
+      where: { id: req.params.id },
+      data: {
+        status: estado as any,
+        moderatedAt: estado === 'PENDING' ? null : new Date(),
+      },
+      include: { user: true },
+    });
+    res.json({ success: true, testimonial: toModerationTestimonial(actualizado) });
+  }),
+);
+
+app.delete(
+  '/api/testimonials/:id',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const existe = await prisma.feedback.findUnique({ where: { id: req.params.id } });
+    if (!existe) {
+      res.status(404).json({ error: 'Testimonio no encontrado' });
+      return;
+    }
+    await prisma.feedback.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'Testimonio eliminado' });
   }),
 );
 

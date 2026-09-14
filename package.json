@@ -2,7 +2,7 @@
   "name": "docentos-lms",
   "description": "DocentOS - The AI-Native, Open-Source Learning Engine. Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez).",
   "private": true,
-  "version": "0.5.0-beta.4",
+  "version": "0.5.0-beta.5",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -22,7 +22,7 @@
     "lint": "tsc --noEmit",
     "test:business": "tsx --test tests/business-flows.test.ts",
     "test:auth": "tsx --test tests/auth-lifecycle.test.ts",
-    "test": "tsx --test tests/business-flows.test.ts tests/auth-lifecycle.test.ts tests/security-regressions.test.ts tests/course-import.test.ts tests/course-import-ui.test.tsx tests/module-quiz.test.tsx tests/course-navigation.test.tsx",
+    "test": "tsx --test tests/business-flows.test.ts tests/auth-lifecycle.test.ts tests/security-regressions.test.ts tests/course-import.test.ts tests/course-import-ui.test.tsx tests/module-quiz.test.tsx tests/course-navigation.test.tsx tests/mentorship-roster.test.ts",
     "test:security": "tsx --test tests/security-regressions.test.ts",
     "test:import": "tsx --test tests/course-import.test.ts tests/course-import-ui.test.tsx tests/module-quiz.test.tsx tests/course-navigation.test.tsx"
   },

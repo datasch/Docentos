@@ -1716,6 +1716,132 @@ html:has(.lp-root) {
   font-style: italic;
 }
 
+/* Formulario para dejar la propia opinion, y el aviso de en que estado esta. */
+
+.lp-testimonial-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 9px 16px;
+  border-radius: var(--lp-r-pill);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--lp-accent-soft);
+}
+
+.lp-testimonial-form {
+  margin-bottom: 28px;
+  padding: 22px;
+  border-radius: var(--lp-r-lg);
+  background: var(--lp-bg-card);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.lp-testimonial-form-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.lp-testimonial-form-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lp-text-muted);
+}
+
+.lp-star-picker {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* Apagadas por defecto: el color llega al marcar, para que se vea cuantas van. */
+.lp-star-pick {
+  padding: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #3a3a4a;
+  line-height: 0;
+  transition: color var(--lp-smooth), transform var(--lp-smooth);
+}
+
+.lp-star-pick.is-on {
+  color: var(--lp-gold);
+}
+
+.lp-star-pick:hover {
+  transform: scale(1.15);
+}
+
+.lp-testimonial-textarea {
+  width: 100%;
+  padding: 13px 15px;
+  border-radius: var(--lp-r-md);
+  background: var(--lp-bg-main);
+  border: 1px solid var(--lp-border);
+  color: var(--lp-text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.lp-testimonial-textarea:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.55);
+}
+
+.lp-testimonial-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.lp-testimonial-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lp-text-muted);
+}
+
+.lp-testimonial-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.lp-testimonial-error {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f87171;
+}
+
+.lp-testimonial-note {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--lp-text-muted);
+}
+
+/* Instalacion sin opiniones todavia: se dice, no se disimula con relleno. */
+.lp-testimonial-empty {
+  padding: 28px;
+  border-radius: var(--lp-r-lg);
+  background: var(--lp-bg-card);
+  border: 1px dashed var(--lp-border);
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--lp-text-muted);
+}
+
 /* ==========================================================================
    10. PLANES
    ========================================================================== */

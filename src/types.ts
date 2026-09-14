@@ -15,6 +15,23 @@ export interface User {
   isActive?: boolean;
 }
 
+/** Un curso concreto de un mentee, con su progreso en ese curso. */
+export interface MenteeCourseAssignment {
+  assignmentId: string;
+  courseId: string;
+  courseTitle: string;
+  mentorId: string;
+  courseProgress: number;
+  completedVideosCount: number;
+  totalVideosCount: number;
+  lastActiveDate: string;
+  status: string;
+}
+
+/**
+ * Una ficha por persona, no por asignacion. Los contadores de primer nivel
+ * suman todos sus cursos; el detalle curso a curso va en `courses`.
+ */
 export interface MenteeStudent {
   id: string;
   name: string;
@@ -28,6 +45,15 @@ export interface MenteeStudent {
   status: 'ACTIVE' | 'PENDING' | 'GRADUATED';
   strikes?: number;
   isActive?: boolean;
+  courses: MenteeCourseAssignment[];
+}
+
+/** Cuenta a la que se le puede repartir un curso. */
+export interface MenteeCandidate {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
 }
 
 export interface AcademiaPlugin {
@@ -312,6 +338,11 @@ export interface TTSGuide {
   createdAt: string;
 }
 
+/**
+ * Testimonio de la portada. Lo escribe una persona usuaria y alguien de
+ * administracion lo aprueba; el nombre, el cargo y el avatar se leen de su
+ * ficha en cada peticion, no se copian al aprobarlo.
+ */
 export interface LandingTestimonial {
   id: string;
   name: string;
@@ -319,6 +350,16 @@ export interface LandingTestimonial {
   avatarUrl: string;
   comment: string;
   rating: number;
+  createdAt?: string;
+}
+
+export type TestimonialStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+/** La misma ficha con el estado, para la cola de moderacion y el formulario. */
+export interface ModeratedTestimonial extends LandingTestimonial {
+  userId: string;
+  status: TestimonialStatus;
+  moderatedAt: string | null;
 }
 
 export interface LandingBenefit {

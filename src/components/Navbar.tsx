@@ -35,6 +35,7 @@ import {
   KeyRound,
   Award,
 } from 'lucide-react';
+import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
 import { User, Course } from '../types';
 import { siteConfig } from '../config/theme';
@@ -153,9 +154,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     setProfileOpen(false);
   };
 
+  /**
+   * El buscador de la barra solo encuentra lo que quien busca puede abrir.
+   * Encontrar un curso ajeno para acabar en una pantalla bloqueada no es buscar,
+   * es un anuncio. Mentores y administración conservan el catálogo entero: lo
+   * gestionan, no solo lo estudian.
+   */
+  const searchable = isStaff ? courses : courses.filter((item) => item.hasAccess === true);
+
   const query = searchQuery.trim().toLowerCase();
   const matches = query
-    ? courses.filter(
+    ? searchable.filter(
         (item) =>
           item.title.toLowerCase().includes(query) ||
           (item.description || '').toLowerCase().includes(query),
@@ -352,7 +361,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <span className="lp-avatar-wrapper">
                   {currentUser.avatarUrl ? (
-                    <img className="lp-avatar-img" src={currentUser.avatarUrl} alt="" />
+                    <img className="lp-avatar-img" src={avatarSrc(currentUser.avatarUrl)} alt="" />
                   ) : (
                     <span className="lp-avatar-fallback">{initialsOf(currentUser.name)}</span>
                   )}

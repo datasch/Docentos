@@ -2,7 +2,8 @@ import { prisma } from '../server/prisma.js';
 import { hashPassword } from '../server/authService.js';
 import { config } from '../server/config.js';
 
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+/** El logo de la escuela, servido desde `public/`. */
+const DEFAULT_AVATAR = '/logo.avif';
 
 const users = [
   {
@@ -10,49 +11,49 @@ const users = [
     email: 'giantucchi@academia.com',
     name: 'Prof. Giantucchi (Director General)',
     role: 'ADMIN' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
   {
     id: 'user-mentor-01',
     email: 'sofia.mentor@giantucchi.com',
     name: 'Ing. Sofia Ruiz (Mentor Senior)',
     role: 'MENTOR' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
   {
     id: 'user-mentee-01',
     email: 'carlos.vip@giantucchi.com',
     name: 'Carlos Mendoza (Mentee / VIP)',
     role: 'MENTEE' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
   {
     id: 'user-public-01',
     email: 'estudiante@gmail.com',
     name: 'Ana Silva (Usuario Público)',
     role: 'PUBLIC_USER' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
   {
     id: 'user-external-01',
     email: 'ana.external@giantucchi.com',
     name: 'Ana Silva',
     role: 'EXTERNAL' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
   {
     id: 'mentee-demo-02',
     email: 'roberto@empresa.com',
     name: 'Roberto Gómez',
     role: 'MENTEE' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
   {
     id: 'mentee-demo-03',
     email: 'mariana.dev@gmail.com',
     name: 'Mariana Torres',
     role: 'MENTEE' as const,
-    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
+    avatarUrl: DEFAULT_AVATAR,
   },
 ];
 
@@ -141,7 +142,7 @@ const testimonials = [
     id: 't1',
     name: 'Carlos Mendoza',
     role: 'Estudiante VIP & Software Engineer',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228d80?w=150',
+    avatarUrl: DEFAULT_AVATAR,
     comment: 'DocentOS me permitió completar la mentoría técnica con guías explicativas por audio e interactuar directamente con los mentores.',
     rating: 5,
   },
@@ -149,7 +150,7 @@ const testimonials = [
     id: 't2',
     name: 'Ing. Sofia Ruiz',
     role: 'Mentor Director en DocentOS',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+    avatarUrl: DEFAULT_AVATAR,
     comment: 'Gestión directa de estudiantes, revisión centralizada de preguntas y vinculación automática de videos en minutos.',
     rating: 5,
   },
@@ -265,7 +266,7 @@ async function seedApplicationData() {
       voiceId: 'es-ES-Carlos',
       voiceSpeed: 1,
       mentorName: 'Prof. Giantucchi',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatarUrl: DEFAULT_AVATAR,
       xpReward: 50,
     },
     {
@@ -278,7 +279,7 @@ async function seedApplicationData() {
       voiceId: 'es-MX-Sofia',
       voiceSpeed: 1,
       mentorName: 'Sofia VIP Mentor',
-      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      avatarUrl: DEFAULT_AVATAR,
       xpReward: 50,
     },
   ];

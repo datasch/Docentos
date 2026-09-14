@@ -32,9 +32,11 @@ import {
   Rocket,
   GraduationCap,
   Crown,
+  Clock,
 } from 'lucide-react';
+import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
-import { Course, LandingConfig } from '../types';
+import { Course, LandingConfig, LandingTestimonial, ModeratedTestimonial } from '../types';
 import { api } from '../lib/api';
 import { DOCENTOS_VERSION } from '../version';
 import { PublicNavbar, PublicNavLink } from './PublicNavbar';
@@ -134,12 +136,17 @@ const DEFAULT_LANDING_CONFIG: LandingConfig = {
  * al catálogo en lugar de dejar el botón muerto.
  */
 /**
- * Secciones ocultas a peticion del cliente: los testimonios y la tabla de
- * membresias siguen en el archivo pero no se pintan. Para recuperarlas basta
- * con poner estos dos flags en `true`.
+ * La tabla de membresias sigue en el archivo pero no se pinta, a peticion del
+ * cliente. Para recuperarla basta con poner el flag en `true`.
+ *
+ * Los testimonios ya no llevan flag: la seccion se pinta sola cuando hay algo
+ * real que enseñar (ver `testimonials`), porque ahora los escriben las personas
+ * que usan la plataforma y no el editor de portada.
  */
-const MOSTRAR_TESTIMONIOS = false;
 const MOSTRAR_PLANES = false;
+
+/** Mismo limite que valida el servidor en `POST /api/testimonials`. */
+const TESTIMONIAL_MAX_CHARS = 400;
 
 const SECTION_ALIASES: Record<string, string> = {
   '#courses': '#cursos',
@@ -151,8 +158,39 @@ const SECTION_ALIASES: Record<string, string> = {
   '#planes': '#cursos',
   '#pricing': '#cursos',
   '#beneficios': '#beneficios',
-  '#testimonios': '#cursos',
+  '#testimonios': '#testimonios',
 };
+
+/**
+ * El catalogo que se ensena en la portada.
+ *
+ * Sin sesion, todo el escaparate: es lo que invita a registrarse. Con sesion,
+ * solo los cursos a los que esa persona tiene acceso; entrar y seguir viendo
+ * un muro de cursos ajenos con candado convierte la portada en un anuncio en
+ * lugar de en el sitio al que se vuelve a estudiar.
+ *
+ * `hasAccess` lo resuelve el servidor en `GET /api/courses` (pago, matricula o
+ * asignacion de mentoria): aqui no se decide nada sobre permisos, solo se
+ * filtra lo que ya viene marcado.
+ */
+export function visibleCourses<T extends { hasAccess?: boolean }>(
+  courses: T[],
+  hasSession: boolean,
+): T[] {
+  if (!hasSession) return courses;
+  return courses.filter((course) => course.hasAccess === true);
+}
+
+/**
+ * Cuando merece la pena pintar la seccion de testimonios.
+ *
+ * Con opiniones publicadas siempre; sin ellas, solo a quien tiene sesion, que
+ * es quien puede escribir la primera. A un visitante de una instalacion recien
+ * montada se le ahorra un titular con el hueco vacio debajo.
+ */
+export function shouldShowTestimonials(approvedCount: number, hasSession: boolean): boolean {
+  return approvedCount > 0 || hasSession;
+}
 
 export function resolveLandingCta(link: string | undefined, fallback: string): string {
   const value = String(link ?? '').trim();
@@ -300,9 +338,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   /** Estudio ya hecho por quien tiene la sesión abierta; null mientras no se sepa. */
   const [studyStats, setStudyStats] = useState<{ lessons: number; certificates: number } | null>(null);
 
+  /** Testimonios aprobados. Vacío mientras se cargan o si aún no hay ninguno. */
+  const [testimonials, setTestimonials] = useState<LandingTestimonial[]>([]);
+  /** El de quien tiene sesión, en cualquier estado: pendiente, publicado o rechazado. */
+  const [myTestimonial, setMyTestimonial] = useState<ModeratedTestimonial | null>(null);
+  const [showTestimonialForm, setShowTestimonialForm] = useState(false);
+  const [draftRating, setDraftRating] = useState(5);
+  const [draftComment, setDraftComment] = useState('');
+  const [savingTestimonial, setSavingTestimonial] = useState(false);
+  const [testimonialError, setTestimonialError] = useState<string | null>(null);
+
   useEffect(() => {
     loadLandingConfig();
+    loadTestimonials();
   }, []);
+
+  // Solo quien tiene sesión puede haber dejado una opinión.
+  useEffect(() => {
+    if (!currentUser) {
+      setMyTestimonial(null);
+      setShowTestimonialForm(false);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getMyTestimonial()
+      .then((res) => {
+        if (cancelled) return;
+        setMyTestimonial(res.testimonial);
+        if (res.testimonial) {
+          setDraftRating(res.testimonial.rating);
+          setDraftComment(res.testimonial.comment);
+        }
+      })
+      .catch(() => {
+        /* sin opinión previa la portada funciona igual */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   // El saludo cuenta lecciones reales: sin sesión no hay nada que contar.
   useEffect(() => {
@@ -328,6 +403,43 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     };
   }, [currentUser]);
 
+  const loadTestimonials = async () => {
+    try {
+      const res = await api.getTestimonials();
+      setTestimonials(res.testimonials || []);
+    } catch (err) {
+      // La portada entera no puede caerse porque falle esta sección.
+      console.warn('No se pudieron cargar los testimonios:', err);
+    }
+  };
+
+  /**
+   * Guarda la opinión y vuelve a pedir la lista publicada.
+   *
+   * Lo enviado no aparece al momento: nace pendiente de revisión, y eso es lo
+   * que dice el aviso. Prometer una publicación inmediata sería mentir.
+   */
+  const handleSubmitTestimonial = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const comment = draftComment.trim();
+    if (!comment) {
+      setTestimonialError('Escribe tu opinión antes de enviarla');
+      return;
+    }
+    setSavingTestimonial(true);
+    setTestimonialError(null);
+    try {
+      const res = await api.submitTestimonial({ rating: draftRating, comment });
+      setMyTestimonial(res.testimonial);
+      setShowTestimonialForm(false);
+      await loadTestimonials();
+    } catch (err: any) {
+      setTestimonialError(err?.message || 'No se pudo enviar tu opinión');
+    } finally {
+      setSavingTestimonial(false);
+    }
+  };
+
   const loadLandingConfig = async () => {
     try {
       const res = await api.getLandingConfig();
@@ -336,7 +448,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           ...DEFAULT_LANDING_CONFIG,
           ...res.config,
           benefits: res.config.benefits && res.config.benefits.length > 0 ? res.config.benefits : DEFAULT_LANDING_CONFIG.benefits,
-          testimonials: res.config.testimonials && res.config.testimonials.length > 0 ? res.config.testimonials : DEFAULT_LANDING_CONFIG.testimonials,
         });
       }
     } catch (err) {
@@ -344,11 +455,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
+  /**
+   * El catálogo del que se alimenta toda la portada. Con sesión abierta son los
+   * cursos propios; sin ella, el escaparate completo.
+   */
+  const catalog = useMemo(
+    () => visibleCourses(courses, Boolean(currentUser)),
+    [courses, currentUser],
+  );
+
   /** Las píldoras salen del catálogo real, no de una lista escrita a mano. */
   const categories = useMemo(() => {
-    const found = Array.from(new Set(courses.map((c) => c.category).filter(Boolean)));
+    const found = Array.from(new Set(catalog.map((c) => c.category).filter(Boolean)));
     return ['ALL', ...found];
-  }, [courses]);
+  }, [catalog]);
 
   const query = searchQuery.trim().toLowerCase();
   /** Hay filtro puesto: la seccion deja de ser un escaparate y pasa a ser una busqueda. */
@@ -368,16 +488,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const displayCourses = useMemo(() => {
     const featuredSet = new Set(landingConfig.featuredCourseIds || []);
 
-    const matching = courses.filter((course) => {
+    const matching = catalog.filter((course) => {
       if (selectedCategory !== 'ALL' && course.category !== selectedCategory) return false;
       if (!query) return true;
       return `${course.title} ${course.description} ${course.category}`.toLowerCase().includes(query);
     });
 
     if (isBrowsing) return matching;
+    // Con sesión no se recorta a los destacados: los cursos propios se enseñan
+    // todos, que para eso son suyos.
+    if (currentUser) return matching;
     const featured = matching.filter((course) => featuredSet.has(course.id));
     return featured.length > 0 ? featured : matching.slice(0, CATALOG_FALLBACK_SIZE);
-  }, [courses, landingConfig.featuredCourseIds, selectedCategory, query, isBrowsing]);
+  }, [catalog, currentUser, landingConfig.featuredCourseIds, selectedCategory, query, isBrowsing]);
 
   /**
    * Estrenos: los cuatro publicados mas recientemente. La API entrega el
@@ -387,22 +510,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const newestCourses = useMemo(() => {
     const publishedTime = (course: Course) =>
       course.publishedAt ? Date.parse(course.publishedAt) || 0 : 0;
-    return [...courses].reverse().sort((a, b) => publishedTime(b) - publishedTime(a)).slice(0, 4);
-  }, [courses]);
+    return [...catalog].reverse().sort((a, b) => publishedTime(b) - publishedTime(a)).slice(0, 4);
+  }, [catalog]);
 
   const catalogTotals = useMemo(
     () =>
-      courses.reduce(
+      catalog.reduce(
         (acc, course) => ({
           modules: acc.modules + (course.modules?.length || 0),
           lessons: acc.lessons + lessonCount(course),
         }),
         { modules: 0, lessons: 0 },
       ),
-    [courses],
+    [catalog],
   );
 
-  const showNewest = courses.length > 0;
+  /**
+   * «Nuevos cursos» es escaparate: enseña lo último publicado para que quien no
+   * tiene cuenta vea que la plataforma se mueve. Con sesión sobra —repetiría
+   * las mismas tarjetas de «Tus cursos» bajo un titular que ya no es cierto—.
+   */
+  const showNewest = catalog.length > 0 && !currentUser;
+
+  /**
+   * La sección de testimonios se pinta sola cuando tiene sentido: si hay
+   * opiniones publicadas, o si quien mira tiene sesión y por tanto puede dejar
+   * la suya. A un visitante de una instalación recién montada no se le enseña
+   * un titular con el hueco vacío debajo.
+   */
+  const mostrarTestimonios = shouldShowTestimonials(testimonials.length, Boolean(currentUser));
 
   /**
    * Cuatro enlaces y no cinco: con el logo, el buscador y los dos botones de
@@ -414,12 +550,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     () => [
       { id: 'cursos', label: 'Catálogo', href: '#cursos' },
       { id: 'beneficios', label: 'Metodología', href: '#beneficios' },
-      ...(MOSTRAR_TESTIMONIOS
+      ...(mostrarTestimonios
         ? [{ id: 'testimonios', label: 'Testimonios', href: '#testimonios' }]
         : []),
       ...(MOSTRAR_PLANES ? [{ id: 'planes', label: 'Planes', href: '#planes' }] : []),
     ],
-    [],
+    [mostrarTestimonios],
   );
 
   // Subraya en la barra la sección que se está mirando.
@@ -515,6 +651,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     ],
   };
 
+  // Marcado para buscadores: aqui va el catalogo completo, no el filtrado.
+  // Quien lo lee nunca tiene sesion y describe la oferta, no lo que ve un alumno.
   const coursesSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -675,15 +813,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               )}
 
               {/* Las cifras salen del catálogo real, no de una constante. */}
-              {courses.length > 0 && (
+              {catalog.length > 0 && (
                 <div className="lp-hero-stats">
                   <article className="lp-stat-card">
                     <span className="lp-stat-icon" aria-hidden>
                       <Layers className="h-5 w-5" />
                     </span>
-                    <strong className="lp-stat-number">{courses.length}</strong>
+                    <strong className="lp-stat-number">{catalog.length}</strong>
                     <span className="lp-stat-label">
-                      {courses.length === 1 ? 'Programa' : 'Programas'}
+                      {catalog.length === 1 ? 'Programa' : 'Programas'}
                     </span>
                     <p className="lp-stat-note">Rutas completas con temario, video y mentoría.</p>
                   </article>
@@ -736,28 +874,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="lp-section-title-wrap">
               <div className="lp-section-indicator" />
               <div>
+                {/* Con sesión la sección deja de ser escaparate: son sus cursos. */}
                 <h2 className="lp-section-title">
-                  {isBrowsing ? 'Catálogo de cursos y mentorías' : 'Programas destacados'}
+                  {currentUser
+                    ? 'Tus cursos'
+                    : isBrowsing
+                      ? 'Catálogo de cursos y mentorías'
+                      : 'Programas destacados'}
                 </h2>
                 <p className="lp-section-sub">
-                  {isBrowsing
-                    ? 'Estructura modular, clases en video y acompañamiento de mentores en cada programa.'
-                    : 'Una selección de la casa. Filtra por categoría o busca arriba para recorrer todo el catálogo.'}
+                  {currentUser
+                    ? 'Los programas a los que tienes acceso. Entra y sigue por donde lo dejaste.'
+                    : isBrowsing
+                      ? 'Estructura modular, clases en video y acompañamiento de mentores en cada programa.'
+                      : 'Una selección de la casa. Filtra por categoría o busca arriba para recorrer todo el catálogo.'}
                 </p>
               </div>
             </div>
 
-            <a href="#cursos" className="lp-see-all">
-              Ver todo el catálogo
-              <ChevronRight aria-hidden className="h-4 w-4" />
-            </a>
+            {!currentUser && (
+              <a href="#cursos" className="lp-see-all">
+                Ver todo el catálogo
+                <ChevronRight aria-hidden className="h-4 w-4" />
+              </a>
+            )}
           </div>
 
           {displayCourses.length === 0 ? (
             <p className="lp-empty">
               {query
                 ? `No encontramos cursos que coincidan con “${searchQuery.trim()}”.`
-                : 'Todavía no hay cursos publicados en esta categoría.'}
+                : currentUser
+                  ? 'Todavía no tienes ningún curso asignado. En cuanto te matriculen aparecerá aquí.'
+                  : 'Todavía no hay cursos publicados en esta categoría.'}
             </p>
           ) : (
             <div className="lp-courses-grid">
@@ -828,43 +977,161 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </section>
 
         {/* 7. Testimonios */}
-        {MOSTRAR_TESTIMONIOS && (
+        {mostrarTestimonios && (
           <section className="lp-section" id="testimonios">
             <div className="lp-section-header">
               <div className="lp-section-title-wrap">
                 <div className="lp-section-indicator is-violet" />
                 <div>
                   <h2 className="lp-section-title">Lo que opinan nuestros mentees</h2>
-                  <p className="lp-section-sub">Experiencias de profesionales que ya estudian en la plataforma.</p>
+                  <p className="lp-section-sub">
+                    Opiniones escritas por quienes estudian aquí. Se publican tras revisarlas.
+                  </p>
                 </div>
               </div>
+
+              {/* Dejar la propia opinión. Sin sesión, primero hay que entrar. */}
+              {currentUser ? (
+                !showTestimonialForm && (
+                  <button
+                    type="button"
+                    className="lp-see-all"
+                    onClick={() => {
+                      setTestimonialError(null);
+                      setShowTestimonialForm(true);
+                    }}
+                  >
+                    {myTestimonial ? 'Editar mi opinión' : 'Dejar mi opinión'}
+                    <ChevronRight aria-hidden />
+                  </button>
+                )
+              ) : (
+                <button type="button" className="lp-see-all" onClick={() => onOpenAuth('login')}>
+                  Entra para dejar la tuya
+                  <ChevronRight aria-hidden />
+                </button>
+              )}
             </div>
 
-            <div className="lp-testimonials-grid">
-              {landingConfig.testimonials.map((testimonial) => (
-                <article key={testimonial.id} className="lp-testimonial">
-                  <div className="lp-testimonial-head">
-                    <div className="lp-testimonial-person">
-                      {testimonial.avatarUrl && (
-                        <img className="lp-testimonial-avatar" src={testimonial.avatarUrl} alt="" loading="lazy" />
-                      )}
-                      <div>
-                        <h4 className="lp-testimonial-name">{testimonial.name}</h4>
-                        <span className="lp-testimonial-role">{testimonial.role}</span>
+            {/* Estado de la opinión propia: qué pasó con lo que ya envió. */}
+            {currentUser && myTestimonial && !showTestimonialForm && (
+              <p className="lp-testimonial-status">
+                {myTestimonial.status === 'PENDING' && (
+                  <>
+                    <Clock aria-hidden className="h-3.5 w-3.5" />
+                    Tu opinión está pendiente de revisión.
+                  </>
+                )}
+                {myTestimonial.status === 'APPROVED' && (
+                  <>
+                    <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+                    Tu opinión ya está publicada. ¡Gracias!
+                  </>
+                )}
+                {myTestimonial.status === 'REJECTED' && (
+                  <>
+                    <MessageCircle aria-hidden className="h-3.5 w-3.5" />
+                    Tu opinión no se publicó. Puedes editarla y volver a enviarla.
+                  </>
+                )}
+              </p>
+            )}
+
+            {currentUser && showTestimonialForm && (
+              <form className="lp-testimonial-form" onSubmit={handleSubmitTestimonial}>
+                <div className="lp-testimonial-form-row">
+                  <span className="lp-testimonial-form-label">Tu valoración</span>
+                  <div className="lp-star-picker" role="radiogroup" aria-label="Valoración de 1 a 5">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={draftRating === value}
+                        aria-label={`${value} de 5`}
+                        className={`lp-star-pick${value <= draftRating ? ' is-on' : ''}`}
+                        onClick={() => setDraftRating(value)}
+                      >
+                        <Star aria-hidden className="h-5 w-5" fill="currentColor" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea
+                  className="lp-testimonial-textarea"
+                  rows={4}
+                  maxLength={TESTIMONIAL_MAX_CHARS}
+                  placeholder="Cuenta tu experiencia con la plataforma…"
+                  value={draftComment}
+                  onChange={(event) => setDraftComment(event.target.value)}
+                  aria-label="Tu opinión"
+                />
+
+                <div className="lp-testimonial-form-foot">
+                  <span className="lp-testimonial-count">
+                    {draftComment.length}/{TESTIMONIAL_MAX_CHARS}
+                  </span>
+                  <div className="lp-testimonial-actions">
+                    <button
+                      type="button"
+                      className="lp-btn-ghost"
+                      onClick={() => {
+                        setShowTestimonialForm(false);
+                        setTestimonialError(null);
+                        setDraftRating(myTestimonial?.rating ?? 5);
+                        setDraftComment(myTestimonial?.comment ?? '');
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button type="submit" className="lp-btn-primary" disabled={savingTestimonial}>
+                      {savingTestimonial ? 'Enviando…' : 'Enviar opinión'}
+                    </button>
+                  </div>
+                </div>
+
+                {testimonialError && <p className="lp-testimonial-error">{testimonialError}</p>}
+                <p className="lp-testimonial-note">
+                  Se publicará con tu nombre y tu foto de perfil, una vez revisada.
+                </p>
+              </form>
+            )}
+
+            {testimonials.length > 0 ? (
+              <div className="lp-testimonials-grid">
+                {testimonials.map((testimonial) => (
+                  <article key={testimonial.id} className="lp-testimonial">
+                    <div className="lp-testimonial-head">
+                      <div className="lp-testimonial-person">
+                        <img
+                          className="lp-testimonial-avatar"
+                          src={avatarSrc(testimonial.avatarUrl)}
+                          alt=""
+                          loading="lazy"
+                        />
+                        <div>
+                          <h4 className="lp-testimonial-name">{testimonial.name}</h4>
+                          <span className="lp-testimonial-role">{testimonial.role}</span>
+                        </div>
+                      </div>
+
+                      <div className="lp-stars" aria-label={`${testimonial.rating || 5} de 5`}>
+                        {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
+                          <Star key={i} aria-hidden className="h-3.5 w-3.5" fill="currentColor" />
+                        ))}
                       </div>
                     </div>
 
-                    <div className="lp-stars" aria-label={`${testimonial.rating || 5} de 5`}>
-                      {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
-                        <Star key={i} aria-hidden className="h-3.5 w-3.5" fill="currentColor" />
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="lp-testimonial-text">“{testimonial.comment}”</p>
-                </article>
-              ))}
-            </div>
+                    <p className="lp-testimonial-text">“{testimonial.comment}”</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="lp-testimonial-empty">
+                Todavía no hay opiniones publicadas. Si ya estudias aquí, la primera puede ser la tuya.
+              </p>
+            )}
           </section>
         )}
 
