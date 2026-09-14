@@ -174,12 +174,14 @@ test('Portada: los botones del encabezado llevan a algún sitio', async (t) => {
       'La configuración guardada apuntaba a #courses, que no existe en la portada',
     );
     assert.equal(resolveLandingCta('/courses', '#cursos'), '#cursos');
-    assert.equal(resolveLandingCta('#vip', '#planes'), '#planes');
-    assert.equal(resolveLandingCta('/vip', '#planes'), '#planes');
+    // Planes y testimonios estan ocultos en la portada: sus anclas caen al catalogo.
+    assert.equal(resolveLandingCta('#vip', '#planes'), '#cursos');
+    assert.equal(resolveLandingCta('/vip', '#planes'), '#cursos');
+    assert.equal(resolveLandingCta('#testimonios', '#cursos'), '#cursos');
   });
 
   await t.test('2. Un ancla propia de la portada se respeta', () => {
-    assert.equal(resolveLandingCta('#testimonios', '#cursos'), '#testimonios');
+    assert.equal(resolveLandingCta('#beneficios', '#cursos'), '#beneficios');
   });
 
   await t.test('3. Un enlace externo se deja intacto', () => {

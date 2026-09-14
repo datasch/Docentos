@@ -165,7 +165,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                 </li>
               ))}
               <li>
-                <a href="#planes" className="lp-badge-premium">
+                <a href="#cursos" className="lp-badge-premium">
                   <Star aria-hidden className="h-3 w-3" fill="currentColor" />
                   Premium
                 </a>

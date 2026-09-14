@@ -133,17 +133,25 @@ const DEFAULT_LANDING_CONFIG: LandingConfig = {
  * se traducen a la sección equivalente y, ante un destino desconocido, se cae
  * al catálogo en lugar de dejar el botón muerto.
  */
+/**
+ * Secciones ocultas a peticion del cliente: los testimonios y la tabla de
+ * membresias siguen en el archivo pero no se pintan. Para recuperarlas basta
+ * con poner estos dos flags en `true`.
+ */
+const MOSTRAR_TESTIMONIOS = false;
+const MOSTRAR_PLANES = false;
+
 const SECTION_ALIASES: Record<string, string> = {
   '#courses': '#cursos',
   '/courses': '#cursos',
   '#catalogo': '#cursos',
   '#catalog': '#cursos',
-  '#vip': '#planes',
-  '/vip': '#planes',
-  '#planes': '#planes',
-  '#pricing': '#planes',
+  '#vip': '#cursos',
+  '/vip': '#cursos',
+  '#planes': '#cursos',
+  '#pricing': '#cursos',
   '#beneficios': '#beneficios',
-  '#testimonios': '#testimonios',
+  '#testimonios': '#cursos',
 };
 
 export function resolveLandingCta(link: string | undefined, fallback: string): string {
@@ -406,8 +414,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     () => [
       { id: 'cursos', label: 'Catálogo', href: '#cursos' },
       { id: 'beneficios', label: 'Metodología', href: '#beneficios' },
-      { id: 'testimonios', label: 'Testimonios', href: '#testimonios' },
-      { id: 'planes', label: 'Planes', href: '#planes' },
+      ...(MOSTRAR_TESTIMONIOS
+        ? [{ id: 'testimonios', label: 'Testimonios', href: '#testimonios' }]
+        : []),
+      ...(MOSTRAR_PLANES ? [{ id: 'planes', label: 'Planes', href: '#planes' }] : []),
     ],
     [],
   );
@@ -626,7 +636,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {landingConfig.heroCtaText || 'Explorar Catálogo'}
                 </a>
                 <a
-                  href={resolveLandingCta(landingConfig.heroSecondaryCtaLink, '#planes')}
+                  href={resolveLandingCta(landingConfig.heroSecondaryCtaLink, '#cursos')}
                   className="lp-btn-secondary"
                 >
                   <Users aria-hidden className="h-4 w-4" />
@@ -737,8 +747,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
 
-            <a href="#planes" className="lp-see-all">
-              Ver formas de acceso
+            <a href="#cursos" className="lp-see-all">
+              Ver todo el catálogo
               <ChevronRight aria-hidden className="h-4 w-4" />
             </a>
           </div>
@@ -818,158 +828,162 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </section>
 
         {/* 7. Testimonios */}
-        <section className="lp-section" id="testimonios">
-          <div className="lp-section-header">
-            <div className="lp-section-title-wrap">
-              <div className="lp-section-indicator is-violet" />
-              <div>
-                <h2 className="lp-section-title">Lo que opinan nuestros mentees</h2>
-                <p className="lp-section-sub">Experiencias de profesionales que ya estudian en la plataforma.</p>
+        {MOSTRAR_TESTIMONIOS && (
+          <section className="lp-section" id="testimonios">
+            <div className="lp-section-header">
+              <div className="lp-section-title-wrap">
+                <div className="lp-section-indicator is-violet" />
+                <div>
+                  <h2 className="lp-section-title">Lo que opinan nuestros mentees</h2>
+                  <p className="lp-section-sub">Experiencias de profesionales que ya estudian en la plataforma.</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="lp-testimonials-grid">
-            {landingConfig.testimonials.map((testimonial) => (
-              <article key={testimonial.id} className="lp-testimonial">
-                <div className="lp-testimonial-head">
-                  <div className="lp-testimonial-person">
-                    {testimonial.avatarUrl && (
-                      <img className="lp-testimonial-avatar" src={testimonial.avatarUrl} alt="" loading="lazy" />
-                    )}
-                    <div>
-                      <h4 className="lp-testimonial-name">{testimonial.name}</h4>
-                      <span className="lp-testimonial-role">{testimonial.role}</span>
+            <div className="lp-testimonials-grid">
+              {landingConfig.testimonials.map((testimonial) => (
+                <article key={testimonial.id} className="lp-testimonial">
+                  <div className="lp-testimonial-head">
+                    <div className="lp-testimonial-person">
+                      {testimonial.avatarUrl && (
+                        <img className="lp-testimonial-avatar" src={testimonial.avatarUrl} alt="" loading="lazy" />
+                      )}
+                      <div>
+                        <h4 className="lp-testimonial-name">{testimonial.name}</h4>
+                        <span className="lp-testimonial-role">{testimonial.role}</span>
+                      </div>
+                    </div>
+
+                    <div className="lp-stars" aria-label={`${testimonial.rating || 5} de 5`}>
+                      {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
+                        <Star key={i} aria-hidden className="h-3.5 w-3.5" fill="currentColor" />
+                      ))}
                     </div>
                   </div>
 
-                  <div className="lp-stars" aria-label={`${testimonial.rating || 5} de 5`}>
-                    {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
-                      <Star key={i} aria-hidden className="h-3.5 w-3.5" fill="currentColor" />
-                    ))}
-                  </div>
-                </div>
-
-                <p className="lp-testimonial-text">“{testimonial.comment}”</p>
-              </article>
-            ))}
-          </div>
-        </section>
+                  <p className="lp-testimonial-text">“{testimonial.comment}”</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 8. Planes de acceso */}
-        <section className="lp-section" id="planes">
-          <div className="lp-section-header">
-            <div className="lp-section-title-wrap">
-              <div className="lp-section-indicator" />
-              <div>
-                <h2 className="lp-section-title">Membresías y tiers de admisión</h2>
-                <p className="lp-section-sub">Elige el formato de acceso que mejor se adapte a tus metas.</p>
+        {MOSTRAR_PLANES && (
+          <section className="lp-section" id="planes">
+            <div className="lp-section-header">
+              <div className="lp-section-title-wrap">
+                <div className="lp-section-indicator" />
+                <div>
+                  <h2 className="lp-section-title">Membresías y tiers de admisión</h2>
+                  <p className="lp-section-sub">Elige el formato de acceso que mejor se adapte a tus metas.</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="lp-plans-grid">
-            <article className="lp-plan">
-              <span className="lp-plan-kicker">
-                <GraduationCap aria-hidden className="h-3.5 w-3.5" />
-                Público general
-              </span>
-              <div className="lp-plan-price">
-                $149 <small>/ curso</small>
-              </div>
-              <p className="lp-plan-desc">
-                Para estudiantes individuales que desean adquirir programas específicos.
-              </p>
-              <ul className="lp-plan-list">
-                <li>
-                  <CheckCircle2 aria-hidden /> Acceso al curso seleccionado
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Reproductor con Google Drive
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Comentarios de clase
-                </li>
-              </ul>
-              <button
-                type="button"
-                onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
-                className="lp-btn-secondary lp-btn-block lp-plan-cta"
-              >
-                {currentUser ? 'Ir a mi panel' : 'Registrarme como público'}
-              </button>
-            </article>
+            <div className="lp-plans-grid">
+              <article className="lp-plan">
+                <span className="lp-plan-kicker">
+                  <GraduationCap aria-hidden className="h-3.5 w-3.5" />
+                  Público general
+                </span>
+                <div className="lp-plan-price">
+                  $149 <small>/ curso</small>
+                </div>
+                <p className="lp-plan-desc">
+                  Para estudiantes individuales que desean adquirir programas específicos.
+                </p>
+                <ul className="lp-plan-list">
+                  <li>
+                    <CheckCircle2 aria-hidden /> Acceso al curso seleccionado
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Reproductor con Google Drive
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Comentarios de clase
+                  </li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
+                  className="lp-btn-secondary lp-btn-block lp-plan-cta"
+                >
+                  {currentUser ? 'Ir a mi panel' : 'Registrarme como público'}
+                </button>
+              </article>
 
-            <article className="lp-plan is-featured">
-              <span className="lp-plan-flag">Recomendado</span>
-              <span className="lp-plan-kicker is-cyan">
-                <Crown aria-hidden className="h-3.5 w-3.5" />
-                Mentee VIP
-              </span>
-              <div className="lp-plan-price">
-                Pase total <small className="is-accent">Bypass activo</small>
-              </div>
-              <p className="lp-plan-desc">
-                Acceso ilimitado e inmediato a todos los cursos y mentorías del catálogo.
-              </p>
-              <ul className="lp-plan-list">
-                <li>
-                  <CheckCircle2 aria-hidden /> Todos los programas sin muro de pago
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Tutoría prioritaria con mentores
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Guías de voz con IA
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Certificados oficiales en PDF
-                </li>
-              </ul>
-              <button
-                type="button"
-                onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
-                className="lp-btn-primary lp-btn-block lp-plan-cta"
-              >
-                {currentUser ? 'Gestionar mi acceso' : 'Obtener pase VIP'}
-              </button>
-            </article>
+              <article className="lp-plan is-featured">
+                <span className="lp-plan-flag">Recomendado</span>
+                <span className="lp-plan-kicker is-cyan">
+                  <Crown aria-hidden className="h-3.5 w-3.5" />
+                  Mentee VIP
+                </span>
+                <div className="lp-plan-price">
+                  Pase total <small className="is-accent">Bypass activo</small>
+                </div>
+                <p className="lp-plan-desc">
+                  Acceso ilimitado e inmediato a todos los cursos y mentorías del catálogo.
+                </p>
+                <ul className="lp-plan-list">
+                  <li>
+                    <CheckCircle2 aria-hidden /> Todos los programas sin muro de pago
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Tutoría prioritaria con mentores
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Guías de voz con IA
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Certificados oficiales en PDF
+                  </li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
+                  className="lp-btn-primary lp-btn-block lp-plan-cta"
+                >
+                  {currentUser ? 'Gestionar mi acceso' : 'Obtener pase VIP'}
+                </button>
+              </article>
 
-            <article className="lp-plan is-mentor">
-              <span className="lp-plan-kicker is-violet">
-                <Users aria-hidden className="h-3.5 w-3.5" />
-                Membresía mentor
-              </span>
-              <div className="lp-plan-price">
-                Docente <small>/ institucional</small>
-              </div>
-              <p className="lp-plan-desc">
-                Para instructores que desean publicar programas y acompañar a sus mentees.
-              </p>
-              <ul className="lp-plan-list">
-                <li>
-                  <CheckCircle2 aria-hidden /> Panel del mentor
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Creación y edición de cursos
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Seguimiento de mentees asignados
-                </li>
-                <li>
-                  <CheckCircle2 aria-hidden /> Centro de consultas Q&amp;A
-                </li>
-              </ul>
-              <button
-                type="button"
-                onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
-                className="lp-btn-secondary lp-btn-block lp-plan-cta"
-              >
-                {currentUser ? 'Ir a mi panel' : 'Postular como mentor'}
-              </button>
-            </article>
-          </div>
-        </section>
+              <article className="lp-plan is-mentor">
+                <span className="lp-plan-kicker is-violet">
+                  <Users aria-hidden className="h-3.5 w-3.5" />
+                  Membresía mentor
+                </span>
+                <div className="lp-plan-price">
+                  Docente <small>/ institucional</small>
+                </div>
+                <p className="lp-plan-desc">
+                  Para instructores que desean publicar programas y acompañar a sus mentees.
+                </p>
+                <ul className="lp-plan-list">
+                  <li>
+                    <CheckCircle2 aria-hidden /> Panel del mentor
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Creación y edición de cursos
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Seguimiento de mentees asignados
+                  </li>
+                  <li>
+                    <CheckCircle2 aria-hidden /> Centro de consultas Q&amp;A
+                  </li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
+                  className="lp-btn-secondary lp-btn-block lp-plan-cta"
+                >
+                  {currentUser ? 'Ir a mi panel' : 'Postular como mentor'}
+                </button>
+              </article>
+            </div>
+          </section>
+        )}
 
         {/* 9. Cierre */}
         <section className="lp-promo-section">
@@ -1047,9 +1061,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <li>
                 <a href="#cursos">Catálogo</a>
               </li>
-              <li>
-                <a href="#planes">Planes</a>
-              </li>
+              {MOSTRAR_PLANES && (
+                <li>
+                  <a href="#planes">Planes</a>
+                </li>
+              )}
               {landingConfig.githubUrl && (
                 <li>
                   <a href={landingConfig.githubUrl} target="_blank" rel="noopener noreferrer">
