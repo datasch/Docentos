@@ -14,6 +14,21 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.4 - 2026-09-14
+
+### Changed
+
+- La portada deja de mostrar «Lo que opinan nuestros mentees» y «Membresías y
+  tiers de admisión». Las dos secciones siguen en el código detrás de los
+  indicadores `MOSTRAR_TESTIMONIOS` y `MOSTRAR_PLANES`, de modo que recuperarlas
+  es cuestión de volver a ponerlos en `true`.
+- Retirar una sección deja sin destino a todo lo que apuntaba a ella, así que
+  los enlaces se movieron con ella: desaparecen las entradas del menú y del pie,
+  y el segundo botón de la cabecera, el distintivo «Premium» de la barra y el
+  «ver todo» del catálogo llevan ahora al catálogo. Los alias guardados
+  (`#vip`, `/vip`, `#planes`, `#pricing`, `#testimonios`) resuelven también al
+  catálogo, para que un enlace configurado desde el panel no quede muerto.
+
 ## 0.5.0-beta.3 - 2026-09-07
 
 ### Fixed
