@@ -86,8 +86,11 @@ puede usarse para alcanzar servicios internos.
    los títulos se editan ahí mismo. Los totales de la cabecera cuentan solo lo
    que quede marcado.
 3. Opcionalmente, **Mejorar con IA** pule los títulos (ver más abajo).
-4. Fija precio, moneda y portada, y pulsa **Crear curso**. Un precio de 0 lo
-   convierte en gratuito; sin marcar «Publicar» queda como borrador.
+4. Fija precio, moneda y portada, y pulsa **Crear curso**. Sin marcar
+   «Publicar» queda como borrador. El precio **no** decide quién entra: desde
+   `0.5.0-beta.6` el acceso lo concede administración persona a persona, o la
+   casilla «Todos los registrados» del propio curso. Un precio de 0 significa
+   que no se cobra, no que esté abierto.
 
 Reimportar la misma carpeta no duplica el curso: DocentOS lo reconoce por
 `Course.driveFolderId` y ofrece **añadir solo lo que falte** —comparando por
@@ -639,3 +642,124 @@ El esquema de `0.5.0-beta.5` es compatible hacia atrás: las columnas nuevas
 tienen valor por defecto y la versión anterior no las lee. Basta con devolver
 `DOCENTOS_IMAGE` a `ghcr.io/datasch/docentos:0.5.0-beta.4` y volver a pulsar
 «Restart (pull latest)». No hace falta restaurar la base.
+
+## 11. Despliegue de 0.5.0-beta.6
+
+Esta versión **toca el esquema** y, sobre todo, **cambia quién entra a los
+cursos gratuitos**. Ese segundo punto se nota el mismo minuto del despliegue, así
+que conviene leer la 11.1 antes de pulsar nada.
+
+### 11.1. Qué cambia, en una frase
+
+Hasta aquí, un curso publicado con precio 0 estaba abierto a todo el mundo,
+**incluido quien no tenía cuenta**. Por eso alguien que acababa de registrarse
+aterrizaba en el catálogo con cursos ya activos que nadie le había dado.
+
+Desde esta versión el precio no concede acceso. Lo concede administración, curso
+por curso y persona por persona, o la casilla **«Todos los registrados»** de ese
+curso.
+
+**Qué verás el día del despliegue:** los cursos publicados a precio 0 dejan de
+estar abiertos. Quien entraba a uno sin matrícula deja de entrar hasta que se le
+asigne o hasta que se encienda esa casilla. **No se pierde nada**: matrículas,
+pagos, asignaciones, progreso y certificados siguen igual. Lo único que cambia es
+quién puede abrir el temario.
+
+Es a propósito que la casilla nazca apagada también en los cursos gratuitos que
+ya existen: esa intención nunca se declaró, se dedujo del precio, y volver a
+deducirla repetiría el fallo que esta versión corrige.
+
+### 11.2. Qué cambia en la base
+
+Una sola línea, aditiva:
+
+```sql
+ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "openToAllRegistered" BOOLEAN NOT NULL DEFAULT false;
+```
+
+Añade una columna con valor por defecto. **No hay `DROP`, ni `DELETE`, ni
+`TRUNCATE`, ni reescritura de filas.** No se borra ningún dato de ninguna tabla.
+
+**No tienes que ejecutar nada a mano.** La migración se aplica sola al arrancar
+el contenedor, dentro del `prisma migrate deploy` del `entrypoint.sh`. En Coolify
+no hay que abrir la base, ni conectarse a PostgreSQL, ni correr ningún script.
+
+### 11.3. Antes: publicar la imagen
+
+La imagen con número de versión **no existe hasta que se empuja la etiqueta**;
+la construye `release.yml`, que solo se dispara con etiquetas `v*`. Sin este
+paso, poner `:0.5.0-beta.6` en Coolify falla al descargar.
+
+```bash
+git tag -a v0.5.0-beta.6 -m "DocentOS 0.5.0-beta.6"
+git push datasch v0.5.0-beta.6
+```
+
+Espera a que el flujo «Release» termine en verde antes de seguir. Publica
+`ghcr.io/datasch/docentos:0.5.0-beta.6` y su imagen de backup.
+
+### 11.4. Antes: punto de recuperación
+
+No es opcional; esta versión migra el esquema.
+
+```bash
+docker compose exec backup /usr/local/bin/docentos-backup
+```
+
+Y, si hay gente conectada, descarga la imagen por adelantado para que el corte se
+reduzca al reinicio:
+
+```bash
+docker pull ghcr.io/datasch/docentos:0.5.0-beta.6
+```
+
+### 11.5. El despliegue
+
+En Coolify, sobre el servicio de tipo «Docker Compose»:
+
+1. `DOCENTOS_IMAGE` → `ghcr.io/datasch/docentos:0.5.0-beta.6`
+2. `DOCENTOS_BACKUP_IMAGE` → `ghcr.io/datasch/docentos-backup:0.5.0-beta.6`
+3. **«Restart (pull latest)»**, no «Restart» a secas: el segundo reutiliza la
+   imagen que ya está en el servidor y seguirías ejecutando la anterior.
+
+Hay corte de servicio: es un único contenedor sin réplica. Con la imagen ya
+descargada son unos 15-20 segundos; sin descargar, entre 30 y 90. Hazlo en una
+hora valle.
+
+### 11.6. Comprobar que salió bien
+
+```bash
+# La migración se aplicó y el arranque no se quedó a medias.
+docker compose logs --tail=150 app | grep -i "migrat\|error"
+docker compose ps
+curl --fail --silent --show-error https://docentos.giantucchi.com/api/health
+```
+
+`/api/health` debe responder `"version":"0.5.0-beta.6"`.
+
+Y la comprobación que de verdad importa, en el navegador: crea una cuenta nueva
+o abre el catálogo sin iniciar sesión. **No debe aparecer ningún curso
+accesible.** Si sigue apareciendo alguno, la migración no entró.
+
+### 11.7. Lo que hay que hacer después, una sola vez
+
+- **Decidir qué cursos quedan abiertos.** En el panel de mentoría, sección
+  Gestión de Cursos, cada curso tiene el botón **«Todos los registrados» /
+  «Solo asignados»**. Solo lo ve administración. Enciéndelo en los que quieras
+  que entre cualquiera con cuenta; deja apagados los demás. La misma casilla
+  está en el formulario del curso, en Administración → Cursos.
+- **Repartir los cursos que no vayan abiertos.** El selector «Asignar mentees al
+  curso» llega ya a cualquier cuenta registrada y activa, no solo a las que
+  tienen rol MENTEE.
+
+### 11.8. Si hay que volver atrás
+
+El esquema es compatible hacia atrás: la columna nueva tiene valor por defecto y
+la versión anterior no la lee. Basta con devolver `DOCENTOS_IMAGE` y
+`DOCENTOS_BACKUP_IMAGE` a `0.5.0-beta.5` y pulsar «Restart (pull latest)». **No
+hace falta restaurar la base.**
+
+Ten en cuenta que al volver atrás vuelve también el comportamiento anterior: los
+cursos publicados a precio 0 se abren otra vez a todo el mundo. La columna se
+queda en la base sin que nadie la lea, y vuelve a tener efecto en cuanto
+redespliegues esta versión.

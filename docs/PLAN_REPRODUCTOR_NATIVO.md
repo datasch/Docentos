@@ -279,8 +279,11 @@ Las salidas, en orden de coste:
 ## Comprobaciones antes de dar por buena la implementación
 
 - [ ] Un curso de pago sigue devolviendo `403` en `/stream` sin sesión.
-- [ ] Un curso publicado gratuito sigue siendo accesible (es el comportamiento
-      actual: `free_published_course` en `server/courseAccess.ts`).
+- [ ] Un curso publicado queda accesible para quien tenga matrícula, pago o
+      asignación, y para cualquier cuenta registrada si tiene encendida la
+      casilla «Todos los registrados» (`open_to_all_registered` en
+      `server/courseAccess.ts`). Hasta `0.5.0-beta.5` bastaba con que el precio
+      fuera 0 (`free_published_course`); esa regla ya no existe.
 - [ ] La barra de progreso permite saltar al minuto 10 de una clase de 60 MB
       (verifica que el `206` se propaga).
 - [ ] Pantalla completa en un teléfono real, en vertical y en horizontal.
