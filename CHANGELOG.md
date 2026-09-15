@@ -14,6 +14,54 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.6 - 2026-09-15
+
+### Changed
+
+- El precio de un curso deja de conceder el acceso. Cualquier curso publicado a
+  cero quedaba abierto a todo el mundo —incluido quien no tenía cuenta— porque
+  la decisión se resolvía antes de mirar matrículas, y quien acababa de
+  registrarse aterrizaba en el catálogo con cursos activos que nadie le había
+  dado. Ahora el acceso lo concede administración persona a persona
+  (`CourseEnrollment`), y la apertura a todo el mundo es una bandera que se
+  declara curso por curso: el botón **«Todos los registrados»** del panel, o su
+  casilla en el formulario del curso. Solo administración la ve y la toca, y
+  abierto no significa público: sin cuenta no se entra. La columna nace apagada
+  también en los cursos gratuitos que ya existían, porque esa intención nunca se
+  declaró, se dedujo del precio, y deducirla otra vez repetiría el fallo.
+- El selector de «Asignar mentees al curso» alcanza ya a cualquier cuenta
+  registrada y activa. Exigía el rol `MENTEE`, así que devolvía 4 candidatos de
+  16 cuentas: el resto estaba registrado, activo y era invisible para quien
+  reparte. Las cuentas de administración quedan fuera, salvo que tengan una
+  asignación viva.
+- «Asignar Nuevo Mentee» ya no convierte la cuenta que encuentra. Hacía
+  `role: 'MENTEE'` sobre una cuenta existente: a un VIP le retiraba la membresía
+  —y con ella el acceso a todos los cursos publicados— a cambio de darle uno
+  solo, y de paso le sustituía el nombre por el escrito en el formulario. Una
+  cuenta que ya existe se asigna tal cual; una cuenta nueva sí nace `MENTEE`,
+  porque ahí no hay nada previo que destruir. El acceso lo concede la
+  asignación, no el rol. Se siguen rechazando las cuentas de administración o de
+  mentor y las desactivadas.
+
+### Fixed
+
+- «Editar cursos» respondía «Mentee no encontrado» sobre personas que salían en
+  la propia lista del panel. La lista se arma desde las asignaciones, pero esa
+  ruta buscaba a la persona exigiendo el rol `MENTEE`, así que una cuenta
+  `PUBLIC_USER` o `VIP` con curso asignado aparecía y luego no existía. Ahora
+  quien ya tiene una asignación viva pasa siempre, aunque su rol o su estado no
+  cuadren hoy.
+
+### Added
+
+- Primeras pruebas de extremo a extremo sobre HTTP (`tests/http-mentorship.test.ts`).
+  El resto de la suite llama a las funciones de `server/` una a una, y eso deja
+  fuera lo que solo existe dentro de una ruta: los permisos, el código de estado
+  y qué toca y qué no toca una petición en la base. `server.ts` exporta `app` y
+  admite `DOCENTOS_SKIP_LISTEN=1` para levantarla en un puerto efímero; ni el
+  desarrollo ni la imagen de producción declaran esa variable, así que para
+  ellos no cambia nada.
+
 ## 0.5.0-beta.5 - 2026-09-14
 
 ### Added
