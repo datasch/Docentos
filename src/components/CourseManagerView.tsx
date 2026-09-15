@@ -30,6 +30,7 @@ import {
   Link2,
   Lock,
   Unlock,
+  Globe,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
@@ -48,6 +49,7 @@ const emptyForm = {
   coverImage: '',
   published: false,
   sequentialUnlock: false,
+  openToAllRegistered: false,
 };
 
 type CourseForm = typeof emptyForm;
@@ -126,6 +128,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
       currency: course.currency || 'USD',
       coverImage: course.coverImage || '',
       published: course.published,
+      openToAllRegistered: Boolean(course.openToAllRegistered),
       sequentialUnlock: Boolean(course.sequentialUnlock),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -460,6 +463,34 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
             </span>
           </label>
 
+          {/* Quién entra al curso. Va aparte del precio a propósito: hasta
+              ahora un curso publicado a 0 quedaba abierto a cualquiera —incluso
+              sin cuenta— y nadie lo había pedido. Ahora la apertura se declara,
+              y apagada el acceso lo reparte administración persona a persona. */}
+          <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.openToAllRegistered}
+              onChange={(e) => setForm({ ...form, openToAllRegistered: e.target.checked })}
+              className="accent-brand-cyan w-4 h-4 mt-0.5 shrink-0"
+            />
+            <span className="min-w-0">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                {form.openToAllRegistered ? (
+                  <Globe className="w-3.5 h-3.5 text-brand-cyan" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5 text-ink-faint" />
+                )}
+                Todos los registrados
+              </span>
+              <span className="block text-micro text-ink-muted mt-1 leading-relaxed">
+                Encendido, cualquier cuenta registrada entra a este curso sin matrícula. Apagado
+                —lo normal— solo entran quienes lo tengan asignado, hayan pagado o lleven una
+                mentoría. El precio ya no abre nada por su cuenta.
+              </span>
+            </span>
+          </label>
+
           <div className="flex items-center justify-between pt-1">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
               <input
@@ -545,6 +576,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
                           {course.isDemo && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30">
                               Demo
+                            </span>
+                          )}
+                          {course.openToAllRegistered && (
+                            <span
+                              title="Cualquier cuenta registrada entra sin matrícula"
+                              className="text-micro font-bold px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1"
+                            >
+                              <Globe className="w-2.5 h-2.5" /> Abierto
                             </span>
                           )}
                           {course.sequentialUnlock && (

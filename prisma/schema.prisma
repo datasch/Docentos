@@ -199,6 +199,15 @@ model Course {
   driveFolderId     String?
   /// Progresion secuencial: cada modulo se abre al terminar el anterior.
   sequentialUnlock  Boolean            @default(false)
+  /// Abierto a cualquier cuenta registrada, sin matricula ni pago.
+  ///
+  /// La regla por defecto es que el acceso lo concede administracion, curso por
+  /// curso y persona por persona (`CourseEnrollment`). Esta bandera es la unica
+  /// excepcion, y es explicita: el boton "Todos los registrados" del panel.
+  /// Antes el precio hacia de bandera —cualquier curso publicado a 0 quedaba
+  /// abierto, incluso para visitantes sin cuenta— y por eso alguien que acababa
+  /// de registrarse aparecia con cursos activos que nadie le habia dado.
+  openToAllRegistered Boolean          @default(false)
   modules           Module[]
   payments          Payment[]
   enrollments       CourseEnrollment[]

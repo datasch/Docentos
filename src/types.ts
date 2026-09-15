@@ -270,6 +270,11 @@ export interface Course {
    * espera a que el anterior este terminado. Apagado, el curso se ve entero.
    */
   sequentialUnlock?: boolean;
+  /**
+   * Abierto a cualquier cuenta registrada. Apagado —lo normal— el acceso lo
+   * concede administracion persona a persona; el precio ya no abre nada.
+   */
+  openToAllRegistered?: boolean;
   modules: Module[];
   resources?: CourseResource[];
   hasAccess?: boolean;

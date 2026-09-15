@@ -25,6 +25,8 @@ import {
   GraduationCap,
   Search,
   X,
+  Globe,
+  Lock,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
@@ -109,6 +111,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   // Mensaje de confirmación compartido por las acciones de la cabecera.
   const [actionNotice, setActionNotice] = useState<string>('');
 
+  /** Curso cuyo interruptor de apertura se está guardando ahora mismo. */
+  const [openingCourseId, setOpeningCourseId] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string>('');
+
   useEffect(() => {
     loadMenteesData();
     loadQnaData();
@@ -117,6 +123,33 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const announce = (message: string) => {
     setActionNotice(message);
     setTimeout(() => setActionNotice(''), 4000);
+  };
+
+  /**
+   * Abre o cierra un curso a todo el mundo que tenga cuenta.
+   *
+   * Es la única excepción a la regla de la casa —el acceso lo reparte
+   * administración, persona a persona— y por eso se pide en voz alta desde
+   * aquí, en vez de deducirse del precio como se hacía antes. Solo ADMIN ve el
+   * botón, y el servidor lo vuelve a exigir: la ruta es `requireRole(['ADMIN'])`.
+   */
+  const toggleOpenToAll = async (course: Course) => {
+    const abrir = !course.openToAllRegistered;
+    setOpenError('');
+    setOpeningCourseId(course.id);
+    try {
+      await api.updateCourse(course.id, { openToAllRegistered: abrir });
+      onRefreshCourses();
+      announce(
+        abrir
+          ? `«${course.title}» queda abierto a todas las cuentas registradas.`
+          : `«${course.title}» vuelve a entrar solo por asignación.`,
+      );
+    } catch (error: any) {
+      setOpenError(error?.message || 'No se pudo cambiar la apertura del curso.');
+    } finally {
+      setOpeningCourseId(null);
+    }
   };
 
   const loadMenteesData = async () => {
@@ -244,11 +277,23 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     setAssigningMentee(true);
     setAssignError('');
     try {
-      await api.assignMentee(newMenteeName.trim(), newMenteeEmail.trim(), currentUser.id, newMenteeCourseId || undefined);
+      const res = await api.assignMentee(
+        newMenteeName.trim(),
+        newMenteeEmail.trim(),
+        currentUser.id,
+        newMenteeCourseId || undefined,
+      );
       setNewMenteeName('');
       setNewMenteeEmail('');
       setShowAssignMenteeModal(false);
-      announce(`${newMenteeName.trim()} queda asignado a tu mentoría.`);
+      // A una cuenta que ya existía no se le pisa el nombre, así que el aviso
+      // usa el que está guardado y no el que se acaba de teclear.
+      const nombre = res.mentee?.name || newMenteeName.trim();
+      announce(
+        res.existed
+          ? `${nombre} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.`
+          : `${nombre} queda asignado a tu mentoría.`,
+      );
       loadMenteesData();
     } catch (error: any) {
       // El servidor rechaza con un motivo concreto (cuenta administrativa,
@@ -371,6 +416,14 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {actionNotice && (
         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in">
           <CheckCircle2 className="w-4 h-4" /> {actionNotice}
+        </div>
+      )}
+
+      {/* Si el interruptor de apertura falla hay que decirlo: el botón vuelve a
+          su estado anterior y sin este aviso el fallo pasa por «no hice clic». */}
+      {openError && (
+        <div role="alert" className="p-3 bg-brand-orange/10 border border-brand-orange/30 text-brand-orange text-xs font-bold rounded-xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" /> {openError}
         </div>
       )}
 
@@ -501,6 +554,32 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     <Users className="w-3.5 h-3.5 text-[#06b6d4]" />
                     Mentees asignados ({menteesOfCourse(course.id).length})
                   </button>
+
+                  {/* La excepción, dicha en voz alta. Mientras esté apagado, a
+                      este curso solo se entra por asignación: es lo que evita
+                      que alguien recién registrado se encuentre cursos activos
+                      que nadie le dio. Solo administración lo ve y lo toca. */}
+                  {currentUser.role === 'ADMIN' && (
+                    <button
+                      onClick={() => toggleOpenToAll(course)}
+                      disabled={openingCourseId === course.id}
+                      aria-pressed={Boolean(course.openToAllRegistered)}
+                      className={`w-full py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-cyan disabled:opacity-60 ${
+                        course.openToAllRegistered
+                          ? 'bg-brand-cyan/10 border-brand-cyan/40 text-brand-cyan'
+                          : 'bg-raised border-line text-ink-soft hover:border-brand-cyan'
+                      }`}
+                    >
+                      {openingCourseId === course.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : course.openToAllRegistered ? (
+                        <Globe className="w-3.5 h-3.5" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 text-ink-faint" />
+                      )}
+                      {course.openToAllRegistered ? 'Todos los registrados' : 'Solo asignados'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

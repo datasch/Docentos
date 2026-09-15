@@ -62,7 +62,6 @@ import { sendTelemetryCallHome } from './server/telemetryService.js';
 import { prisma } from './server/prisma.js';
 import { config } from './server/config.js';
 import {
-  canConvertAccountToMentee,
   getCourseAccessDecision,
   getCourseAccessDecisions,
   userHasCourseAccess,
@@ -71,7 +70,7 @@ import {
   serializeCourseForViewer,
   serializeCourseForAdmin,
 } from './server/courseAccess.js';
-import { groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
+import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import {
   createCheckoutSession,
@@ -2144,19 +2143,42 @@ async function courseLessonCount(courseId: string) {
  * se quedara de mentora de mentees que en realidad lleva otra persona.
  */
 /**
- * Condicion para poder llevar un curso como mentee: cuenta activa que o bien
- * tiene el rol MENTEE, o bien ya es mentee de alguien en otro curso.
+ * Condicion para poder llevar un curso como mentee: cualquier cuenta activa
+ * que no sea de administracion.
  *
- * Lo segundo existe porque en la base hay cuentas con otro rol (VIP) y
- * asignaciones vivas. Exigir solo el rol dejaba a esas personas fuera del
- * selector y, peor, hacia que guardar el reparto les retirase el curso.
+ * Antes se exigia el rol MENTEE (o tener ya una asignacion viva), y el selector
+ * de "Asignar mentees al curso" devolvia 4 cuentas de las 16 activas: el resto
+ * estaba registrado, activo y era invisible. Como el acceso a un curso ya
+ * no lo abre el precio, el reparto a mano es la via normal de dar acceso, y
+ * tiene que poder alcanzar a todo el que tiene cuenta.
+ *
+ * Quedan fuera las cuentas ADMIN, que ya entran a todo por su rol, salvo que
+ * alguna tenga una asignacion viva: excluir a alguien ya asignado no lo
+ * escondia sin mas, hacia que guardar el reparto le retirase el curso.
  */
 async function assignableMenteeFilter() {
   const asignados = await prisma.menteeAssignment.findMany({ select: { menteeId: true } });
-  return {
-    isActive: true,
-    OR: [{ role: 'MENTEE' as const }, { id: { in: asignados.map((a) => a.menteeId) } }],
-  };
+  return assignableMenteeWhere(asignados.map((a) => a.menteeId));
+}
+
+/**
+ * La cuenta que hay detras de un id, si este panel puede repartirle cursos.
+ *
+ * Misma condicion que el selector, mas una puerta de atras: quien ya tiene una
+ * asignacion viva pasa siempre, aunque hoy su rol o su estado no cuadren.
+ *
+ * Sin esa puerta, el panel se contradecia solo: "Editar cursos" exigia el rol
+ * MENTEE, asi que una cuenta PUBLIC_USER o VIP con curso asignado aparecia en
+ * la lista de mentees y al pulsar el boton respondia "Mentee no encontrado".
+ * Pasaba con vokerb4@gmail.com (PUBLIC_USER) y con roberto@empresa.com (VIP).
+ */
+async function findAssignableMentee(menteeId: string) {
+  return prisma.user.findFirst({
+    where: {
+      id: menteeId,
+      OR: [{ menteeAssignments: { some: {} } }, await assignableMenteeFilter()],
+    },
+  });
 }
 
 /**
@@ -2352,7 +2374,7 @@ app.put(
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
     const menteeId = req.params.menteeId;
-    const mentee = await prisma.user.findFirst({ where: { id: menteeId, role: 'MENTEE' } });
+    const mentee = await findAssignableMentee(menteeId);
     if (!mentee) {
       res.status(404).json({ error: 'Mentee no encontrado' });
       return;
@@ -2466,24 +2488,26 @@ app.post(
     if (existingMentee && !existingMentee.isActive) {
       return res.status(409).json({ error: 'La cuenta indicada está desactivada.' });
     }
-    if (!canConvertAccountToMentee(req.user!.role, (existingMentee?.role as UserRole) ?? null)) {
-      return res.status(403).json({
-        error: `La cuenta ${email} tiene el rol ${existingMentee!.role}. Solo un administrador puede convertirla en mentee.`,
-      });
-    }
 
+    /**
+     * Una cuenta que ya existe se asigna tal cual: ni se le cambia el rol ni se
+     * le pisa el nombre.
+     *
+     * Antes este boton hacia `role: 'MENTEE'` sobre la cuenta encontrada, y eso
+     * hacia dos danos. Uno, a una cuenta VIP le retiraba la membresia —y con
+     * ella el acceso a todos los cursos publicados— a cambio de darle uno: el
+     * saldo era negativo y nadie lo habia pedido. Dos, el panel se contradecia:
+     * el selector "Asignar mentees al curso" reparte cursos a cualquier cuenta
+     * registrada sin tocarle el rol, y este boton, para la misma persona,
+     * respondia 403 si quien pulsaba era mentor.
+     *
+     * El rol no es lo que concede el acceso: lo concede `MenteeAssignment`, que
+     * es lo que se crea abajo. Una cuenta nueva si nace MENTEE, porque ahi no
+     * hay nada previo que destruir.
+     */
     const mentee = existingMentee
-      ? await prisma.user.update({ where: { id: existingMentee.id }, data: { name, role: 'MENTEE' } })
+      ? existingMentee
       : await prisma.user.create({ data: { name, email, role: 'MENTEE', avatarUrl: DEFAULT_AVATAR } });
-
-    if (existingMentee && existingMentee.role !== mentee.role) {
-      await recordAuditEvent(req, {
-        action: 'user.role_changed',
-        targetType: 'User',
-        targetId: mentee.id,
-        metadata: { previousRole: existingMentee.role, role: mentee.role, via: 'mentor.assign_mentee' },
-      });
-    }
     const totalVideosCount = await courseLessonCount(course.id);
     const assignment = await prisma.menteeAssignment.upsert({
       where: { menteeId_courseId: { menteeId: mentee.id, courseId: course.id } },
@@ -2492,6 +2516,10 @@ app.post(
     });
     res.json({
       success: true,
+      // El panel escribe el aviso con esto: si la cuenta ya existia, el nombre
+      // que se tecleo en el formulario no se aplico, y decir "Fulano queda
+      // asignado" usando ese texto seria inventarse un nombre que no se guardo.
+      existed: Boolean(existingMentee),
       mentee: {
         ...toRuntimeUser(mentee),
         assignedMentorId: assignment.mentorId,
@@ -2747,6 +2775,7 @@ app.post(
         category: String(req.body.category || 'Mentoría Elite').trim(),
         isDemo: Boolean(req.body.isDemo),
         sequentialUnlock: Boolean(req.body.sequentialUnlock),
+        openToAllRegistered: Boolean(req.body.openToAllRegistered),
       },
     });
 
@@ -2782,6 +2811,11 @@ app.put(
         ...(req.body.category !== undefined ? { category: String(req.body.category).trim() } : {}),
         ...(req.body.sequentialUnlock !== undefined
           ? { sequentialUnlock: Boolean(req.body.sequentialUnlock) }
+          : {}),
+        // "Todos los registrados": la unica via que abre un curso sin pasar por
+        // una matricula nominal. Solo ADMIN llega hasta aqui (requireRole).
+        ...(req.body.openToAllRegistered !== undefined
+          ? { openToAllRegistered: Boolean(req.body.openToAllRegistered) }
           : {}),
         published,
         publishedAt,
@@ -3469,8 +3503,35 @@ async function startServer() {
   process.once('SIGTERM', shutdown);
 }
 
-startServer().catch(async (error) => {
-  console.error('❌ No se pudo iniciar DocentOS:', error);
-  await prisma.$disconnect();
-  process.exitCode = 1;
-});
+/**
+ * La aplicacion, sin escuchar todavia.
+ *
+ * Las pruebas de extremo a extremo la importan para levantarla en un puerto
+ * efimero y hablarle por HTTP de verdad: es la unica forma de comprobar lo que
+ * vive dentro de una ruta —permisos, codigos de estado, que se guarda y que
+ * no— sin reescribir esa logica en el test y acabar probando la copia.
+ */
+export { app };
+
+/**
+ * Arranque automatico al importar, salvo que se pida lo contrario.
+ *
+ * `DOCENTOS_SKIP_LISTEN=1` es la puerta que usan las pruebas: sin ella,
+ * importar este archivo abriria un segundo servidor en el 3000 —o moriria con
+ * EADDRINUSE contra el que ya este corriendo— y dejaria el proceso vivo al
+ * acabar el test.
+ *
+ * Se comprueba la variable en vez de deducir si este archivo es el punto de
+ * entrada: esa deteccion depende de `process.argv[1]`, que no es igual bajo
+ * `tsx server.ts` que bajo `node dist/server.js`, y equivocarse ahi significa
+ * que la imagen de produccion arranca y no escucha. Nadie declara esta
+ * variable en desarrollo ni en el contenedor, asi que para ellos no cambia
+ * nada.
+ */
+if (process.env.DOCENTOS_SKIP_LISTEN !== '1') {
+  startServer().catch(async (error) => {
+    console.error('❌ No se pudo iniciar DocentOS:', error);
+    await prisma.$disconnect();
+    process.exitCode = 1;
+  });
+}

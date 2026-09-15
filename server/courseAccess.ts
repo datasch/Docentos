@@ -5,7 +5,7 @@ import { parseVideoSource } from '../src/lib/videoParser.js';
 export type CourseAccessReason =
   | 'admin'
   | 'vip_membership'
-  | 'free_published_course'
+  | 'open_to_all_registered'
   | 'confirmed_payment'
   | 'active_enrollment'
   | 'mentorship_assignment'
@@ -35,6 +35,13 @@ export const COURSE_ROLE_PERMISSIONS: Record<UserRole, readonly string[]> = {
  * rol previo (por ejemplo la membresia VIP y su acceso a los cursos
  * publicados), asi que es una operacion reservada a administracion. Un mentor
  * solo puede asignar cuentas nuevas o que ya sean mentees.
+ *
+ * NOTA (14 sep 2026): hoy no la llama nadie. "Asignar Nuevo Mentee" dejo de
+ * convertir cuentas —asigna el curso y deja el rol como esta— porque el acceso
+ * lo concede `MenteeAssignment`, no el rol, y la conversion solo restaba. La
+ * regla se conserva, con sus pruebas, porque sigue siendo cierta: el dia que
+ * algo vuelva a cambiar el rol de una cuenta, tiene que pasar por aqui. Si se
+ * decide que ese dia no va a llegar, esto y sus pruebas se borran juntos.
  */
 export function canConvertAccountToMentee(actorRole: UserRole, targetRole: UserRole | null): boolean {
   if (targetRole === null || targetRole === 'MENTEE') return true;
@@ -51,7 +58,7 @@ function decision(allowed: boolean, reason: CourseAccessReason): CourseAccessDec
   return { allowed, reason, hasPaid: false, hasEnrollment: false, hasMentorshipAssignment: false };
 }
 
-type CourseAccessInput = { id: string; published: boolean; price: number };
+type CourseAccessInput = { id: string; published: boolean; price: number; openToAllRegistered: boolean };
 
 /**
  * Resuelve la parte del permiso que no necesita consultar matriculas ni pagos.
@@ -62,8 +69,11 @@ function resolveStaticDecision(
   course: CourseAccessInput,
 ): CourseAccessDecision | null {
   if (user?.role === 'ADMIN') return decision(true, 'admin');
-  if (course.published && course.price <= 0) return decision(true, 'free_published_course');
+  // Sin cuenta no se entra a ningun curso. El precio ya no abre nada por si
+  // solo: un curso a 0 sigue necesitando que administracion lo conceda, salvo
+  // que este marcado como abierto a todo el mundo.
   if (!user) return decision(false, 'not_authenticated');
+  if (course.published && course.openToAllRegistered) return decision(true, 'open_to_all_registered');
   if (user.role === 'VIP' && course.published) return decision(true, 'vip_membership');
   return null;
 }
@@ -155,7 +165,7 @@ export async function getCourseAccessDecision(
 ): Promise<CourseAccessDecision> {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { id: true, published: true, price: true },
+    select: { id: true, published: true, price: true, openToAllRegistered: true },
   });
 
   if (!course) return decision(false, 'not_authorized');
@@ -270,6 +280,8 @@ export function serializeCourseForViewer(course: any, hasAccess: boolean) {
     // El temario del alumno necesita saber si el curso abre los modulos de uno
     // en uno: sin este dato el candado no se puede pintar.
     sequentialUnlock: Boolean(course.sequentialUnlock),
+    // El panel pinta con esto el estado del boton "Todos los registrados".
+    openToAllRegistered: Boolean(course.openToAllRegistered),
     createdAt: course.createdAt,
     updatedAt: course.updatedAt,
   };

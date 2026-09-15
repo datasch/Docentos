@@ -137,7 +137,7 @@ test('Seguridad: un mentor no puede cambiar el rol de una cuenta existente', asy
 
 test('Acceso a cursos: la resolucion por lotes coincide con la individual', async (t) => {
   const courses = await prisma.course.findMany({
-    select: { id: true, published: true, price: true },
+    select: { id: true, published: true, price: true, openToAllRegistered: true },
   });
   assert.ok(courses.length > 0, 'La base de demostracion debe tener cursos');
 

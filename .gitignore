@@ -16,3 +16,11 @@ npm-audit.json
 
 # Notas de trabajo locales, no se publican
 notas/
+
+# Kit de delegación en agentes (agy). Herramienta local de trabajo, no del
+# producto: reglas de estilo medidas de este repo, la skill y el verificador.
+AGENTS.md
+.agents/
+.agy-salida/
+.agy-arms/
+scripts/verificar-diseno.sh

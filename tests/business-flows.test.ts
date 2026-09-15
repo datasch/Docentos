@@ -310,3 +310,77 @@ test('Seguridad de Pagos: la simulación de desarrollo no puede conceder acceso 
     assert.equal(payment?.status, 'COMPLETED');
   });
 });
+
+/**
+ * El precio dejó de conceder acceso.
+ *
+ * Síntoma real: alguien se registraba, aterrizaba en /courses y se encontraba
+ * tres cursos activos que nadie le había dado. No era un fallo del registro
+ * —`POST /api/auth/register` no crea ninguna matrícula— sino de la regla de
+ * acceso: cualquier curso publicado a precio 0 se abría solo. La apertura sigue
+ * siendo posible, pero ahora hay que declararla curso por curso.
+ */
+test('Acceso: un curso gratuito ya no se abre solo', async (t) => {
+  const CURSO_ID = 'curso-prueba-apertura';
+  const recienRegistrado: User = {
+    id: TEST_USER_ID,
+    email: 'estudiante@gmail.com',
+    name: 'Ana Silva',
+    role: 'PUBLIC_USER',
+  };
+
+  await prisma.courseEnrollment.deleteMany({ where: { courseId: CURSO_ID } });
+  await prisma.course.deleteMany({ where: { id: CURSO_ID } });
+  await prisma.course.create({
+    data: {
+      id: CURSO_ID,
+      title: 'Curso de prueba: apertura',
+      description: 'Publicado y a precio cero, como los que se activaban solos.',
+      price: 0,
+      published: true,
+      coverImage: 'https://example.invalid/portada.jpg',
+    },
+  });
+
+  await t.test('1. Publicado y a precio 0 no basta para entrar', async () => {
+    const decision = await getCourseAccessDecision(recienRegistrado, CURSO_ID);
+    assert.equal(decision.allowed, false, 'Antes devolvía allowed:true por free_published_course');
+    assert.equal(decision.reason, 'not_authorized');
+  });
+
+  await t.test('2. Con «Todos los registrados» encendido sí se entra, y se dice por qué', async () => {
+    await prisma.course.update({ where: { id: CURSO_ID }, data: { openToAllRegistered: true } });
+    const decision = await getCourseAccessDecision(recienRegistrado, CURSO_ID);
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.reason, 'open_to_all_registered');
+    assert.equal(decision.hasEnrollment, false, 'Se abre sin matrícula: la bandera es la concesión');
+  });
+
+  await t.test('3. Abierto no significa público: sin cuenta no se entra', async () => {
+    const decision = await getCourseAccessDecision(undefined, CURSO_ID);
+    assert.equal(decision.allowed, false, 'Antes un visitante anónimo veía el curso gratuito entero');
+    assert.equal(decision.reason, 'not_authenticated');
+  });
+
+  await t.test('4. Un curso sin publicar no lo abre la bandera', async () => {
+    await prisma.course.update({ where: { id: CURSO_ID }, data: { published: false } });
+    const decision = await getCourseAccessDecision(recienRegistrado, CURSO_ID);
+    assert.equal(decision.allowed, false);
+  });
+
+  await t.test('5. La matrícula sigue siendo la vía normal', async () => {
+    await prisma.course.update({
+      where: { id: CURSO_ID },
+      data: { published: true, openToAllRegistered: false },
+    });
+    await prisma.courseEnrollment.create({
+      data: { userId: TEST_USER_ID, courseId: CURSO_ID, status: 'ACTIVE', source: 'ADMIN' },
+    });
+    const decision = await getCourseAccessDecision(recienRegistrado, CURSO_ID);
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.reason, 'active_enrollment');
+  });
+
+  await prisma.courseEnrollment.deleteMany({ where: { courseId: CURSO_ID } });
+  await prisma.course.deleteMany({ where: { id: CURSO_ID } });
+});

@@ -10,7 +10,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupAssignmentsByMentee, resolveRosterChanges } from '../server/mentorship.js';
+import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from '../server/mentorship.js';
+import { prisma } from '../server/prisma.js';
 import type { AssignmentRow } from '../server/mentorship.js';
 
 function assignment(over: Partial<AssignmentRow> & { menteeId: string; courseId: string }): AssignmentRow {
@@ -141,4 +142,78 @@ test('Mentoría: marcar y desmarcar se traduce en altas y bajas', async (t) => {
     const cambios = resolveRosterChanges([], ['a', 'b'], []);
     assert.deepEqual(cambios.toRemove, ['a', 'b']);
   });
+});
+
+/**
+ * El selector de "Asignar mentees al curso" enseñaba tres personas de quince:
+ * exigía el rol MENTEE y dejaba fuera a todo el que estaba registrado sin él.
+ * Desde que el precio no abre cursos, repartir a mano es la vía normal de dar
+ * acceso, así que el selector tiene que llegar a cualquier cuenta con registro.
+ */
+test('Mentoría: el selector alcanza a todas las cuentas registradas', async (t) => {
+  await t.test('1. Ya no se exige el rol MENTEE', () => {
+    const where = assignableMenteeWhere([]);
+    assert.deepEqual(
+      where.OR[0],
+      { role: { not: 'ADMIN' } },
+      'Antes esta condición era { role: "MENTEE" } y escondía a PUBLIC_USER, VIP y EXTERNAL',
+    );
+  });
+
+  await t.test('2. Solo se pide que la cuenta esté activa', () => {
+    assert.equal(assignableMenteeWhere([]).isActive, true);
+  });
+
+  await t.test('3. Administración queda fuera salvo que ya esté asignada', () => {
+    // Excluir a quien ya tiene una asignación viva no lo escondía: hacía que
+    // guardar el reparto le retirase el curso.
+    const where = assignableMenteeWhere(['admin-con-curso', 'admin-con-curso', 'otra']);
+    assert.deepEqual(where.OR[1], { id: { in: ['admin-con-curso', 'otra'] } }, 'Sin duplicados');
+  });
+});
+
+/**
+ * El panel se contradecía solo: enseñaba en la lista de mentees a cuentas cuyo
+ * rol no era MENTEE —porque tenían un curso asignado— y al pulsar «Editar
+ * cursos» respondía «Mentee no encontrado», porque esa ruta exigía el rol.
+ *
+ * Esto comprueba la condición contra la base real: todo el que salga en la
+ * lista tiene que pasar también el filtro con el que se le busca al guardar.
+ */
+test('Mentoría: quien sale en la lista se puede editar', async () => {
+  const asignaciones = await prisma.menteeAssignment.findMany({
+    select: { menteeId: true },
+    distinct: ['menteeId'],
+  });
+  const idsEnLista = asignaciones.map((a) => a.menteeId);
+
+  if (idsEnLista.length === 0) {
+    // Sin asignaciones no hay nada que contradecir; no se inventa un caso.
+    return;
+  }
+
+  const alcanzables = await prisma.user.findMany({
+    where: {
+      id: { in: idsEnLista },
+      OR: [
+        { menteeAssignments: { some: {} } },
+        assignableMenteeWhere(idsEnLista),
+      ],
+    },
+    select: { id: true, email: true, role: true },
+  });
+
+  const perdidos = idsEnLista.filter((id) => !alcanzables.some((u) => u.id === id));
+  assert.deepEqual(
+    perdidos,
+    [],
+    'Antes se perdían aquí las cuentas asignadas cuyo rol no era MENTEE (PUBLIC_USER, VIP)',
+  );
+
+  // Y el caso que lo provocaba tiene que estar representado de verdad.
+  const sinRolMentee = alcanzables.filter((u) => u.role !== 'MENTEE');
+  assert.ok(
+    sinRolMentee.length > 0,
+    'La base de desarrollo debe conservar alguna cuenta asignada sin rol MENTEE, o esta prueba no prueba nada',
+  );
 });

@@ -1,0 +1,17 @@
+-- El precio deja de conceder acceso; ahora hay una bandera explicita.
+--
+-- Hasta aqui, cualquier curso publicado con precio 0 quedaba abierto a todo el
+-- mundo (incluso a quien no tenia cuenta), porque `resolveStaticDecision` lo
+-- resolvia antes de mirar matriculas. Efecto real: alguien que se acababa de
+-- registrar aterrizaba en /courses con varios cursos activos que nadie le habia
+-- concedido, en contra de la regla del panel —el acceso lo da administracion,
+-- curso por curso, mediante "CourseEnrollment".
+--
+-- La excepcion sigue existiendo, pero ahora se pide en voz alta: el boton
+-- "Todos los registrados" enciende esta columna en ese curso concreto.
+--
+-- Se nace en FALSE a proposito, tambien para los cursos gratuitos que ya
+-- existen: la intencion de abrirlos nunca se declaro, se dedujo del precio, y
+-- deducirla otra vez aqui repetiria el fallo que esta migracion corrige. Quien
+-- administre vuelve a abrir los que quiera desde el panel.
+ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "openToAllRegistered" BOOLEAN NOT NULL DEFAULT false;

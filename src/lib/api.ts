@@ -528,7 +528,7 @@ export const api = {
     email: string,
     mentorId?: string,
     courseId?: string,
-  ): Promise<{ success: boolean; mentee: any }> {
+  ): Promise<{ success: boolean; existed?: boolean; mentee: any }> {
     const res = await fetch('/api/mentor/assign-mentee', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -666,7 +666,7 @@ export const api = {
   },
 
   // Course Admin CRUD
-  async createCourse(data: { title: string; description?: string; price?: number; currency?: string; published?: boolean; coverImage?: string; category?: string; isDemo?: boolean; sequentialUnlock?: boolean }): Promise<{ success: boolean; course: Course }> {
+  async createCourse(data: { title: string; description?: string; price?: number; currency?: string; published?: boolean; coverImage?: string; category?: string; isDemo?: boolean; sequentialUnlock?: boolean; openToAllRegistered?: boolean }): Promise<{ success: boolean; course: Course }> {
     const res = await fetch('/api/admin/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

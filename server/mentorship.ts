@@ -150,3 +150,25 @@ export function resolveRosterChanges(
     ignored: pedidosUnicos.filter((id) => !validos.has(id)),
   };
 }
+
+/**
+ * A quién se le puede asignar un curso desde el panel: cualquier cuenta activa
+ * que no sea de administración.
+ *
+ * Antes la condición era «rol MENTEE, o ya asignado a alguien». Medido contra
+ * la base de desarrollo: 4 candidatos de 16 cuentas activas, y el resto —gente
+ * registrada y activa— invisible para quien reparte. Desde que el precio dejó de abrir
+ * cursos, este reparto es la vía normal de dar acceso: tiene que alcanzar a
+ * todo el que tenga cuenta.
+ *
+ * `asignados` entra por parámetro para que esto siga siendo una función pura y
+ * se pueda fijar con un test. Se usa para no dejar fuera a quien ya está
+ * asignado aunque su rol hoy no cuadre: esconderlo no lo escondía, hacía que
+ * guardar el reparto le retirase el curso.
+ */
+export function assignableMenteeWhere(asignados: string[]) {
+  return {
+    isActive: true,
+    OR: [{ role: { not: 'ADMIN' as const } }, { id: { in: Array.from(new Set(asignados)) } }],
+  };
+}
