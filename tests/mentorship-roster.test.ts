@@ -177,43 +177,72 @@ test('Mentoría: el selector alcanza a todas las cuentas registradas', async (t)
  * rol no era MENTEE —porque tenían un curso asignado— y al pulsar «Editar
  * cursos» respondía «Mentee no encontrado», porque esa ruta exigía el rol.
  *
- * Esto comprueba la condición contra la base real: todo el que salga en la
- * lista tiene que pasar también el filtro con el que se le busca al guardar.
+ * La prueba se fabrica su propio caso en vez de buscarlo en la base. La primera
+ * versión daba por hecho que existía alguna cuenta asignada sin rol MENTEE: era
+ * cierto en la base de desarrollo y falso en una recién sembrada, así que pasaba
+ * en local y moría en integración continua. Un dato ambiental no es un caso de
+ * prueba.
  */
-test('Mentoría: quien sale en la lista se puede editar', async () => {
-  const asignaciones = await prisma.menteeAssignment.findMany({
-    select: { menteeId: true },
-    distinct: ['menteeId'],
-  });
-  const idsEnLista = asignaciones.map((a) => a.menteeId);
+test('Mentoría: quien sale en la lista se puede editar', async (t) => {
+  const marca = `roster-${Date.now()}`;
+  const curso = await prisma.course.findFirst({ orderBy: { createdAt: 'asc' } });
+  assert.ok(curso, 'La base debe tener algún curso');
 
-  if (idsEnLista.length === 0) {
-    // Sin asignaciones no hay nada que contradecir; no se inventa un caso.
-    return;
+  const mentor = await prisma.user.create({
+    data: { name: 'Mentor fixture', email: `mentor-${marca}@ejemplo.invalid`, role: 'MENTOR', avatarUrl: '/logo.avif' },
+  });
+  // Los dos roles que el filtro viejo perdía, con asignación viva.
+  const publico = await prisma.user.create({
+    data: { name: 'Público asignado', email: `publico-${marca}@ejemplo.invalid`, role: 'PUBLIC_USER', avatarUrl: '/logo.avif' },
+  });
+  const vip = await prisma.user.create({
+    data: { name: 'VIP asignado', email: `vip-${marca}@ejemplo.invalid`, role: 'VIP', avatarUrl: '/logo.avif' },
+  });
+  const ids = [mentor.id, publico.id, vip.id];
+
+  for (const menteeId of [publico.id, vip.id]) {
+    await prisma.menteeAssignment.create({
+      data: { menteeId, mentorId: mentor.id, courseId: curso.id, totalVideosCount: 0 },
+    });
   }
 
-  const alcanzables = await prisma.user.findMany({
-    where: {
-      id: { in: idsEnLista },
-      OR: [
-        { menteeAssignments: { some: {} } },
-        assignableMenteeWhere(idsEnLista),
-      ],
-    },
-    select: { id: true, email: true, role: true },
+  t.after(async () => {
+    await prisma.menteeAssignment.deleteMany({ where: { menteeId: { in: ids } } });
+    await prisma.user.deleteMany({ where: { id: { in: ids } } });
   });
 
-  const perdidos = idsEnLista.filter((id) => !alcanzables.some((u) => u.id === id));
-  assert.deepEqual(
-    perdidos,
-    [],
-    'Antes se perdían aquí las cuentas asignadas cuyo rol no era MENTEE (PUBLIC_USER, VIP)',
-  );
+  await t.test('1. Todo el que sale en la lista se alcanza al guardar', async () => {
+    const asignaciones = await prisma.menteeAssignment.findMany({
+      select: { menteeId: true },
+      distinct: ['menteeId'],
+    });
+    const enLista = asignaciones.map((a) => a.menteeId);
 
-  // Y el caso que lo provocaba tiene que estar representado de verdad.
-  const sinRolMentee = alcanzables.filter((u) => u.role !== 'MENTEE');
-  assert.ok(
-    sinRolMentee.length > 0,
-    'La base de desarrollo debe conservar alguna cuenta asignada sin rol MENTEE, o esta prueba no prueba nada',
-  );
+    const alcanzables = await prisma.user.findMany({
+      where: {
+        id: { in: enLista },
+        OR: [{ menteeAssignments: { some: {} } }, assignableMenteeWhere(enLista)],
+      },
+      select: { id: true },
+    });
+
+    const perdidos = enLista.filter((id) => !alcanzables.some((u) => u.id === id));
+    assert.deepEqual(perdidos, [], 'Nadie que salga en la lista puede quedar fuera al buscarlo');
+  });
+
+  await t.test('2. Y el caso que lo provocaba está representado de verdad', async () => {
+    const sinRolMentee = await prisma.user.findMany({
+      where: { id: { in: [publico.id, vip.id] }, role: { not: 'MENTEE' } },
+      select: { id: true },
+    });
+    assert.equal(sinRolMentee.length, 2, 'Las dos cuentas del montaje siguen sin rol MENTEE');
+  });
+
+  await t.test('3. La regla vieja sí las perdía', () => {
+    // El filtro anterior era: isActive y (role MENTEE o ya asignado). Con la
+    // condición reducida al rol, estas dos cuentas no aparecían.
+    const pasaLaReglaVieja = (rol: string) => rol === 'MENTEE';
+    assert.equal(pasaLaReglaVieja('PUBLIC_USER'), false);
+    assert.equal(pasaLaReglaVieja('VIP'), false);
+  });
 });
