@@ -27,7 +27,7 @@ import type { Request } from 'express';
 // decide al evaluar el modulo, no al llamar a nada.
 process.env.DOCENTOS_SKIP_LISTEN = '1';
 
-const { app } = await import('../server.js');
+const { app, ensureLegacyInstanceConfig } = await import('../server.js');
 const { prisma } = await import('../server/prisma.js');
 const { createUserSession } = await import('../server/authService.js');
 const { config } = await import('../server/config.js');
@@ -59,8 +59,18 @@ async function cookieDe(userId: string) {
   return `${config.SESSION_COOKIE_NAME}=${token}`;
 }
 
-/** La aplicacion escuchando en un puerto que elige el sistema. */
+/**
+ * La aplicacion escuchando en un puerto que elige el sistema.
+ *
+ * Antes de escuchar se repite el paso de arranque que hace `startServer`: en
+ * una base recien migrada y sembrada —la de integracion continua— hay cuentas
+ * ADMIN pero `InstanceConfig.setupCompletedAt` esta vacio, y entonces
+ * `setupGuard` contesta 428 a todas las rutas /api. En una base de desarrollo
+ * que ya paso por el asistente no hace nada. Esto costo una integracion en
+ * rojo: en local pasaba porque la instancia ya estaba instalada.
+ */
 async function levantar() {
+  await ensureLegacyInstanceConfig();
   const servidor = app.listen(0);
   await new Promise<void>((listo) => servidor.once('listening', () => listo()));
   const { port } = servidor.address() as AddressInfo;

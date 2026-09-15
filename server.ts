@@ -3514,6 +3514,15 @@ async function startServer() {
 export { app };
 
 /**
+ * El paso de arranque que marca la instancia como instalada cuando ya hay
+ * administracion. `startServer` lo ejecuta antes de escuchar, asi que una
+ * prueba que levanta `app` por su cuenta tiene que ejecutarlo tambien: sin el,
+ * `setupGuard` responde 428 ("instalacion inicial requerida") a **todas** las
+ * rutas /api y la prueba no llega ni a la ruta que queria comprobar.
+ */
+export { ensureLegacyInstanceConfig };
+
+/**
  * Arranque automatico al importar, salvo que se pida lo contrario.
  *
  * `DOCENTOS_SKIP_LISTEN=1` es la puerta que usan las pruebas: sin ella,
