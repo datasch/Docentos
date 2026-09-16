@@ -133,12 +133,17 @@ function parseJsonArray(value: string): any[] {
   }
 }
 
-function parsePlugin(plugin: any) {
+function parsePlugin(plugin: any, isAdmin = false) {
   let config: Record<string, unknown> = {};
   try {
     config = JSON.parse(plugin.configJson || '{}');
   } catch {
     config = {};
+  }
+
+  // Mask sensitive integrations for non-admin requests
+  if (!isAdmin && plugin.id === 'discord-slack-bridge' && config.webhookUrl) {
+    config = { ...config, webhookUrl: '***' };
   }
 
   return {
@@ -1180,10 +1185,10 @@ app.post(
     let target = requestedCourseId
       ? await prisma.course.findUnique({ where: { id: requestedCourseId }, include: withContent })
       : await prisma.course.findFirst({
-          where: { driveFolderId: plan.sourceFolderId },
-          include: withContent,
-          orderBy: { createdAt: 'asc' },
-        });
+        where: { driveFolderId: plan.sourceFolderId },
+        include: withContent,
+        orderBy: { createdAt: 'asc' },
+      });
 
     if (requestedCourseId && !target) {
       return res.status(404).json({ error: 'El curso al que querías añadir el contenido ya no existe.' });
@@ -1254,7 +1259,7 @@ app.post(
               publishedAt: published ? new Date() : null,
               coverImage: String(
                 req.body.coverImage ||
-                  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
+                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
               ).trim(),
               category: String(req.body.category || plan.category).trim().slice(0, 80),
               isDemo: false,
@@ -2087,10 +2092,11 @@ app.put(
 // Plugins
 app.get(
   '/api/plugins',
-  requireRole(['ADMIN', 'MENTOR']),
-  asyncRoute(async (_req, res) => {
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const isAdmin = req.user?.role === 'ADMIN';
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
-    res.json({ success: true, plugins: plugins.map(parsePlugin) });
+    res.json({ success: true, plugins: plugins.map((p) => parsePlugin(p, isAdmin)) });
   }),
 );
 
@@ -2105,7 +2111,7 @@ app.post(
       data: { enabled: req.body.enabled !== undefined ? Boolean(req.body.enabled) : !plugin.enabled },
     });
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
-    res.json({ success: true, plugin: parsePlugin(updated), plugins: plugins.map(parsePlugin) });
+    res.json({ success: true, plugin: parsePlugin(updated, true), plugins: plugins.map((p) => parsePlugin(p, true)) });
   }),
 );
 
@@ -2115,13 +2121,13 @@ app.post(
   asyncRoute(async (req, res) => {
     const plugin = await prisma.plugin.findUnique({ where: { id: req.body.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
-    const mergedConfig = { ...parsePlugin(plugin).config, ...(req.body.config || {}) };
+    const mergedConfig = { ...parsePlugin(plugin, true).config, ...(req.body.config || {}) };
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
       data: { configJson: JSON.stringify(mergedConfig) },
     });
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
-    res.json({ success: true, plugin: parsePlugin(updated), plugins: plugins.map(parsePlugin) });
+    res.json({ success: true, plugin: parsePlugin(updated, true), plugins: plugins.map((p) => parsePlugin(p, true)) });
   }),
 );
 
@@ -3149,7 +3155,7 @@ app.post(
         scriptText,
         voiceId: req.body.voiceId || 'es-ES-Carlos',
         voiceSpeed: Number(req.body.voiceSpeed) || 1,
-        mentorName: req.user!.name || 'Prof. Giantucchi',
+        mentorName: req.user!.name || 'Giantucchi',
         avatarUrl: req.user!.avatarUrl || ADMIN_AVATAR,
         xpReward: Number(req.body.xpReward) || 50,
       },
@@ -3193,14 +3199,14 @@ app.post(
     });
     const feedback = previo
       ? await prisma.feedback.update({
-          where: { id: previo.id },
-          data: { ...datos, status: 'PENDING', moderatedAt: null },
-          include: { user: true },
-        })
+        where: { id: previo.id },
+        data: { ...datos, status: 'PENDING', moderatedAt: null },
+        include: { user: true },
+      })
       : await prisma.feedback.create({
-          data: { userId: req.user!.id, ...datos },
-          include: { user: true },
-        });
+        data: { userId: req.user!.id, ...datos },
+        include: { user: true },
+      });
     res.json({
       success: true,
       feedback: {
@@ -3304,14 +3310,14 @@ app.post(
 
     const guardado = previo
       ? await prisma.feedback.update({
-          where: { id: previo.id },
-          data: { comment, rating, status: 'PENDING', moderatedAt: null },
-          include: { user: true },
-        })
+        where: { id: previo.id },
+        data: { comment, rating, status: 'PENDING', moderatedAt: null },
+        include: { user: true },
+      })
       : await prisma.feedback.create({
-          data: { userId: req.user!.id, comment, rating, status: 'PENDING' },
-          include: { user: true },
-        });
+        data: { userId: req.user!.id, comment, rating, status: 'PENDING' },
+        include: { user: true },
+      });
 
     res.json({
       success: true,

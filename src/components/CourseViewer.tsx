@@ -163,7 +163,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   const loadUserProgress = async () => {
     try {
-      const res = await api.getProgress();
+      const [res, pluginsRes] = await Promise.all([
+        api.getProgress(),
+        api.getPlugins().catch(() => null),
+      ]);
       if (res.completedVideos) {
         setCompletedVideos(res.completedVideos);
       }
@@ -172,6 +175,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       // título del curso abierto y con el código del otro.
       const found = res.certificates?.find((c) => c.courseId === course.id);
       setCertificate(found || null);
+
+      if (pluginsRes?.plugins) {
+        pluginManager.setPlugins(pluginsRes.plugins);
+      }
     } catch (error) {
       console.error('Error loading saved progress:', error);
     }
@@ -419,8 +426,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     : null;
   const providerLabel = currentVideo
     ? SOURCE_LABELS[currentVideo.source || ''] ||
-      PROVIDER_LABELS[currentVideo.provider || parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
-      'Video'
+    PROVIDER_LABELS[currentVideo.provider || parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
+    'Video'
     : 'Video';
   // Última barrera: aunque alguna respuesta traiga un certificado de otro
   // curso, de aquí no pasa a la pantalla.
@@ -695,70 +702,93 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               nunca compite con él. Sin quiz ni diploma no se monta, para no
               dejar una banda de relleno vacía al pie de la página. */}
           {showsExtras && (
-          <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
-            {hasAccess && pluginManager.isEnabled('interactive-quizzes') && currentModule && (
-              <ModuleQuizCard
-                key={`${currentModule.id}_${quizPassKey}`}
-                module={currentModule}
-                user={currentUser}
-                onPassed={(score) => {
-                  console.log(`Quiz passed with ${score}% score!`);
-                  setQuizPassKey((prev) => prev + 1);
-                }}
-              />
-            )}
+            <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
+              {hasAccess && pluginManager.isEnabled('interactive-quizzes') && currentModule && (
+                <ModuleQuizCard
+                  key={`${currentModule.id}_${quizPassKey}`}
+                  module={currentModule}
+                  user={currentUser}
+                  onPassed={(score) => {
+                    console.log(`Quiz passed with ${score}% score!`);
+                    setQuizPassKey((prev) => prev + 1);
+                  }}
+                />
+              )}
 
-            {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
+              {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
                 anunciaba «Disponible» desde la primera clase. */}
-            {hasAccess &&
-              pluginManager.isEnabled('pdf-certificates') &&
-              (courseProgressPct === 100 || courseCertificate) && (
-              <div className="flex flex-col gap-4 rounded-2xl border border-brand-yellow/40 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5">
-                  <Award aria-hidden className="h-7 w-7 shrink-0 text-brand-yellow" />
-                  <div>
-                    <h2 className="text-section font-semibold text-ink">Curso completado</h2>
-                    <p className="mt-1 text-meta text-ink-muted">
-                      Tu diploma de {course.title} está listo.
-                      {courseCertificate?.verificationCode && (
-                        <>
-                          {' '}
-                          Código{' '}
-                          <span className="text-ink-soft tabular-nums">{courseCertificate.verificationCode}</span>.
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
+              {hasAccess &&
+                pluginManager.isEnabled('pdf-certificates') &&
+                (courseProgressPct === 100 || courseCertificate) && (
+                  <div className="flex flex-col gap-4 rounded-2xl border border-brand-yellow/40 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3.5">
+                      <Award aria-hidden className="h-7 w-7 shrink-0 text-brand-yellow" />
+                      <div>
+                        <h2 className="text-section font-semibold text-ink">Curso completado</h2>
+                        <p className="mt-1 text-meta text-ink-muted">
+                          Tu diploma de {course.title} está listo.
+                          {courseCertificate?.verificationCode && (
+                            <>
+                              {' '}
+                              Código{' '}
+                              <span className="text-ink-soft tabular-nums">{courseCertificate.verificationCode}</span>.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  {courseCertificate?.verificationCode && (
-                    <button
-                      type="button"
-                      onClick={() => setShowVerifyModal(true)}
-                      className="flex items-center gap-1.5 rounded-lg bg-raised px-3.5 py-2.5 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
-                    >
-                      <ShieldCheck aria-hidden className="h-4 w-4" />
-                      Verificar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      downloadCertificate({
-                        studentName: currentUser.name,
-                        courseTitle: course.title,
-                        certificateId: courseCertificate?.verificationCode,
-                      })
-                    }
-                    className="rounded-lg bg-brand-yellow px-4 py-2.5 text-meta font-semibold text-canvas transition-opacity hover:opacity-90"
-                  >
-                    Descargar diploma
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {courseCertificate?.verificationCode && (
+                        <button
+                          type="button"
+                          onClick={() => setShowVerifyModal(true)}
+                          className="flex items-center gap-1.5 rounded-lg bg-raised px-3.5 py-2.5 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
+                        >
+                          <ShieldCheck aria-hidden className="h-4 w-4" />
+                          Verificar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          let cfg = pluginManager.getPlugin('pdf-certificates')?.config;
+                          if (!cfg?.signatureImage && !cfg?.signatoryTitle) {
+                            try {
+                              const pRes = await api.getPlugins();
+                              if (pRes?.plugins) {
+                                pluginManager.setPlugins(pRes.plugins);
+                                cfg = pluginManager.getPlugin('pdf-certificates')?.config;
+                              }
+                            } catch {
+                              // Se mantiene la configuración en memoria si falla la llamada
+                            }
+                          }
+                          const finalCfg = cfg || {};
+                          await downloadCertificate({
+                            studentName: currentUser.name,
+                            courseTitle: course.title,
+                            certificateId: courseCertificate?.verificationCode,
+                            institutionName: finalCfg.institutionName || 'Academia Giantucchi',
+                            signatoryTitle: finalCfg.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador',
+                            primaryColor: finalCfg.primaryColor || '#06b6d4',
+                            badgeText: finalCfg.badgeText || 'Certificado de Excelencia Técnica',
+                            backgroundColor: finalCfg.backgroundColor || 'dark',
+                            institutionLogo: finalCfg.institutionLogo || '/logo.avif',
+                            signatureImage: finalCfg.signatureImage || finalCfg.signature,
+                            enableUniversitySignature: finalCfg.enableUniversitySignature ?? false,
+                            universitySignatoryTitle: finalCfg.universitySignatoryTitle || 'Dirección Académica - Universidad / Instituto',
+                            universitySignatureImage: finalCfg.universitySignatureImage,
+                          });
+                        }}
+                        className="rounded-lg bg-brand-yellow px-4 py-2.5 text-meta font-semibold text-canvas transition-opacity hover:opacity-90"
+                      >
+                        Descargar diploma
+                      </button>
+                    </div>
+                  </div>
+                )}
+            </div>
           )}
 
         </div>

@@ -19,6 +19,7 @@ import { AIAssistantTour } from './components/AIAssistantTour';
 import { CertificateVerifyModal } from './components/CertificateVerifyModal';
 import { api } from './lib/api';
 import { User, Course } from './types';
+import { pluginManager } from './plugins/PluginManager';
 import { siteConfig } from './config/theme';
 import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
 import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
@@ -164,6 +165,18 @@ export default function App() {
           const lastStudied = list.find((item) => item.id === lastStudiedId);
           return remembered || lastStudied || list[0];
         });
+      }
+
+      // Sincronizar plugins instalados y sus configuraciones activas (certificados, firmas, logos)
+      if (userRes.user) {
+        try {
+          const pluginsRes = await api.getPlugins();
+          if (pluginsRes.plugins) {
+            pluginManager.setPlugins(pluginsRes.plugins);
+          }
+        } catch {
+          // Si no hay acceso o falla la red, se mantienen los defaults
+        }
       }
 
       // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
