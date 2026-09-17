@@ -14,6 +14,24 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.8 - 2026-09-17
+
+### Added
+
+- Tokens de estado para error, exito y aviso (`danger`, `success`, `warning`,
+  cada uno con su variante clara). El rojo, el verde y el ambar de la interfaz
+  salian de la paleta por defecto de Tailwind, que coincide de color por
+  casualidad y el dia que cambie la marca no la sigue. Los valores son los que
+  ya se usaban: nada cambia de aspecto.
+
+### Changed
+
+- Los colores literales de las pantallas de clases sincronicas, gestor de
+  plugins y reproductor pasan a tokens del proyecto. `MeetingManager.tsx` eran
+  938 lineas sin un solo token: 128 hexadecimales, 102 clases de la paleta de
+  Tailwind y 30 clases prohibidas por las reglas; ahora 0, 5 y 0. Solo cambian
+  cadenas de clases: ni estado, ni efectos, ni props, ni tipos.
+
 ## 0.5.0-beta.7 - 2026-09-17
 
 ### Added

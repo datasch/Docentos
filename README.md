@@ -2,7 +2,7 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 0.5.0-beta.7](https://img.shields.io/badge/Version-0.5.0--beta.7-a855f7.svg)
+![Version: 0.5.0-beta.8](https://img.shields.io/badge/Version-0.5.0--beta.8-a855f7.svg)
 ![Status: Beta](https://img.shields.io/badge/Status-Beta-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
@@ -130,7 +130,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v0.5.0-beta.7.
+* **Versión actual:** v0.5.0-beta.8.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -185,10 +185,10 @@ en lugar de un nombre móvil.
 
 ```bash
 # Última versión publicada
-docker pull ghcr.io/datasch/docentos:0.5.0-beta.7
+docker pull ghcr.io/datasch/docentos:0.5.0-beta.8
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/datasch/docentos:0.5.0-beta.7 \
+cosign verify ghcr.io/datasch/docentos:0.5.0-beta.8 \
   --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -196,7 +196,7 @@ cosign verify ghcr.io/datasch/docentos:0.5.0-beta.7 \
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.7 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.8 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -216,8 +216,8 @@ DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.7 \
 
 ```bash
 npm run verify                       # versión consistente, tipado y compilación
-git tag -a v0.5.0-beta.7 -m "DocentOS 0.5.0-beta.7"
-git push datasch v0.5.0-beta.7    # el remoto de este repositorio
+git tag -a v0.5.0-beta.8 -m "DocentOS 0.5.0-beta.8"
+git push datasch v0.5.0-beta.8    # el remoto de este repositorio
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,
