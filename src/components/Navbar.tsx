@@ -68,7 +68,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   MENTOR: 'Mentor',
   MENTEE: 'Mentee',
-  VIP: 'Pase VIP',
+  VIP: 'Mentee',
   PUBLIC_USER: 'Estudiante',
   EXTERNAL: 'Invitado',
 };
@@ -165,10 +165,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const query = searchQuery.trim().toLowerCase();
   const matches = query
     ? searchable.filter(
-        (item) =>
-          item.title.toLowerCase().includes(query) ||
-          (item.description || '').toLowerCase().includes(query),
-      )
+      (item) =>
+        item.title.toLowerCase().includes(query) ||
+        (item.description || '').toLowerCase().includes(query),
+    )
     : [];
 
   const openCourse = (selected: Course) => {
@@ -203,9 +203,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       : []),
     ...(isStaff
       ? [
-          { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
-          { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
-        ]
+        { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
+        { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
+      ]
       : []),
   ];
 
@@ -255,7 +255,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <li>
                 <button type="button" onClick={() => goTo('vip')} className="lp-badge-premium">
                   <Crown aria-hidden className="h-3 w-3" fill="currentColor" />
-                  Pase VIP
+                  Mentee
                 </button>
               </li>
             </ul>
@@ -501,7 +501,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={activeTab === 'vip' ? 'is-active' : undefined}
             >
               <Crown aria-hidden className="lp-tone-gold h-4 w-4" />
-              <span>Pase VIP</span>
+              <span>Pase Mentee</span>
             </button>
           </li>
 

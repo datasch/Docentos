@@ -60,7 +60,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   MENTOR: 'Mentor',
   MENTEE: 'Mentee',
-  VIP: 'Pase VIP',
+  VIP: 'Mentee',
   PUBLIC_USER: 'Estudiante',
   EXTERNAL: 'Invitado',
 };

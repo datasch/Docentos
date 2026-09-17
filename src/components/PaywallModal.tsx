@@ -1,5 +1,5 @@
 /**
- * Componente de Muro de Pago & Pase VIP
+ * Componente de Muro de Pago & Pase Mentee
  * DocentOS LMS
  *
  * Muestra las opciones de pago seguro mediante Stripe Checkout
@@ -207,7 +207,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-1.5 text-[#eab308] text-xs font-bold mb-2">
-                  <Crown className="w-4 h-4" /> PASE VIP O ASIGNACIÓN
+                  <Crown className="w-4 h-4" /> PASE MENTEE O ASIGNACIÓN
                 </div>
                 <div className="text-xl font-bold text-white mb-1">
                   Membresía Institucional

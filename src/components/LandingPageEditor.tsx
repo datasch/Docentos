@@ -66,7 +66,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
     heroMediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
     heroCtaText: 'Explorar Cursos',
     heroCtaLink: '#courses',
-    heroSecondaryCtaText: 'Pase VIP',
+    heroSecondaryCtaText: 'Pase Mentee',
     heroSecondaryCtaLink: '#vip',
     featuredCourseIds: ['course-giantucchi-mastery'],
     bannerEnabled: true,
@@ -229,7 +229,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
 
   return (
     <div className="space-y-6 animate-fade-in">
-      
+
       {/* CMS Header */}
       <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -249,11 +249,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
           <button
             type="button"
             onClick={() => setShowLivePreview(!showLivePreview)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
-              showLivePreview
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${showLivePreview
                 ? 'bg-[#06b6d4]/20 border-[#06b6d4] text-[#06b6d4]'
                 : 'bg-[#1a1a2e] border-[#2d2d44] text-slate-300 hover:text-white'
-            }`}
+              }`}
           >
             <Eye className="w-4 h-4" />
             {showLivePreview ? 'Ocultar Previsualización' : 'Vista Previa Rápida'}
@@ -341,45 +340,40 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
       <div className="flex bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab('hero')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
-            activeTab === 'hero' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'hero' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
         >
           <Sparkles className="w-4 h-4" /> Hero Section
         </button>
 
         <button
           onClick={() => setActiveTab('courses')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
-            activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
         >
           <Award className="w-4 h-4" /> Cursos Destacados ({config.featuredCourseIds.length})
         </button>
 
         <button
           onClick={() => setActiveTab('benefits')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
-            activeTab === 'benefits' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'benefits' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
         >
           <Brain className="w-4 h-4" /> Beneficios ({config.benefits.length})
         </button>
 
         <button
           onClick={() => setActiveTab('testimonials')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
-            activeTab === 'testimonials' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'testimonials' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
         >
           <Star className="w-4 h-4 text-[#eab308]" /> Testimonios
         </button>
 
         <button
           onClick={() => setActiveTab('footer')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${
-            activeTab === 'footer' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'footer' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            }`}
         >
           <Globe className="w-4 h-4" /> Anuncios & Footer
         </button>
@@ -582,11 +576,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
                 <div
                   key={c.id}
                   onClick={() => toggleFeaturedCourse(c.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                    isSelected
+                  className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${isSelected
                       ? 'bg-[#06b6d4]/10 border-[#06b6d4] shadow-lg shadow-[#06b6d4]/10'
                       : 'bg-[#1a1a2e] border-[#2d2d44] hover:border-slate-500'
-                  }`}
+                    }`}
                 >
                   <div className="space-y-3">
                     <div className="aspect-video bg-black rounded-lg overflow-hidden relative border border-[#2d2d44]">
@@ -609,11 +602,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
                     <span className="font-extrabold text-[#a855f7]">${c.price.toFixed(2)} USD</span>
                     <button
                       type="button"
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                        isSelected
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${isSelected
                           ? 'bg-[#06b6d4] text-white'
                           : 'bg-[#0a0a0f] border border-[#2d2d44] text-slate-300 hover:text-white'
-                      }`}
+                        }`}
                     >
                       {isSelected ? 'Quitar de la Portada' : 'Destacar en Portada'}
                     </button>
@@ -745,9 +737,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
               <button
                 key={tab.key}
                 onClick={() => setTestimonialFilter(tab.key)}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                  testimonialFilter === tab.key ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${testimonialFilter === tab.key ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -798,13 +789,12 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved })
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#2d2d44]">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${
-                        t.status === 'APPROVED'
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${t.status === 'APPROVED'
                           ? 'text-emerald-400'
                           : t.status === 'REJECTED'
                             ? 'text-red-400'
                             : 'text-amber-400'
-                      }`}
+                        }`}
                     >
                       {t.status === 'APPROVED' ? (
                         <CheckCircle2 className="w-3.5 h-3.5" />
