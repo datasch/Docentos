@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { LucideIcon, Maximize2, Minimize2 } from 'lucide-react';
 
-export type PanelTabId = 'syllabus' | 'notes' | 'mentorship';
+export type PanelTabId = 'syllabus' | 'notes' | 'mentorship' | 'sessions';
 
 interface PanelTab {
   id: PanelTabId;

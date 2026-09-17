@@ -244,6 +244,28 @@ function toApiComment(comment: any): any {
   };
 }
 
+function toApiMeeting(meeting: any): any {
+  return {
+    id: meeting.id,
+    title: meeting.title,
+    description: meeting.description,
+    meetingType: meeting.meetingType,
+    meetingUrl: meeting.meetingUrl,
+    scheduledAt: meeting.scheduledAt instanceof Date ? meeting.scheduledAt.toISOString() : meeting.scheduledAt,
+    isLive: Boolean(meeting.isLive),
+    courseId: meeting.courseId,
+    courseTitle: meeting.course?.title || null,
+    moduleId: meeting.moduleId,
+    moduleTitle: meeting.module?.title || null,
+    hostId: meeting.hostId,
+    hostName: meeting.host?.name || null,
+    recordingUrl: meeting.recordingUrl,
+    createdAt: meeting.createdAt instanceof Date ? meeting.createdAt.toISOString() : meeting.createdAt,
+    updatedAt: meeting.updatedAt instanceof Date ? meeting.updatedAt.toISOString() : meeting.updatedAt,
+  };
+}
+
+
 
 async function getLandingRecord() {
   return prisma.landingConfig.upsert({
@@ -2102,7 +2124,7 @@ app.get(
 
 app.post(
   '/api/plugins/toggle',
-  requireRole(['ADMIN']),
+  requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
     const plugin = await prisma.plugin.findUnique({ where: { id: req.body.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
@@ -2117,7 +2139,7 @@ app.post(
 
 app.post(
   '/api/plugins/config',
-  requireRole(['ADMIN']),
+  requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
     const plugin = await prisma.plugin.findUnique({ where: { id: req.body.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
@@ -2130,6 +2152,246 @@ app.post(
     res.json({ success: true, plugin: parsePlugin(updated, true), plugins: plugins.map((p) => parsePlugin(p, true)) });
   }),
 );
+
+// Live Meetings Endpoints (Plugin LiveMeetings)
+const createMeetingSchema = z.object({
+  title: z.string().trim().min(2, 'El título debe tener al menos 2 caracteres').max(200),
+  description: z.string().trim().max(2000).optional().nullable(),
+  meetingType: z.enum(['meet', 'jitsi', 'async_record']).default('meet'),
+  meetingUrl: z.string().trim().min(3, 'La URL de la reunión es requerida').max(1000),
+  scheduledAt: z.string().optional(),
+  isLive: z.boolean().default(false),
+  courseId: z.string().optional().nullable(),
+  moduleId: z.string().optional().nullable(),
+  recordingUrl: z.string().trim().max(1000).optional().nullable(),
+});
+
+const updateMeetingSchema = z.object({
+  title: z.string().trim().min(2, 'El título debe tener al menos 2 caracteres').max(200).optional(),
+  description: z.string().trim().max(2000).optional().nullable(),
+  meetingType: z.enum(['meet', 'jitsi', 'async_record']).optional(),
+  meetingUrl: z.string().trim().min(3).max(1000).optional(),
+  scheduledAt: z.string().optional(),
+  isLive: z.boolean().optional(),
+  courseId: z.string().optional().nullable(),
+  moduleId: z.string().optional().nullable(),
+  recordingUrl: z.string().trim().max(1000).optional().nullable(),
+});
+
+app.get(
+  '/api/meetings',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const { courseId, moduleId, isLive } = req.query;
+    const where: any = {};
+    if (courseId && typeof courseId === 'string') {
+      where.courseId = courseId;
+    }
+    if (moduleId && typeof moduleId === 'string') {
+      where.moduleId = moduleId;
+    }
+    if (isLive !== undefined) {
+      where.isLive = String(isLive) === 'true';
+    }
+
+    const meetings = await prisma.meeting.findMany({
+      where,
+      include: {
+        course: { select: { id: true, title: true } },
+        module: { select: { id: true, title: true } },
+        host: { select: { id: true, name: true } },
+      },
+      orderBy: [{ isLive: 'desc' }, { scheduledAt: 'asc' }],
+    });
+
+    res.json({ success: true, meetings: meetings.map(toApiMeeting) });
+  }),
+);
+
+app.get(
+  '/api/meetings/live',
+  requireAuthenticated,
+  asyncRoute(async (_req, res) => {
+    const meetings = await prisma.meeting.findMany({
+      where: { isLive: true },
+      include: {
+        course: { select: { id: true, title: true } },
+        module: { select: { id: true, title: true } },
+        host: { select: { id: true, name: true } },
+      },
+      orderBy: { scheduledAt: 'desc' },
+    });
+    res.json({ success: true, meetings: meetings.map(toApiMeeting) });
+  }),
+);
+
+app.post(
+  '/api/meetings',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const parsed = createMeetingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación',
+        details: parsed.error.issues.map((i) => i.message),
+      });
+    }
+
+    const data = parsed.data;
+    let scheduledDate = new Date();
+    if (data.scheduledAt) {
+      const parsedDate = new Date(data.scheduledAt);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        scheduledDate = parsedDate;
+      }
+    }
+
+    const meeting = await prisma.meeting.create({
+      data: {
+        title: data.title,
+        description: data.description || null,
+        meetingType: data.meetingType,
+        meetingUrl: data.meetingUrl,
+        scheduledAt: scheduledDate,
+        isLive: Boolean(data.isLive),
+        courseId: data.courseId || null,
+        moduleId: data.moduleId || null,
+        hostId: req.user!.id,
+        recordingUrl: data.recordingUrl || null,
+      },
+      include: {
+        course: { select: { id: true, title: true } },
+        module: { select: { id: true, title: true } },
+        host: { select: { id: true, name: true } },
+      },
+    });
+
+    await recordAuditEvent(req, {
+      actorUserId: req.user!.id,
+      action: 'meeting.created',
+      targetType: 'Meeting',
+      targetId: meeting.id,
+      metadata: { title: meeting.title, type: meeting.meetingType, isLive: meeting.isLive },
+    });
+
+    res.json({ success: true, meeting: toApiMeeting(meeting) });
+  }),
+);
+
+app.put(
+  '/api/meetings/:id',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const meetingId = req.params.id;
+    const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Reunión no encontrada' });
+    }
+
+    const parsed = updateMeetingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación',
+        details: parsed.error.issues.map((i) => i.message),
+      });
+    }
+
+    const data = parsed.data;
+    const updateData: any = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.meetingType !== undefined) updateData.meetingType = data.meetingType;
+    if (data.meetingUrl !== undefined) updateData.meetingUrl = data.meetingUrl;
+    if (data.isLive !== undefined) updateData.isLive = Boolean(data.isLive);
+    if (data.courseId !== undefined) updateData.courseId = data.courseId;
+    if (data.moduleId !== undefined) updateData.moduleId = data.moduleId;
+    if (data.recordingUrl !== undefined) updateData.recordingUrl = data.recordingUrl;
+    if (data.scheduledAt) {
+      const parsedDate = new Date(data.scheduledAt);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        updateData.scheduledAt = parsedDate;
+      }
+    }
+
+    const updated = await prisma.meeting.update({
+      where: { id: meetingId },
+      data: updateData,
+      include: {
+        course: { select: { id: true, title: true } },
+        module: { select: { id: true, title: true } },
+        host: { select: { id: true, name: true } },
+      },
+    });
+
+    await recordAuditEvent(req, {
+      actorUserId: req.user!.id,
+      action: 'meeting.updated',
+      targetType: 'Meeting',
+      targetId: updated.id,
+      metadata: { title: updated.title, isLive: updated.isLive },
+    });
+
+    res.json({ success: true, meeting: toApiMeeting(updated) });
+  }),
+);
+
+app.post(
+  '/api/meetings/:id/toggle-live',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const meetingId = req.params.id;
+    const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Reunión no encontrada' });
+    }
+
+    const nextLiveStatus = req.body.isLive !== undefined ? Boolean(req.body.isLive) : !existing.isLive;
+    const updated = await prisma.meeting.update({
+      where: { id: meetingId },
+      data: { isLive: nextLiveStatus },
+      include: {
+        course: { select: { id: true, title: true } },
+        module: { select: { id: true, title: true } },
+        host: { select: { id: true, name: true } },
+      },
+    });
+
+    await recordAuditEvent(req, {
+      actorUserId: req.user!.id,
+      action: nextLiveStatus ? 'meeting.live_started' : 'meeting.live_ended',
+      targetType: 'Meeting',
+      targetId: updated.id,
+      metadata: { title: updated.title, isLive: nextLiveStatus },
+    });
+
+    res.json({ success: true, isLive: updated.isLive, meeting: toApiMeeting(updated) });
+  }),
+);
+
+app.delete(
+  '/api/meetings/:id',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const meetingId = req.params.id;
+    const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Reunión no encontrada' });
+    }
+
+    await prisma.meeting.delete({ where: { id: meetingId } });
+
+    await recordAuditEvent(req, {
+      actorUserId: req.user!.id,
+      action: 'meeting.deleted',
+      targetType: 'Meeting',
+      targetId: meetingId,
+      metadata: { title: existing.title },
+    });
+
+    res.json({ success: true, message: 'Reunión eliminada correctamente' });
+  }),
+);
+
 
 // Mentor dashboard
 

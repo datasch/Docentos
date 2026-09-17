@@ -8,6 +8,7 @@
 import { AcademiaPlugin, User, Course, VideoDriveLink, Module } from '../types';
 import { googleDrivePlugin } from './googleDrivePlugin';
 import { quizzesPlugin, quizzesPluginEngine } from './QuizzesPlugin';
+import { liveMeetingsPlugin } from './LiveMeetingsPlugin';
 
 export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
   googleDrivePlugin,
@@ -33,6 +34,7 @@ export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
     },
   },
   quizzesPlugin,
+  liveMeetingsPlugin,
   {
     id: 'discord-slack-bridge',
     name: 'Plugin de Integración Discord / Slack Webhook',

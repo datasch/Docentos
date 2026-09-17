@@ -27,7 +27,10 @@ import {
   X,
   Globe,
   Lock,
+  Video,
+  Radio,
 } from 'lucide-react';
+import { MeetingManager } from './MeetingManager';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { Course, User, MenteeStudent, MenteeCandidate, MentorshipComment } from '../types';
@@ -61,7 +64,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   courses,
   onRefreshCourses,
 }) => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings'>('courses');
 
   /**
    * Reparto de cursos. El mismo selector sirve en los dos sentidos: desde un
@@ -501,6 +504,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <MessageSquare className="w-4 h-4" />
           <span>Centro de Consultas Q&A ({pendingQuestions.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('meetings')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'meetings'
+              ? 'border-[#06b6d4] text-[#06b6d4]'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Video className="w-4 h-4" />
+          <span>Clases en Vivo & Sincrónicas</span>
+        </button>
       </div>
 
       {/* Tab Content 1: Courses Management */}
@@ -830,6 +845,15 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tab Content 4: Live & Synchronous Meetings */}
+      {activeTab === 'meetings' && (
+        <MeetingManager
+          currentUser={currentUser}
+          courses={courses}
+          onRefreshCourses={onRefreshCourses}
+        />
       )}
 
       {/* Assign Mentee Modal */}

@@ -25,6 +25,9 @@ import {
   ImportPreviewResponse,
   ImportOrganizeResponse,
   ImportApplyResponse,
+  Meeting,
+  CreateMeetingInput,
+  UpdateMeetingInput,
 } from '../types';
 
 const fetch: typeof globalThis.fetch = (input, init) =>
@@ -513,6 +516,74 @@ export const api = {
       body: JSON.stringify({ pluginId, config }),
     });
     if (!res.ok) throw new Error('Error al guardar configuración del plugin');
+    return res.json();
+  },
+
+  // Live Meetings API (Plugin LiveMeetings)
+  async getMeetings(params?: { courseId?: string; moduleId?: string; isLive?: boolean }): Promise<{ success: boolean; meetings: Meeting[] }> {
+    const query = new URLSearchParams();
+    if (params?.courseId) query.set('courseId', params.courseId);
+    if (params?.moduleId) query.set('moduleId', params.moduleId);
+    if (params?.isLive !== undefined) query.set('isLive', String(params.isLive));
+    const url = `/api/meetings${query.toString() ? `?${query.toString()}` : ''}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Error al cargar las reuniones');
+    return res.json();
+  },
+
+  async getLiveMeetings(): Promise<{ success: boolean; meetings: Meeting[] }> {
+    const res = await fetch('/api/meetings/live');
+    if (!res.ok) throw new Error('Error al cargar reuniones en vivo');
+    return res.json();
+  },
+
+  async createMeeting(data: CreateMeetingInput): Promise<{ success: boolean; meeting: Meeting }> {
+    const res = await fetch('/api/meetings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.details?.[0] || 'Error al programar la reunión');
+    }
+    return res.json();
+  },
+
+  async updateMeeting(id: string, data: UpdateMeetingInput): Promise<{ success: boolean; meeting: Meeting }> {
+    const res = await fetch(`/api/meetings/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.details?.[0] || 'Error al actualizar la reunión');
+    }
+    return res.json();
+  },
+
+  async toggleMeetingLive(id: string, isLive?: boolean): Promise<{ success: boolean; isLive: boolean; meeting: Meeting }> {
+    const res = await fetch(`/api/meetings/${encodeURIComponent(id)}/toggle-live`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isLive }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al cambiar estado de la transmisión en vivo');
+    }
+    return res.json();
+  },
+
+  async deleteMeeting(id: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/meetings/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar la reunión');
+    }
     return res.json();
   },
 

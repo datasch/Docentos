@@ -259,6 +259,10 @@ function serializeVideo(video: any) {
     // proveedor pide un alto minimo distinto, y sin el se maquetaba a ciegas.
     provider: parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '').provider,
     order: video.order,
+    meetingType: video.meetingType || null,
+    meetingUrl: video.meetingUrl || null,
+    scheduledAt: video.scheduledAt ? (video.scheduledAt instanceof Date ? video.scheduledAt.toISOString() : video.scheduledAt) : null,
+    isLive: Boolean(video.isLive),
     playbackUrl: `/api/content/videos/${encodeURIComponent(video.id)}`,
     createdAt: video.createdAt,
     updatedAt: video.updatedAt,

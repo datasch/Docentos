@@ -62,7 +62,7 @@ export interface AcademiaPlugin {
   description: string;
   version: string;
   enabled: boolean;
-  category: 'certificates' | 'quizzes' | 'integrations' | 'analytics' | 'custom';
+  category: 'certificates' | 'quizzes' | 'integrations' | 'analytics' | 'meetings' | 'custom';
   icon: string;
   config: Record<string, any>;
 }
@@ -243,6 +243,10 @@ export interface VideoDriveLink {
   /** Quien reproduce, resuelto en el servidor a partir de la URL real. */
   provider?: 'youtube' | 'drive' | 'embed';
   order: number;
+  meetingType?: 'meet' | 'jitsi' | 'async_record' | string;
+  meetingUrl?: string;
+  scheduledAt?: string;
+  isLive?: boolean;
 }
 
 export interface Module {
@@ -406,6 +410,51 @@ export interface VideoNote {
   timestampSeconds: number;
   content: string;
   createdAt: string;
+}
+
+export type MeetingType = 'meet' | 'jitsi' | 'async_record';
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description?: string | null;
+  meetingType: MeetingType | string;
+  meetingUrl: string;
+  scheduledAt: string;
+  isLive: boolean;
+  courseId?: string | null;
+  courseTitle?: string | null;
+  moduleId?: string | null;
+  moduleTitle?: string | null;
+  hostId?: string | null;
+  hostName?: string | null;
+  recordingUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateMeetingInput {
+  title: string;
+  description?: string;
+  meetingType: MeetingType | string;
+  meetingUrl: string;
+  scheduledAt?: string;
+  isLive?: boolean;
+  courseId?: string;
+  moduleId?: string;
+  recordingUrl?: string;
+}
+
+export interface UpdateMeetingInput {
+  title?: string;
+  description?: string;
+  meetingType?: MeetingType | string;
+  meetingUrl?: string;
+  scheduledAt?: string;
+  isLive?: boolean;
+  courseId?: string | null;
+  moduleId?: string | null;
+  recordingUrl?: string | null;
 }
 
 
