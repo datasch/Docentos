@@ -70,6 +70,7 @@ import {
   serializeCourseForViewer,
   serializeCourseForAdmin,
 } from './server/courseAccess.js';
+import { redactPluginConfig } from './server/pluginConfig.js';
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import {
@@ -141,10 +142,10 @@ function parsePlugin(plugin: any, isAdmin = false) {
     config = {};
   }
 
-  // Mask sensitive integrations for non-admin requests
-  if (!isAdmin && plugin.id === 'discord-slack-bridge' && config.webhookUrl) {
-    config = { ...config, webhookUrl: '***' };
-  }
+  // Las credenciales de la configuracion no salen de administracion. La regla
+  // vive en server/pluginConfig.ts: mira la forma de la clave, no el id del
+  // plugin, porque la lista por id ya dejaba fuera a `discord-webhooks`.
+  config = redactPluginConfig(config, isAdmin);
 
   return {
     id: plugin.id,
@@ -2147,8 +2148,16 @@ app.post(
       where: { id: plugin.id },
       data: { enabled: req.body.enabled !== undefined ? Boolean(req.body.enabled) : !plugin.enabled },
     });
+    // La respuesta se recorta igual que en GET /api/plugins. Devolverla
+    // siempre como administracion convertia este boton en una via para que un
+    // mentor leyera credenciales que el GET ya le negaba.
+    const isAdmin = req.user?.role === 'ADMIN';
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
-    res.json({ success: true, plugin: parsePlugin(updated, true), plugins: plugins.map((p) => parsePlugin(p, true)) });
+    res.json({
+      success: true,
+      plugin: parsePlugin(updated, isAdmin),
+      plugins: plugins.map((p) => parsePlugin(p, isAdmin)),
+    });
   }),
 );
 
@@ -2158,13 +2167,21 @@ app.post(
   asyncRoute(async (req, res) => {
     const plugin = await prisma.plugin.findUnique({ where: { id: req.body.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
+    // La fusion parte SIEMPRE de la configuracion completa: recortarla aqui
+    // borraria de la base las credenciales que quien edita no puede ver.
     const mergedConfig = { ...parsePlugin(plugin, true).config, ...(req.body.config || {}) };
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
       data: { configJson: JSON.stringify(mergedConfig) },
     });
+    // Lo que se devuelve, en cambio, se recorta segun quien pregunta.
+    const isAdmin = req.user?.role === 'ADMIN';
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
-    res.json({ success: true, plugin: parsePlugin(updated, true), plugins: plugins.map((p) => parsePlugin(p, true)) });
+    res.json({
+      success: true,
+      plugin: parsePlugin(updated, isAdmin),
+      plugins: plugins.map((p) => parsePlugin(p, isAdmin)),
+    });
   }),
 );
 

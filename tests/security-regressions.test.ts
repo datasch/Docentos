@@ -22,6 +22,7 @@ import {
   getCourseAccessDecisions,
 } from '../server/courseAccess.js';
 import { buildDriveEmbedUrl, extractDriveFileId } from '../server/driveService.js';
+import { isSecretConfigKey, redactPluginConfig } from '../server/pluginConfig.js';
 import type { AuthenticatedUser } from '../server/authMiddleware.js';
 
 const TEST_COURSE_ID = 'course-giantucchi-mastery';
@@ -95,6 +96,52 @@ test('Seguridad: la pre-renderizacion para rastreadores escapa el contenido alma
     assert.equal(isCrawlerUserAgent('Mozilla/5.0 (compatible; Googlebot/2.1)'), true);
     assert.equal(isCrawlerUserAgent('GPTBot/1.0'), true);
     assert.equal(isCrawlerUserAgent('Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0'), false);
+  });
+});
+
+test('Seguridad: la configuracion de un plugin no entrega credenciales a quien no es administrador', async (t) => {
+  // `/api/plugins` se abrio a cualquier cuenta autenticada para que el panel
+  // del alumno sepa que hay activo. La configuracion viaja con ella.
+  const bridge = { webhookUrl: 'https://discord.com/api/webhooks/1234/secreto', notifyOnQnA: true };
+
+  await t.test('1. Administracion la ve entera', () => {
+    assert.deepEqual(redactPluginConfig(bridge, true), bridge);
+  });
+
+  await t.test('2. Un alumno no recibe la URL del webhook', () => {
+    const visible = redactPluginConfig(bridge, false);
+    assert.equal('webhookUrl' in visible, false, 'La clave debe desaparecer, no enmascararse');
+    assert.equal(visible.notifyOnQnA, true, 'El resto de la configuracion sigue llegando');
+    assert.equal(
+      JSON.stringify(visible).includes('secreto'),
+      false,
+      'El secreto no puede aparecer por ningun camino',
+    );
+  });
+
+  await t.test('3. La regla no depende del id del plugin', () => {
+    // La version anterior enmascaraba solo `discord-slack-bridge` por id, y
+    // `discord-webhooks` guardaba la misma clase de URL sin proteger.
+    const otro = redactPluginConfig({ webhookUrl: 'https://hooks.slack.com/services/AAA' }, false);
+    assert.equal('webhookUrl' in otro, false);
+    for (const clave of ['apiKey', 'api_key', 'accessToken', 'clientSecret', 'password', 'privateKey']) {
+      assert.equal(isSecretConfigKey(clave), true, `${clave} deberia tratarse como credencial`);
+    }
+  });
+
+  await t.test('4. Un indicador de estado no es una credencial', () => {
+    // `apiKeyConfigured: true` dice si la integracion esta lista; el panel lo
+    // necesita y no revela nada.
+    const drive = redactPluginConfig({ apiKeyConfigured: true, defaultFolderId: 'root' }, false);
+    assert.equal(drive.apiKeyConfigured, true);
+    assert.equal(drive.defaultFolderId, 'root');
+  });
+
+  await t.test('5. Una credencial vacia no estorba: se conserva la clave', () => {
+    // Sin esto, el formulario de administracion perderia el campo y no habria
+    // donde escribir la URL la primera vez.
+    const vacio = redactPluginConfig({ webhookUrl: '' }, false);
+    assert.equal('webhookUrl' in vacio, true);
   });
 });
 
