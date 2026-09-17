@@ -52,6 +52,22 @@
   --color-brand-orange: #f97316;
   --color-brand-yellow: #eab308;
 
+  /* Estados. Hasta ahora el rojo, el verde y el ambar de la interfaz salian de
+     la paleta por defecto de Tailwind, que pasa el filtro de hexadecimales y
+     aun asi no es del proyecto: coincide de color por casualidad y el dia que
+     cambie la marca no la sigue. Los valores son exactamente los que ya se
+     usaban, asi que nada cambia de aspecto al adoptarlos.
+
+     Van en pares por la misma razon que --brand-violet: el tono fuerte pinta
+     bordes y rellenos, y el claro pinta las letras, que es lo que sostiene el
+     contraste sobre una superficie oscura. */
+  --color-danger: #ef4444;
+  --color-danger-light: #f87171;
+  --color-success: #10b981;
+  --color-success-light: #34d399;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fbbf24;
+
   /* Escala tipografica del reproductor. Sustituye a los siete tamanos sueltos
      entre 9px y 13px que competian entre si. */
   --text-title: 1.25rem;
