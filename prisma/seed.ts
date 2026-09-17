@@ -128,6 +128,33 @@ const plugins = [
       requireVipAccess: false,
     },
   },
+  {
+    id: 'google-drive',
+    name: 'Plugin de Integración Google Drive Video Engine',
+    description: 'Permite buscar, indexar e incrustar clases y videos directamente desde Google Drive.',
+    version: '1.5.0',
+    category: 'integrations',
+    icon: 'HardDrive',
+    config: {
+      apiKeyConfigured: true,
+      autoEmbedPreview: true,
+      supportedMimeTypes: ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska'],
+      defaultFolderId: 'root',
+      allowPublicSharing: true,
+    },
+  },
+  {
+    id: 'discord-slack-bridge',
+    name: 'Plugin de Integración Discord / Slack Webhook',
+    description: 'Notifica en canales de la comunidad en tiempo real cuando un alumno realiza preguntas de mentoría o completa módulos.',
+    version: '1.0.4',
+    category: 'integrations',
+    icon: 'MessageSquare',
+    config: {
+      webhookUrl: '',
+      notifyOnQnA: true,
+      notifyOnCompletion: true,    },
+  },
 ];
 
 const benefits = [
