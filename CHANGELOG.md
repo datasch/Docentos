@@ -14,6 +14,28 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.9 - 2026-09-17
+
+### Fixed
+
+- **El catalogo de plugins existe en produccion.** La tabla `Plugin` nacia
+  vacia alli y el panel salia en blanco: el catalogo se sembraba dentro del
+  seed de demostracion, y el seed entero esta detras de `SEED_DEMO_DATA`, que
+  produccion rechaza arrancar. Esas filas no se habian podido crear nunca. Un
+  catalogo de plugins no son datos de demostracion, es configuracion del
+  producto: ahora la aplicacion lo asegura en cada arranque, en cualquier
+  entorno. Es idempotente y respeta lo que administracion haya configurado.
+- El gestor de plugins deja de quedarse en blanco sin explicar por que. Con la
+  lista vacia la vista se vaciaba en silencio, porque en JavaScript `[]` es
+  verdadero. Ahora se distingue «no hay plugins» de «el filtro no encuentra
+  ninguno».
+
+### Changed
+
+- El catalogo pasa a estar en un solo sitio, `server/pluginCatalog.ts`. Estaba
+  duplicado entre el seed y el cliente, y las dos copias ya se habian separado:
+  distintos nombres y distintas versiones para el mismo plugin.
+
 ## 0.5.0-beta.8 - 2026-09-17
 
 ### Added

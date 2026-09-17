@@ -763,3 +763,82 @@ Ten en cuenta que al volver atrás vuelve también el comportamiento anterior: l
 cursos publicados a precio 0 se abren otra vez a todo el mundo. La columna se
 queda en la base sin que nadie la lea, y vuelve a tener efecto en cuanto
 redespliegues esta versión.
+
+## 12. Despliegue de 0.5.0-beta.7 a 0.5.0-beta.9
+
+Tres versiones seguidas del mismo día. Si vienes de `0.5.0-beta.6`, despliega
+directamente **0.5.0-beta.9**: incluye las tres.
+
+### 12.1. Qué cambia, en una frase
+
+Entran las clases sincrónicas y las firmas en los certificados, **se puede
+nombrar a más de un administrador**, y se cierran dos fugas: la configuración de
+los plugins dejaba ver credenciales a quien no era administración.
+
+### 12.2. Qué cambia en la base
+
+`0.5.0-beta.7` **toca el esquema**. Es aditivo:
+
+```sql
+ALTER TABLE "VideoDriveLink" ADD COLUMN IF NOT EXISTS "meetingType" TEXT;
+ALTER TABLE "VideoDriveLink" ADD COLUMN IF NOT EXISTS "meetingUrl" TEXT;
+ALTER TABLE "VideoDriveLink" ADD COLUMN IF NOT EXISTS "scheduledAt" TIMESTAMP(3);
+ALTER TABLE "VideoDriveLink" ADD COLUMN IF NOT EXISTS "isLive" BOOLEAN NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS "Meeting" (...);
+```
+
+**No hay `DROP`, ni `DELETE`, ni reescritura de filas.** La aplica sola el
+`prisma migrate deploy` del `entrypoint.sh`; en Coolify no hay que abrir la base.
+
+Además, desde `0.5.0-beta.9` la aplicación **crea el catálogo de plugins al
+arrancar** si falta. Es idempotente y no toca lo que administración haya
+configurado: refresca nombre, descripción, versión, categoría e icono, y deja en
+paz si está activo y su configuración.
+
+### 12.3. El despliegue
+
+Igual que las anteriores. Punto de recuperación primero, y después:
+
+1. `DOCENTOS_IMAGE` → `ghcr.io/datasch/docentos:0.5.0-beta.9`
+2. `DOCENTOS_BACKUP_IMAGE` → `ghcr.io/datasch/docentos-backup:0.5.0-beta.9`
+3. «Restart (pull latest)».
+
+Las **dos** variables: si solo cambias la primera, la copia de seguridad se queda
+en la versión vieja.
+
+### 12.4. Comprobar que salió bien
+
+`/api/health` debe responder `"version":"0.5.0-beta.9"`.
+
+En el registro del contenedor, al arrancar, tiene que aparecer:
+
+```
+🔌 Catalogo de plugins verificado (7)
+```
+
+Y en Administración → Plugins tienen que verse las tarjetas. Si el panel sale
+vacío, **no es un fallo de la interfaz**: significa que ese mensaje no apareció y
+hay que mirar el registro del servidor.
+
+### 12.5. Lo que hay que hacer después, una sola vez
+
+- **Nombrar a los administradores que falten.** Hasta esta versión solo cabía
+  uno, y el panel además se tragaba el motivo del rechazo, así que el botón
+  parecía no hacer nada. Ahora: Administración → tabla de usuarios → botón
+  **Admin**. La única regla que queda es no quedarse sin ninguno, y nadie puede
+  retirarse el rol a sí mismo.
+- **Revisar la configuración de los plugins.** Quien no sea administración ya no
+  recibe las credenciales guardadas ahí. Si algún webhook dependía de que el
+  navegador de un alumno lo enviara, deja de funcionar: es el precio de no
+  repartir esa URL a todo el mundo.
+
+### 12.6. Si hay que volver atrás
+
+El esquema es compatible hacia atrás: las columnas nuevas tienen valor por
+defecto y la versión anterior no las lee. Devuelve `DOCENTOS_IMAGE` y
+`DOCENTOS_BACKUP_IMAGE` a `0.5.0-beta.6` y pulsa «Restart (pull latest)». **No
+hace falta restaurar la base.**
+
+Al volver atrás vuelve también el comportamiento anterior: solo podrá haber un
+administrador, y las credenciales de los plugins volverán a servirse a cualquier
+cuenta con sesión.
