@@ -113,15 +113,9 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
     setEditingMeeting(null);
     setFormTitle('');
     setFormDescription('');
-    const pluginCfg = pluginManager.getPlugin('live-meetings')?.config;
-    const defType: MeetingType = (pluginCfg?.defaultProvider as MeetingType) || 'jitsi';
-    const jitsiDomain = (pluginCfg?.jitsiDomain as string) || 'meet.jit.si';
-    setFormType(defType);
-    if (defType === 'jitsi') {
-      setFormUrl(generateJitsiMeetingUrl(undefined, jitsiDomain));
-    } else {
-      setFormUrl('');
-    }
+    setFormType('jitsi');
+    const autoJitsi = generateJitsiMeetingUrl();
+    setFormUrl(autoJitsi);
     setFormScheduledAt(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16));
     setFormIsLive(false);
     const initialCourseId = courses[0]?.id || '';
@@ -159,9 +153,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   };
 
   const handleGenerateJitsiUrl = () => {
-    const pluginCfg = pluginManager.getPlugin('live-meetings')?.config;
-    const jitsiDomain = (pluginCfg?.jitsiDomain as string) || 'meet.jit.si';
-    const newUrl = generateJitsiMeetingUrl(undefined, jitsiDomain);
+    const newUrl = generateJitsiMeetingUrl();
     setFormUrl(newUrl);
     flashNotice('Sala Jitsi generada automáticamente');
   };
@@ -394,42 +386,38 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setFilterType('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filterType === 'ALL'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'ALL'
                 ? 'bg-[#06b6d4] text-black shadow-md'
                 : 'bg-[#141420] text-slate-400 hover:text-white border border-[#2d2d44]'
-            }`}
+              }`}
           >
             Todas ({meetings.length})
           </button>
           <button
             onClick={() => setFilterType('LIVE')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              filterType === 'LIVE'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${filterType === 'LIVE'
                 ? 'bg-red-500 text-white shadow-md'
                 : 'bg-[#141420] text-slate-400 hover:text-red-400 border border-[#2d2d44]'
-            }`}
+              }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
             En Vivo ({liveCount})
           </button>
           <button
             onClick={() => setFilterType('SYNC')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filterType === 'SYNC'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'SYNC'
                 ? 'bg-[#a855f7] text-white shadow-md'
                 : 'bg-[#141420] text-slate-400 hover:text-white border border-[#2d2d44]'
-            }`}
+              }`}
           >
             Sincrónicas ({syncCount})
           </button>
           <button
             onClick={() => setFilterType('ASYNC')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filterType === 'ASYNC'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'ASYNC'
                 ? 'bg-emerald-500 text-black shadow-md'
                 : 'bg-[#141420] text-slate-400 hover:text-white border border-[#2d2d44]'
-            }`}
+              }`}
           >
             Grabaciones ({asyncCount})
           </button>
@@ -495,11 +483,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             return (
               <div
                 key={meeting.id}
-                className={`bg-[#141420] border rounded-xl p-5 flex flex-col justify-between transition-all space-y-4 ${
-                  isLive
+                className={`bg-[#141420] border rounded-xl p-5 flex flex-col justify-between transition-all space-y-4 ${isLive
                     ? 'border-[#06b6d4] shadow-lg shadow-[#06b6d4]/10 ring-1 ring-[#06b6d4]/30'
                     : 'border-[#2d2d44] hover:border-[#3d3d5c]'
-                }`}
+                  }`}
               >
                 {/* Top Row: Badges & Actions */}
                 <div className="space-y-3">
@@ -527,8 +514,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                         {meeting.meetingType === 'jitsi'
                           ? 'Jitsi Meet'
                           : meeting.meetingType === 'meet'
-                          ? 'Google Meet'
-                          : 'Grabación'}
+                            ? 'Google Meet'
+                            : 'Grabación'}
                       </span>
                     </div>
 
@@ -602,11 +589,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       href={meeting.meetingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex-1 min-w-[120px] px-3.5 py-2 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2 transition-all ${
-                        isLive
+                      className={`flex-1 min-w-[120px] px-3.5 py-2 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2 transition-all ${isLive
                           ? 'btn-brand-primary text-white shadow-lg shadow-[#06b6d4]/20'
                           : 'bg-[#1a1a2e] hover:bg-[#252542] border border-[#06b6d4]/40 text-[#06b6d4]'
-                      }`}
+                        }`}
                     >
                       <Video className="w-3.5 h-3.5" />
                       <span>{isLive ? 'Unirse a la Clase en Vivo' : 'Abrir Sala / Enlace'}</span>
@@ -634,11 +620,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     {meeting.meetingType !== 'async_record' && (
                       <button
                         onClick={() => handleToggleLive(meeting)}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 ${
-                          isLive
+                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 ${isLive
                             ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/40 text-red-400'
                             : 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                        }`}
+                          }`}
                         title={isLive ? 'Finalizar sesión en vivo' : 'Iniciar sesión en vivo ahora'}
                       >
                         <Radio className="w-3.5 h-3.5" />
@@ -714,11 +699,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                         setFormUrl(generateJitsiMeetingUrl());
                       }
                     }}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                      formType === 'jitsi'
+                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'jitsi'
                         ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-[#06b6d4] shadow-md shadow-[#06b6d4]/10'
                         : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Globe className="w-4 h-4 mb-1" />
                     <div>
@@ -733,11 +717,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       setFormType('meet');
                       if (formUrl.includes('meet.jit.si')) setFormUrl('');
                     }}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                      formType === 'meet'
+                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'meet'
                         ? 'bg-[#a855f7]/10 border-[#a855f7] text-[#a855f7] shadow-md shadow-[#a855f7]/10'
                         : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Video className="w-4 h-4 mb-1" />
                     <div>
@@ -753,11 +736,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       setFormIsLive(false);
                       if (formUrl.includes('meet.jit.si') || formUrl.includes('meet.google.com')) setFormUrl('');
                     }}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                      formType === 'async_record'
+                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'async_record'
                         ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10'
                         : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <PlaySquare className="w-4 h-4 mb-1" />
                     <div>
@@ -775,8 +757,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     {formType === 'jitsi'
                       ? 'Enlace de Sala Jitsi Meet'
                       : formType === 'meet'
-                      ? 'Enlace de Google Meet'
-                      : 'Enlace de la Grabación (YouTube / Vimeo / Drive)'}
+                        ? 'Enlace de Google Meet'
+                        : 'Enlace de la Grabación (YouTube / Vimeo / Drive)'}
                     <span className="text-red-400"> *</span>
                   </label>
                   {formType === 'jitsi' && (
@@ -799,8 +781,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       formType === 'jitsi'
                         ? 'https://meet.jit.si/docentos-mastery-live'
                         : formType === 'meet'
-                        ? 'https://meet.google.com/abc-defg-hij'
-                        : 'https://www.youtube.com/watch?v=...'
+                          ? 'https://meet.google.com/abc-defg-hij'
+                          : 'https://www.youtube.com/watch?v=...'
                     }
                     value={formUrl}
                     onChange={(e) => setFormUrl(e.target.value)}
@@ -812,8 +794,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   {formType === 'jitsi'
                     ? 'Los estudiantes podrán ingresar sin instalar aplicaciones adicionales directamente desde el navegador.'
                     : formType === 'meet'
-                    ? 'Pega el enlace creado desde tu cuenta de Google Workspace o Meet.'
-                    : 'Permite a los estudiantes ver la grabación de una clase previa directamente en su reproductor.'}
+                      ? 'Pega el enlace creado desde tu cuenta de Google Workspace o Meet.'
+                      : 'Permite a los estudiantes ver la grabación de una clase previa directamente en su reproductor.'}
                 </p>
               </div>
 
@@ -850,11 +832,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => setFormIsLive(!formIsLive)}
-                        className={`w-full py-2 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${
-                          formIsLive
+                        className={`w-full py-2 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${formIsLive
                             ? 'bg-red-500/20 border-red-500/50 text-red-400'
                             : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400'
-                        }`}
+                          }`}
                       >
                         <Radio className={`w-3.5 h-3.5 ${formIsLive ? 'animate-pulse text-red-400' : ''}`} />
                         <span>{formIsLive ? '🔴 EN VIVO AHORA' : 'Programada (Offline)'}</span>
