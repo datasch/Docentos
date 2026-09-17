@@ -243,8 +243,20 @@
   }
 }
 
+/* Sin `forwards` a proposito. Congelar el ultimo fotograma deja el `transform`
+   aplicado para siempre —Chrome lo resuelve como `matrix(1,0,0,1,0,0)`, la
+   identidad, pero NO como `none`—, y un elemento con transform se convierte en
+   el marco de referencia de sus descendientes `position: fixed`.
+   Medido el 17 sep 2026: el modal «Programar Nueva Clase», que es
+   `fixed inset-0`, salia en 511,108 con 1216x616 en vez de cubrir la ventana
+   de 1440x900, porque se anclaba al contenedor de su pestaña. Poner
+   `transform: none` en el ultimo fotograma no arregla nada: al interpolar,
+   `none` se convierte igualmente en la matriz identidad.
+   Sin `forwards`, al acabar la animacion el elemento vuelve a su estado base
+   (opacidad 1, sin transform) y no queda marco ninguno. No hay parpadeo
+   porque ese estado base coincide con el ultimo fotograma. */
 .animate-fade-in {
-  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animate-pulse-slow {
