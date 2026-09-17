@@ -1797,6 +1797,15 @@ app.post(
   }),
 );
 
+/**
+ * Administradores activos distintos de `exceptoId`. Es la unica guarda que
+ * queda sobre el rol ADMIN: se puede nombrar a cuantos haga falta y retirar el
+ * rol a cualquiera, pero no dejar el panel sin nadie dentro.
+ */
+async function countOtherActiveAdmins(exceptoId: string): Promise<number> {
+  return prisma.user.count({ where: { role: 'ADMIN', isActive: true, id: { not: exceptoId } } });
+}
+
 // Admin operations
 app.put(
   '/api/admin/users/:userId/moderation',
@@ -1807,8 +1816,14 @@ app.put(
     if (typeof req.body.isActive === 'boolean') data.isActive = req.body.isActive;
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
-    if (existing.role === 'ADMIN' && data.isActive === false) {
-      return res.status(400).json({ error: 'El Administrador único no puede desactivar su propia cuenta.' });
+    if (
+      existing.role === 'ADMIN' &&
+      data.isActive === false &&
+      (await countOtherActiveAdmins(existing.id)) === 0
+    ) {
+      return res.status(400).json({
+        error: 'No se puede suspender al último administrador activo. Nombra antes a otro.',
+      });
     }
     const user = await prisma.user.update({ where: { id: existing.id }, data });
     if (data.isActive === false) await revokeAllUserSessions(user.id);
@@ -2613,14 +2628,22 @@ app.put(
     if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'Rol no válido' });
     const target = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+    // Regla (17 sep 2026): puede haber varios administradores, pero nunca
+    // cero. Antes solo cabia uno, asi que el boton «Admin» fallaba en cuanto
+    // existia otro y el rol no se podia retirar nunca. Lo unico que se protege
+    // ahora es quedarse sin nadie que pueda entrar al panel.
     if (target.role === 'ADMIN' && role !== 'ADMIN') {
-      return res.status(400).json({ error: 'El Administrador único no puede perder su rol.' });
-    }
-    if (role === 'ADMIN' && target.role !== 'ADMIN') {
-      const existingAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN', id: { not: target.id } } });
-      if (existingAdmin) {
+      // Quitarse el rol a uno mismo cierra la sesion en el acto y deja el panel
+      // inalcanzable si nadie mas esta a mano. Se retira siempre desde otra
+      // cuenta administradora.
+      if (target.id === req.user!.id) {
         return res.status(400).json({
-          error: `Regla de Administrador Único: Ya existe un Administrador activo (${existingAdmin.name} - ${existingAdmin.email}).`,
+          error: 'No puedes retirarte a ti mismo el rol de administrador. Pídeselo a otro administrador.',
+        });
+      }
+      if ((await countOtherActiveAdmins(target.id)) === 0) {
+        return res.status(400).json({
+          error: 'No se puede retirar el rol al último administrador activo. Nombra antes a otro.',
         });
       }
     }

@@ -46,6 +46,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [roleErrorMsg, setRoleErrorMsg] = useState('');
 
   /**
    * El catálogo completo, no solo el curso abierto.
@@ -350,7 +351,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(ttsScript);
-    
+
     const voices = window.speechSynthesis.getVoices();
     let selectedVoice = voices.find((v) => v.lang.startsWith('es'));
     if (selectedVoice) {
@@ -358,7 +359,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     }
 
     utterance.rate = ttsSpeed;
-    
+
     utterance.onstart = () => setIsPreviewingAudio(true);
     utterance.onend = () => setIsPreviewingAudio(false);
     utterance.onerror = () => setIsPreviewingAudio(false);
@@ -445,12 +446,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
   };
 
   const handleUpdateRole = async (userId: string, newRole: UserRole) => {
+    setRoleErrorMsg('');
     try {
       await api.updateUserRole(userId, newRole);
       loadUsers();
       onRefreshData();
-    } catch (error) {
-      console.error('Error updating role:', error);
+    } catch (error: any) {
+      // Antes esto solo llegaba a la consola del navegador: el boton parecia no
+      // hacer nada y no habia forma de saber que el servidor lo habia
+      // rechazado.
+      setRoleErrorMsg(error?.message || 'No se pudo cambiar el rol.');
     }
   };
 
@@ -619,7 +624,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
-      
+
       {/* Admin Header */}
       <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -636,73 +641,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         <div className="flex flex-wrap bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 w-full">
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'users' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'users' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <Users className="w-3.5 h-3.5" /> Usuarios
           </button>
           <button
             onClick={() => setActiveTab('courses')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Cursos
           </button>
           <button
             onClick={() => setActiveTab('enrollments')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'enrollments' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'enrollments' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <GraduationCap className="w-3.5 h-3.5 text-emerald-400" /> Matrículas
           </button>
           <button
             onClick={() => setActiveTab('certificates')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'certificates' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'certificates' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <Award className="w-3.5 h-3.5 text-amber-400" /> Certificados
           </button>
           <button
             onClick={() => setActiveTab('resources')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'resources' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'resources' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Recursos
           </button>
           <button
             onClick={() => setActiveTab('drive')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'drive' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'drive' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <HardDrive className="w-3.5 h-3.5" /> Videos Drive
           </button>
           <button
             onClick={() => setActiveTab('tts')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'tts' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'tts' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-[#eab308]" /> Guías TTS
           </button>
           <button
             onClick={() => setActiveTab('plugins')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'plugins' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'plugins' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <Layers className="w-3.5 h-3.5 text-[#06b6d4]" /> Plugins
           </button>
           <button
             onClick={() => setActiveTab('landing')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
-              activeTab === 'landing' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'landing' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
           >
             <Sliders className="w-3.5 h-3.5 text-[#06b6d4]" /> Portada
           </button>
@@ -718,61 +714,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         <div className="space-y-6">
           {/* Course Pricing Configuration Card */}
           {course && (
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-              <div>
-                <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-[#eab308]" />
-                  Monetización y Precio del Programa de Mentoría
-                </h3>
-                {/* Esta tarjeta edita el curso que abre el panel, no el que se
+            <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+                <div>
+                  <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-[#eab308]" />
+                    Monetización y Precio del Programa de Mentoría
+                  </h3>
+                  {/* Esta tarjeta edita el curso que abre el panel, no el que se
                     elige en las demás pestañas: nombrarlo evita cambiarle el
                     precio al curso equivocado. El precio por curso también se
                     edita, uno a uno, en la pestaña Cursos. */}
-                <p className="text-xs text-slate-400">
-                  Precio público de <span className="font-bold text-slate-200">«{course?.title}»</span>.
-                  Deja en 0 para que sea completamente público y gratuito.
-                </p>
-              </div>
-              {priceSuccessMsg && (
-                <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl animate-fade-in">
-                  {priceSuccessMsg}
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 w-full sm:w-64">
-                <span className="text-slate-400 font-extrabold text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={coursePrice}
-                  onChange={(e) => setCoursePrice(Number(e.target.value))}
-                  placeholder="Ej. 49"
-                  className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
-                />
-                <span className="text-slate-500 text-xs uppercase font-bold">USD</span>
+                  <p className="text-xs text-slate-400">
+                    Precio público de <span className="font-bold text-slate-200">«{course?.title}»</span>.
+                    Deja en 0 para que sea completamente público y gratuito.
+                  </p>
+                </div>
+                {priceSuccessMsg && (
+                  <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl animate-fade-in">
+                    {priceSuccessMsg}
+                  </span>
+                )}
               </div>
 
-              <button
-                onClick={handleSaveCoursePrice}
-                disabled={updatingPrice}
-                className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
-              >
-                {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
-                <span>Guardar Precio del Curso</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 w-full sm:w-64">
+                  <span className="text-slate-400 font-extrabold text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={coursePrice}
+                    onChange={(e) => setCoursePrice(Number(e.target.value))}
+                    placeholder="Ej. 49"
+                    className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
+                  />
+                  <span className="text-slate-500 text-xs uppercase font-bold">USD</span>
+                </div>
+
+                <button
+                  onClick={handleSaveCoursePrice}
+                  disabled={updatingPrice}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
+                >
+                  {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Guardar Precio del Curso</span>
+                </button>
+              </div>
             </div>
-          </div>
           )}
 
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#06b6d4]" />
-                Gestión de Usuarios, Roles VIP y Moderación de Mentees
+                Gestión de Usuarios, Pases Mentee y Moderación
               </h3>
               <button
                 onClick={loadUsers}
@@ -781,6 +777,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                 <RefreshCw className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`} />
               </button>
             </div>
+
+            {roleErrorMsg && (
+              <div
+                role="alert"
+                className="p-3 bg-elevated border border-line-strong rounded-xl text-ink text-xs font-bold flex items-start gap-2"
+              >
+                <AlertTriangle aria-hidden className="w-4 h-4 shrink-0 mt-px text-brand-orange" />
+                <span>{roleErrorMsg}</span>
+              </div>
+            )}
 
             <div className="overflow-x-auto rounded-xl border border-[#2d2d44]">
               <table className="w-full text-left text-xs text-slate-300">
@@ -815,13 +821,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                         <td className="p-3.5 font-mono text-slate-400">{u.email}</td>
                         <td className="p-3.5">
                           {u.role === 'ADMIN' && (
-                            <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
-                              <Shield className="w-3 h-3" /> ADMIN
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
+                                <Shield aria-hidden className="w-3 h-3" /> ADMIN
+                              </span>
+                              {/* Retirar el rol se hace aqui, junto a la insignia
+                                  que lo anuncia, no entre los botones de alta. */}
+                              <button
+                                onClick={() => handleUpdateRole(u.id, 'PUBLIC_USER')}
+                                title={`Retirar el rol de administrador a ${u.name}`}
+                                className="px-2 py-1 bg-elevated border border-line hover:border-line-strong text-ink-soft hover:text-ink font-bold rounded-lg text-micro transition-all"
+                              >
+                                Quitar admin
+                              </button>
                             </span>
                           )}
                           {u.role === 'VIP' && (
                             <span className="bg-brand-gradient text-white font-extrabold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                              <Crown className="w-3 h-3" /> SOCIO VIP
+                              <Crown aria-hidden className="w-3 h-3" /> MENTEE
                             </span>
                           )}
                           {u.role === 'EXTERNAL' && (
@@ -832,14 +849,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                         </td>
                         <td className="p-3.5">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${
-                              strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}>
                               ⚠️ {strikes} Strikes
                             </span>
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                              isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
+                              }`}>
                               {isActive ? 'Activo' : 'Suspendido'}
                             </span>
                           </div>
@@ -856,22 +871,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                           <button
                             onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
                             title={isActive ? 'Suspender Usuario' : 'Activar Usuario'}
-                            className={`px-2 py-1 border font-bold rounded-lg text-[10px] transition-all ${
-                              isActive
+                            className={`px-2 py-1 border font-bold rounded-lg text-[10px] transition-all ${isActive
                                 ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400'
                                 : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400'
-                            }`}
+                              }`}
                           >
                             {isActive ? 'Suspender' : 'Activar'}
                           </button>
 
-                          {/* Role actions */}
-                          {u.role !== 'VIP' && (
+                          {/* Role actions. El pase es un interruptor: el mismo
+                              boton lo concede y lo retira, y al retirarlo la
+                              cuenta vuelve a ser un estudiante normal. */}
+                          {u.role === 'VIP' ? (
+                            <button
+                              onClick={() => handleUpdateRole(u.id, 'PUBLIC_USER')}
+                              title={`Retirar el pase Mentee a ${u.name}`}
+                              className="px-2.5 py-1 bg-elevated border border-brand-cyan/40 hover:border-brand-cyan text-brand-cyan font-bold rounded-lg text-micro shadow-sm transition-all"
+                            >
+                              Quitar Pase Mentee
+                            </button>
+                          ) : (
                             <button
                               onClick={() => handleUpdateRole(u.id, 'VIP')}
+                              title={`Conceder el pase Mentee a ${u.name}`}
                               className="px-2.5 py-1 bg-[#06b6d4] hover:bg-[#06b6d4]/80 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all"
                             >
-                              Pase VIP
+                              Mentee
                             </button>
                           )}
                           {u.role !== 'ADMIN' && (
@@ -896,212 +921,212 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
       {/* TAB 2: LINK GOOGLE DRIVE VIDEOS TO COURSE MODULES */}
       {activeTab === 'drive' && (
         <div className="space-y-6">
-        {courseScopeBar}
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
-            <div>
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <HardDrive className="w-5 h-5 text-[#06b6d4]" />
-                Enlazar Contenido de Google Drive al Temario
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Elige el módulo de «{workCourse.title}» y asóciale videos alojados en Google Drive.
-              </p>
+          {courseScopeBar}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
+              <div>
+                <h3 className="font-bold text-base text-white flex items-center gap-2">
+                  <HardDrive className="w-5 h-5 text-[#06b6d4]" />
+                  Enlazar Contenido de Google Drive al Temario
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Elige el módulo de «{workCourse.title}» y asóciale videos alojados en Google Drive.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <label className="text-xs text-slate-400 font-semibold shrink-0">Módulo Destino:</label>
+                <select
+                  value={selectedModuleId}
+                  onChange={(e) => setSelectedModuleId(e.target.value)}
+                  disabled={workModules.length === 0}
+                  className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
+                >
+                  {workModules.length === 0 && <option value="">Sin módulos</option>}
+                  {workModules.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <label className="text-xs text-slate-400 font-semibold shrink-0">Módulo Destino:</label>
-              <select
-                value={selectedModuleId}
-                onChange={(e) => setSelectedModuleId(e.target.value)}
-                disabled={workModules.length === 0}
-                className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
-              >
-                {workModules.length === 0 && <option value="">Sin módulos</option>}
-                {workModules.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+            {noModulesNotice}
 
-          {noModulesNotice}
+            {linkSuccessMsg && (
+              <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 animate-fade-in font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> {linkSuccessMsg}
+              </div>
+            )}
 
-          {linkSuccessMsg && (
-            <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 animate-fade-in font-semibold">
-              <CheckCircle2 className="w-4 h-4" /> {linkSuccessMsg}
-            </div>
-          )}
+            {driveErrorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{driveErrorMsg}</span>
+              </div>
+            )}
 
-          {driveErrorMsg && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{driveErrorMsg}</span>
-            </div>
-          )}
-
-          {/* De dónde salen estos videos. Sin decirlo, un catálogo de
+            {/* De dónde salen estos videos. Sin decirlo, un catálogo de
               demostración se confunde con la cuenta de Drive del centro y se
               enlazan archivos que no existen. */}
-          {driveIsDemo ? (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 space-y-1.5">
-              <p className="font-bold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> Google Drive no está conectado: esto es un catálogo de demostración
-              </p>
-              <p className="text-amber-200/80 leading-relaxed">
-                Los videos de abajo son ejemplos y sus identificadores no existen; si los enlazas, el
-                reproductor saldrá vacío. Para ver los archivos reales de tu cuenta, configura en el
-                servidor <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
-                <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code> (cuenta de servicio) o{' '}
-                <code className="font-mono">GOOGLE_DRIVE_API_KEY</code>, más{' '}
-                <code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code> con la carpeta a listar, y
-                comparte esa carpeta con la cuenta de servicio. Mientras tanto, usa el alta por enlace.
-              </p>
-            </div>
-          ) : (
-            <p className="text-[11px] text-slate-500">
-              Listando los videos de la carpeta de Drive configurada en el servidor
-              (<code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code>). Si el video vive en otra
-              carpeta, añádelo por enlace.
-            </p>
-          )}
-
-          {/* Alta por enlace: el camino que funciona con o sin credenciales. */}
-          <form
-            onSubmit={handleAddManualVideo}
-            className="bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-4 space-y-3"
-          >
-            <h4 className="text-xs font-bold text-white flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <div className="md:col-span-2">
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">
-                  Enlace de Drive o URL de reproducción
-                </label>
-                <input
-                  type="text"
-                  value={manualVideoUrl}
-                  onChange={(e) => setManualVideoUrl(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/ABC123.../view"
-                  className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  required
-                />
+            {driveIsDemo ? (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 space-y-1.5">
+                <p className="font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" /> Google Drive no está conectado: esto es un catálogo de demostración
+                </p>
+                <p className="text-amber-200/80 leading-relaxed">
+                  Los videos de abajo son ejemplos y sus identificadores no existen; si los enlazas, el
+                  reproductor saldrá vacío. Para ver los archivos reales de tu cuenta, configura en el
+                  servidor <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
+                  <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code> (cuenta de servicio) o{' '}
+                  <code className="font-mono">GOOGLE_DRIVE_API_KEY</code>, más{' '}
+                  <code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code> con la carpeta a listar, y
+                  comparte esa carpeta con la cuenta de servicio. Mientras tanto, usa el alta por enlace.
+                </p>
               </div>
+            ) : (
+              <p className="text-[11px] text-slate-500">
+                Listando los videos de la carpeta de Drive configurada en el servidor
+                (<code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code>). Si el video vive en otra
+                carpeta, añádelo por enlace.
+              </p>
+            )}
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Título de la clase</label>
-                <input
-                  type="text"
-                  value={manualVideoTitle}
-                  onChange={(e) => setManualVideoTitle(e.target.value)}
-                  placeholder="Ej. 03. Índices en PostgreSQL"
-                  className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  required
-                />
-              </div>
+            {/* Alta por enlace: el camino que funciona con o sin credenciales. */}
+            <form
+              onSubmit={handleAddManualVideo}
+              className="bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-4 space-y-3"
+            >
+              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
+              </h4>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Duración</label>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div className="md:col-span-2">
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                    Enlace de Drive o URL de reproducción
+                  </label>
                   <input
                     type="text"
-                    value={manualVideoDuration}
-                    onChange={(e) => setManualVideoDuration(e.target.value)}
-                    placeholder="20:00"
+                    value={manualVideoUrl}
+                    onChange={(e) => setManualVideoUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/ABC123.../view"
                     className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    required
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={addingManualVideo || workModules.length === 0}
-                  className="btn-brand-primary h-[38px] px-3 text-xs font-bold flex items-center justify-center gap-1.5 self-end disabled:opacity-50"
-                >
-                  {addingManualVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  Añadir
-                </button>
-              </div>
-            </div>
-          </form>
 
-          {/* Buscador de la carpeta configurada. */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              loadDriveVideos(searchQuery);
-            }}
-            className="flex items-center gap-2"
-          >
-            <div className="flex-1 flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3">
-              <Search className="w-4 h-4 text-slate-500 shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por nombre en la carpeta de Drive..."
-                className="w-full bg-transparent py-2 text-xs text-white focus:outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loadingDrive}
-              className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> Buscar
-            </button>
-          </form>
-
-          {!loadingDrive && driveVideos.length === 0 && (
-            <p className="text-xs text-slate-500 py-6 text-center">
-              No hay videos que mostrar para esa búsqueda.
-            </p>
-          )}
-
-          {/* Drive Videos Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {driveVideos.map((video) => (
-              <div
-                key={video.id}
-                className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 flex flex-col justify-between hover:border-[#06b6d4]/50 transition-all shadow-md"
-              >
-                <div className="space-y-2">
-                  <div className="aspect-video bg-black rounded-xl overflow-hidden border border-[#2d2d44] relative">
-                    <img
-                      src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
-                      alt={video.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {video.duration && (
-                      <span className="absolute bottom-1.5 right-1.5 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#2d2d44]">
-                        {video.duration}
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="font-semibold text-xs text-white line-clamp-2">{video.name}</h4>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Título de la clase</label>
+                  <input
+                    type="text"
+                    value={manualVideoTitle}
+                    onChange={(e) => setManualVideoTitle(e.target.value)}
+                    placeholder="Ej. 03. Índices en PostgreSQL"
+                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    required
+                  />
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-[#2d2d44] flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500 font-mono">ID: {video.id.substring(0, 12)}...</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Duración</label>
+                    <input
+                      type="text"
+                      value={manualVideoDuration}
+                      onChange={(e) => setManualVideoDuration(e.target.value)}
+                      placeholder="20:00"
+                      className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    />
+                  </div>
                   <button
-                    onClick={() => handleLinkDriveVideo(video)}
-                    disabled={linkingVideo?.id === video.id || workModules.length === 0}
-                    className="px-3 py-1.5 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
+                    type="submit"
+                    disabled={addingManualVideo || workModules.length === 0}
+                    className="btn-brand-primary h-[38px] px-3 text-xs font-bold flex items-center justify-center gap-1.5 self-end disabled:opacity-50"
                   >
-                    {linkingVideo?.id === video.id ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <>
-                        <Plus className="w-3.5 h-3.5" /> Enlazar al Módulo
-                      </>
-                    )}
+                    {addingManualVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Añadir
                   </button>
                 </div>
               </div>
-            ))}
+            </form>
+
+            {/* Buscador de la carpeta configurada. */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                loadDriveVideos(searchQuery);
+              }}
+              className="flex items-center gap-2"
+            >
+              <div className="flex-1 flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3">
+                <Search className="w-4 h-4 text-slate-500 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar por nombre en la carpeta de Drive..."
+                  className="w-full bg-transparent py-2 text-xs text-white focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loadingDrive}
+                className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> Buscar
+              </button>
+            </form>
+
+            {!loadingDrive && driveVideos.length === 0 && (
+              <p className="text-xs text-slate-500 py-6 text-center">
+                No hay videos que mostrar para esa búsqueda.
+              </p>
+            )}
+
+            {/* Drive Videos Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {driveVideos.map((video) => (
+                <div
+                  key={video.id}
+                  className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 flex flex-col justify-between hover:border-[#06b6d4]/50 transition-all shadow-md"
+                >
+                  <div className="space-y-2">
+                    <div className="aspect-video bg-black rounded-xl overflow-hidden border border-[#2d2d44] relative">
+                      <img
+                        src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
+                        alt={video.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {video.duration && (
+                        <span className="absolute bottom-1.5 right-1.5 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#2d2d44]">
+                          {video.duration}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-semibold text-xs text-white line-clamp-2">{video.name}</h4>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-[#2d2d44] flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-mono">ID: {video.id.substring(0, 12)}...</span>
+                    <button
+                      onClick={() => handleLinkDriveVideo(video)}
+                      disabled={linkingVideo?.id === video.id || workModules.length === 0}
+                      className="px-3 py-1.5 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
+                    >
+                      {linkingVideo?.id === video.id ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <Plus className="w-3.5 h-3.5" /> Enlazar al Módulo
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
         </div>
       )}
 
@@ -1142,7 +1167,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
             )}
 
             <form onSubmit={handleCreateTTSGuide} className="space-y-4">
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Title */}
                 <div>
@@ -1240,11 +1265,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                         setTtsVoice(v.id);
                         ttsService.testVoice(v.id, ttsSpeed);
                       }}
-                      className={`p-2 rounded-lg border text-[11px] font-semibold text-left flex items-center justify-between transition-all ${
-                        ttsVoice === v.id
+                      className={`p-2 rounded-lg border text-[11px] font-semibold text-left flex items-center justify-between transition-all ${ttsVoice === v.id
                           ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-white shadow-sm'
                           : 'bg-[#141420] border-[#2d2d44] text-slate-400 hover:text-white hover:border-[#06b6d4]/40'
-                      }`}
+                        }`}
                     >
                       <span className="truncate">{v.flag} {v.name.split('(')[0]}</span>
                       <Volume2 className="w-3.5 h-3.5 text-[#06b6d4] shrink-0 ml-1" />
@@ -1518,15 +1542,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                       <td className="py-3 px-4 text-slate-300">{enr.courseTitle || enr.courseId}</td>
                       <td className="py-3 px-4">
                         <span
-                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                            enr.status === 'ACTIVE'
+                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${enr.status === 'ACTIVE'
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                               : enr.status === 'COMPLETED'
-                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                              : enr.status === 'REVOKED'
-                              ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                          }`}
+                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                                : enr.status === 'REVOKED'
+                                  ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                            }`}
                         >
                           {enr.status}
                         </span>

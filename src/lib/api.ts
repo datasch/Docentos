@@ -171,7 +171,7 @@ export const api = {
     const res = await fetch('/api/vip/activate', {
       method: 'POST',
     });
-    if (!res.ok) throw new Error('Error al activar Pase VIP');
+    if (!res.ok) throw new Error('Error al activar el Pase Mentee');
     return res.json();
   },
 
@@ -296,8 +296,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role }),
     });
-    if (!res.ok) throw new Error('Error al actualizar rol');
-    return res.json();
+    // El servidor explica por que rechaza un cambio de rol (por ejemplo, el
+    // ultimo administrador activo). Tragarse ese texto dejaba el boton sin
+    // reaccion aparente, que es justo como se veia la regla de admin unico.
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || 'Error al actualizar rol');
+    return payload;
   },
 
   async addDriveVideoToModule(moduleId: string, videoData: Partial<DriveVideoFile>): Promise<{ success: boolean }> {
