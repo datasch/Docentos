@@ -294,6 +294,21 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           ? `${nombre} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.`
           : `${nombre} queda asignado a tu mentoría.`,
       );
+      // Si el alta se hizo desde el selector del curso, este se queda abierto
+      // detras. Hay que refrescar la lista y dejar marcada a la persona: lo
+      // que no esta marcado se retira al guardar, asi que sin esto «Guardar
+      // cambios» deshacia la asignacion recien creada.
+      if (rosterMode === 'course' && res.mentee?.id) {
+        const nuevoId = res.mentee.id as string;
+        setRosterSelection((previa) => (previa.includes(nuevoId) ? previa : [...previa, nuevoId]));
+        try {
+          const lista = await api.getMenteeCandidates();
+          setCandidates(lista.candidates || []);
+        } catch {
+          // La asignacion ya esta hecha en el servidor; no poder repintar la
+          // lista no la invalida.
+        }
+      }
       loadMenteesData();
     } catch (error: any) {
       // El servidor rechaza con un motivo concreto (cuenta administrativa,
@@ -387,30 +402,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap items-center gap-3 z-10">
-          <button
-            onClick={() => {
-              setAssignError('');
-              setShowAssignMenteeModal(true);
-            }}
-            className="px-4 py-2.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2"
-          >
-            <Users className="w-4 h-4 text-[#06b6d4]" />
-            <span>Asignar Nuevo Mentee</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setCreateCourseError('');
-              setShowCreateCourseModal(true);
-            }}
-            className="px-4 py-2.5 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black text-xs font-extrabold rounded-xl shadow-lg transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Crear Nuevo Programa</span>
-          </button>
-        </div>
+        {/* Aqui habia dos accesos rapidos, «Asignar Nuevo Mentee» y «Crear
+            Nuevo Programa». Se retiran de la cabecera: el alta de mentees vive
+            ahora dentro del selector de «Gestión de Cursos», junto a la lista
+            de quien ya tiene cuenta. */}
       </div>
 
       {actionNotice && (
@@ -510,7 +505,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-10 text-center space-y-3">
               <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
               <p className="text-xs text-slate-400">
-                Todavía no hay programas. Crea el primero desde «Crear Nuevo Programa».
+                Todavía no hay programas. Los crea administración, desde Administración › Cursos.
               </p>
             </div>
           ) : (
@@ -591,19 +586,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {activeTab === 'mentees' && (
         <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl overflow-hidden">
           <div className="p-5 border-b border-[#262626] flex items-center justify-between">
+            {/* El alta y el reparto viven ahora en «Gestión de Cursos»: se
+                asigna desde el curso, que es donde se sabe a que se asigna. */}
             <div>
               <h3 className="font-bold text-sm text-white">Seguimiento de Mentees</h3>
               <p className="text-xs text-slate-400">Progreso individual y estado de estudio de alumnos asignados</p>
             </div>
-            <button
-              onClick={() => {
-                setAssignError('');
-                setShowAssignMenteeModal(true);
-              }}
-              className="px-3.5 py-1.5 bg-[#06b6d4] text-black font-extrabold text-xs rounded-xl flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> Asignar Mentee
-            </button>
           </div>
 
           <div className="divide-y divide-[#262626]">
@@ -848,13 +836,28 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   {rosterMode === 'course' ? rosterCourse?.title : rosterMentee?.name}
                 </p>
               </div>
-              <button
-                onClick={closeRoster}
-                className="p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-[#141420] shrink-0"
-                aria-label="Cerrar"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Unica via para incorporar a alguien que todavia no tiene
+                    cuenta. Vive aqui, junto a la lista de quien si la tiene. */}
+                {rosterMode === 'course' && (
+                  <button
+                    onClick={() => {
+                      setAssignError('');
+                      setShowAssignMenteeModal(true);
+                    }}
+                    className="px-2.5 py-1.5 bg-raised border border-line hover:border-brand-cyan text-brand-cyan font-bold text-micro rounded-xl flex items-center gap-1.5 transition-colors"
+                  >
+                    <Plus aria-hidden className="w-3.5 h-3.5" /> Dar de alta
+                  </button>
+                )}
+                <button
+                  onClick={closeRoster}
+                  className="p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-[#141420]"
+                  aria-label="Cerrar"
+                >
+                  <X aria-hidden className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {rosterError && (
@@ -887,7 +890,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       return (
                         <p className="py-8 text-center text-xs text-slate-500">
                           {candidates.length === 0
-                            ? 'No hay cuentas mentee todavía. Da de alta a alguien con «Asignar Mentee».'
+                            ? 'No hay cuentas mentee todavía. Crea una con «Dar de alta», aquí arriba.'
                             : 'Ningún mentee coincide con la búsqueda.'}
                         </p>
                       );
