@@ -427,12 +427,38 @@ test('Plan: los nombres se ordenan y se limpian como espera una persona', async 
     assert.equal(cleanTitle('2024 Guía fiscal.pdf'), '2024 Guía fiscal', 'Un año no es un número de clase');
   });
 
-  await t.test('3. Limpiar nunca deja un título vacío', () => {
+  await t.test('3. Se retira el «Copia de» que Drive antepone a los duplicados', () => {
+    assert.equal(
+      cleanTitle('Copia de 003 Instalación de Kali Purple.mp4'),
+      'Instalación de Kali Purple',
+      'El prefijo se quita antes que la numeración, que va detrás de él',
+    );
+    assert.equal(
+      cleanTitle('Copia de 001 ¿Cómo sacarle el máximo provecho a este curso.es.srt', {
+        stripExtension: false,
+      }),
+      '¿Cómo sacarle el máximo provecho a este curso.es.srt',
+      'Los recursos conservan su extensión, pero no el prefijo de copia',
+    );
+    assert.equal(
+      cleanTitle('Copia de Copia de 004 Test de evaluación.html', { stripExtension: false }),
+      'Test de evaluación.html',
+      'Copiar un duplicado encadena el prefijo y hay que quitarlo entero',
+    );
+    assert.equal(cleanTitle('Copy of 002 Virtualization.mp4'), 'Virtualization', 'Cuentas en inglés');
+    assert.equal(
+      cleanTitle('Copias de seguridad del servidor.pdf', { stripExtension: false }),
+      'Copias de seguridad del servidor.pdf',
+      'Solo se quita el prefijo exacto: un título que empieza por «Copias» se respeta',
+    );
+  });
+
+  await t.test('4. Limpiar nunca deja un título vacío', () => {
     assert.equal(cleanTitle('001 - .mp4'), '001 - .mp4', 'Se conserva el original antes que quedarse en blanco');
     assert.equal(cleanTitle('---'), '---');
   });
 
-  await t.test('4. Las claves de emparejado toleran el sufijo de idioma', () => {
+  await t.test('5. Las claves de emparejado toleran el sufijo de idioma', () => {
     assert.deepEqual(
       subtitleBaseKeys('027 You Can Avoid Risk.en_US.srt'),
       ['027 you can avoid risk.en_us', '027 you can avoid risk'],

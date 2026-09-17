@@ -178,6 +178,14 @@ const NOISE = [
 ];
 
 /**
+ * Duplicar en Drive antepone «Copia de» al nombre, y copiar una carpeta entera
+ * se lo pega a todas sus clases y recursos. Se quita antes que la numeracion,
+ * porque el nombre real que llega es «Copia de 001 Instalacion de Kali».
+ * Se repite para los duplicados de duplicados («Copia de Copia de ...»).
+ */
+const COPY_PREFIX = /^\s*(copia de|c\u00f3pia de|copy of)\s+/i;
+
+/**
  * Convierte `001__[Udemy] Learn to Learn` en `Learn to Learn` y
  * `13 - Naming Conventions` en `Naming Conventions`. Si limpiar deja la cadena
  * vacia se devuelve el nombre original: es preferible un titulo feo a uno vacio.
@@ -185,6 +193,7 @@ const NOISE = [
 export function cleanTitle(raw: string, options: { stripExtension?: boolean } = {}): string {
   let value = options.stripExtension === false ? raw : stripExtension(raw);
   for (const pattern of NOISE) value = value.replace(pattern, ' ');
+  while (COPY_PREFIX.test(value)) value = value.replace(COPY_PREFIX, '');
   // Dos formas de numerar una clase: con separador explicito ("13 - Nombre",
   // "001__Nombre") o solo con un espacio ("005 Section Overview"). La segunda
   // se limita a tres digitos para no comerse el ano de un titulo como
