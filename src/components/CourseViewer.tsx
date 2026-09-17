@@ -522,6 +522,25 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                   allowFullScreen
                 />
+              ) : hasAccess ? (
+                /* Con acceso concedido y sin clase que reproducir, el curso
+                   esta vacio o la leccion no tiene video utilizable. Antes
+                   estos casos caian en el panel del candado y el alumno leia
+                   «requiere acceso» teniendo el acceso: el mensaje mandaba a
+                   pagar algo que ya tenia. */
+                <div className="flex h-full flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
+                  <ListTree aria-hidden className="h-7 w-7 text-ink-muted" />
+                  <div>
+                    <h2 className="text-section font-semibold text-ink">
+                      {currentVideo ? 'Esta clase todavía no tiene video' : 'Este curso todavía no tiene clases'}
+                    </h2>
+                    <p className="mx-auto mt-1.5 max-w-sm text-meta leading-relaxed text-ink-muted">
+                      {currentVideo
+                        ? 'Tu acceso está activo. Falta enlazar el video de esta clase.'
+                        : 'Tu acceso está activo. Aún no se ha publicado ningún módulo en este curso.'}
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
                   <Lock aria-hidden className="h-7 w-7 text-ink-muted" />

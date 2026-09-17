@@ -74,7 +74,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [course, setCourse] = useState<Course | null>(null);
-  const [hasAccess, setHasAccess] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
@@ -127,6 +126,15 @@ export default function App() {
     }
   };
 
+  /**
+   * El acceso es de CADA curso, no de la cuenta. Antes esto guardaba el
+   * `hasAccess` global de /api/courses, que responde «¿tiene acceso a alguno?»:
+   * bastaba un curso abierto a todos los registrados para que la vista previa
+   * se diera por activada en TODOS los demas y desapareciera el aviso de que
+   * hacia falta activar el acceso.
+   */
+  const hasAccess = course?.hasAccess === true;
+
   const loadData = async () => {
     try {
       const setupRequired = await checkSetupStatus();
@@ -151,7 +159,6 @@ export default function App() {
       if (courseRes.courses && courseRes.courses.length > 0) {
         const list = courseRes.courses;
         setCourses(list);
-        setHasAccess(courseRes.hasAccess);
 
         setCourse((current) => {
           // Al recargar datos se conserva el curso abierto —antes se volvía
@@ -228,7 +235,7 @@ export default function App() {
       console.error('Logout error:', e);
     }
     setCurrentUser(null);
-    setHasAccess(false);
+    setCourse(null);
     setShowTour(false);
     navigateTo('landing');
   };
@@ -424,7 +431,7 @@ export default function App() {
           onChanged={(message) => {
             setShowChangePasswordModal(false);
             setCurrentUser(null);
-            setHasAccess(false);
+            setCourse(null);
             setAuthMode('login');
             setAuthNotice(message);
             navigateTo('landing');
