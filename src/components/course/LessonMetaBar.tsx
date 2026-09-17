@@ -43,13 +43,13 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
           {/^m[óo]dulo\s/i.test(moduleTitle) ? moduleTitle : `Módulo ${moduleIndex + 1} · ${moduleTitle}`}
         </p>
         {isLive && (meetingType === 'meet' || meetingType === 'jitsi') && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2 py-0.5 text-[10px] font-black uppercase text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2 py-0.5 text-micro font-bold uppercase text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-cyan)] animate-ping" />
             ¡CLASE EN VIVO!
           </span>
         )}
         {meetingType === 'async_record' && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-micro font-bold text-success-light border border-success/30">
             <PlaySquare className="h-2.5 w-2.5" />
             Grabación Asincrónica
           </span>

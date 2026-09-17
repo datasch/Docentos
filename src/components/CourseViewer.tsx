@@ -536,7 +536,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           <div className={theaterMode ? '' : 'lg:col-span-8'}>
             {/* Banner Destacado de Clase Sincrónica En Vivo */}
             {hasAccess && activeLiveMeeting && (
-              <div className="mb-4 mx-4 lg:mx-0 rounded-2xl border border-[var(--color-brand-cyan)] bg-[#08080c] p-4 shadow-xl shadow-[var(--color-brand-cyan)]/10 ring-1 ring-[var(--color-brand-cyan)]/30 animate-fade-in">
+              <div className="mb-4 mx-4 lg:mx-0 rounded-2xl border border-[var(--color-brand-cyan)] bg-surface p-4 shadow-xl shadow-[var(--color-brand-cyan)]/10 ring-1 ring-[var(--color-brand-cyan)]/30 animate-fade-in">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-cyan)]/15 border border-[var(--color-brand-cyan)]/40 text-[var(--color-brand-cyan)]">
@@ -544,15 +544,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
                           <span className="h-2 w-2 rounded-full bg-[var(--color-brand-cyan)] animate-ping" />
                           ¡CLASE EN VIVO!
                         </span>
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 bg-[#141420] px-2 py-0.5 rounded border border-line">
+                        <span className="text-micro font-bold uppercase tracking-wider text-ink-muted bg-raised px-2 py-0.5 rounded border border-line">
                           {activeLiveMeeting.meetingType === 'jitsi' ? 'Jitsi Meet' : 'Google Meet'}
                         </span>
                       </div>
-                      <h2 className="mt-1 text-section font-extrabold text-white leading-tight truncate">
+                      <h2 className="mt-1 text-section font-bold text-ink leading-tight truncate">
                         {activeLiveMeeting.title}
                       </h2>
                       {activeLiveMeeting.description && (
@@ -567,7 +567,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     href={activeLiveMeeting.meetingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-brand-primary flex shrink-0 items-center gap-2 px-5 py-2.5 text-xs font-black shadow-lg shadow-[var(--color-brand-cyan)]/25 hover:scale-[1.02] transition-transform"
+                    className="btn-brand-primary flex shrink-0 items-center gap-2 px-5 py-2.5 text-xs font-bold shadow-lg shadow-[var(--color-brand-cyan)]/25 hover:scale-[1.02] transition-transform"
                   >
                     <Video className="h-4 w-4" />
                     <span>Unirse a la clase en vivo</span>
@@ -579,11 +579,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
             {/* Aviso de Próxima Clase Sincrónica Programada */}
             {hasAccess && !activeLiveMeeting && upcomingMeeting && (
-              <div className="mb-3 mx-4 lg:mx-0 rounded-xl border border-line bg-[#0d0d14] p-3 flex items-center justify-between gap-3 text-meta animate-fade-in">
+              <div className="mb-3 mx-4 lg:mx-0 rounded-xl border border-line bg-card p-3 flex items-center justify-between gap-3 text-meta animate-fade-in">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Calendar className="h-4 w-4 shrink-0 text-[#a855f7]" />
+                  <Calendar className="h-4 w-4 shrink-0 text-brand-purple" />
                   <div className="min-w-0">
-                    <span className="font-semibold text-white truncate block">
+                    <span className="font-semibold text-ink truncate block">
                       Próxima clase sincrónica: {upcomingMeeting.title}
                     </span>
                     <span className="text-micro text-ink-muted">
@@ -595,7 +595,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   href={upcomingMeeting.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-raised border border-line hover:border-[#06b6d4] text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center gap-1"
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-raised border border-line hover:border-brand-cyan text-micro font-bold text-ink-soft hover:text-ink transition-colors flex items-center gap-1"
                 >
                   <span>Ver enlace</span>
                   <ExternalLink className="h-3 w-3" />
@@ -703,27 +703,27 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
             {/* Barra de información de la lección o de la sesión asincrónica */}
             {selectedMeetingPlayback ? (
-              <div className="mt-3 mx-4 lg:mx-0 rounded-2xl border border-emerald-500/40 bg-[#0a1210] p-4 text-meta shadow-xl shadow-emerald-500/10 animate-fade-in">
+              <div className="mt-3 mx-4 lg:mx-0 rounded-2xl border border-success/40 bg-[#0a1210] p-4 text-meta shadow-xl shadow-emerald-500/10 animate-fade-in">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
                   <div className="flex items-start sm:items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/20 text-success-light border border-success/30">
                       <PlaySquare className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider text-success-light border border-success/30">
                           <PlaySquare className="h-3 w-3" />
                           Grabación Asincrónica
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium">
+                        <span className="text-micro text-ink-muted font-medium">
                           {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                         </span>
                       </div>
-                      <h3 className="mt-1 font-extrabold text-sm text-white truncate">
+                      <h3 className="mt-1 font-bold text-sm text-ink truncate">
                         {selectedMeetingPlayback.title}
                       </h3>
                       {selectedMeetingPlayback.description && (
-                        <p className="mt-0.5 text-xs text-slate-300 line-clamp-1">
+                        <p className="mt-0.5 text-xs text-ink-soft line-clamp-1">
                           {selectedMeetingPlayback.description}
                         </p>
                       )}
@@ -734,7 +734,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       href={selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg bg-[#141420] hover:bg-[#1f1f33] border border-line text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-raised hover:bg-elevated border border-line text-xs font-semibold text-ink-soft hover:text-ink flex items-center gap-1.5 transition-colors"
                     >
                       <span>Abrir enlace externo</span>
                       <ExternalLink className="h-3 w-3" />
@@ -827,21 +827,21 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
                         <div className="flex items-center justify-between pb-2 border-b border-line">
                           <div>
-                            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                              <Radio className="h-3.5 w-3.5 text-[#06b6d4]" />
+                            <h3 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+                              <Radio className="h-3.5 w-3.5 text-brand-cyan" />
                               Clases Sincrónicas & Grabaciones
                             </h3>
-                            <p className="text-[11px] text-ink-muted mt-0.5">
+                            <p className="text-micro text-ink-muted mt-0.5">
                               Sesiones en vivo y clases grabadas bajo demanda del curso.
                             </p>
                           </div>
                         </div>
 
                         {courseMeetings.length === 0 ? (
-                          <div className="py-12 text-center space-y-2 bg-[#0d0d14] rounded-xl border border-line p-4">
-                            <Video className="h-8 w-8 mx-auto text-slate-600" />
-                            <p className="text-xs font-semibold text-white">No hay sesiones programadas aún</p>
-                            <p className="text-[11px] text-slate-400">
+                          <div className="py-12 text-center space-y-2 bg-card rounded-xl border border-line p-4">
+                            <Video className="h-8 w-8 mx-auto text-ink-faint" />
+                            <p className="text-xs font-semibold text-ink">No hay sesiones programadas aún</p>
+                            <p className="text-micro text-ink-muted">
                               Tu mentor programará clases sincrónicas y grabaciones en este espacio.
                             </p>
                           </div>
@@ -875,11 +875,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                               return moduleGroups.map((group) => (
                                 <div key={group.moduleId || 'general'} className="space-y-2.5">
                                   <div className="flex items-center gap-2 px-1">
-                                    <span className="h-2 w-2 rounded-full bg-[#06b6d4]" />
-                                    <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300">
+                                    <span className="h-2 w-2 rounded-full bg-brand-cyan" />
+                                    <h4 className="text-micro font-bold uppercase tracking-wider text-ink-soft">
                                       {group.moduleTitle}
                                     </h4>
-                                    <span className="text-[10px] font-bold text-slate-500 bg-[#0d0d14] border border-line px-1.5 py-0.2 rounded-full">
+                                    <span className="text-micro font-bold text-ink-faint bg-card border border-line px-1.5 py-0.2 rounded-full">
                                       {group.meetings.length}
                                     </span>
                                   </div>
@@ -894,32 +894,32 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                         <div
                                           key={m.id}
                                           className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${isPlayingThis
-                                              ? 'bg-emerald-500/10 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
+                                              ? 'bg-success/10 border-success/50 shadow-md ring-1 ring-emerald-500/30'
                                               : isLive
-                                                ? 'bg-[#08080c] border-[#06b6d4] shadow-md shadow-[#06b6d4]/10 ring-1 ring-[#06b6d4]/30'
-                                                : 'bg-[#141420] border-line hover:border-[#3d3d5c]'
+                                                ? 'bg-surface border-brand-cyan shadow-md shadow-brand-cyan/10 ring-1 ring-brand-cyan/30'
+                                                : 'bg-raised border-line hover:border-line-strong'
                                             }`}
                                         >
                                           <div className="flex items-start justify-between gap-2">
                                             <div className="flex flex-wrap items-center gap-1.5">
                                               {isLive ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse-slow">
-                                                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/40 animate-pulse-slow">
+                                                  <span className="h-1.5 w-1.5 rounded-full bg-danger animate-ping" />
                                                   EN VIVO
                                                 </span>
                                               ) : isAsync ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-bold bg-success/10 text-success-light border border-success/30">
                                                   <PlaySquare className="h-3 w-3" />
                                                   Grabación Asincrónica
                                                 </span>
                                               ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#a855f7]/10 text-[#a855f7] border border-[#a855f7]/30">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-bold bg-brand-purple/10 text-brand-purple border border-brand-purple/30">
                                                   <Calendar className="h-3 w-3" />
                                                   Sincrónica
                                                 </span>
                                               )}
 
-                                              <span className="text-[10px] font-bold text-slate-400 uppercase bg-[#0a0a0f] px-1.5 py-0.5 rounded border border-line">
+                                              <span className="text-micro font-bold text-ink-muted uppercase bg-canvas px-1.5 py-0.5 rounded border border-line">
                                                 {m.meetingType === 'jitsi'
                                                   ? 'Jitsi'
                                                   : m.meetingType === 'meet'
@@ -928,7 +928,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                               </span>
                                             </div>
 
-                                            <span className="text-[10px] text-slate-400">
+                                            <span className="text-micro text-ink-muted">
                                               {new Date(m.scheduledAt).toLocaleDateString(undefined, {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -939,11 +939,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                           </div>
 
                                           <div>
-                                            <h4 className="font-bold text-xs text-white leading-snug">
+                                            <h4 className="font-bold text-xs text-ink leading-snug">
                                               {m.title}
                                             </h4>
                                             {m.description && (
-                                              <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">
+                                              <p className="text-micro text-ink-muted line-clamp-2 mt-0.5">
                                                 {m.description}
                                               </p>
                                             )}
@@ -959,8 +959,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                                     setSelectedMeetingPlayback(m);
                                                   }}
                                                   className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isPlayingThis
-                                                      ? 'bg-emerald-500 text-black shadow-md'
-                                                      : 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400'
+                                                      ? 'bg-success text-black shadow-md'
+                                                      : 'bg-success/15 hover:bg-success/25 border border-success/40 text-success-light'
                                                     }`}
                                                 >
                                                   <Play className="h-3 w-3" />
@@ -970,7 +970,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                                   href={m.recordingUrl || m.meetingUrl}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
-                                                  className="p-1.5 rounded-lg bg-[#0a0a0f] hover:bg-[#1a1a2e] border border-line text-slate-400 hover:text-white"
+                                                  className="p-1.5 rounded-lg bg-canvas hover:bg-elevated border border-line text-ink-muted hover:text-ink"
                                                   title="Abrir enlace externo"
                                                 >
                                                   <ExternalLink className="h-3.5 w-3.5" />
@@ -982,8 +982,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all ${isLive
-                                                    ? 'btn-brand-primary text-white shadow-md'
-                                                    : 'bg-raised hover:bg-line border border-line text-slate-300 hover:text-white'
+                                                    ? 'btn-brand-primary text-ink shadow-md'
+                                                    : 'bg-raised hover:bg-line border border-line text-ink-soft hover:text-ink'
                                                   }`}
                                               >
                                                 <Video className="h-3.5 w-3.5" />

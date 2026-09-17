@@ -285,34 +285,34 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
     <div className="space-y-6 animate-fade-in">
       {/* Toast Notification Banner */}
       {actionNotice && (
-        <div className="p-3 bg-[#06b6d4]/15 border border-[#06b6d4]/40 rounded-xl text-[#06b6d4] text-xs font-semibold flex items-center justify-between shadow-lg shadow-[#06b6d4]/10 animate-fade-in">
+        <div className="p-3 bg-brand-cyan/15 border border-brand-cyan/40 rounded-xl text-brand-cyan text-xs font-semibold flex items-center justify-between shadow-lg shadow-brand-cyan/10 animate-fade-in">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#06b6d4]" />
+            <Sparkles className="w-4 h-4 text-brand-cyan" />
             <span>{actionNotice}</span>
           </div>
-          <button onClick={() => setActionNotice('')} className="text-[#06b6d4]/70 hover:text-[#06b6d4]">
+          <button onClick={() => setActionNotice('')} className="text-brand-cyan/70 hover:text-brand-cyan">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
       {/* Header Banner - Giantucchi Design System */}
-      <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
+      <div className="bg-canvas border border-line rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs font-bold">
-            <Radio className="w-3.5 h-3.5 animate-pulse text-[#06b6d4]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold">
+            <Radio className="w-3.5 h-3.5 animate-pulse text-brand-cyan" />
             <span>LiveMeetings Engine · Google Meet, Jitsi & Grabaciones</span>
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-ink tracking-tight flex items-center gap-3">
             Gestor de Clases Sincrónicas & En Vivo
             {liveCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse-slow">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/40 animate-pulse-slow">
+                <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
                 {liveCount} EN VIVO
               </span>
             )}
           </h2>
-          <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+          <p className="text-xs text-ink-muted max-w-2xl leading-relaxed">
             Programa sesiones sincrónicas con generación de salas instantáneas en Jitsi Meet, integra tus enlaces corporativos de Google Meet o publica grabaciones asincrónicas con streaming optimizado.
           </p>
         </div>
@@ -321,15 +321,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <button
             onClick={loadMeetings}
             disabled={loading}
-            className="px-3.5 py-2.5 bg-[#141420] hover:bg-[#1c1c30] border border-[#2d2d44] text-slate-300 text-xs font-bold rounded-lg transition-all flex items-center gap-2"
+            className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-lg transition-all flex items-center gap-2"
             title="Recargar reuniones"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#06b6d4] ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-brand-cyan ${loading ? 'animate-spin' : ''}`} />
             <span>Sincronizar</span>
           </button>
           <button
             onClick={openCreateModal}
-            className="btn-brand-primary px-4 py-2.5 text-xs font-extrabold rounded-lg flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
+            className="btn-brand-primary px-4 py-2.5 text-xs font-bold rounded-lg flex items-center gap-2 shadow-lg shadow-brand-cyan/20"
           >
             <Plus className="w-4 h-4" />
             <span>Programar Clase</span>
@@ -339,42 +339,42 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Clases</p>
-            <h3 className="text-xl font-extrabold text-white mt-0.5">{meetings.length}</h3>
+            <p className="text-micro font-bold uppercase tracking-wider text-ink-muted">Total Clases</p>
+            <h3 className="text-xl font-bold text-ink mt-0.5">{meetings.length}</h3>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[#06b6d4]/10 border border-[#06b6d4]/30 flex items-center justify-center text-[#06b6d4]">
+          <div className="w-9 h-9 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan">
             <Video className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-red-400">En Vivo Ahora</p>
-            <h3 className="text-xl font-extrabold text-red-400 mt-0.5">{liveCount}</h3>
+            <p className="text-micro font-bold uppercase tracking-wider text-danger-light">En Vivo Ahora</p>
+            <h3 className="text-xl font-bold text-danger-light mt-0.5">{liveCount}</h3>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+          <div className="w-9 h-9 rounded-lg bg-danger/10 border border-danger/30 flex items-center justify-center text-danger-light">
             <Radio className="w-4 h-4 animate-pulse" />
           </div>
         </div>
 
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#a855f7]">Sincrónicas</p>
-            <h3 className="text-xl font-extrabold text-[#a855f7] mt-0.5">{syncCount}</h3>
+            <p className="text-micro font-bold uppercase tracking-wider text-brand-purple">Sincrónicas</p>
+            <h3 className="text-xl font-bold text-brand-purple mt-0.5">{syncCount}</h3>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-[#a855f7]/10 border border-[#a855f7]/30 flex items-center justify-center text-[#a855f7]">
+          <div className="w-9 h-9 rounded-lg bg-brand-purple/10 border border-brand-purple/30 flex items-center justify-center text-brand-purple">
             <Calendar className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Asincrónicas</p>
-            <h3 className="text-xl font-extrabold text-emerald-400 mt-0.5">{asyncCount}</h3>
+            <p className="text-micro font-bold uppercase tracking-wider text-success-light">Asincrónicas</p>
+            <h3 className="text-xl font-bold text-success-light mt-0.5">{asyncCount}</h3>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-9 h-9 rounded-lg bg-success/10 border border-success/30 flex items-center justify-center text-success-light">
             <PlaySquare className="w-4 h-4" />
           </div>
         </div>
@@ -387,8 +387,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <button
             onClick={() => setFilterType('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'ALL'
-                ? 'bg-[#06b6d4] text-black shadow-md'
-                : 'bg-[#141420] text-slate-400 hover:text-white border border-[#2d2d44]'
+                ? 'bg-brand-cyan text-black shadow-md'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
           >
             Todas ({meetings.length})
@@ -396,18 +396,18 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <button
             onClick={() => setFilterType('LIVE')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${filterType === 'LIVE'
-                ? 'bg-red-500 text-white shadow-md'
-                : 'bg-[#141420] text-slate-400 hover:text-red-400 border border-[#2d2d44]'
+                ? 'bg-danger text-ink shadow-md'
+                : 'bg-raised text-ink-muted hover:text-danger-light border border-line'
               }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-danger-light" />
             En Vivo ({liveCount})
           </button>
           <button
             onClick={() => setFilterType('SYNC')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'SYNC'
-                ? 'bg-[#a855f7] text-white shadow-md'
-                : 'bg-[#141420] text-slate-400 hover:text-white border border-[#2d2d44]'
+                ? 'bg-brand-purple text-ink shadow-md'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
           >
             Sincrónicas ({syncCount})
@@ -415,8 +415,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <button
             onClick={() => setFilterType('ASYNC')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'ASYNC'
-                ? 'bg-emerald-500 text-black shadow-md'
-                : 'bg-[#141420] text-slate-400 hover:text-white border border-[#2d2d44]'
+                ? 'bg-success text-black shadow-md'
+                : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
           >
             Grabaciones ({asyncCount})
@@ -428,7 +428,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <select
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
-            className="bg-[#141420] border border-[#2d2d44] text-slate-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#06b6d4]"
+            className="bg-raised border border-line text-ink-soft text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-cyan"
           >
             <option value="ALL">Todos los Cursos</option>
             {courses.map((c) => (
@@ -439,13 +439,13 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           </select>
 
           <div className="relative flex-1 sm:w-60">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
               type="text"
               placeholder="Buscar clase..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#141420] border border-[#2d2d44] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4]"
+              className="w-full bg-raised border border-line rounded-lg pl-8 pr-3 py-1.5 text-xs text-ink placeholder-slate-500 focus:outline-none focus:border-brand-cyan"
             />
           </div>
         </div>
@@ -453,15 +453,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
       {/* Meetings List */}
       {loading && meetings.length === 0 ? (
-        <div className="py-20 text-center space-y-3 bg-[#141420]/50 border border-[#2d2d44] rounded-2xl">
-          <RefreshCw className="w-8 h-8 mx-auto text-[#06b6d4] animate-spin" />
-          <p className="text-xs font-bold text-slate-400">Cargando catálogo de clases sincrónicas...</p>
+        <div className="py-20 text-center space-y-3 bg-raised/50 border border-line rounded-2xl">
+          <RefreshCw className="w-8 h-8 mx-auto text-brand-cyan animate-spin" />
+          <p className="text-xs font-bold text-ink-muted">Cargando catálogo de clases sincrónicas...</p>
         </div>
       ) : filteredMeetings.length === 0 ? (
-        <div className="py-16 text-center space-y-3 bg-[#141420]/50 border border-[#2d2d44] rounded-2xl p-6">
-          <Video className="w-10 h-10 mx-auto text-slate-600" />
-          <h3 className="text-sm font-extrabold text-white">No se encontraron clases</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+        <div className="py-16 text-center space-y-3 bg-raised/50 border border-line rounded-2xl p-6">
+          <Video className="w-10 h-10 mx-auto text-ink-faint" />
+          <h3 className="text-sm font-bold text-ink">No se encontraron clases</h3>
+          <p className="text-xs text-ink-muted max-w-sm mx-auto">
             {searchQuery || filterType !== 'ALL' || selectedCourseId !== 'ALL'
               ? 'No hay reuniones que coincidan con los filtros seleccionados.'
               : 'Programa tu primera clase sincrónica con Google Meet o Jitsi Meet.'}
@@ -483,9 +483,9 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             return (
               <div
                 key={meeting.id}
-                className={`bg-[#141420] border rounded-xl p-5 flex flex-col justify-between transition-all space-y-4 ${isLive
-                    ? 'border-[#06b6d4] shadow-lg shadow-[#06b6d4]/10 ring-1 ring-[#06b6d4]/30'
-                    : 'border-[#2d2d44] hover:border-[#3d3d5c]'
+                className={`bg-raised border rounded-xl p-5 flex flex-col justify-between transition-all space-y-4 ${isLive
+                    ? 'border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/30'
+                    : 'border-line hover:border-line-strong'
                   }`}
               >
                 {/* Top Row: Badges & Actions */}
@@ -493,24 +493,24 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       {isLive ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/50 animate-pulse-slow">
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/50 animate-pulse-slow">
+                          <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
                           🔴 ¡EN VIVO AHORA!
                         </span>
                       ) : meeting.meetingType === 'async_record' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro font-bold bg-success/10 text-success-light border border-success/30">
                           <PlaySquare className="w-3 h-3" />
                           Grabación Asincrónica
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#a855f7]/10 text-[#a855f7] border border-[#a855f7]/30">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro font-bold bg-brand-purple/10 text-brand-purple border border-brand-purple/30">
                           <Calendar className="w-3 h-3" />
                           Sincrónica Programada
                         </span>
                       )}
 
                       {/* Provider Badge */}
-                      <span className="px-2 py-0.5 rounded-md bg-[#1a1a2e] border border-[#2d2d44] text-[10px] font-bold text-slate-300 uppercase">
+                      <span className="px-2 py-0.5 rounded-md bg-elevated border border-line text-micro font-bold text-ink-soft uppercase">
                         {meeting.meetingType === 'jitsi'
                           ? 'Jitsi Meet'
                           : meeting.meetingType === 'meet'
@@ -523,14 +523,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openEditModal(meeting)}
-                        className="p-1.5 rounded-lg bg-[#1a1a2e] hover:bg-[#252542] border border-[#2d2d44] text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 rounded-lg bg-elevated hover:bg-elevated border border-line text-ink-soft hover:text-ink transition-colors"
                         title="Editar clase"
                       >
-                        <Pencil className="w-3.5 h-3.5 text-[#06b6d4]" />
+                        <Pencil className="w-3.5 h-3.5 text-brand-cyan" />
                       </button>
                       <button
                         onClick={() => handleDeleteMeeting(meeting)}
-                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition-colors"
+                        className="p-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger-light transition-colors"
                         title="Eliminar clase"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -540,26 +540,26 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
                   {/* Title & Description */}
                   <div>
-                    <h3 className="font-extrabold text-sm text-white leading-snug line-clamp-2">
+                    <h3 className="font-bold text-sm text-ink leading-snug line-clamp-2">
                       {meeting.title}
                     </h3>
                     {meeting.description && (
-                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-ink-muted mt-1 line-clamp-2 leading-relaxed">
                         {meeting.description}
                       </p>
                     )}
                   </div>
 
                   {/* Course & Module Context */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 pt-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-ink-muted pt-1">
                     {meeting.courseTitle && (
-                      <span className="flex items-center gap-1 text-[#06b6d4] font-semibold">
+                      <span className="flex items-center gap-1 text-brand-cyan font-semibold">
                         <Layers className="w-3 h-3" />
                         {meeting.courseTitle}
                       </span>
                     )}
                     {meeting.moduleTitle && (
-                      <span className="text-slate-500">
+                      <span className="text-ink-faint">
                         • {meeting.moduleTitle}
                       </span>
                     )}
@@ -567,17 +567,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 </div>
 
                 {/* Bottom Row: Scheduling, Host & Main CTA */}
-                <div className="pt-3 border-t border-[#2d2d44]/80 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 gap-2">
+                <div className="pt-3 border-t border-line/80 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between text-micro text-ink-muted gap-2">
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#06b6d4]" />
+                      <Clock className="w-3.5 h-3.5 text-brand-cyan" />
                       <span>{schedInfo.dateFormatted} · {schedInfo.timeFormatted}</span>
-                      <span className="text-[10px] text-slate-500 font-medium">({schedInfo.relativeLabel})</span>
+                      <span className="text-micro text-ink-faint font-medium">({schedInfo.relativeLabel})</span>
                     </div>
 
                     {meeting.hostName && (
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Users className="w-3 h-3 text-[#a855f7]" />
+                      <div className="flex items-center gap-1.5 text-ink-muted">
+                        <Users className="w-3 h-3 text-brand-purple" />
                         <span>{meeting.hostName}</span>
                       </div>
                     )}
@@ -590,8 +590,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`flex-1 min-w-[120px] px-3.5 py-2 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2 transition-all ${isLive
-                          ? 'btn-brand-primary text-white shadow-lg shadow-[#06b6d4]/20'
-                          : 'bg-[#1a1a2e] hover:bg-[#252542] border border-[#06b6d4]/40 text-[#06b6d4]'
+                          ? 'btn-brand-primary text-ink shadow-lg shadow-brand-cyan/20'
+                          : 'bg-elevated hover:bg-elevated border border-brand-cyan/40 text-brand-cyan'
                         }`}
                     >
                       <Video className="w-3.5 h-3.5" />
@@ -601,17 +601,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
                     <button
                       onClick={() => handleCopyLink(meeting)}
-                      className="px-3 py-2 rounded-lg bg-[#141420] hover:bg-[#1f1f33] border border-[#2d2d44] text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5"
+                      className="px-3 py-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold transition-colors flex items-center gap-1.5"
                       title="Copiar enlace de la clase"
                     >
                       {copiedId === meeting.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400">¡Copiado!</span>
+                          <Check className="w-3.5 h-3.5 text-success-light" />
+                          <span className="text-success-light">¡Copiado!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          <Copy className="w-3.5 h-3.5 text-ink-muted" />
                           <span>Copiar</span>
                         </>
                       )}
@@ -621,8 +621,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       <button
                         onClick={() => handleToggleLive(meeting)}
                         className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 ${isLive
-                            ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/40 text-red-400'
-                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                            ? 'bg-danger/10 hover:bg-danger/20 border-danger/40 text-danger-light'
+                            : 'bg-success/10 hover:bg-success/20 border-success/40 text-success-light'
                           }`}
                         title={isLive ? 'Finalizar sesión en vivo' : 'Iniciar sesión en vivo ahora'}
                       >
@@ -640,30 +640,30 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
       {/* Programar / Editar Clase Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#0a0a0f]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl w-full max-w-xl p-6 sm:p-7 space-y-6 shadow-2xl relative my-8">
+        <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-raised border border-line rounded-2xl w-full max-w-xl p-6 sm:p-7 space-y-6 shadow-2xl relative my-8">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1a1a2e]"
+              className="absolute top-5 right-5 text-ink-muted hover:text-ink p-1 rounded-lg hover:bg-elevated"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-[10px] font-bold">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-micro font-bold">
                 <Video className="w-3 h-3" />
                 <span>LiveMeetings · Programador de Sesiones</span>
               </div>
-              <h3 className="text-lg font-black text-white">
+              <h3 className="text-lg font-bold text-ink">
                 {editingMeeting ? 'Editar Clase' : 'Programar Nueva Clase'}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Configura el tipo de sesión, enlace de transmisión y fecha programada.
               </p>
             </div>
 
             {modalError && (
-              <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-xs font-semibold flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-danger/15 border border-danger/40 text-danger-light text-xs font-semibold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{modalError}</span>
               </div>
@@ -672,8 +672,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             <form onSubmit={handleSaveMeeting} className="space-y-4">
               {/* Título de la clase */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                  Título de la Clase / Sesión <span className="text-red-400">*</span>
+                <label className="block text-xs font-bold text-ink-soft mb-1.5">
+                  Título de la Clase / Sesión <span className="text-danger-light">*</span>
                 </label>
                 <input
                   type="text"
@@ -681,13 +681,13 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   required
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan"
                 />
               </div>
 
               {/* Selector de Tipo de Clase (Segmented Control) */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-2">
+                <label className="block text-xs font-bold text-ink-soft mb-2">
                   Tipo de Clase & Proveedor
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -700,14 +700,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       }
                     }}
                     className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'jitsi'
-                        ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-[#06b6d4] shadow-md shadow-[#06b6d4]/10'
-                        : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
+                        ? 'bg-brand-cyan/10 border-brand-cyan text-brand-cyan shadow-md shadow-brand-cyan/10'
+                        : 'bg-canvas border-line text-ink-muted hover:text-ink'
                       }`}
                   >
                     <Globe className="w-4 h-4 mb-1" />
                     <div>
-                      <p className="text-xs font-extrabold text-white">Jitsi Meet</p>
-                      <p className="text-[10px] text-slate-500">Sala Dinámica 1-Clic</p>
+                      <p className="text-xs font-bold text-ink">Jitsi Meet</p>
+                      <p className="text-micro text-ink-faint">Sala Dinámica 1-Clic</p>
                     </div>
                   </button>
 
@@ -718,14 +718,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       if (formUrl.includes('meet.jit.si')) setFormUrl('');
                     }}
                     className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'meet'
-                        ? 'bg-[#a855f7]/10 border-[#a855f7] text-[#a855f7] shadow-md shadow-[#a855f7]/10'
-                        : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
+                        ? 'bg-brand-purple/10 border-brand-purple text-brand-purple shadow-md shadow-brand-purple/10'
+                        : 'bg-canvas border-line text-ink-muted hover:text-ink'
                       }`}
                   >
                     <Video className="w-4 h-4 mb-1" />
                     <div>
-                      <p className="text-xs font-extrabold text-white">Google Meet</p>
-                      <p className="text-[10px] text-slate-500">Enlace Corporativo</p>
+                      <p className="text-xs font-bold text-ink">Google Meet</p>
+                      <p className="text-micro text-ink-faint">Enlace Corporativo</p>
                     </div>
                   </button>
 
@@ -737,14 +737,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       if (formUrl.includes('meet.jit.si') || formUrl.includes('meet.google.com')) setFormUrl('');
                     }}
                     className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'async_record'
-                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10'
-                        : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
+                        ? 'bg-success/10 border-success text-success-light shadow-md shadow-emerald-500/10'
+                        : 'bg-canvas border-line text-ink-muted hover:text-ink'
                       }`}
                   >
                     <PlaySquare className="w-4 h-4 mb-1" />
                     <div>
-                      <p className="text-xs font-extrabold text-white">Asincrónica</p>
-                      <p className="text-[10px] text-slate-500">Video Grabado</p>
+                      <p className="text-xs font-bold text-ink">Asincrónica</p>
+                      <p className="text-micro text-ink-faint">Video Grabado</p>
                     </div>
                   </button>
                 </div>
@@ -753,19 +753,19 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               {/* URL del Enlace */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-300">
+                  <label className="text-xs font-bold text-ink-soft">
                     {formType === 'jitsi'
                       ? 'Enlace de Sala Jitsi Meet'
                       : formType === 'meet'
                         ? 'Enlace de Google Meet'
                         : 'Enlace de la Grabación (YouTube / Vimeo / Drive)'}
-                    <span className="text-red-400"> *</span>
+                    <span className="text-danger-light"> *</span>
                   </label>
                   {formType === 'jitsi' && (
                     <button
                       type="button"
                       onClick={handleGenerateJitsiUrl}
-                      className="text-[11px] text-[#06b6d4] font-bold hover:underline flex items-center gap-1"
+                      className="text-micro text-brand-cyan font-bold hover:underline flex items-center gap-1"
                     >
                       <Sparkles className="w-3 h-3" />
                       Generar Sala Nueva
@@ -774,7 +774,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 </div>
 
                 <div className="relative">
-                  <Link2 className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <Link2 className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                   <input
                     type="url"
                     placeholder={
@@ -787,10 +787,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     value={formUrl}
                     onChange={(e) => setFormUrl(e.target.value)}
                     required
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-canvas border border-line rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan"
                   />
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-micro text-ink-faint mt-1">
                   {formType === 'jitsi'
                     ? 'Los estudiantes podrán ingresar sin instalar aplicaciones adicionales directamente desde el navegador.'
                     : formType === 'meet'
@@ -802,42 +802,42 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               {/* Fecha y Hora Programada & Estado En Vivo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-ink-soft mb-1.5">
                     Fecha y Hora Programada
                   </label>
                   <input
                     type="datetime-local"
                     value={formScheduledAt}
                     onChange={(e) => setFormScheduledAt(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan"
                   />
                 </div>
 
                 <div>
                   {formType === 'async_record' ? (
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold text-ink-soft mb-1.5">
                         Modalidad
                       </label>
-                      <div className="w-full py-2 px-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
-                        <PlaySquare className="w-3.5 h-3.5 text-emerald-400" />
+                      <div className="w-full py-2 px-3 rounded-xl border border-success/30 bg-success/10 text-success-light text-xs font-semibold flex items-center justify-center gap-2">
+                        <PlaySquare className="w-3.5 h-3.5 text-success-light" />
                         <span>Grabación Bajo Demanda</span>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold text-ink-soft mb-1.5">
                         Estado de Transmisión
                       </label>
                       <button
                         type="button"
                         onClick={() => setFormIsLive(!formIsLive)}
-                        className={`w-full py-2 px-3 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all ${formIsLive
-                            ? 'bg-red-500/20 border-red-500/50 text-red-400'
-                            : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400'
+                        className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${formIsLive
+                            ? 'bg-danger/20 border-danger/50 text-danger-light'
+                            : 'bg-canvas border-line text-ink-muted'
                           }`}
                       >
-                        <Radio className={`w-3.5 h-3.5 ${formIsLive ? 'animate-pulse text-red-400' : ''}`} />
+                        <Radio className={`w-3.5 h-3.5 ${formIsLive ? 'animate-pulse text-danger-light' : ''}`} />
                         <span>{formIsLive ? '🔴 EN VIVO AHORA' : 'Programada (Offline)'}</span>
                       </button>
                     </div>
@@ -848,7 +848,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               {/* Curso y Módulo Vinculados */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-ink-soft mb-1.5">
                     Curso Asociado
                   </label>
                   <select
@@ -857,7 +857,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       setFormCourseId(e.target.value);
                       setFormModuleId('');
                     }}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan"
                   >
                     <option value="">Sin curso asignado</option>
                     {courses.map((c) => (
@@ -869,14 +869,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-ink-soft mb-1.5">
                     Módulo Específico (Opcional)
                   </label>
                   <select
                     value={formModuleId}
                     onChange={(e) => setFormModuleId(e.target.value)}
                     disabled={!selectedCourse || selectedCourse.modules.length === 0}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4] disabled:opacity-40"
+                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan disabled:opacity-40"
                   >
                     <option value="">Todo el curso</option>
                     {selectedCourse?.modules.map((m) => (
@@ -890,7 +890,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
               {/* Descripción opcional */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-ink-soft mb-1.5">
                   Descripción o Temas a Tratar (Opcional)
                 </label>
                 <textarea
@@ -898,23 +898,23 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   placeholder="Detalles sobre los puntos que se abordarán durante la sesión..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#06b6d4] resize-none"
+                  className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan resize-none"
                 />
               </div>
 
               {/* Botones de acción del Modal */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2d2d44]">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-[#1a1a2e] hover:bg-[#262640] border border-[#2d2d44] text-xs font-bold text-slate-300 transition-colors"
+                  className="px-4 py-2 rounded-lg bg-elevated hover:bg-elevated border border-line text-xs font-bold text-ink-soft transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="btn-brand-primary px-5 py-2 rounded-lg text-xs font-extrabold flex items-center gap-2"
+                  className="btn-brand-primary px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2"
                 >
                   {saving ? (
                     <>

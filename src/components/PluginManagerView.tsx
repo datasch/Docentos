@@ -178,25 +178,25 @@ export const PluginManagerView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-canvas border border-line rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold">
             <Layers className="w-3.5 h-3.5" />
             <span>Arquitectura Modular de Plugins & Extensiones</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl font-bold text-ink tracking-tight">
             Gestor de Plugins Institucionales
           </h2>
-          <p className="text-xs text-slate-400 max-w-2xl">
+          <p className="text-xs text-ink-muted max-w-2xl">
             Amplía la capacidad de la plataforma instalando y activando módulos de certificados PDF, exámenes interactivos, integración con webhooks de Discord/Slack y analíticas.
           </p>
         </div>
 
         <button
           onClick={loadPlugins}
-          className="px-4 py-2 bg-[#141420] hover:bg-[#1f1f33] border border-[#262626] text-slate-300 text-xs font-bold rounded-xl transition-all flex items-center gap-2"
+          className="px-4 py-2 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2"
         >
-          <RefreshCw className="w-3.5 h-3.5 text-[#06b6d4]" />
+          <RefreshCw className="w-3.5 h-3.5 text-brand-cyan" />
           <span>Sincronizar Plugins</span>
         </button>
       </div>
@@ -208,8 +208,8 @@ export const PluginManagerView: React.FC = () => {
             key={cat}
             onClick={() => setSelectedCategory(cat)}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat
-              ? 'bg-[#06b6d4] text-black shadow-md'
-              : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#262626]'
+              ? 'bg-brand-cyan text-black shadow-md'
+              : 'bg-canvas text-ink-muted hover:text-ink border border-line'
               }`}
           >
             {cat === 'ALL' ? 'Todos los Plugins' : cat.toUpperCase()}
@@ -224,24 +224,24 @@ export const PluginManagerView: React.FC = () => {
           return (
             <div
               key={plugin.id}
-              className={`bg-[#141420] border rounded-xl p-6 transition-all flex flex-col justify-between space-y-4 ${plugin.enabled ? 'border-[#06b6d4]/50 shadow-lg shadow-[#06b6d4]/5' : 'border-[#2d2d44] opacity-75'
+              className={`bg-raised border rounded-xl p-6 transition-all flex flex-col justify-between space-y-4 ${plugin.enabled ? 'border-brand-cyan/50 shadow-lg shadow-brand-cyan/5' : 'border-line opacity-75'
                 }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${plugin.enabled ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-[#06b6d4]' : 'bg-[#1a1a2e] border-[#2d2d44] text-slate-500'
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${plugin.enabled ? 'bg-brand-cyan/10 border-brand-cyan text-brand-cyan' : 'bg-elevated border-line text-ink-faint'
                       }`}>
                       <IconComponent className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                      <h3 className="font-bold text-sm text-ink flex items-center gap-2">
                         {plugin.name}
-                        <span className="text-[10px] font-mono text-slate-500 font-normal">
+                        <span className="text-micro font-mono text-ink-faint font-normal">
                           v{plugin.version}
                         </span>
                       </h3>
-                      <span className="text-[9px] font-bold text-[#a855f7] uppercase tracking-wider">
+                      <span className="text-micro font-bold text-brand-purple uppercase tracking-wider">
                         Categoría: {plugin.category}
                       </span>
                     </div>
@@ -250,7 +250,7 @@ export const PluginManagerView: React.FC = () => {
                   {/* Toggle Switch */}
                   <button
                     onClick={() => handleTogglePlugin(plugin.id, plugin.enabled)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${plugin.enabled ? 'bg-[#06b6d4]' : 'bg-[#1a1a2e] border border-[#2d2d44]'
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${plugin.enabled ? 'bg-brand-cyan' : 'bg-elevated border border-line'
                       }`}
                   >
                     <span
@@ -260,22 +260,22 @@ export const PluginManagerView: React.FC = () => {
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-ink-muted leading-relaxed">
                   {plugin.description}
                 </p>
               </div>
 
               {/* Plugin Footer Controls */}
-              <div className="pt-3 border-t border-[#2d2d44] flex items-center justify-between">
+              <div className="pt-3 border-t border-line flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-extrabold flex items-center gap-1 ${plugin.enabled ? 'text-emerald-400' : 'text-slate-500'
+                  <span className={`text-micro font-bold flex items-center gap-1 ${plugin.enabled ? 'text-success-light' : 'text-ink-faint'
                     }`}>
                     <ShieldCheck className="w-3.5 h-3.5" />
                     {plugin.enabled ? 'Plugin Activo & Enlazado' : 'Desactivado'}
                   </span>
 
                   {plugin.category === 'certificates' && (plugin.config?.signatureImage || plugin.config?.signature) && (
-                    <span className="text-[9px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-micro font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                       <PenTool className="w-2.5 h-2.5" /> Firma Lista
                     </span>
                   )}
@@ -283,9 +283,9 @@ export const PluginManagerView: React.FC = () => {
 
                 <button
                   onClick={() => handleOpenConfigModal(plugin)}
-                  className="px-3 py-1.5 bg-[#1a1a2e] hover:bg-[#2d2d44] border border-[#2d2d44] hover:border-[#06b6d4] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-elevated hover:bg-elevated border border-line hover:border-brand-cyan text-ink text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"
                 >
-                  <Settings className="w-3.5 h-3.5 text-[#06b6d4]" />
+                  <Settings className="w-3.5 h-3.5 text-brand-cyan" />
                   <span>Configurar</span>
                 </button>
               </div>
@@ -297,14 +297,14 @@ export const PluginManagerView: React.FC = () => {
       {/* Configuration Modal */}
       {configModalPlugin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 w-full max-w-xl space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+          <div className="bg-raised border border-line rounded-xl p-6 w-full max-w-xl space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div>
-                <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-[#06b6d4]" />
+                <h3 className="font-bold text-sm text-ink flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-brand-cyan" />
                   Configurar {configModalPlugin.name}
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-micro text-ink-muted mt-0.5">
                   {(configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates')
                     ? 'Personaliza el logo, fondo blanco/negro, doble firma oficial y acreditación del diploma.'
                     : 'Ajusta los parámetros operativos del plugin institucional.'}
@@ -312,7 +312,7 @@ export const PluginManagerView: React.FC = () => {
               </div>
               <button
                 onClick={() => setConfigModalPlugin(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#141420]"
+                className="text-ink-muted hover:text-ink p-1 rounded-lg hover:bg-raised"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -325,7 +325,7 @@ export const PluginManagerView: React.FC = () => {
                   {/* General Certificate Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                      <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                         Nombre de la Institución / Academia
                       </label>
                       <input
@@ -334,13 +334,13 @@ export const PluginManagerView: React.FC = () => {
                         onChange={(e) =>
                           setConfigFormState({ ...configFormState, institutionName: e.target.value })
                         }
-                        className="w-full py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none transition-colors"
+                        className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
                         placeholder="ej. Academia Giantucchi"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                      <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                         Texto de Insignia / Distintivo
                       </label>
                       <input
@@ -349,13 +349,13 @@ export const PluginManagerView: React.FC = () => {
                         onChange={(e) =>
                           setConfigFormState({ ...configFormState, badgeText: e.target.value })
                         }
-                        className="w-full py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none transition-colors"
+                        className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
                         placeholder="ej. CERTIFICADO DE EXCELENCIA TÉCNICA"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                      <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                         Color Primario del Certificado (Acento Brand Spectrum)
                       </label>
                       <div className="flex gap-2 items-center">
@@ -365,7 +365,7 @@ export const PluginManagerView: React.FC = () => {
                           onChange={(e) =>
                             setConfigFormState({ ...configFormState, primaryColor: e.target.value })
                           }
-                          className="w-9 h-9 rounded-lg border border-[#2d2d44] bg-[#0a0a0f] cursor-pointer p-0.5"
+                          className="w-9 h-9 rounded-lg border border-line bg-canvas cursor-pointer p-0.5"
                         />
                         <input
                           type="text"
@@ -373,7 +373,7 @@ export const PluginManagerView: React.FC = () => {
                           onChange={(e) =>
                             setConfigFormState({ ...configFormState, primaryColor: e.target.value })
                           }
-                          className="flex-1 py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none font-mono"
+                          className="flex-1 py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none font-mono"
                         />
                         {/* Quick Giantucchi Brand Palette Presets */}
                         <div className="flex items-center gap-1.5 pl-1">
@@ -403,8 +403,8 @@ export const PluginManagerView: React.FC = () => {
                   </div>
 
                   {/* Personalización de Fondo: Blanco y Negro */}
-                  <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-3.5 space-y-2">
-                    <label className="block text-[11px] font-extrabold text-slate-300 uppercase tracking-wider">
+                  <div className="bg-raised border border-line rounded-xl p-3.5 space-y-2">
+                    <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
                       Fondo del Certificado (Blanco / Negro)
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -412,8 +412,8 @@ export const PluginManagerView: React.FC = () => {
                         type="button"
                         onClick={() => setConfigFormState({ ...configFormState, backgroundColor: 'white' })}
                         className={`py-2.5 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${configFormState.backgroundColor === 'white'
-                          ? 'bg-[#1a1a2e] border-[#06b6d4] text-white shadow-md'
-                          : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
+                          ? 'bg-elevated border-brand-cyan text-ink shadow-md'
+                          : 'bg-canvas border-line text-ink-muted hover:text-ink'
                           }`}
                       >
                         <span className="w-3.5 h-3.5 rounded-full bg-white border border-slate-300 inline-block" />
@@ -423,11 +423,11 @@ export const PluginManagerView: React.FC = () => {
                         type="button"
                         onClick={() => setConfigFormState({ ...configFormState, backgroundColor: 'dark' })}
                         className={`py-2.5 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${(configFormState.backgroundColor || 'dark') === 'dark'
-                          ? 'bg-[#1a1a2e] border-[#06b6d4] text-white shadow-md'
-                          : 'bg-[#0a0a0f] border-[#2d2d44] text-slate-400 hover:text-white'
+                          ? 'bg-elevated border-brand-cyan text-ink shadow-md'
+                          : 'bg-canvas border-line text-ink-muted hover:text-ink'
                           }`}
                       >
-                        <span className="w-3.5 h-3.5 rounded-full bg-[#0a0a0f] border border-slate-600 inline-block" />
+                        <span className="w-3.5 h-3.5 rounded-full bg-canvas border border-slate-600 inline-block" />
                         <span>Fondo Negro / Oscuro</span>
                       </button>
 
@@ -435,26 +435,26 @@ export const PluginManagerView: React.FC = () => {
                   </div>
 
                   {/* Logo de la Institución: Por defecto Giantucchi con opción de Universidad */}
-                  <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-3.5 space-y-2">
+                  <div className="bg-raised border border-line rounded-xl p-3.5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Upload className="w-3.5 h-3.5 text-[#06b6d4]" />
+                      <label className="text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5 text-brand-cyan" />
                         Logo del Certificado (Por defecto: Giantucchi)
                       </label>
                       {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif' ? (
-                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                        <span className="text-micro font-bold text-warning-light bg-warning/10 border border-warning/20 px-2 py-0.5 rounded-full">
                           Logo Universitario Activo
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/20 px-2 py-0.5 rounded-full">
+                        <span className="text-micro font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded-full">
                           Logo Oficial Giantucchi (Por Defecto)
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between p-3 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl">
+                    <div className="flex items-center justify-between p-3 bg-canvas border border-line rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-12 rounded-lg bg-[#141420] border border-[#2d2d44] flex items-center justify-center p-1 overflow-hidden">
+                        <div className="w-14 h-12 rounded-lg bg-raised border border-line flex items-center justify-center p-1 overflow-hidden">
                           <img
                             src={configFormState.institutionLogo || '/logo.avif'}
                             alt="Logo Institucional"
@@ -465,12 +465,12 @@ export const PluginManagerView: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-white block">
+                          <span className="text-xs font-bold text-ink block">
                             {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif'
                               ? 'Logo de Universidad / Instituto Cargado'
                               : 'Logo Oficial Academia Giantucchi'}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-micro text-ink-muted">
                             {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif'
                               ? 'Se mostrará en la cabecera oficial del diploma'
                               : 'Emblema institucional por defecto de la academia'}
@@ -483,7 +483,7 @@ export const PluginManagerView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setConfigFormState({ ...configFormState, institutionLogo: '/logo.avif' })}
-                            className="px-2.5 py-1.5 text-xs text-slate-300 hover:text-white bg-[#1a1a2e] hover:bg-[#2d2d44] border border-[#2d2d44] rounded-lg transition-colors"
+                            className="px-2.5 py-1.5 text-xs text-ink-soft hover:text-ink bg-elevated hover:bg-elevated border border-line rounded-lg transition-colors"
                           >
                             Restablecer Giantucchi
                           </button>
@@ -514,7 +514,7 @@ export const PluginManagerView: React.FC = () => {
                         />
                         <label
                           htmlFor="univ-logo-input"
-                          className="px-2.5 py-1.5 text-xs font-bold text-black bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-95 rounded-lg cursor-pointer flex items-center gap-1 transition-all"
+                          className="px-2.5 py-1.5 text-xs font-bold text-black bg-gradient-to-r from-brand-cyan to-brand-purple hover:opacity-95 rounded-lg cursor-pointer flex items-center gap-1 transition-all"
                         >
                           <Upload className="w-3.5 h-3.5" />
                           <span>Subir Logo Universidad</span>
@@ -526,31 +526,31 @@ export const PluginManagerView: React.FC = () => {
                   {/* ═══════════════════════════════════════════════════════════════ */}
                   {/* SECCIÓN DE FIRMAS (GIANTUCCHI + UNIVERSIDAD/INSTITUTO OPCIONAL) */}
                   {/* ═══════════════════════════════════════════════════════════════ */}
-                  <div className="border-t border-[#2d2d44] pt-3 space-y-4">
+                  <div className="border-t border-line pt-3 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                        <PenTool className="w-4 h-4 text-[#ec4899]" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-2">
+                        <PenTool className="w-4 h-4 text-brand-magenta" />
                         <span>Firmas y Acreditación Institucional</span>
                       </h4>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-micro text-ink-muted">
                         Configuración de Firmas Oficiales
                       </span>
                     </div>
 
                     {/* FIRMA 1: GIANTUCCHI (PRINCIPAL / OBLIGATORIA) */}
-                    <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-3.5 space-y-3">
+                    <div className="bg-raised border border-line rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-extrabold text-[#ec4899] uppercase tracking-wider flex items-center gap-1.5">
-                          <Check className="w-3.5 h-3.5 text-[#ec4899]" />
+                        <label className="text-micro font-bold text-brand-magenta uppercase tracking-wider flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5 text-brand-magenta" />
                           Firma 1 : Academia Giantucchi (Principal)
                         </label>
-                        <span className="text-[9px] font-bold text-[#ec4899] bg-[#ec4899]/10 border border-[#ec4899]/20 px-2 py-0.5 rounded-full">
+                        <span className="text-micro font-bold text-brand-magenta bg-brand-magenta/10 border border-brand-magenta/20 px-2 py-0.5 rounded-full">
                           Mentor Director & Evaluador
                         </span>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                           Nombre y Cargo del Firmante Giantucchi
                         </label>
                         <input
@@ -559,7 +559,7 @@ export const PluginManagerView: React.FC = () => {
                           onChange={(e) =>
                             setConfigFormState({ ...configFormState, signatoryTitle: e.target.value })
                           }
-                          className="w-full py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#ec4899] rounded-xl text-xs text-white focus:outline-none transition-colors"
+                          className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-magenta rounded-xl text-xs text-ink focus:outline-none transition-colors"
                           placeholder="ej. Prof. Giancarlo Giantucchi - Mentor Director & Evaluador"
                         />
                       </div>
@@ -579,14 +579,14 @@ export const PluginManagerView: React.FC = () => {
                     </div>
 
                     {/* FIRMA 2: UNIVERSIDADES O INSTITUTOS (OPCIONAL CON TOGGLE) */}
-                    <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-3.5 space-y-3">
+                    <div className="bg-raised border border-line rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <label className="text-[11px] font-extrabold text-[#06b6d4] uppercase tracking-wider flex items-center gap-1.5">
-                            <PenTool className="w-3.5 h-3.5 text-[#06b6d4]" />
+                          <label className="text-micro font-bold text-brand-cyan uppercase tracking-wider flex items-center gap-1.5">
+                            <PenTool className="w-3.5 h-3.5 text-brand-cyan" />
                             Firma 2 : Universidad o Instituto (Co-Certificación)
                           </label>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
+                          <p className="text-micro text-ink-muted mt-0.5">
                             {configFormState.enableUniversitySignature
                               ? 'Co-certificación activa: El diploma incluirá la segunda firma institucional a la izquierda.'
                               : 'Opcional (Desactivada): El diploma se emitirá con firma única de Giantucchi centrada.'}
@@ -602,7 +602,7 @@ export const PluginManagerView: React.FC = () => {
                               enableUniversitySignature: !configFormState.enableUniversitySignature,
                             })
                           }
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${configFormState.enableUniversitySignature ? 'bg-[#06b6d4]' : 'bg-[#1a1a2e] border border-[#2d2d44]'
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${configFormState.enableUniversitySignature ? 'bg-brand-cyan' : 'bg-elevated border border-line'
                             }`}
                         >
                           <span
@@ -613,9 +613,9 @@ export const PluginManagerView: React.FC = () => {
                       </div>
 
                       {configFormState.enableUniversitySignature ? (
-                        <div className="space-y-3 pt-2 border-t border-[#2d2d44]">
+                        <div className="space-y-3 pt-2 border-t border-line">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                            <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                               Nombre y Cargo del Firmante de la Universidad / Instituto
                             </label>
                             <input
@@ -624,7 +624,7 @@ export const PluginManagerView: React.FC = () => {
                               onChange={(e) =>
                                 setConfigFormState({ ...configFormState, universitySignatoryTitle: e.target.value })
                               }
-                              className="w-full py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none transition-colors"
+                              className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
                               placeholder="ej. Dirección Académica - Universidad / Instituto"
                             />
                           </div>
@@ -642,9 +642,9 @@ export const PluginManagerView: React.FC = () => {
                           />
                         </div>
                       ) : (
-                        <div className="p-2.5 bg-[#0a0a0f] border border-[#2d2d44] rounded-lg text-center">
-                          <span className="text-[11px] text-slate-400 font-medium">
-                            🔒 Firma de institución inactiva. El certificado se emitirá con diseño de <strong className="text-white">Firma Única Centrada de Giantucchi</strong>.
+                        <div className="p-2.5 bg-canvas border border-line rounded-lg text-center">
+                          <span className="text-micro text-ink-muted font-medium">
+                            🔒 Firma de institución inactiva. El certificado se emitirá con diseño de <strong className="text-ink">Firma Única Centrada de Giantucchi</strong>.
                           </span>
                         </div>
                       )}
@@ -657,12 +657,12 @@ export const PluginManagerView: React.FC = () => {
                       type="button"
                       onClick={handleDownloadSampleCert}
                       disabled={downloadingSampleCert}
-                      className="w-full py-2.5 px-4 bg-gradient-to-r from-[#06b6d4]/20 via-[#a855f7]/20 to-[#eab308]/20 hover:from-[#06b6d4]/30 hover:to-[#eab308]/30 border border-[#06b6d4]/50 hover:border-[#06b6d4] text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-brand-cyan/20 via-brand-purple/20 to-brand-yellow/20 hover:from-brand-cyan/30 hover:to-brand-yellow/30 border border-brand-cyan/50 hover:border-brand-cyan text-ink rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
                     >
-                      <Download className={`w-4 h-4 text-[#06b6d4] ${downloadingSampleCert ? 'animate-bounce' : ''}`} />
+                      <Download className={`w-4 h-4 text-brand-cyan ${downloadingSampleCert ? 'animate-bounce' : ''}`} />
                       <span>{downloadingSampleCert ? 'Generando diploma de alta resolución...' : 'Descargar Certificado de Muestra (PNG)'}</span>
                     </button>
-                    <p className="text-[10px] text-slate-400 text-center mt-1">
+                    <p className="text-micro text-ink-muted text-center mt-1">
                       Genera y descarga un diploma en PNG con tu fondo, logo, ambas firmas oficiales y metadatos centrados.
                     </p>
                   </div>
@@ -674,9 +674,9 @@ export const PluginManagerView: React.FC = () => {
                 <div className="space-y-4">
                   {/* Special: live-meetings provider selector with auto domain */}
                   {configModalPlugin.id === 'live-meetings' && (
-                    <div className="space-y-3 p-4 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl">
+                    <div className="space-y-3 p-4 bg-canvas border border-line rounded-xl">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1.5">
                           Proveedor por defecto
                         </label>
                         <div className="grid grid-cols-2 gap-2.5">
@@ -700,8 +700,8 @@ export const PluginManagerView: React.FC = () => {
                               }}
                               className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl border text-xs font-bold transition-all ${
                                 (configFormState.defaultProvider === opt.value || (!configFormState.defaultProvider && opt.value === 'jitsi'))
-                                  ? 'border-[#06b6d4] bg-[#06b6d4]/10 text-white shadow-md ring-1 ring-[#06b6d4]/30'
-                                  : 'border-[#2d2d44] bg-[#141420] text-slate-400 hover:border-[#3d3d5c] hover:text-white'
+                                  ? 'border-brand-cyan bg-brand-cyan/10 text-ink shadow-md ring-1 ring-brand-cyan/30'
+                                  : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
                               }`}
                             >
                               <span className="text-base">{opt.icon}</span>
@@ -712,7 +712,7 @@ export const PluginManagerView: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                           Dominio del proveedor
                         </label>
                         <div className="flex gap-2 items-center">
@@ -723,19 +723,19 @@ export const PluginManagerView: React.FC = () => {
                               setConfigFormState({ ...configFormState, jitsiDomain: e.target.value })
                             }
                             placeholder={configFormState.defaultProvider === 'meet' ? 'meet.google.com' : 'meet.jit.si'}
-                            className="flex-1 py-2.5 px-3 bg-[#000000] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none transition-colors font-mono"
+                            className="flex-1 py-2.5 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-mono"
                           />
                           {configFormState.defaultProvider === 'meet' ? (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded-lg whitespace-nowrap">
+                            <span className="text-micro font-bold text-success-light bg-success/10 border border-success/30 px-2 py-1 rounded-lg whitespace-nowrap">
                               Google Meet
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2 py-1 rounded-lg whitespace-nowrap">
+                            <span className="text-micro font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-2 py-1 rounded-lg whitespace-nowrap">
                               Jitsi Meet
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-1">
+                        <p className="text-micro text-ink-faint mt-1">
                           {configFormState.defaultProvider === 'meet'
                             ? 'Al programar una clase, el formulario abrirá con Google Meet pre-seleccionado.'
                             : 'Al programar una clase, el formulario abrirá con Jitsi Meet pre-seleccionado y generará la sala automáticamente.'}
@@ -756,8 +756,8 @@ export const PluginManagerView: React.FC = () => {
 
                       if (typeof val === 'boolean') {
                         return (
-                          <div key={key} className="flex items-center justify-between p-3 bg-[#000000] border border-[#262626] rounded-xl">
-                            <label className="text-xs font-bold text-slate-200">
+                          <div key={key} className="flex items-center justify-between p-3 bg-canvas border border-line rounded-xl">
+                            <label className="text-xs font-bold text-ink-soft">
                               {label}
                             </label>
                             <input
@@ -769,7 +769,7 @@ export const PluginManagerView: React.FC = () => {
                                   [key]: e.target.checked,
                                 })
                               }
-                              className="w-4 h-4 rounded text-[#06b6d4] focus:ring-0 cursor-pointer"
+                              className="w-4 h-4 rounded text-brand-cyan focus:ring-0 cursor-pointer"
                             />
                           </div>
                         );
@@ -777,7 +777,7 @@ export const PluginManagerView: React.FC = () => {
 
                       return (
                         <div key={key}>
-                          <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
                             {label}
                           </label>
                           <input
@@ -789,7 +789,7 @@ export const PluginManagerView: React.FC = () => {
                                 [key]: typeof val === 'number' ? Number(e.target.value) : e.target.value,
                               })
                             }
-                            className="w-full py-2.5 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none transition-colors"
+                            className="w-full py-2.5 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
                           />
                         </div>
                       );
@@ -797,18 +797,18 @@ export const PluginManagerView: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2d2d44]">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setConfigModalPlugin(null)}
-                  className="px-4 py-2 bg-[#1a1a2e] hover:bg-[#2d2d44] text-slate-300 hover:text-white text-xs font-bold rounded-lg border border-[#2d2d44] transition-colors"
+                  className="px-4 py-2 bg-elevated hover:bg-elevated text-ink-soft hover:text-ink text-xs font-bold rounded-lg border border-line transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={savingConfig}
-                  className="px-5 py-2 btn-brand-primary text-black font-extrabold text-xs rounded-lg shadow-lg flex items-center gap-1.5"
+                  className="px-5 py-2 btn-brand-primary text-black font-bold text-xs rounded-lg shadow-lg flex items-center gap-1.5"
                 >
                   {savingConfig ? (
                     <>
