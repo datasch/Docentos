@@ -114,6 +114,20 @@ const plugins = [
     icon: 'BarChart3',
     config: { enableHeatmaps: true, trackSessionDuration: true },
   },
+  {
+    id: 'live-meetings',
+    name: 'Plugin de Clases Sincrónicas & Live Meetings',
+    description: 'Permite a los mentores programar y transmitir clases en vivo mediante Google Meet, Jitsi Meet abierto o grabaciones asincrónicas.',
+    version: '1.0.0',
+    category: 'integrations',
+    icon: 'Video',
+    config: {
+      defaultProvider: 'jitsi',
+      jitsiDomain: 'meet.jit.si',
+      enableAutoRecordingLink: true,
+      requireVipAccess: false,
+    },
+  },
 ];
 
 const benefits = [
@@ -302,8 +316,15 @@ async function seedApplicationData() {
 
   for (const [id, mentorId, menteeId, courseProgress, completedVideosCount, totalVideosCount, lastActiveDate, status] of assignments) {
     await prisma.menteeAssignment.upsert({
-      where: { id },
-      update: {},
+      where: { menteeId_courseId: { menteeId, courseId: 'course-giantucchi-mastery' } },
+      update: {
+        mentorId,
+        courseProgress,
+        completedVideosCount,
+        totalVideosCount,
+        lastActiveDate,
+        status,
+      },
       create: {
         id,
         mentorId,
@@ -454,6 +475,68 @@ async function seedApplicationData() {
       issuedAt: new Date('2026-08-30'),
     },
   });
+
+  // Seed Phase 4: Sample Live and Async Meetings
+  const sampleMeetings = [
+    {
+      id: 'meeting-live-jitsi-01',
+      title: '🔴 Masterclass Sincrónica: Arquitectura Distribuida y Despliegue en Vivo',
+      description: 'Sesión interactiva en vivo con la Ing. Sofia Ruiz para resolver dudas de microservicios y streaming.',
+      meetingType: 'jitsi',
+      meetingUrl: 'https://meet.jit.si/docentos-mastery-live-session',
+      scheduledAt: new Date(),
+      isLive: true,
+      courseId: 'course-giantucchi-mastery',
+      moduleId: 'module-1',
+      hostId: 'user-mentor-01',
+      recordingUrl: null,
+    },
+    {
+      id: 'meeting-scheduled-meet-02',
+      title: '📅 Mentoría Grupal Google Meet: Modelado de Datos y PostgreSQL',
+      description: 'Revisión en directo de consultas Prisma y relaciones de bases de datos.',
+      meetingType: 'meet',
+      meetingUrl: 'https://meet.google.com/giantucchi-mastery-meet',
+      scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Mañana
+      isLive: false,
+      courseId: 'course-giantucchi-mastery',
+      moduleId: 'module-2',
+      hostId: 'user-admin-01',
+      recordingUrl: null,
+    },
+    {
+      id: 'meeting-async-record-03',
+      title: '📼 Grabación Asincrónica: Seguridad JWT & Bypass VIP en Producción',
+      description: 'Grabación de la clase magistral sobre autenticación segura y políticas de acceso.',
+      meetingType: 'async_record',
+      meetingUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      scheduledAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      isLive: false,
+      courseId: 'course-giantucchi-mastery',
+      moduleId: 'module-3',
+      hostId: 'user-mentor-01',
+      recordingUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    },
+  ];
+
+  for (const m of sampleMeetings) {
+    await prisma.meeting.upsert({
+      where: { id: m.id },
+      update: {
+        title: m.title,
+        description: m.description,
+        meetingType: m.meetingType,
+        meetingUrl: m.meetingUrl,
+        scheduledAt: m.scheduledAt,
+        isLive: m.isLive,
+        courseId: m.courseId,
+        moduleId: m.moduleId,
+        hostId: m.hostId,
+        recordingUrl: m.recordingUrl,
+      },
+      create: m,
+    });
+  }
 }
 
 async function main() {

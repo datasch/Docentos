@@ -27,6 +27,7 @@ import {
   Download,
   Upload,
   Trash2,
+  Video,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -50,6 +51,11 @@ const FIELD_LABELS: Record<string, string> = {
   apiKeyConfigured: 'API Key de Google Drive configurada',
   autoEmbedPreview: 'Previsualización automática de video',
   allowPublicSharing: 'Permitir visualización pública',
+  defaultProvider: 'Proveedor por defecto',
+  jitsiDomain: 'Dominio del proveedor',
+  enableAutoRecordingLink: 'Habilitar enlaces de grabación automática',
+  requireVipAccess: 'Requerir Pase VIP para ingresar a clases en vivo',
+  roomPrefix: 'Prefijo de sala Jitsi Meet',
 };
 
 export const PluginManagerView: React.FC = () => {
@@ -128,6 +134,10 @@ export const PluginManagerView: React.FC = () => {
       if (initialConfig.backgroundColor === undefined) initialConfig.backgroundColor = 'dark';
       if (!initialConfig.primaryColor) initialConfig.primaryColor = '#06b6d4';
     }
+    if (plugin.id === 'live-meetings' || plugin.category === 'meetings') {
+      if (!initialConfig.defaultProvider) initialConfig.defaultProvider = 'jitsi';
+      if (!initialConfig.jitsiDomain) initialConfig.jitsiDomain = 'meet.jit.si';
+    }
     setConfigFormState(initialConfig);
   };
 
@@ -156,6 +166,7 @@ export const PluginManagerView: React.FC = () => {
       case 'CheckSquare': return CheckSquare;
       case 'MessageSquare': return MessageSquare;
       case 'BarChart3': return BarChart3;
+      case 'Video': return Video;
       default: return Layers;
     }
   };
@@ -192,7 +203,7 @@ export const PluginManagerView: React.FC = () => {
 
       {/* Category Pills */}
       <div className="flex flex-wrap gap-2">
-        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics'].map((cat) => (
+        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics', 'meetings'].map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
@@ -661,8 +672,84 @@ export const PluginManagerView: React.FC = () => {
               {/* Form Fields for Other Plugins (SIN FIRMA) */}
               {configModalPlugin.id !== 'pdf-certificates' && configModalPlugin.category !== 'certificates' && (
                 <div className="space-y-4">
+                  {/* Special: live-meetings provider selector with auto domain */}
+                  {configModalPlugin.id === 'live-meetings' && (
+                    <div className="space-y-3 p-4 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                          Proveedor por defecto
+                        </label>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {[
+                            { value: 'jitsi', label: 'Jitsi Meet', icon: '🎥', color: '#06b6d4' },
+                            { value: 'meet', label: 'Google Meet', icon: '📹', color: '#34a853' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                const domainMap: Record<string, string> = {
+                                  jitsi: 'meet.jit.si',
+                                  meet: 'meet.google.com',
+                                };
+                                setConfigFormState({
+                                  ...configFormState,
+                                  defaultProvider: opt.value,
+                                  jitsiDomain: domainMap[opt.value] ?? (opt.value === 'meet' ? 'meet.google.com' : 'meet.jit.si'),
+                                });
+                              }}
+                              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl border text-xs font-bold transition-all ${
+                                (configFormState.defaultProvider === opt.value || (!configFormState.defaultProvider && opt.value === 'jitsi'))
+                                  ? 'border-[#06b6d4] bg-[#06b6d4]/10 text-white shadow-md ring-1 ring-[#06b6d4]/30'
+                                  : 'border-[#2d2d44] bg-[#141420] text-slate-400 hover:border-[#3d3d5c] hover:text-white'
+                              }`}
+                            >
+                              <span className="text-base">{opt.icon}</span>
+                              <span>{opt.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                          Dominio del proveedor
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={configFormState.jitsiDomain ?? (configFormState.defaultProvider === 'meet' ? 'meet.google.com' : 'meet.jit.si')}
+                            onChange={(e) =>
+                              setConfigFormState({ ...configFormState, jitsiDomain: e.target.value })
+                            }
+                            placeholder={configFormState.defaultProvider === 'meet' ? 'meet.google.com' : 'meet.jit.si'}
+                            className="flex-1 py-2.5 px-3 bg-[#000000] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none transition-colors font-mono"
+                          />
+                          {configFormState.defaultProvider === 'meet' ? (
+                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded-lg whitespace-nowrap">
+                              Google Meet
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2 py-1 rounded-lg whitespace-nowrap">
+                              Jitsi Meet
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          {configFormState.defaultProvider === 'meet'
+                            ? 'Al programar una clase, el formulario abrirá con Google Meet pre-seleccionado.'
+                            : 'Al programar una clase, el formulario abrirá con Jitsi Meet pre-seleccionado y generará la sala automáticamente.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {Object.keys(configModalPlugin.config || {})
-                    .filter((k) => k !== 'signatureImage' && k !== 'signature' && k !== 'institutionLogo' && k !== 'backgroundColor')
+                    .filter((k) => {
+                      if (k === 'signatureImage' || k === 'signature' || k === 'institutionLogo' || k === 'backgroundColor') return false;
+                      if (configModalPlugin.id === 'live-meetings' && (k === 'defaultProvider' || k === 'jitsiDomain')) return false;
+                      return true;
+                    })
                     .map((key) => {
                       const val = configFormState[key];
                       const label = FIELD_LABELS[key] || key;

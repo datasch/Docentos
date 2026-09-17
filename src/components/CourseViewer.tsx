@@ -19,6 +19,12 @@ import {
   MessageSquare,
   Minimize2,
   ShieldCheck,
+  Radio,
+  Video,
+  ExternalLink,
+  Calendar,
+  Play,
+  PlaySquare,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import {
@@ -30,7 +36,7 @@ import {
   moduleLockStates,
   stepLesson,
 } from '../lib/courseNavigation';
-import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord } from '../types';
+import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord, Meeting } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
@@ -147,6 +153,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [newNoteContent, setNewNoteContent] = useState('');
   const [noteTimestampStr, setNoteTimestampStr] = useState('01:30');
 
+  // Live Meetings State (Plugin LiveMeetings)
+  const [courseMeetings, setCourseMeetings] = useState<Meeting[]>([]);
+  const [selectedMeetingPlayback, setSelectedMeetingPlayback] = useState<Meeting | null>(null);
+
   const currentModule = course.modules[activeModuleIndex] || course.modules[0];
   const currentVideo: VideoDriveLink | undefined = currentModule?.videos[activeVideoIndex];
 
@@ -155,6 +165,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setPickedByUser(false);
     setActiveModuleIndex(0);
     setActiveVideoIndex(0);
+    setSelectedMeetingPlayback(null);
     // El diploma es de un curso concreto. Arrastrar el del curso anterior
     // mientras carga el progreso anuncia «Curso completado» nada más entrar.
     setCertificate(null);
@@ -178,6 +189,16 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
       if (pluginsRes?.plugins) {
         pluginManager.setPlugins(pluginsRes.plugins);
+      }
+
+      // Cargar reuniones sincrónicas y asincrónicas asociadas al curso
+      try {
+        const meetingsRes = await api.getMeetings({ courseId: course.id });
+        if (meetingsRes.meetings) {
+          setCourseMeetings(meetingsRes.meetings);
+        }
+      } catch {
+        // En caso de que no haya reuniones o falle la red
       }
     } catch (error) {
       console.error('Error loading saved progress:', error);
@@ -213,6 +234,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const switchable = useMemo(() => switchableCourses(courses, course.id), [courses, course.id]);
 
   const openLesson = (moduleIndex: number, videoIndex: number) => {
+    setSelectedMeetingPlayback(null);
     setPickedByUser(true);
     setActiveModuleIndex(moduleIndex);
     setActiveVideoIndex(videoIndex);
@@ -417,28 +439,56 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     ? comments.filter((c) => c.isMentorResponse || (c.replies && c.replies.some((r) => r.isMentorResponse)))
     : comments;
 
-  // La fuente que se reproduce y la que da nombre al proveedor no son la misma:
-  // playbackUrl apunta a /api/content/videos/<id>, que es nuestro control de
-  // acceso y redirige al archivo. Deducir el proveedor de ahi hacia que todo
-  // dijera «Reproductor embebido», incluidos los videos de Drive.
-  const videoSource = currentVideo
-    ? parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId)
-    : null;
-  const providerLabel = currentVideo
-    ? SOURCE_LABELS[currentVideo.source || ''] ||
-    PROVIDER_LABELS[currentVideo.provider || parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
-    'Video'
-    : 'Video';
+  // La fuente que se reproduce: si el alumno seleccionó una grabación asincrónica,
+  // la reproducimos directamente; de lo contrario cargamos la clase del temario.
+  const videoSource = selectedMeetingPlayback
+    ? parseVideoSource(selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl)
+    : currentVideo
+      ? parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId)
+      : null;
+
+  const providerLabel = selectedMeetingPlayback
+    ? 'Grabación Asincrónica'
+    : currentVideo
+      ? SOURCE_LABELS[currentVideo.source || ''] ||
+      PROVIDER_LABELS[currentVideo.provider || parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || '').provider] ||
+      'Video'
+      : 'Video';
+
   // Última barrera: aunque alguna respuesta traiga un certificado de otro
   // curso, de aquí no pasa a la pantalla.
   const courseCertificate = certificateForCourse(certificate, course.id);
 
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
-  const showsPlayer = hasAccess && currentVideo;
+  const showsPlayer = hasAccess && (Boolean(currentVideo) || Boolean(selectedMeetingPlayback));
   const showsQuiz = hasAccess && pluginManager.isEnabled('interactive-quizzes') && Boolean(currentModule);
   const showsCertificate =
     hasAccess && pluginManager.isEnabled('pdf-certificates') && (courseProgressPct === 100 || Boolean(courseCertificate));
   const showsExtras = showsQuiz || showsCertificate;
+
+  // Live and synchronous meetings calculation
+  const activeLiveMeeting = useMemo(() => {
+    // Si el video actual está configurado directamente como clase en vivo sincrónica
+    if (currentVideo?.isLive && (currentVideo.meetingType === 'meet' || currentVideo.meetingType === 'jitsi')) {
+      return {
+        id: currentVideo.id,
+        title: currentVideo.title,
+        description: currentVideo.description,
+        meetingType: currentVideo.meetingType,
+        meetingUrl: currentVideo.meetingUrl || currentVideo.embedUrl || '',
+        isLive: true,
+        scheduledAt: currentVideo.scheduledAt || new Date().toISOString(),
+      };
+    }
+    // Buscar si hay alguna reunión en vivo asociada a este curso
+    const liveMeeting = courseMeetings.find((m) => m.isLive && (m.meetingType === 'meet' || m.meetingType === 'jitsi'));
+    return liveMeeting || null;
+  }, [courseMeetings, currentVideo]);
+
+  const upcomingMeeting = useMemo(() => {
+    if (activeLiveMeeting) return null;
+    return courseMeetings.find((m) => !m.isLive && m.meetingType !== 'async_record');
+  }, [courseMeetings, activeLiveMeeting]);
 
   return (
     <div className="animate-fade-in min-h-screen bg-canvas text-ink">
@@ -484,6 +534,75 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
           {/* Columna del reproductor */}
           <div className={theaterMode ? '' : 'lg:col-span-8'}>
+            {/* Banner Destacado de Clase Sincrónica En Vivo */}
+            {hasAccess && activeLiveMeeting && (
+              <div className="mb-4 mx-4 lg:mx-0 rounded-2xl border border-[var(--color-brand-cyan)] bg-[#08080c] p-4 shadow-xl shadow-[var(--color-brand-cyan)]/10 ring-1 ring-[var(--color-brand-cyan)]/30 animate-fade-in">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-cyan)]/15 border border-[var(--color-brand-cyan)]/40 text-[var(--color-brand-cyan)]">
+                      <Radio className="h-5 w-5 animate-pulse text-[var(--color-brand-cyan)]" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
+                          <span className="h-2 w-2 rounded-full bg-[var(--color-brand-cyan)] animate-ping" />
+                          ¡CLASE EN VIVO!
+                        </span>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 bg-[#141420] px-2 py-0.5 rounded border border-line">
+                          {activeLiveMeeting.meetingType === 'jitsi' ? 'Jitsi Meet' : 'Google Meet'}
+                        </span>
+                      </div>
+                      <h2 className="mt-1 text-section font-extrabold text-white leading-tight truncate">
+                        {activeLiveMeeting.title}
+                      </h2>
+                      {activeLiveMeeting.description && (
+                        <p className="mt-0.5 text-meta text-ink-muted line-clamp-1">
+                          {activeLiveMeeting.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <a
+                    href={activeLiveMeeting.meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-brand-primary flex shrink-0 items-center gap-2 px-5 py-2.5 text-xs font-black shadow-lg shadow-[var(--color-brand-cyan)]/25 hover:scale-[1.02] transition-transform"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>Unirse a la clase en vivo</span>
+                    <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Aviso de Próxima Clase Sincrónica Programada */}
+            {hasAccess && !activeLiveMeeting && upcomingMeeting && (
+              <div className="mb-3 mx-4 lg:mx-0 rounded-xl border border-line bg-[#0d0d14] p-3 flex items-center justify-between gap-3 text-meta animate-fade-in">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Calendar className="h-4 w-4 shrink-0 text-[#a855f7]" />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-white truncate block">
+                      Próxima clase sincrónica: {upcomingMeeting.title}
+                    </span>
+                    <span className="text-micro text-ink-muted">
+                      Programada para {new Date(upcomingMeeting.scheduledAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                  </div>
+                </div>
+                <a
+                  href={upcomingMeeting.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-raised border border-line hover:border-[#06b6d4] text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <span>Ver enlace</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            )}
+
             {hasAccess && currentTtsGuide && (
               <div className="px-4 pb-3 lg:px-0">
                 <MentorTTSGuideWidget
@@ -495,35 +614,13 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               </div>
             )}
 
-            {/* El ancho se limita a lo que cabe de alto: un 16:9 a ancho completo
-                en una pantalla apaisada empuja el título de la clase fuera de la
-                vista y obliga a hacer scroll para saber qué se está viendo.
-
-                En móvil el reproductor NO se queda pegado arriba. Lo estuvo, y
-                se comportaba mal: su contenedor solo llega hasta la barra de la
-                lección, así que se despegaba a los pocos píxeles de scroll y en
-                ese salto el iframe se quedaba en negro. Un video que se corta a
-                media clase es peor que uno que sube con la página.
-
-                Por debajo de `lg` la caja no lleva ningun limite atado a la
-                altura de la ventana, y es deliberado. Se probo con
-                `max-width: calc((100dvh - 9rem) * 16/9)` para que un movil
-                girado no dejara el video a medias, y sale caro: en un telefono
-                `dvh` se mueve cada vez que el navegador esconde o enseña su
-                barra al hacer scroll, asi que el limite cambia, el marco se
-                redimensiona y el reproductor de Drive se reinicia a mitad de
-                clase. La misma razon por la que este bloque no es pegajoso.
-                Que en horizontal haya que bajar un poco es un precio menor. */}
             <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
               {showsPlayer && videoSource ? (
                 <iframe
-                  /* La clave fuerza un iframe nuevo por lección. Sin ella React
-                     reutiliza el elemento y solo le cambia `src`, que el
-                     navegador trata como navegación dentro del marco: el
-                     reproductor se quedaba en blanco al saltar de clase. */
-                  key={videoSource.embedUrl}
+                  /* La clave fuerza un iframe nuevo por lección o reunión grabada. */
+                  key={selectedMeetingPlayback ? selectedMeetingPlayback.id : videoSource.embedUrl}
                   src={videoSource.embedUrl}
-                  title={currentVideo.title}
+                  title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
                   className="h-full w-full border-0"
                   referrerPolicy="strict-origin-when-cross-origin"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -563,9 +660,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 </div>
               )}
 
-              {/* Salida del modo cine sobre el propio video: el interruptor del
-                  panel no sirve para volver, porque el modo cine oculta el panel
-                  que lo contiene. */}
+              {/* Salida del modo cine sobre el propio video */}
               {showsPlayer && theaterMode && (
                 <button
                   type="button"
@@ -577,9 +672,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 </button>
               )}
 
-              {/* Avanzar sin salir del video: los controles aparecen al apuntar
-                  al reproductor y al tabular hasta ellos. */}
-              {showsPlayer && (
+              {/* Avanzar sin salir del video (solo en modo lecciones estándar) */}
+              {showsPlayer && !selectedMeetingPlayback && (
                 <div className="pointer-events-none absolute inset-x-0 top-1/2 hidden -translate-y-1/2 justify-between px-3 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 lg:flex">
                   {previousLesson ? (
                     <button
@@ -607,31 +701,86 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               )}
             </div>
 
-            {currentVideo && (
-              <MobileLessonBar
-                lessonNumber={currentLessonIndex + 1}
-                totalLessons={lessons.length}
-                hasPrevious={Boolean(previousLesson)}
-                hasNext={Boolean(nextLesson)}
-                isCompleted={isCurrentCompleted}
-                onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
-                onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
-                onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
-              />
-            )}
+            {/* Barra de información de la lección o de la sesión asincrónica */}
+            {selectedMeetingPlayback ? (
+              <div className="mt-3 mx-4 lg:mx-0 rounded-2xl border border-emerald-500/40 bg-[#0a1210] p-4 text-meta shadow-xl shadow-emerald-500/10 animate-fade-in">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      <PlaySquare className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
+                          <PlaySquare className="h-3 w-3" />
+                          Grabación Asincrónica
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                        </span>
+                      </div>
+                      <h3 className="mt-1 font-extrabold text-sm text-white truncate">
+                        {selectedMeetingPlayback.title}
+                      </h3>
+                      {selectedMeetingPlayback.description && (
+                        <p className="mt-0.5 text-xs text-slate-300 line-clamp-1">
+                          {selectedMeetingPlayback.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                    <a
+                      href={selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-[#141420] hover:bg-[#1f1f33] border border-line text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors"
+                    >
+                      <span>Abrir enlace externo</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMeetingPlayback(null)}
+                      className="btn-brand-primary px-3.5 py-1.5 rounded-lg text-xs font-bold"
+                    >
+                      Volver al Temario
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {currentVideo && (
+                  <MobileLessonBar
+                    lessonNumber={currentLessonIndex + 1}
+                    totalLessons={lessons.length}
+                    hasPrevious={Boolean(previousLesson)}
+                    hasNext={Boolean(nextLesson)}
+                    isCompleted={isCurrentCompleted}
+                    onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
+                    onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
+                    onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+                  />
+                )}
 
-            {currentVideo && (
-              <LessonMetaBar
-                lessonTitle={currentVideo.title}
-                moduleTitle={currentModule?.title || ''}
-                moduleIndex={activeModuleIndex}
-                providerLabel={providerLabel}
-                lessonNumber={currentLessonIndex + 1}
-                totalLessons={lessons.length}
-                isCompleted={isCurrentCompleted}
-                onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
-                playbackUrl={showsPlayer ? currentVideo.playbackUrl : undefined}
-              />
+                {currentVideo && (
+                  <LessonMetaBar
+                    lessonTitle={currentVideo.title}
+                    moduleTitle={currentModule?.title || ''}
+                    moduleIndex={activeModuleIndex}
+                    providerLabel={providerLabel}
+                    lessonNumber={currentLessonIndex + 1}
+                    totalLessons={lessons.length}
+                    isCompleted={isCurrentCompleted}
+                    onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+                    playbackUrl={showsPlayer ? currentVideo.playbackUrl : undefined}
+                    isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
+                    meetingType={currentVideo.meetingType || activeLiveMeeting?.meetingType}
+                    meetingUrl={currentVideo.meetingUrl || (activeLiveMeeting?.id === currentVideo.id ? activeLiveMeeting.meetingUrl : undefined)}
+                  />
+                )}
+              </>
             )}
           </div>
 
@@ -666,6 +815,192 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           onToggleComplete={toggleVideoCompletion}
                           onOpenPaywall={onOpenPaywall}
                         />
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'sessions',
+                    label: 'Sesiones',
+                    icon: Radio,
+                    count: courseMeetings.length,
+                    content: (
+                      <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex items-center justify-between pb-2 border-b border-line">
+                          <div>
+                            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                              <Radio className="h-3.5 w-3.5 text-[#06b6d4]" />
+                              Clases Sincrónicas & Grabaciones
+                            </h3>
+                            <p className="text-[11px] text-ink-muted mt-0.5">
+                              Sesiones en vivo y clases grabadas bajo demanda del curso.
+                            </p>
+                          </div>
+                        </div>
+
+                        {courseMeetings.length === 0 ? (
+                          <div className="py-12 text-center space-y-2 bg-[#0d0d14] rounded-xl border border-line p-4">
+                            <Video className="h-8 w-8 mx-auto text-slate-600" />
+                            <p className="text-xs font-semibold text-white">No hay sesiones programadas aún</p>
+                            <p className="text-[11px] text-slate-400">
+                              Tu mentor programará clases sincrónicas y grabaciones en este espacio.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-5">
+                            {(() => {
+                              const moduleGroups: { moduleId: string | null; moduleTitle: string; meetings: typeof courseMeetings }[] = [];
+                              
+                              (course.modules || []).forEach((mod, idx) => {
+                                const modMeetings = courseMeetings.filter((m) => m.moduleId === mod.id);
+                                if (modMeetings.length > 0) {
+                                  moduleGroups.push({
+                                    moduleId: mod.id,
+                                    moduleTitle: `Módulo ${idx + 1}: ${mod.title}`,
+                                    meetings: modMeetings,
+                                  });
+                                }
+                              });
+
+                              const unassignedMeetings = courseMeetings.filter(
+                                (m) => !m.moduleId || !course.modules?.some((mod) => mod.id === m.moduleId)
+                              );
+                              if (unassignedMeetings.length > 0) {
+                                moduleGroups.push({
+                                  moduleId: null,
+                                  moduleTitle: 'Sesiones Generales del Curso',
+                                  meetings: unassignedMeetings,
+                                });
+                              }
+
+                              return moduleGroups.map((group) => (
+                                <div key={group.moduleId || 'general'} className="space-y-2.5">
+                                  <div className="flex items-center gap-2 px-1">
+                                    <span className="h-2 w-2 rounded-full bg-[#06b6d4]" />
+                                    <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300">
+                                      {group.moduleTitle}
+                                    </h4>
+                                    <span className="text-[10px] font-bold text-slate-500 bg-[#0d0d14] border border-line px-1.5 py-0.2 rounded-full">
+                                      {group.meetings.length}
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    {group.meetings.map((m) => {
+                                      const isLive = m.isLive;
+                                      const isAsync = m.meetingType === 'async_record';
+                                      const isPlayingThis = selectedMeetingPlayback?.id === m.id;
+
+                                      return (
+                                        <div
+                                          key={m.id}
+                                          className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${isPlayingThis
+                                              ? 'bg-emerald-500/10 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/30'
+                                              : isLive
+                                                ? 'bg-[#08080c] border-[#06b6d4] shadow-md shadow-[#06b6d4]/10 ring-1 ring-[#06b6d4]/30'
+                                                : 'bg-[#141420] border-line hover:border-[#3d3d5c]'
+                                            }`}
+                                        >
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                              {isLive ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse-slow">
+                                                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />
+                                                  EN VIVO
+                                                </span>
+                                              ) : isAsync ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                                  <PlaySquare className="h-3 w-3" />
+                                                  Grabación Asincrónica
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#a855f7]/10 text-[#a855f7] border border-[#a855f7]/30">
+                                                  <Calendar className="h-3 w-3" />
+                                                  Sincrónica
+                                                </span>
+                                              )}
+
+                                              <span className="text-[10px] font-bold text-slate-400 uppercase bg-[#0a0a0f] px-1.5 py-0.5 rounded border border-line">
+                                                {m.meetingType === 'jitsi'
+                                                  ? 'Jitsi'
+                                                  : m.meetingType === 'meet'
+                                                    ? 'Meet'
+                                                    : 'Video'}
+                                              </span>
+                                            </div>
+
+                                            <span className="text-[10px] text-slate-400">
+                                              {new Date(m.scheduledAt).toLocaleDateString(undefined, {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                              })}
+                                            </span>
+                                          </div>
+
+                                          <div>
+                                            <h4 className="font-bold text-xs text-white leading-snug">
+                                              {m.title}
+                                            </h4>
+                                            {m.description && (
+                                              <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">
+                                                {m.description}
+                                              </p>
+                                            )}
+                                          </div>
+
+                                          {/* Actions */}
+                                          <div className="flex items-center gap-2 pt-1 border-t border-line/50">
+                                            {isAsync ? (
+                                              <>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setSelectedMeetingPlayback(m);
+                                                  }}
+                                                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isPlayingThis
+                                                      ? 'bg-emerald-500 text-black shadow-md'
+                                                      : 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400'
+                                                    }`}
+                                                >
+                                                  <Play className="h-3 w-3" />
+                                                  <span>{isPlayingThis ? 'Reproduciendo Ahora' : 'Ver Grabación'}</span>
+                                                </button>
+                                                <a
+                                                  href={m.recordingUrl || m.meetingUrl}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="p-1.5 rounded-lg bg-[#0a0a0f] hover:bg-[#1a1a2e] border border-line text-slate-400 hover:text-white"
+                                                  title="Abrir enlace externo"
+                                                >
+                                                  <ExternalLink className="h-3.5 w-3.5" />
+                                                </a>
+                                              </>
+                                            ) : (
+                                              <a
+                                                href={m.meetingUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all ${isLive
+                                                    ? 'btn-brand-primary text-white shadow-md'
+                                                    : 'bg-raised hover:bg-line border border-line text-slate-300 hover:text-white'
+                                                  }`}
+                                              >
+                                                <Video className="h-3.5 w-3.5" />
+                                                <span>{isLive ? 'Unirse a la Clase en Vivo' : 'Abrir Sala Sincrónica'}</span>
+                                                <ExternalLink className="h-3 w-3 opacity-70" />
+                                              </a>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        )}
                       </div>
                     ),
                   },

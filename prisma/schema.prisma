@@ -82,6 +82,7 @@ model User {
   menteeAssignments   MenteeAssignment[]   @relation("MenteeAssignments")
   enrollments         CourseEnrollment[]
   certificates        Certificate[]
+  hostedMeetings      Meeting[]            @relation("MeetingHost")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -214,6 +215,7 @@ model Course {
   certificates      Certificate[]
   resources         CourseResource[]
   menteeAssignments MenteeAssignment[]
+  meetings          Meeting[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -229,6 +231,7 @@ model Module {
   course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   videos      VideoDriveLink[]
   resources   CourseResource[]
+  meetings    Meeting[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -251,6 +254,10 @@ model VideoDriveLink {
   comments    MentorshipComment[]
   progress    UserProgress[]
   videoNotes  VideoNote[]
+  meetingType String?
+  meetingUrl  String?
+  scheduledAt DateTime?
+  isLive      Boolean             @default(false)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
@@ -463,3 +470,27 @@ model Feedback {
   @@index([status, createdAt])
   @@index([userId, createdAt])
 }
+
+model Meeting {
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
+  meetingType  String    @default("meet")
+  meetingUrl   String
+  scheduledAt  DateTime  @default(now())
+  isLive       Boolean   @default(false)
+  courseId     String?
+  course       Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId     String?
+  module       Module?   @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  hostId       String?
+  host         User?     @relation("MeetingHost", fields: [hostId], references: [id], onDelete: SetNull)
+  recordingUrl String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([courseId, scheduledAt])
+  @@index([isLive])
+  @@index([hostId])
+}
+
