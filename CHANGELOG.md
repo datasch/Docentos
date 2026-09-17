@@ -14,6 +14,67 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.7 - 2026-09-17
+
+### Added
+
+- Clases sincrónicas y asincrónicas: un programador de sesiones con Google Meet,
+  Jitsi Meet y grabaciones, con su pestaña propia en el panel del mentor.
+  **Esta versión migra el esquema**: añade columnas opcionales de reunión a
+  `VideoDriveLink` y crea la tabla `Meeting`. Es aditivo, sin `DROP` ni
+  reescritura de filas, y lo aplica solo el `prisma migrate deploy` del
+  `entrypoint.sh`.
+- Firmas digitales en los certificados: pad de trazo, firma institucional y
+  personalización de la plantilla.
+- El pase que antes se llamaba VIP se concede y se retira desde el mismo botón,
+  y al retirarlo la cuenta vuelve a ser un estudiante normal.
+- La columna «Rol Actual» permite retirar el rol de administrador.
+
+### Changed
+
+- **Puede haber varios administradores.** La regla de administrador único
+  bloqueaba nombrar a un segundo y, de paso, impedía retirarle el rol a nadie;
+  el panel además se tragaba el motivo del rechazo en la consola, así que el
+  botón parecía no hacer nada. Ahora solo se protege quedarse sin ningún
+  administrador activo, y nadie puede retirarse el rol a sí mismo: eso cierra la
+  sesión en el acto y deja el panel inalcanzable.
+- «Pase VIP» pasa a llamarse «Pase Mentee» en toda la interfaz y en los cinco
+  idiomas. El identificador interno del rol sigue siendo `VIP`: está en la base
+  de datos y cambiarlo retiraría accesos.
+- El panel del mentor pierde «Asignar Nuevo Mentee» y «Crear Nuevo Programa» de
+  la cabecera. Los programas los crea administración; el alta de mentees por
+  nombre y correo vive ahora dentro del selector de «Gestión de Cursos», que es
+  donde se sabe a qué curso se asigna.
+- El catálogo de plugins del seed incluye ya Google Drive Video Engine y
+  Discord / Slack Webhook. Sin fila en la base, un plugin no existe para la
+  aplicación por mucho que esté en el código.
+
+### Fixed
+
+- **Las credenciales de la configuración de un plugin no salen de
+  administración.** `/api/plugins` se abrió a cualquier cuenta autenticada y
+  enmascaraba un único plugin por su id, así que `discord-webhooks` —que guarda
+  la misma clase de URL— se servía entero a cualquier alumno con sesión. Y
+  `/api/plugins/toggle` y `/api/plugins/config` respondían siempre como si
+  preguntara administración: a un mentor le bastaba pulsar un interruptor para
+  leer lo que el `GET` le negaba. Ahora la regla mira la forma de la clave, no
+  el id del plugin, y la credencial desaparece de la respuesta en vez de
+  enmascararse.
+- Los modales vuelven a cubrir la pantalla. `.animate-fade-in` llevaba
+  `forwards`, que congela el `transform` del último fotograma; Chrome lo deja en
+  la matriz identidad, que no es `none`, y eso convierte al contenedor en el
+  marco de referencia de sus hijos `position: fixed`. El diálogo de programar
+  una clase se dibujaba a media página en vez de sobre la ventana.
+- «Esta clase requiere acceso» ya no aparece con el acceso concedido. Un curso
+  abierto a todos los registrados y todavía sin módulos mandaba al alumno al
+  panel del candado, con un botón para pagar algo que ya tenía. Además el
+  permiso pasa a ser del curso abierto: el frontend guardaba un único
+  `hasAccess` para toda la sesión, tomado del campo global de `/api/courses`,
+  que responde «¿tiene acceso a alguno?».
+- La importación desde Google Drive retira el «Copia de» que Drive antepone a
+  los duplicados, incluidos los encadenados y el «Copy of» de las cuentas en
+  inglés.
+
 ## 0.5.0-beta.6 - 2026-09-15
 
 ### Changed
