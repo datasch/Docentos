@@ -99,7 +99,12 @@ export const PluginManagerView: React.FC = () => {
   const loadPlugins = async () => {
     try {
       const res = await api.getPlugins();
-      if (res.plugins) {
+      // `if (res.plugins)` daba verdadero con una lista vacia —en JavaScript
+      // `[]` lo es— y entonces la vista se quedaba en blanco sin decir nada.
+      // Medido en produccion el 17 sep 2026: la tabla estaba vacia y el panel
+      // parecia roto. Se comprueba que sea una lista de verdad, y el vacio se
+      // anuncia abajo en vez de disimularse.
+      if (Array.isArray(res.plugins)) {
         setPlugins(res.plugins);
         pluginManager.setPlugins(res.plugins);
       }
@@ -216,6 +221,22 @@ export const PluginManagerView: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* Un panel en blanco se lee como «esto esta roto». Si no hay nada que
+          enseñar, se dice cual de las dos cosas pasa: que no hay plugins, o que
+          el filtro no encuentra ninguno. */}
+      {filteredPlugins.length === 0 && (
+        <div className="bg-raised border border-line rounded-xl p-8 text-center space-y-1">
+          <p className="text-sm font-bold text-ink">
+            {plugins.length === 0 ? 'No hay plugins registrados' : 'Ningún plugin en esta categoría'}
+          </p>
+          <p className="text-meta text-ink-muted">
+            {plugins.length === 0
+              ? 'El catálogo se registra solo al arrancar la aplicación. Si sigues viendo esto, revisa el registro del servidor.'
+              : 'Prueba con «Todos los Plugins».'}
+          </p>
+        </div>
+      )}
 
       {/* Plugins Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

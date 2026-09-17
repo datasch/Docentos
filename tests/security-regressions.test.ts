@@ -23,6 +23,7 @@ import {
 } from '../server/courseAccess.js';
 import { buildDriveEmbedUrl, extractDriveFileId } from '../server/driveService.js';
 import { isSecretConfigKey, redactPluginConfig } from '../server/pluginConfig.js';
+import { PLUGIN_CATALOG } from '../server/pluginCatalog.js';
 import type { AuthenticatedUser } from '../server/authMiddleware.js';
 
 const TEST_COURSE_ID = 'course-giantucchi-mastery';
@@ -96,6 +97,42 @@ test('Seguridad: la pre-renderizacion para rastreadores escapa el contenido alma
     assert.equal(isCrawlerUserAgent('Mozilla/5.0 (compatible; Googlebot/2.1)'), true);
     assert.equal(isCrawlerUserAgent('GPTBot/1.0'), true);
     assert.equal(isCrawlerUserAgent('Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0'), false);
+  });
+});
+
+test('Plugins: el catalogo es una sola lista y esta completo', async (t) => {
+  // Vivia duplicado —una copia en el seed, otra en el cliente— y el seed entero
+  // esta detras de SEED_DEMO_DATA, que produccion rechaza arrancar. Resultado
+  // medido el 17 sep 2026: la tabla `Plugin` de produccion vacia y el panel en
+  // blanco. Ahora la aplicacion lo asegura en cada arranque.
+  await t.test('1. No hay identificadores repetidos', () => {
+    const ids = PLUGIN_CATALOG.map((p) => p.id);
+    assert.equal(new Set(ids).size, ids.length, 'Un id repetido haria que un upsert pisara al otro');
+  });
+
+  await t.test('2. Cada entrada trae lo que la tabla exige', () => {
+    for (const plugin of PLUGIN_CATALOG) {
+      for (const campo of ['id', 'name', 'description', 'version', 'category', 'icon'] as const) {
+        assert.equal(typeof plugin[campo], 'string', `${plugin.id}: falta ${campo}`);
+        assert.ok(plugin[campo].length > 0, `${plugin.id}: ${campo} vacio`);
+      }
+      assert.equal(typeof plugin.config, 'object', `${plugin.id}: config debe ser un objeto`);
+      assert.doesNotThrow(() => JSON.stringify(plugin.config), `${plugin.id}: config no serializable`);
+    }
+  });
+
+  await t.test('3. El catalogo no siembra credenciales de ejemplo', () => {
+    // El catalogo del cliente traia una URL de webhook de demostracion. Sembrar
+    // eso deja a la instalacion enviando a un sitio que no es suyo.
+    for (const plugin of PLUGIN_CATALOG) {
+      for (const [clave, valor] of Object.entries(plugin.config)) {
+        // Misma regla que `redactPluginConfig`: solo una cadena es una
+        // credencial. `apiKeyConfigured: true` es un indicador de estado.
+        if (isSecretConfigKey(clave) && typeof valor === 'string') {
+          assert.equal(valor, '', `${plugin.id}: ${clave} debe nacer vacio, no con un valor de ejemplo`);
+        }
+      }
+    }
   });
 });
 

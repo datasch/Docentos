@@ -71,6 +71,7 @@ import {
   serializeCourseForAdmin,
 } from './server/courseAccess.js';
 import { redactPluginConfig } from './server/pluginConfig.js';
+import { ensurePluginCatalog } from './server/pluginCatalog.js';
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import {
@@ -3795,6 +3796,17 @@ async function startServer() {
     console.error('Error procesando la solicitud:', error);
     if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor' });
   });
+
+  // El catalogo de plugins se asegura en cada arranque. Vivia solo en el seed,
+  // que produccion rechaza ejecutar, asi que alli la tabla nacia vacia y el
+  // panel salia en blanco. Es idempotente y no toca lo que administracion haya
+  // configurado; si falla, se registra y la aplicacion arranca igual.
+  try {
+    const total = await ensurePluginCatalog();
+    console.log(`🔌 Catalogo de plugins verificado (${total})`);
+  } catch (error) {
+    logger.error('No se pudo asegurar el catalogo de plugins', { error: String(error) });
+  }
 
   const httpServer = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 DocentOS v${DOCENTOS_VERSION} activo en http://localhost:${PORT}`);
