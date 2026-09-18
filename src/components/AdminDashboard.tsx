@@ -821,24 +821,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                         <td className="p-3.5 font-mono text-slate-400">{u.email}</td>
                         <td className="p-3.5">
                           {u.role === 'ADMIN' && (
-                            <span className="inline-flex items-center gap-1.5">
-                              <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
-                                <Shield aria-hidden className="w-3 h-3" /> ADMIN
-                              </span>
-                              {/* Retirar el rol se hace aqui, junto a la insignia
-                                  que lo anuncia, no entre los botones de alta. */}
-                              <button
-                                onClick={() => handleUpdateRole(u.id, 'PUBLIC_USER')}
-                                title={`Retirar el rol de administrador a ${u.name}`}
-                                className="px-2 py-1 bg-elevated border border-line hover:border-line-strong text-ink-soft hover:text-ink font-bold rounded-lg text-micro transition-all"
-                              >
-                                Quitar admin
-                              </button>
+                            <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                              <Shield aria-hidden className="w-3 h-3" /> ADMINISTRADOR
+                            </span>
+                          )}
+                          {u.role === 'MENTOR' && (
+                            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                              <UserCheck aria-hidden className="w-3 h-3" /> MENTOR
+                            </span>
+                          )}
+                          {u.role === 'MENTEE' && (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                              <GraduationCap aria-hidden className="w-3 h-3" /> MENTEE
+                            </span>
+                          )}
+                          {u.role === 'PUBLIC_USER' && (
+                            <span className="bg-slate-800 text-slate-300 border border-slate-700 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
+                              <BookOpen aria-hidden className="w-3 h-3" /> ESTUDIANTE
                             </span>
                           )}
                           {u.role === 'VIP' && (
-                            <span className="bg-brand-gradient text-white font-extrabold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                              <Crown aria-hidden className="w-3 h-3" /> MENTEE
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                              <Crown aria-hidden className="w-3 h-3" /> ESTUDIANTE (VIP)
                             </span>
                           )}
                           {u.role === 'EXTERNAL' && (
@@ -879,34 +883,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                             {isActive ? 'Suspender' : 'Activar'}
                           </button>
 
-                          {/* Role actions. El pase es un interruptor: el mismo
-                              boton lo concede y lo retira, y al retirarlo la
-                              cuenta vuelve a ser un estudiante normal. */}
-                          {u.role === 'VIP' ? (
-                            <button
-                              onClick={() => handleUpdateRole(u.id, 'PUBLIC_USER')}
-                              title={`Retirar el pase Mentee a ${u.name}`}
-                              className="px-2.5 py-1 bg-elevated border border-brand-cyan/40 hover:border-brand-cyan text-brand-cyan font-bold rounded-lg text-micro shadow-sm transition-all"
-                            >
-                              Quitar Pase Mentee
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleUpdateRole(u.id, 'VIP')}
-                              title={`Conceder el pase Mentee a ${u.name}`}
-                              className="px-2.5 py-1 bg-[#06b6d4] hover:bg-[#06b6d4]/80 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all"
-                            >
-                              Mentee
-                            </button>
-                          )}
-                          {u.role !== 'ADMIN' && (
-                            <button
-                              onClick={() => handleUpdateRole(u.id, 'ADMIN')}
-                              className="px-2.5 py-1 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all"
-                            >
-                              Admin
-                            </button>
-                          )}
+                          {/* Selector de Rol Dinámico */}
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
+                            className="bg-[#0a0a0f] border border-[#2d2d44] hover:border-[#06b6d4]/50 text-white rounded-lg px-2.5 py-1 text-[10px] font-bold focus:outline-none focus:border-[#06b6d4] transition-all cursor-pointer inline-block align-middle"
+                            title="Asignar Rol al Usuario"
+                          >
+                            <option value="ADMIN">🟣 Administrador</option>
+                            <option value="MENTOR">🔵 Mentor</option>
+                            <option value="MENTEE">🟢 Mentee</option>
+                            <option value="PUBLIC_USER">⚪ Estudiante</option>
+                            <option value="VIP">👑 Estudiante (Pase VIP)</option>
+                            <option value="EXTERNAL">🌐 Externo</option>
+                          </select>
                         </td>
                       </tr>
                     );

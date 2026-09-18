@@ -68,7 +68,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   MENTOR: 'Mentor',
   MENTEE: 'Mentee',
-  VIP: 'Mentee',
+  VIP: 'Estudiante (VIP)',
   PUBLIC_USER: 'Estudiante',
   EXTERNAL: 'Invitado',
 };
@@ -195,17 +195,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   /** Los destinos de la barra, ya filtrados por permisos. */
   const destinations: { tab: Tab; label: string; icon: React.ReactNode }[] = [
     { tab: 'courses', label: t('nav.courses'), icon: <PlayCircle aria-hidden className="h-4 w-4" /> },
-    ...(isStaff
+    ...(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR'
       ? [{ tab: 'mentor' as Tab, label: 'Mentoría', icon: <UserCheck aria-hidden className="h-4 w-4" /> }]
       : []),
     ...(isAdmin
-      ? [{ tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> }]
-      : []),
-    ...(isStaff
       ? [
-        { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
-        { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
-      ]
+          { tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> },
+          { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
+          { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
+        ]
       : []),
   ];
 

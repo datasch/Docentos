@@ -64,8 +64,10 @@ const releaseChannelLabel =
 function canOpenTab(user: User | null, tab: ActiveTab) {
   if (tab === 'landing') return true;
   if (!user) return false;
-  if (tab === 'admin') return user.role === 'ADMIN';
-  if (['mentor', 'plugins', 'drive'].includes(tab)) {
+  if (['admin', 'plugins', 'drive'].includes(tab)) {
+    return user.role === 'ADMIN';
+  }
+  if (tab === 'mentor') {
     return user.role === 'ADMIN' || user.role === 'MENTOR';
   }
   return true;
