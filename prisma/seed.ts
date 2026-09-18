@@ -1,5 +1,6 @@
 import { prisma } from '../server/prisma.js';
 import { hashPassword } from '../server/authService.js';
+import { cifrar } from '../server/crypto.js';
 import { config } from '../server/config.js';
 import { PLUGIN_CATALOG } from '../server/pluginCatalog.js';
 
@@ -201,7 +202,7 @@ async function seedApplicationData() {
         version: plugin.version,
         category: plugin.category,
         icon: plugin.icon,
-        configJson: JSON.stringify(plugin.config),
+        configJson: cifrar(JSON.stringify(plugin.config)),
       },
     });
   }

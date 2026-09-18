@@ -826,22 +826,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                             </span>
                           )}
                           {u.role === 'MENTOR' && (
-                            <span className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                            <span className="bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
                               <UserCheck aria-hidden className="w-3 h-3" /> MENTOR
                             </span>
                           )}
                           {u.role === 'MENTEE' && (
-                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                            <span className="bg-success/20 text-success border border-success/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
                               <GraduationCap aria-hidden className="w-3 h-3" /> MENTEE
                             </span>
                           )}
                           {u.role === 'PUBLIC_USER' && (
-                            <span className="bg-slate-800 text-slate-300 border border-slate-700 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
+                            <span className="bg-elevated text-ink-soft border border-line font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
                               <BookOpen aria-hidden className="w-3 h-3" /> ESTUDIANTE
                             </span>
                           )}
                           {u.role === 'VIP' && (
-                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                            <span className="bg-warning/20 text-warning border border-warning/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
                               <Crown aria-hidden className="w-3 h-3" /> ESTUDIANTE (VIP)
                             </span>
                           )}
@@ -887,15 +887,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                           <select
                             value={u.role}
                             onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
-                            className="bg-[#0a0a0f] border border-[#2d2d44] hover:border-[#06b6d4]/50 text-white rounded-lg px-2.5 py-1 text-[10px] font-bold focus:outline-none focus:border-[#06b6d4] transition-all cursor-pointer inline-block align-middle"
+                            aria-label="Asignar rol al usuario"
+                            className="bg-canvas border border-line hover:border-brand-cyan/50 text-white rounded-lg px-2.5 py-1 text-micro font-bold focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-canvas transition-all cursor-pointer inline-block align-middle"
                             title="Asignar Rol al Usuario"
                           >
-                            <option value="ADMIN">🟣 Administrador</option>
-                            <option value="MENTOR">🔵 Mentor</option>
-                            <option value="MENTEE">🟢 Mentee</option>
-                            <option value="PUBLIC_USER">⚪ Estudiante</option>
-                            <option value="VIP">👑 Estudiante (Pase VIP)</option>
-                            <option value="EXTERNAL">🌐 Externo</option>
+                            <option value="ADMIN">Administrador</option>
+                            <option value="MENTOR">Mentor</option>
+                            <option value="MENTEE">Mentee</option>
+                            <option value="PUBLIC_USER">Estudiante</option>
+                            <option value="VIP">Estudiante (Pase VIP)</option>
+                            <option value="EXTERNAL">Externo</option>
                           </select>
                         </td>
                       </tr>

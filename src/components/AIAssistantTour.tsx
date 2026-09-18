@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { siteConfig } from '../config/theme';
 
 interface AIAssistantTourProps {
-  onHighlightTab?: (tab: 'courses' | 'drive' | 'admin' | 'vip') => void;
+  onHighlightTab?: (tab: 'courses' | 'admin' | 'vip') => void;
   onClose?: () => void;
 }
 
@@ -14,7 +14,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
   const { t } = useTranslation();
   const assistantName = siteConfig.assistantName;
 
-  const [currentStep, setCurrentStep] = useState(0); // 0: Welcome, 1: Courses, 2: Drive Search, 3: Mentorship/VIP, 4: Feedback Modal
+  const [currentStep, setCurrentStep] = useState(0); // 0: Bienvenida, 1: Cursos, 2: Mentoría/VIP, 3: Opinión
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState('');
@@ -35,13 +35,6 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
       title: t('tour.step1Title'),
       subtitle: t('tour.step1Desc'),
       audioText: `En la pestaña de Cursos encontrarás todo el material de estudio organizado por módulos. Podrás ver videos, escuchar guías de voz y descargar recursos.`,
-    },
-    {
-      id: 'drive',
-      tab: 'drive' as const,
-      title: t('tour.step2Title'),
-      subtitle: t('tour.step2Desc'),
-      audioText: `El Buscador de Google Drive te permite encontrar clases indexadas en tiempo real sin salir de la plataforma.`,
     },
     {
       id: 'vip',
@@ -165,7 +158,10 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
         </div>
 
         {/* STEP CONTENT OR FEEDBACK MODAL */}
-        {currentStep < 4 ? (
+        {/* El ultimo paso del recorrido es siempre el de opinion: se deriva de
+            `steps` y no de un 4 escrito a mano, que al quitar un paso dejaba el
+            formulario inalcanzable y el boton «Siguiente» sin efecto. */}
+        {currentStep < steps.length - 1 ? (
           <div className="space-y-3">
             <div>
               <h5 className="font-bold text-sm text-white flex items-center gap-2">
@@ -194,9 +190,9 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
             {/* Tour Navigation Controls */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <div className="flex shrink-0 gap-1">
-                {[0, 1, 2, 3].map((idx) => (
+                {steps.slice(0, -1).map((paso, idx) => (
                   <div
-                    key={idx}
+                    key={paso.id}
                     className={`h-1.5 rounded-full transition-all ${
                       idx === currentStep ? 'w-6 bg-[#06b6d4]' : 'w-2 bg-[#2d2d44]'
                     }`}

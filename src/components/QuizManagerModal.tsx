@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Modal de Administración de Evaluaciones & Quizzes (`QuizManagerModal.tsx`)
  *
  * Permite a Administradores y Mentores:

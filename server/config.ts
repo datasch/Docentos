@@ -45,6 +45,8 @@ const rawSchema = z.object({
   SESSION_COOKIE_NAME: z.string().trim().min(1).max(100).default('docentos_session'),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   SESSION_COOKIE_SECURE: z.enum(['', 'true', 'false']).default(''),
+  DOCENTOS_ENCRYPTION_KEY: optionalString,
+  TWO_FACTOR_CHALLENGE_TTL_MINUTES: numberWithDefault(5, 1, 30),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
   PASSWORD_RESET_WEBHOOK_URL: optionalString,
   PASSWORD_RESET_WEBHOOK_TOKEN: optionalString,
@@ -138,6 +140,36 @@ if (deploymentEnvironment === 'production' && raw.STRIPE_SECRET_KEY && !raw.STRI
   throw new Error(
     'Configuracion de DocentOS invalida: STRIPE_WEBHOOK_SECRET es obligatorio en produccion cuando STRIPE_SECRET_KEY esta definido; sin el, los webhooks no pueden verificarse.',
   );
+}
+
+/**
+ * La clave maestra de cifrado no puede faltar en produccion.
+ *
+ * Sin ella, `server/crypto.ts` cae a una clave de desarrollo derivada de una
+ * cadena que esta escrita en el propio repositorio: publica, por tanto. Con esa
+ * clave, el secreto TOTP guardado en la base **no esta protegido** y el segundo
+ * factor deja de serlo. Es el mismo criterio que ya se aplica a
+ * STRIPE_WEBHOOK_SECRET: en produccion, un secreto ausente detiene el arranque
+ * en vez de degradarse en silencio.
+ */
+if (deploymentEnvironment === 'production' && !raw.DOCENTOS_ENCRYPTION_KEY) {
+  throw new Error(
+    'Configuracion de DocentOS invalida: DOCENTOS_ENCRYPTION_KEY es obligatoria en produccion. Generala con `npm run secrets:init` y guardala: si se pierde, los secretos ya cifrados no se pueden recuperar.',
+  );
+}
+if (raw.DOCENTOS_ENCRYPTION_KEY) {
+  // La longitud se comprueba aqui, y no solo al cifrar, para que una clave mal
+  // copiada se vea al arrancar y no la primera vez que alguien activa el
+  // segundo factor. La comprobacion se repite en `crypto.ts` a proposito: ese
+  // modulo no puede importar este sin crear un ciclo.
+  const longitud = /^[0-9a-fA-F]{64}$/.test(raw.DOCENTOS_ENCRYPTION_KEY)
+    ? 32
+    : Buffer.from(raw.DOCENTOS_ENCRYPTION_KEY, 'base64').length;
+  if (longitud !== 32) {
+    throw new Error(
+      `Configuracion de DocentOS invalida: DOCENTOS_ENCRYPTION_KEY debe tener 32 bytes (256 bits) en base64 o hexadecimal; la recibida tiene ${longitud}.`,
+    );
+  }
 }
 
 /**

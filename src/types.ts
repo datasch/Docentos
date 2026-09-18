@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tipos de Datos y Modelos
  * Academia Giantucchi
  */
@@ -331,13 +331,25 @@ export interface DriveVideoFile {
   createdTime?: string;
 }
 
+/**
+ * Lo que devuelve `GET /api/courses/:courseId/access`.
+ *
+ * Declaraba `isVipOrAdmin`, que el servidor no emite desde que el acceso se
+ * resuelve con `getCourseAccessDecision`, y omitia cuatro campos que si emite.
+ * Un tipo que no describe la respuesta real no protege de nada: promete un
+ * booleano que siempre llega `undefined`.
+ */
 export interface CourseAccessStatus {
   courseId: string;
   userRole: UserRole;
   hasAccess: boolean;
-  isVipOrAdmin: boolean;
+  /** Por que se concedio o se nego: 'admin', 'vip_membership', 'not_authenticated'... */
+  reason?: string;
   hasPaid: boolean;
+  hasEnrollment?: boolean;
+  hasMentorshipAssignment?: boolean;
   priceUSD: number;
+  currency?: string;
 }
 
 export interface TTSGuide {

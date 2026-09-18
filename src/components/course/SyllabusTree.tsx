@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Circle, Download, Lock, Play } from 'lucide-react';
 import { Course } from '../../types';
-import { getModuleQuestions } from '../../plugins/QuizzesPlugin';
+import { getModuleQuestionCount } from '../../plugins/QuizzesPlugin';
 import { pluginManager } from '../../plugins/PluginManager';
 import { Sparkles } from 'lucide-react';
 import type { ModuleLockState } from '../../lib/courseNavigation';
@@ -19,6 +19,10 @@ interface SyllabusTreeProps {
   completedCourseVideos: number;
   totalCourseVideos: number;
   onSelectLesson: (moduleIndex: number, videoIndex: number) => void;
+  /** Abre el examen del modulo en el escenario principal. */
+  onOpenQuiz: (moduleIndex: number) => void;
+  /** Modulo cuyo examen esta abierto ahora mismo, o null si se ve una clase. */
+  quizOpenModuleIndex?: number | null;
   onToggleComplete: (videoId: string) => void;
   onOpenPaywall: () => void;
 }
@@ -48,6 +52,8 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   completedCourseVideos,
   totalCourseVideos,
   onSelectLesson,
+  onOpenQuiz,
+  quizOpenModuleIndex = null,
   onToggleComplete,
   onOpenPaywall,
 }) => {
@@ -263,8 +269,10 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                 <div>
                   <ul role="group" className="flex flex-col px-2 pb-2">
                     {(() => {
-                      const modQuestions = getModuleQuestions(module.id);
-                      const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && modQuestions && modQuestions.length > 0;
+                      const totalPreguntas = getModuleQuestionCount(module.id);
+                      const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && totalPreguntas > 0;
+                      const examenAbierto = quizOpenModuleIndex === mIdx;
+                      const examenDisponible = hasQuiz && isUnlocked && hasAccess;
                       return (
                         <>
                           {module.videos.map((video, vIdx) => {
@@ -358,27 +366,36 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                       );
                     })}
                           {hasQuiz && (
-                            <li role="none" className="relative flex items-center mt-1.5">
-                              <div
-                                onClick={() => {
-                                  onSelectLesson(mIdx, module.videos.length > 0 ? module.videos.length - 1 : 0);
-                                  setTimeout(() => {
-                                    const el = document.getElementById('module-quiz-section');
-                                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                                  }, 150);
-                                }}
-                                className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg p-2 text-left bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-colors"
+                            <li role="none" className="relative mt-1.5 flex items-center">
+                              {/* El examen es un paso mas del temario, no un anexo al pie
+                                  de la pagina: se abre donde estaba el video, igual que
+                                  una clase, y hasta entonces no empieza el cronometro. */}
+                              <button
+                                type="button"
+                                onClick={() => onOpenQuiz(mIdx)}
+                                disabled={!examenDisponible}
+                                aria-current={examenAbierto ? 'step' : undefined}
+                                className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                                  examenAbierto
+                                    ? 'border-brand-violet bg-brand-violet/15'
+                                    : 'border-brand-violet/30 bg-brand-violet/5 hover:bg-brand-violet/15'
+                                }`}
                               >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Sparkles className="h-3.5 w-3.5 text-amber-300 shrink-0" />
-                                  <span className="text-xs font-bold text-purple-300 truncate">
-                                    Examen del Módulo ({modQuestions.length} Preguntas)
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <Sparkles aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-yellow" />
+                                  <span className="truncate text-row font-medium text-brand-violet-light">
+                                    Examen del módulo ({totalPreguntas}{' '}
+                                    {totalPreguntas === 1 ? 'pregunta' : 'preguntas'})
                                   </span>
-                                </div>
-                                <span className="text-[10px] bg-purple-500/30 text-purple-200 px-1.5 py-0.5 rounded font-black">
-                                  Evaluar
                                 </span>
-                              </div>
+                                {examenDisponible ? (
+                                  <span className="shrink-0 rounded bg-brand-violet/20 px-1.5 py-0.5 text-micro font-semibold text-brand-violet-light">
+                                    {examenAbierto ? 'En curso' : 'Rendir'}
+                                  </span>
+                                ) : (
+                                  <Lock aria-hidden className="h-3 w-3 shrink-0 text-ink-faint" />
+                                )}
+                              </button>
                             </li>
                           )}
                         </>

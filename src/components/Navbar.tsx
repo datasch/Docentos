@@ -22,7 +22,6 @@ import {
   Crown,
   UserCheck,
   PlayCircle,
-  HardDrive,
   Home,
   Menu,
   X,
@@ -40,7 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { User, Course } from '../types';
 import { siteConfig } from '../config/theme';
 
-type Tab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
+type Tab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
 interface NavbarProps {
   currentUser: User;
@@ -202,7 +201,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       ? [
           { tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> },
           { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
-          { tab: 'drive' as Tab, label: 'Drive', icon: <HardDrive aria-hidden className="h-4 w-4" /> },
         ]
       : []),
   ];
@@ -433,7 +431,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <KeyRound aria-hidden className="h-4 w-4" />
-                        Cambiar contraseña
+                        Seguridad de la cuenta
                       </span>
                     </button>
                   )}
@@ -558,7 +556,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
             >
               <KeyRound aria-hidden className="h-4 w-4" />
-              Cambiar contraseña
+              Seguridad de la cuenta
             </button>
           )}
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cliente de API para Academia Giantucchi
  * Gestiona llamadas al backend de Express, RBAC y Google Drive
  */
@@ -34,10 +34,34 @@ import {
 const fetch: typeof globalThis.fetch = (input, init) =>
   globalThis.fetch(input, { ...init, credentials: 'include' });
 
+export type LoginResponse = {
+  success: boolean;
+  user?: User;
+  redirectPath?: string;
+  twoFactorRequired?: boolean;
+  challengeToken?: string;
+  expiresInMinutes?: number;
+};
+
+export type TwoFactorStatus = {
+  activo: boolean;
+  configuracionPendiente: boolean;
+  activadoEl: string | null;
+  codigosDisponibles: number;
+};
+
 export const api = {
 
   // User & Auth
-  async login(email: string, password: string): Promise<{ success: boolean; user: User; redirectPath: string }> {
+  /**
+   * Inicia sesion.
+   *
+   * Con verificacion en dos pasos activa la respuesta **no trae usuario**:
+   * trae `twoFactorRequired` y un `challengeToken` que hay que devolver en
+   * `verifyTwoFactor`. Quien consuma esto tiene que mirar esa bandera antes que
+   * `user`, porque hasta el segundo paso no hay sesion ninguna.
+   */
+  async login(email: string, password: string): Promise<LoginResponse> {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,6 +90,84 @@ export const api = {
   async logout(): Promise<{ success: boolean }> {
     const res = await fetch('/api/auth/logout', { method: 'POST' });
     if (!res.ok) throw new Error('Error al cerrar sesión');
+    return res.json();
+  },
+
+  /** Cierra el inicio de sesion con el codigo de la aplicacion o uno de recuperacion. */
+  async verifyTwoFactor(
+    challengeToken: string,
+    code: string,
+  ): Promise<{
+    success: boolean;
+    user: User;
+    redirectPath: string;
+    usedRecoveryCode: boolean;
+    remainingRecoveryCodes: number;
+  }> {
+    const res = await fetch('/api/auth/2fa/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengeToken, code }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo verificar el código');
+    }
+    return res.json();
+  },
+
+  async getTwoFactorStatus(): Promise<TwoFactorStatus> {
+    const res = await fetch('/api/auth/2fa');
+    if (!res.ok) throw new Error('No se pudo consultar el estado de la verificación en dos pasos');
+    return res.json();
+  },
+
+  /** Genera el secreto y devuelve el QR. No activa nada todavia. */
+  async startTwoFactorSetup(): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
+    const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo iniciar la configuración');
+    }
+    return res.json();
+  },
+
+  async activateTwoFactor(code: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
+    const res = await fetch('/api/auth/2fa/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo activar la verificación en dos pasos');
+    }
+    return res.json();
+  },
+
+  async disableTwoFactor(password: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch('/api/auth/2fa', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo desactivar la verificación en dos pasos');
+    }
+    return res.json();
+  },
+
+  async regenerateRecoveryCodes(password: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
+    const res = await fetch('/api/auth/2fa/recovery-codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudieron generar códigos nuevos');
+    }
     return res.json();
   },
 
@@ -501,6 +603,13 @@ export const api = {
   async getAllQuizzes(): Promise<{ success: boolean; quizzes: Record<string, QuizQuestion[]> }> {
     const res = await fetch(`/api/quizzes/all?_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Error al obtener evaluaciones');
+    return res.json();
+  },
+
+  /** Recuento de preguntas por modulo del curso; nunca trae las respuestas. */
+  async getCourseQuizSummary(courseId: string): Promise<{ success: boolean; counts: Record<string, number> }> {
+    const res = await fetch(`/api/courses/${courseId}/quiz-summary?_t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Error al obtener el resumen de exámenes del curso');
     return res.json();
   },
 

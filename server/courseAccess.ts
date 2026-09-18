@@ -218,6 +218,21 @@ export async function userHasVideoAccess(user: AuthenticatedUser | undefined, vi
   return video ? userHasCourseAccess(user, video.module.courseId) : false;
 }
 
+/**
+ * Acceso a un modulo, resuelto por el curso al que pertenece.
+ *
+ * Mismo patron que `userHasVideoAccess`: el modulo no tiene permisos propios,
+ * los hereda de su curso. Existe porque los examenes viven colgados de un
+ * modulo y hasta ahora se servian sin comprobar nada.
+ */
+export async function userHasModuleAccess(user: AuthenticatedUser | undefined, moduleId: string) {
+  const modulo = await prisma.module.findUnique({
+    where: { id: moduleId },
+    select: { courseId: true },
+  });
+  return modulo ? userHasCourseAccess(user, modulo.courseId) : false;
+}
+
 export async function userHasResourceAccess(user: AuthenticatedUser | undefined, resourceId: string) {
   const resource = await prisma.courseResource.findUnique({
     where: { id: resourceId },

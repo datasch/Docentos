@@ -6,7 +6,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { CourseViewer } from './components/CourseViewer';
-import { DriveExplorerModal } from './components/DriveExplorerModal';
 import { PaywallModal } from './components/PaywallModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { MentorDashboard } from './components/MentorDashboard';
@@ -24,7 +23,17 @@ import { siteConfig } from './config/theme';
 import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
 import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
 
-type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'drive' | 'vip';
+/**
+ * Destinos de la barra de navegacion.
+ *
+ * `drive` sale de aqui el 18 sep 2026. Aquel buscador solo devolvia un catalogo
+ * de siete videos de muestra cuyos identificadores no reproducen nada mientras
+ * no haya credenciales de Google Drive; el propio panel lo avisaba en pantalla.
+ * Lo que si funciona —importar una carpeta de Drive, o pegar el enlace al crear
+ * el video— vive en el gestor de cursos. `DriveExplorerModal` se conserva en el
+ * repositorio por si algun dia se configuran esas credenciales.
+ */
+type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
 const TAB_PATHS: Record<ActiveTab, string> = {
   landing: '/',
@@ -32,7 +41,6 @@ const TAB_PATHS: Record<ActiveTab, string> = {
   mentor: '/mentor/dashboard',
   admin: '/admin',
   plugins: '/admin/plugins',
-  drive: '/drive',
   vip: '/vip',
 };
 
@@ -41,7 +49,6 @@ function tabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/admin')) return 'admin';
   if (pathname.startsWith('/mentor')) return 'mentor';
   if (pathname.startsWith('/courses')) return 'courses';
-  if (pathname.startsWith('/drive')) return 'drive';
   if (pathname.startsWith('/vip')) return 'vip';
   return 'landing';
 }
@@ -64,7 +71,7 @@ const releaseChannelLabel =
 function canOpenTab(user: User | null, tab: ActiveTab) {
   if (tab === 'landing') return true;
   if (!user) return false;
-  if (['admin', 'plugins', 'drive'].includes(tab)) {
+  if (['admin', 'plugins'].includes(tab)) {
     return user.role === 'ADMIN';
   }
   if (tab === 'mentor') {
@@ -401,14 +408,6 @@ export default function App() {
           <div className="max-w-7xl mx-auto p-4 sm:p-8">
             <PluginManagerView />
           </div>
-        )}
-
-        {activeTab === 'drive' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-          <DriveExplorerModal
-            userRole={currentUser.role}
-            modules={course?.modules || []}
-            onVideoLinked={loadData}
-          />
         )}
 
         {activeTab === 'vip' && currentUser && course && (

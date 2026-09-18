@@ -50,17 +50,41 @@ test('Exámenes: solo los módulos con preguntas muestran examen', async (t) => 
     assert.equal(html, '', 'Ni cabecera, ni temporizador, ni "Examen de Validación"');
   });
 
-  await t.test('3. Con preguntas, el examen aparece con el título de su módulo', () => {
+  await t.test('3. Con preguntas, el examen se anuncia con el título de su módulo', () => {
     withQuiz('uuid-ingles-1', () => {
       const html = renderToStaticMarkup(
         React.createElement(ModuleQuizCard, { module: moduleOf('uuid-ingles-1', 'Módulo 1') }),
       );
-      assert.match(html, /Examen de Validación: Módulo 1/);
-      assert.match(html, /arquitectura modular/, 'Se usan las preguntas registradas para ese módulo');
+      assert.match(html, /Examen de validación/);
+      assert.match(html, /Módulo 1/, 'La portada nombra el módulo que se va a evaluar');
+      assert.match(html, /Comenzar examen/);
     });
   });
 
-  await t.test('4. Las preguntas de ejemplo no se cuelan en ningún módulo', () => {
+  await t.test('4. La portada no enseña las preguntas ni arranca el reloj', () => {
+    // El examen se montaba bajo el vídeo con el cronómetro ya corriendo: a los
+    // cinco minutos de clase se entregaba solo, en blanco, gastando un intento.
+    withQuiz('uuid-ingles-1', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(ModuleQuizCard, { module: moduleOf('uuid-ingles-1', 'Módulo 1') }),
+      );
+      assert.equal(html.includes('arquitectura modular'), false, 'Los enunciados esperan a «Comenzar»');
+      assert.equal(/\d{2}:\d{2}/.test(html), false, 'Sin cuenta atrás antes de empezar');
+    });
+  });
+
+  await t.test('5. Como escenario, un módulo sin examen no deja la pantalla vacía', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ModuleQuizCard, {
+        module: moduleOf('uuid-sin-examen', 'Módulo 9'),
+        onExit: () => {},
+      }),
+    );
+    assert.match(html, /todavía no tiene examen|Cargando el examen/);
+    assert.match(html, /Volver a la clase/, 'Siempre hay salida de vuelta al vídeo');
+  });
+
+  await t.test('6. Las preguntas de ejemplo no se cuelan en ningún módulo', () => {
     const html = renderToStaticMarkup(
       React.createElement(ModuleQuizCard, { module: moduleOf('otro-uuid', 'Ingles') }),
     );

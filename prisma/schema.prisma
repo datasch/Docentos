@@ -77,6 +77,17 @@ model User {
   feedback            Feedback[]
   sessions            Session[]
   passwordResetTokens PasswordResetToken[]
+  /// Secreto TOTP cifrado con AES-256-GCM (server/crypto.ts). Nulo mientras la
+  /// cuenta no haya empezado a configurar el segundo factor.
+  twoFactorSecret     String?
+  /// Fecha en que el segundo factor quedo confirmado con un codigo valido. Un
+  /// secreto sin esta fecha esta a medio configurar y no se exige al entrar.
+  twoFactorEnabledAt  DateTime?
+  /// Ultimo intervalo de 30 s aceptado. Impide reutilizar un codigo dentro de
+  /// su ventana de vida: sin esto, un codigo interceptado sirve dos veces.
+  twoFactorLastStep   Int?
+  twoFactorCodes      TwoFactorRecoveryCode[]
+  twoFactorChallenges TwoFactorChallenge[]
   auditLogs           AuditLog[]           @relation("AuditActor")
   mentorAssignments   MenteeAssignment[]   @relation("MentorAssignments")
   menteeAssignments   MenteeAssignment[]   @relation("MenteeAssignments")
@@ -115,6 +126,63 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// Codigo de recuperacion del segundo factor.
+///
+/// Se guarda hasheado, igual que un token de sesion: es de un solo uso y no hay
+/// que poder leerlo de vuelta. Quien pierde el movil entra con uno de estos; sin
+/// ellos, la unica salida seria que un administrador tocara la base a mano.
+model TwoFactorRecoveryCode {
+  id        String    @id @default(uuid())
+  codeHash  String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Segundo tramo del inicio de sesion.
+///
+/// Cuando la contrasena es correcta pero la cuenta tiene segundo factor, no se
+/// crea sesion: se crea este reto, de vida corta, y la sesion nace solo cuando
+/// llega un codigo valido. Asi no existe en ningun momento una sesion a medio
+/// autenticar que el middleware pudiera dar por buena.
+model TwoFactorChallenge {
+  id          String    @id @default(uuid())
+  tokenHash   String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int       @default(0)
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Examen de un modulo.
+///
+/// Las preguntas viven como un documento JSON y no como filas sueltas a
+/// proposito: se crean, se editan y se borran **siempre enteras**, nadie
+/// consulta una pregunta por su cuenta, y el orden importa. Partirlas en una
+/// tabla anadiria trabajo de ensamblado sin dar ninguna consulta nueva.
+///
+/// Lo que si aporta la base frente al archivo que habia antes: escrituras
+/// atomicas —dos mentores guardando a la vez ya no se pisan—, el examen
+/// desaparece con su modulo gracias al borrado en cascada, y entra en la copia
+/// de seguridad diaria como el resto del contenido.
+model ModuleQuiz {
+  moduleId      String   @id
+  module        Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questionsJson String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model AuditLog {
@@ -232,6 +300,7 @@ model Module {
   videos      VideoDriveLink[]
   resources   CourseResource[]
   meetings    Meeting[]
+  quiz        ModuleQuiz?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

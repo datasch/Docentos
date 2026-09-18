@@ -17,6 +17,7 @@
 
 import { prisma } from './prisma.js';
 import { logger } from './logger.js';
+import { cifrar } from './crypto.js';
 
 export interface PluginCatalogEntry {
   id: string;
@@ -50,12 +51,18 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
   },
   {
     id: 'interactive-quizzes',
-    name: 'Plugin de Evaluaciones Interactivas',
-    description: 'Añade cuestionarios por módulo y registra intentos de los estudiantes.',
-    version: '1.0.0',
+    name: 'Plugin de Exámenes & Evaluaciones Interactivos',
+    description: 'Gestiona el ciclo de vida de los exámenes con temporizador, evaluación automática y bloqueo secuencial de módulos.',
+    version: '2.1.0',
     category: 'quizzes',
-    icon: 'ClipboardCheck',
-    config: { passingScore: 70, maxAttempts: 3 },
+    icon: 'CheckSquare',
+    config: {
+      passingScore: 80,
+      timeLimitMinutes: 5,
+      maxAttempts: 3,
+      enforceModuleLocking: true,
+      showExplanations: true,
+    },
   },
   {
     id: 'discord-webhooks',
@@ -143,7 +150,7 @@ export async function ensurePluginCatalog(): Promise<number> {
         version: plugin.version,
         category: plugin.category,
         icon: plugin.icon,
-        configJson: JSON.stringify(plugin.config),
+        configJson: cifrar(JSON.stringify(plugin.config)),
       },
     });
     escritos++;

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Gestor de Cursos (`CourseManagerView.tsx`)
  * Academia Giantucchi
  *

@@ -14,6 +14,83 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.10 - 2026-09-18
+
+**Esta version migra el esquema de la base de datos.** Añade el segundo factor
+a `User` con sus dos tablas nuevas, y una tabla para los examenes de cada
+modulo. El contenedor aplica las migraciones al arrancar; no hay que ejecutar
+nada a mano. Se borra: nada.
+
+**Antes de desplegar hay que definir una variable nueva.**
+`DOCENTOS_ENCRYPTION_KEY` pasa a ser **obligatoria en produccion**: sin ella la
+aplicacion se niega a arrancar, a proposito, en vez de cifrar con una clave de
+desarrollo que esta escrita en el propio repositorio. Se genera una sola vez con
+`npm run secrets:init` (o `openssl rand -base64 32`) y se guarda como el resto de
+secretos: **si se pierde, lo que ya este cifrado no se puede recuperar.**
+
+### Added
+
+- **Verificacion en dos pasos, voluntaria.** Cada persona la activa si quiere,
+  desde «Seguridad de la cuenta» —donde ya se cambiaba la contraseña—: sale un
+  codigo QR, se escanea con Google Authenticator o cualquier aplicacion
+  equivalente y se confirma con un codigo de seis cifras. Al activarla se
+  entregan **diez codigos de recuperacion**, que se muestran una unica vez y
+  sirven para entrar si se pierde el telefono. Quien no la active no nota
+  ningun cambio al entrar.
+- **Cifrado en reposo de los datos sensibles.** El secreto del segundo factor y
+  la configuracion de los plugins —donde viven claves de API y enlaces de
+  webhook— se guardan cifrados con AES-256-GCM. Quien lea la base de datos, o
+  una copia de seguridad, ya no los ve en claro. Lo que ya estuviera guardado
+  sin cifrar se sigue leyendo y se cifra la proxima vez que se guarde.
+- **Roles y permisos (RBAC).** Administracion, mentoria y alumnado ven y pueden
+  cosas distintas, y las rutas del servidor lo comprueban, no solo la interfaz.
+- **Examenes por modulo.** Cada modulo puede tener su evaluacion, creada a mano
+  o generada con IA a partir de las clases del propio modulo. Aprobar abre el
+  modulo siguiente; suspender no.
+
+### Changed
+
+- **Los examenes pasan a PostgreSQL.** Vivian en un archivo dentro del
+  contenedor: dos mentores guardando a la vez se pisaban y uno perdia su
+  trabajo sin aviso, las copias de seguridad no los incluian, y al borrar un
+  modulo su examen quedaba huerfano para siempre. Ahora son filas, entran en la
+  copia diaria y desaparecen con su modulo. Si queda el archivo antiguo con
+  examenes validos, se importan solos en el primer arranque.
+- **El examen se abre cuando toca y ocupa el sitio de la clase.** Antes colgaba
+  bajo el reproductor durante todo el modulo. Ahora se abre desde el temario,
+  como un paso mas, sustituye al video mientras se rinde y siempre tiene
+  «Volver a la clase». Antes de empezar se anuncia cuantas preguntas hay, cuanto
+  se necesita para aprobar, cuanto tiempo y cuantos intentos quedan.
+- **Fuera la pestaña «Drive» de la barra superior.** Sin credenciales de Google
+  Drive configuradas solo enseñaba un catalogo de siete videos de muestra cuyos
+  enlaces no reproducen nada. Lo que si funciona —importar una carpeta de Drive,
+  o pegar el enlace al crear el video— sigue en su sitio, dentro de
+  Administracion. De paso, el recorrido del asistente dejaba de funcionar en su
+  ultimo paso: llevaba a esa pestaña y se quedaba clavado sin llegar al
+  formulario de opinion.
+
+### Fixed
+
+- **Un examen no se entrega solo mientras se ve la clase.** El cronometro de
+  cinco minutos arrancaba al cargar la pagina del modulo, no al empezar el
+  examen: a los cinco minutos de video el examen se enviaba en blanco y gastaba
+  un intento de tres, sin que nadie lo hubiera leido. Ahora el reloj empieza al
+  pulsar «Comenzar examen».
+- **Las preguntas y sus respuestas ya no viajan antes de tiempo.** Para saber si
+  un modulo tenia examen, el navegador se descargaba el examen entero del modulo
+  abierto, con la respuesta correcta de cada pregunta dentro. Ahora recibe solo
+  un recuento; las preguntas bajan al empezar el examen, y solo a quien tiene
+  acceso al curso.
+- **La nota para aprobar es una sola.** La tarjeta del examen exigia 80 % y el
+  candado del modulo siguiente 70 %: un alumno con 75 leia «Reprobado» y veia
+  abrirse el modulo siguiente. Ahora ambos leen el mismo valor, el del plugin.
+- **Marcar una clase como vista deja de mentir.** Si el servidor rechazaba
+  guardarlo, la casilla se quedaba marcada igual y el progreso real era otro.
+  Ahora vuelve atras y lo dice.
+- **El catalogo de plugins describe el plugin que existe.** El de examenes se
+  anunciaba con otro nombre, otra version y otra configuracion que la del codigo.
+- **Un curso no puede tener precio negativo.**
+
 ## 0.5.0-beta.9 - 2026-09-17
 
 ### Fixed

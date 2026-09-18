@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Panel de Control para Mentores (`MentorDashboard.tsx`)
  * Academia Giantucchi
  *

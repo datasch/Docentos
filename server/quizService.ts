@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Servicio de Evaluaciones y Quizzes Interactivos (`server/quizService.ts`)
  *
  * Administra la persistencia de cuestionarios por módulo y la generación
@@ -22,72 +22,29 @@ export interface QuizQuestion {
   explanation: string;
 }
 
-const QUIZZES_DATA_DIR = path.resolve(process.cwd(), 'data');
-const QUIZZES_FILE_PATH = path.join(QUIZZES_DATA_DIR, 'quizzes.json');
-
-// Memoria caché para acceso ultrarrápido sincronizado
-let quizzesCache: Record<string, QuizQuestion[]> | null = null;
+/**
+ * Ruta del almacen antiguo.
+ *
+ * Los examenes vivian en este archivo dentro del contenedor. Se conserva **solo
+ * para importarlo una vez** al arrancar: ver `importarExamenesHeredados`. No se
+ * escribe nunca mas.
+ */
+const ARCHIVO_HEREDADO = path.join(path.resolve(process.cwd(), 'data'), 'quizzes.json');
 
 /**
- * Asegura la existencia del directorio y archivo de datos.
+ * Deja una lista de preguntas en su forma canonica.
+ *
+ * Es la misma limpieza que hacia la version de archivo, intacta: como maximo
+ * cuatro opciones, `correctIndex` dentro de rango —si no, cae a 0— y fuera las
+ * preguntas sin enunciado o con menos de dos opciones.
  */
-function ensureStorage(): void {
-  if (!fs.existsSync(QUIZZES_DATA_DIR)) {
-    fs.mkdirSync(QUIZZES_DATA_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(QUIZZES_FILE_PATH)) {
-    fs.writeFileSync(QUIZZES_FILE_PATH, JSON.stringify({}, null, 2), 'utf-8');
-  }
-}
-
-/**
- * Lee todos los cuestionarios persistidos.
- */
-export function getAllStoredQuizzes(): Record<string, QuizQuestion[]> {
-  try {
-    ensureStorage();
-    const raw = fs.readFileSync(QUIZZES_FILE_PATH, 'utf-8');
-    quizzesCache = JSON.parse(raw || '{}');
-    return quizzesCache || {};
-  } catch (error) {
-    logger.error('Error al leer quizzes.json', { error: String(error) });
-    return quizzesCache || {};
-  }
-}
-
-/**
- * Persiste los cuestionarios a disco de forma atómica.
- */
-function persistQuizzes(data: Record<string, QuizQuestion[]>): void {
-  ensureStorage();
-  quizzesCache = data;
-  const tempPath = `${QUIZZES_FILE_PATH}.tmp`;
-  fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
-  fs.renameSync(tempPath, QUIZZES_FILE_PATH);
-}
-
-/**
- * Obtiene las preguntas de examen asociadas a un módulo.
- */
-export function getQuizByModuleId(moduleId: string): QuizQuestion[] {
-  const all = getAllStoredQuizzes();
-  return all[moduleId] || [];
-}
-
-/**
- * Guarda o actualiza las preguntas de un módulo.
- */
-export function saveQuizForModule(moduleId: string, questions: QuizQuestion[]): QuizQuestion[] {
-  const all = { ...getAllStoredQuizzes() };
-
-  // Limpieza y validación de las preguntas
-  const cleaned: QuizQuestion[] = (questions || [])
+function limpiarPreguntas(questions: QuizQuestion[]): QuizQuestion[] {
+  return (questions || [])
     .map((q, idx) => {
       const rawOptions = (Array.isArray(q.options)
         ? q.options.map((o) => String(o).trim()).filter(Boolean)
-        : []).slice(0, 4); // maximo 4 opciones
-      
-      // Asegurar que el correctIndex esté dentro del rango de opciones
+        : []).slice(0, 4);
+
       const validIndex =
         typeof q.correctIndex === 'number' &&
         q.correctIndex >= 0 &&
@@ -104,28 +61,139 @@ export function saveQuizForModule(moduleId: string, questions: QuizQuestion[]): 
       };
     })
     .filter((q) => q.text.length > 0 && q.options.length >= 2);
+}
 
-  if (cleaned.length === 0) {
-    delete all[moduleId];
-  } else {
-    all[moduleId] = cleaned;
+function parsearPreguntas(questionsJson: string, moduleId: string): QuizQuestion[] {
+  try {
+    const parsed = JSON.parse(questionsJson);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    logger.error('Examen ilegible en la base de datos', { moduleId, error: String(error) });
+    return [];
   }
-
-  persistQuizzes(all);
-  return cleaned;
 }
 
 /**
- * Elimina las preguntas de un módulo.
+ * Todos los examenes, indexados por modulo.
+ *
+ * Mantiene la forma que ya consumian el panel del mentor y el gestor de cursos:
+ * un objeto `{ [moduleId]: preguntas[] }`.
  */
-export function deleteQuizForModule(moduleId: string): boolean {
-  const all = { ...getAllStoredQuizzes() };
-  if (all[moduleId]) {
-    delete all[moduleId];
-    persistQuizzes(all);
-    return true;
+export async function getAllStoredQuizzes(): Promise<Record<string, QuizQuestion[]>> {
+  const filas = await prisma.moduleQuiz.findMany();
+  const salida: Record<string, QuizQuestion[]> = {};
+  for (const fila of filas) {
+    salida[fila.moduleId] = parsearPreguntas(fila.questionsJson, fila.moduleId);
   }
-  return false;
+  return salida;
+}
+
+export async function getQuizByModuleId(moduleId: string): Promise<QuizQuestion[]> {
+  const fila = await prisma.moduleQuiz.findUnique({ where: { moduleId } });
+  return fila ? parsearPreguntas(fila.questionsJson, moduleId) : [];
+}
+
+/**
+ * Guarda o reemplaza el examen de un modulo.
+ *
+ * Una sola escritura atomica sobre una fila. La version de archivo leia el JSON
+ * entero, lo modificaba y lo reescribia: dos mentores guardando a la vez se
+ * pisaban y uno perdia su trabajo sin enterarse.
+ *
+ * Guardar una lista vacia equivale a borrar el examen, igual que antes.
+ */
+export async function saveQuizForModule(moduleId: string, questions: QuizQuestion[]): Promise<QuizQuestion[]> {
+  const cleaned = limpiarPreguntas(questions);
+
+  if (cleaned.length === 0) {
+    await deleteQuizForModule(moduleId);
+    return cleaned;
+  }
+
+  const questionsJson = JSON.stringify(cleaned);
+  await prisma.moduleQuiz.upsert({
+    where: { moduleId },
+    update: { questionsJson },
+    create: { moduleId, questionsJson },
+  });
+  return cleaned;
+}
+
+export async function deleteQuizForModule(moduleId: string): Promise<boolean> {
+  const borradas = await prisma.moduleQuiz.deleteMany({ where: { moduleId } });
+  return borradas.count > 0;
+}
+
+/**
+ * Cuantos modulos de un curso tienen examen, y de que tamaño.
+ *
+ * Devuelve **solo el recuento**: ni enunciados, ni opciones, ni la respuesta
+ * correcta. Es lo unico que necesitan el temario —para pintar la fila «Examen
+ * del Modulo»— y el candado de modulos. Antes esa misma pregunta se respondia
+ * descargando el examen entero del modulo abierto, asi que las respuestas
+ * viajaban al navegador del alumno sin que nadie hubiera empezado a rendirlo.
+ */
+export async function getQuizCountsByCourse(courseId: string): Promise<Record<string, number>> {
+  const filas = await prisma.moduleQuiz.findMany({
+    where: { module: { courseId } },
+    select: { moduleId: true, questionsJson: true },
+  });
+
+  const salida: Record<string, number> = {};
+  for (const fila of filas) {
+    const total = parsearPreguntas(fila.questionsJson, fila.moduleId).length;
+    if (total > 0) salida[fila.moduleId] = total;
+  }
+  return salida;
+}
+
+/**
+ * Trae una sola vez los examenes que quedaron en el archivo antiguo.
+ *
+ * Se ejecuta al arrancar. Solo importa los modulos que existen en la base y que
+ * todavia no tienen examen, asi que repetirlo no pisa nada. Un examen cuyo
+ * modulo ya no existe se descarta: la clave foranea no lo admitiria, y ese
+ * examen ya era inalcanzable.
+ */
+export async function importarExamenesHeredados(): Promise<number> {
+  if (!fs.existsSync(ARCHIVO_HEREDADO)) return 0;
+
+  let heredados: Record<string, QuizQuestion[]>;
+  try {
+    heredados = JSON.parse(fs.readFileSync(ARCHIVO_HEREDADO, 'utf-8') || '{}');
+  } catch (error) {
+    logger.error('No se pudo leer el archivo antiguo de examenes', { error: String(error) });
+    return 0;
+  }
+
+  const idsDeArchivo = Object.keys(heredados);
+  if (idsDeArchivo.length === 0) return 0;
+
+  const modulosExistentes = new Set(
+    (await prisma.module.findMany({ where: { id: { in: idsDeArchivo } }, select: { id: true } })).map((m) => m.id),
+  );
+  const yaImportados = new Set(
+    (await prisma.moduleQuiz.findMany({ where: { moduleId: { in: idsDeArchivo } }, select: { moduleId: true } })).map(
+      (q) => q.moduleId,
+    ),
+  );
+
+  let importados = 0;
+  for (const moduleId of idsDeArchivo) {
+    if (!modulosExistentes.has(moduleId) || yaImportados.has(moduleId)) continue;
+    const cleaned = limpiarPreguntas(heredados[moduleId]);
+    if (cleaned.length === 0) continue;
+    await prisma.moduleQuiz.create({ data: { moduleId, questionsJson: JSON.stringify(cleaned) } });
+    importados++;
+  }
+
+  if (importados > 0) {
+    logger.info('Examenes traidos del archivo antiguo a la base de datos', {
+      importados,
+      archivo: ARCHIVO_HEREDADO,
+    });
+  }
+  return importados;
 }
 
 /**

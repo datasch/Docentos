@@ -211,13 +211,29 @@ class PluginManagerEngine {
   }
 
   /**
+   * Obtiene el umbral de aprobación vigente según la configuración del plugin
+   */
+  public getQuizPassingScore(): number {
+    const plugin = this.getPlugin('interactive-quizzes');
+    return plugin?.config?.passingScore || 80;
+  }
+
+  /**
+   * Obtiene el número máximo de intentos vigente según la configuración del plugin
+   */
+  public getQuizMaxAttempts(): number {
+    const plugin = this.getPlugin('interactive-quizzes');
+    return plugin?.config?.maxAttempts || 3;
+  }
+
+  /**
    * Verifica si un módulo está desbloqueado para el usuario según la configuración del plugin
    */
   public isModuleUnlocked(modules: Module[], moduleIndex: number, userId: string): boolean {
     const plugin = this.getPlugin('interactive-quizzes');
     const enabled = plugin ? plugin.enabled : false;
     const enforceLocking = plugin?.config?.enforceModuleLocking !== false;
-    const passingThreshold = plugin?.config?.passingScore || 80;
+    const passingThreshold = this.getQuizPassingScore();
 
     if (!enforceLocking) return true;
     return quizzesPluginEngine.isModuleUnlocked(modules, moduleIndex, userId, passingThreshold, enabled);

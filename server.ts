@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DocentOS API server.
  *
  * PostgreSQL is the source of truth for application data and authenticated
@@ -33,6 +33,16 @@ import {
   setSessionCookie,
   verifyPassword,
 } from './server/authService.js';
+import { cifrar, descifrarSiHaceFalta } from './server/crypto.js';
+import {
+  activar as activarDosFactores,
+  crearReto as crearRetoDosFactores,
+  desactivar as desactivarDosFactores,
+  estadoDeUsuario as estadoDosFactores,
+  iniciarConfiguracion as iniciarDosFactores,
+  regenerarCodigos as regenerarCodigosDosFactores,
+  resolverReto as resolverRetoDosFactores,
+} from './server/twoFactorService.js';
 import {
   searchDriveVideos,
   getDriveFileInfo,
@@ -65,6 +75,7 @@ import {
   getCourseAccessDecision,
   getCourseAccessDecisions,
   userHasCourseAccess,
+  userHasModuleAccess,
   userHasVideoAccess,
   userHasResourceAccess,
   serializeCourseForViewer,
@@ -86,6 +97,8 @@ import {
   deleteQuizForModule,
   generateModuleQuizWithAi,
   getAllStoredQuizzes,
+  getQuizCountsByCourse,
+  importarExamenesHeredados,
 } from './server/quizService.js';
 import {
   DOCENTOS_DEFAULT_EDITION,
@@ -145,8 +158,15 @@ function parseJsonArray(value: string): any[] {
 function parsePlugin(plugin: any, isAdmin = false) {
   let config: Record<string, unknown> = {};
   try {
-    config = JSON.parse(plugin.configJson || '{}');
-  } catch {
+    // La configuracion viaja cifrada en la base desde que existe
+    // DOCENTOS_ENCRYPTION_KEY. Las filas anteriores siguen en claro y se leen
+    // igual: `descifrarSiHaceFalta` mira el prefijo del sobre. Se reescriben
+    // cifradas en cuanto alguien las guarda.
+    config = JSON.parse(descifrarSiHaceFalta(plugin.configJson || '{}'));
+  } catch (error) {
+    // Un fallo aqui casi siempre significa clave maestra equivocada, y devolver
+    // {} en silencio haria parecer que la integracion nunca se configuro.
+    console.error(`DocentOS: no se pudo leer la configuracion del plugin ${plugin.id}:`, error);
     config = {};
   }
 
@@ -366,6 +386,35 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
 
+/**
+ * El campo admite un codigo de la aplicación (seis dígitos) y uno de
+ * recuperación (diez caracteres con o sin guion). Se valida por longitud y no
+ * por forma exacta: el servicio decide cuál es cuál, y estrechar aquí sería
+ * decirle a quien ataca qué tipo de código acaba de fallar.
+ */
+const twoFactorCodeSchema = z.object({
+  code: z.string().trim().min(6, 'El código es obligatorio').max(32),
+});
+
+const twoFactorVerifySchema = twoFactorCodeSchema.extend({
+  challengeToken: z.string().min(32, 'Sesión de verificación inválida').max(256),
+});
+
+/**
+ * La configuracion de un plugin llegaba sin validar: `req.body.pluginId` iba
+ * directo a Prisma y `req.body.config` se fusionaba entero con lo guardado. Un
+ * `pluginId` que no fuera texto rompia la consulta, y un `config` que no fuera
+ * objeto ensuciaba la fila.
+ */
+const pluginConfigSchema = z.object({
+  pluginId: z.string().trim().min(1, 'El identificador del plugin es obligatorio').max(100),
+  config: z.record(z.string(), z.unknown()).optional(),
+});
+
+const twoFactorPasswordSchema = z.object({
+  password: z.string().min(1, 'La contraseña es obligatoria').max(128),
+});
+
 const setupSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
@@ -510,6 +559,9 @@ const driveImportRateLimiter = rateLimit({
 
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/register', authRateLimiter);
+// El segundo tramo del login se limita como el primero: sin esto, la contraseña
+// quedaría protegida contra fuerza bruta y el código de seis dígitos no.
+app.use('/api/auth/2fa/verify', authRateLimiter);
 app.use('/api/auth/password/forgot', passwordResetRateLimiter);
 app.use('/api/auth/password/reset', passwordResetRateLimiter);
 app.use('/api/admin/drive/', driveImportRateLimiter);
@@ -1886,7 +1938,10 @@ app.put(
     if (!existing) return res.status(404).json({ error: 'Curso no encontrado' });
     const course = await prisma.course.update({
       where: { id: existing.id },
-      data: { price: Number(req.body.price) || 0 },
+      // Se acota igual que en los otros tres sitios que escriben un precio. Sin
+      // el tope inferior, este endpoint —y solo este— aceptaba precios
+      // negativos, que el muro de pago lee como "gratis".
+      data: { price: Math.max(0, Number(req.body.price) || 0) },
     });
     res.json({ success: true, course });
   }),
@@ -1916,6 +1971,29 @@ app.post(
     }
 
     if (!user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
+
+    /**
+     * Con segundo factor activo la contraseña correcta **no abre sesión**.
+     * Devuelve un reto de vida corta y ahí se detiene: mientras no llegue un
+     * código válido no existe ninguna sesión, ni completa ni a medias.
+     */
+    if (user.twoFactorEnabledAt) {
+      await revokeRequestSession(req);
+      const { token: challengeToken } = await crearRetoDosFactores(user.id, req);
+      await recordAuditEvent(req, {
+        actorUserId: user.id,
+        action: 'auth.two_factor_challenged',
+        targetType: 'User',
+        targetId: user.id,
+      });
+      return res.json({
+        success: true,
+        twoFactorRequired: true,
+        challengeToken,
+        expiresInMinutes: config.TWO_FACTOR_CHALLENGE_TTL_MINUTES,
+      });
+    }
+
     await revokeRequestSession(req);
     const { token } = await createUserSession(user.id, req);
     setSessionCookie(res, token);
@@ -1930,6 +2008,206 @@ app.post(
       success: true,
       user: toRuntimeUser(user),
       redirectPath: redirectPathForRole(user.role),
+    });
+  }),
+);
+
+/**
+ * Segundo tramo del inicio de sesión.
+ *
+ * Es el único sitio donde nace una sesión para una cuenta con segundo factor.
+ * Acepta indistintamente el código de la aplicación y uno de recuperación: quien
+ * ha perdido el móvil necesita entrar igual, y distinguirlos en la respuesta
+ * solo ayudaría a quien prueba códigos.
+ */
+app.post(
+  '/api/auth/2fa/verify',
+  asyncRoute(async (req, res) => {
+    const parsed = twoFactorVerifySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const resultado = await resolverRetoDosFactores(parsed.data.challengeToken, parsed.data.code, req);
+    if (resultado.estado !== 'ok') {
+      const mensajes = {
+        'reto-invalido': 'La verificación caducó o ya se usó. Vuelve a iniciar sesión.',
+        'codigo-invalido': 'El código no es válido.',
+        'sin-intentos': 'Demasiados códigos incorrectos. Vuelve a iniciar sesión.',
+      } as const;
+      await recordAuditEvent(req, {
+        actorUserId: null,
+        action: 'auth.two_factor_failed',
+        targetType: 'TwoFactorChallenge',
+        targetId: null,
+        metadata: { motivo: resultado.estado },
+      });
+      return res.status(resultado.estado === 'codigo-invalido' ? 401 : 410).json({ error: mensajes[resultado.estado] });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: resultado.userId } });
+    if (!user || !user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
+
+    const { token } = await createUserSession(user.id, req);
+    setSessionCookie(res, token);
+    await recordAuditEvent(req, {
+      actorUserId: user.id,
+      action: 'auth.two_factor_succeeded',
+      targetType: 'User',
+      targetId: user.id,
+      metadata: { via: resultado.via },
+    });
+
+    const codigosRestantes = await prisma.twoFactorRecoveryCode.count({
+      where: { userId: user.id, usedAt: null },
+    });
+
+    res.json({
+      success: true,
+      user: toRuntimeUser(user),
+      redirectPath: redirectPathForRole(user.role),
+      // Quien entra con un código de recuperación se queda con uno menos y no
+      // se entera si nadie se lo dice. Avisar aquí es la única ocasión.
+      usedRecoveryCode: resultado.via === 'recuperacion',
+      remainingRecoveryCodes: codigosRestantes,
+    });
+  }),
+);
+
+app.get(
+  '/api/auth/2fa',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    res.json({ success: true, ...(await estadoDosFactores(req.user!.id)) });
+  }),
+);
+
+/** Genera el secreto y el QR. No activa nada: eso lo hace `/activate` con un código válido. */
+app.post(
+  '/api/auth/2fa/setup',
+  requireAuthenticated,
+  requireSameOrigin,
+  asyncRoute(async (req, res) => {
+    try {
+      const { uri, qr, secreto } = await iniciarDosFactores(req.user!.id);
+      await recordAuditEvent(req, {
+        actorUserId: req.user!.id,
+        action: 'auth.two_factor_setup_started',
+        targetType: 'User',
+        targetId: req.user!.id,
+      });
+      res.json({ success: true, otpauthUri: uri, qrDataUrl: qr, secret: secreto });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'No se pudo iniciar la configuración.' });
+    }
+  }),
+);
+
+app.post(
+  '/api/auth/2fa/activate',
+  requireAuthenticated,
+  requireSameOrigin,
+  asyncRoute(async (req, res) => {
+    const parsed = twoFactorCodeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    try {
+      const resultado = await activarDosFactores(req.user!.id, parsed.data.code);
+      if (!resultado) {
+        return res.status(401).json({ error: 'El código no coincide. Comprueba la hora del teléfono e inténtalo otra vez.' });
+      }
+      await recordAuditEvent(req, {
+        actorUserId: req.user!.id,
+        action: 'auth.two_factor_enabled',
+        targetType: 'User',
+        targetId: req.user!.id,
+      });
+      res.json({
+        success: true,
+        recoveryCodes: resultado.codigos,
+        message: 'Verificación en dos pasos activada. Guarda los códigos de recuperación: no se vuelven a mostrar.',
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : 'No se pudo activar.' });
+    }
+  }),
+);
+
+/**
+ * Retirar el segundo factor exige la contraseña.
+ *
+ * Sin ella, una sesión robada bastaría para desactivar justo la defensa que
+ * existe por si roban la contraseña.
+ */
+app.delete(
+  '/api/auth/2fa',
+  requireAuthenticated,
+  requireSameOrigin,
+  asyncRoute(async (req, res) => {
+    const parsed = twoFactorPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user?.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      return res.status(401).json({ error: 'La contraseña es incorrecta.' });
+    }
+
+    await desactivarDosFactores(user.id);
+    await recordAuditEvent(req, {
+      actorUserId: user.id,
+      action: 'auth.two_factor_disabled',
+      targetType: 'User',
+      targetId: user.id,
+    });
+    res.json({ success: true, message: 'Verificación en dos pasos desactivada.' });
+  }),
+);
+
+app.post(
+  '/api/auth/2fa/recovery-codes',
+  requireAuthenticated,
+  requireSameOrigin,
+  asyncRoute(async (req, res) => {
+    const parsed = twoFactorPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user?.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      return res.status(401).json({ error: 'La contraseña es incorrecta.' });
+    }
+    if (!user.twoFactorEnabledAt) {
+      return res.status(400).json({ error: 'La verificación en dos pasos no está activa en esta cuenta.' });
+    }
+
+    const codigos = await regenerarCodigosDosFactores(user.id);
+    await recordAuditEvent(req, {
+      actorUserId: user.id,
+      action: 'auth.two_factor_recovery_codes_regenerated',
+      targetType: 'User',
+      targetId: user.id,
+    });
+    res.json({
+      success: true,
+      recoveryCodes: codigos,
+      message: 'Códigos nuevos generados. Los anteriores dejaron de servir.',
     });
   }),
 );
@@ -2173,14 +2451,23 @@ app.post(
   '/api/plugins/config',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
-    const plugin = await prisma.plugin.findUnique({ where: { id: req.body.pluginId } });
+    const parsed = pluginConfigSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+    const plugin = await prisma.plugin.findUnique({ where: { id: parsed.data.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
     // La fusion parte SIEMPRE de la configuracion completa: recortarla aqui
     // borraria de la base las credenciales que quien edita no puede ver.
-    const mergedConfig = { ...parsePlugin(plugin, true).config, ...(req.body.config || {}) };
+    const mergedConfig = { ...parsePlugin(plugin, true).config, ...(parsed.data.config || {}) };
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
-      data: { configJson: JSON.stringify(mergedConfig) },
+      // Se guarda cifrada: aqui es donde entran las URL de webhook y las
+      // claves de API que `server/pluginConfig.ts` ya oculta al leerlas.
+      data: { configJson: cifrar(JSON.stringify(mergedConfig)) },
     });
     // Lo que se devuelve, en cambio, se recorta segun quien pregunta.
     const isAdmin = req.user?.role === 'ADMIN';
@@ -3229,18 +3516,42 @@ app.delete(
 );
 
   // --- Quizzes & Module Assessments (Plugin interactive-quizzes) ---
+  // El listado completo solo lo consumen el panel del mentor y el gestor de
+  // cursos. Sin guardia devolvia todos los examenes del sistema —con la
+  // respuesta correcta de cada pregunta— a cualquiera que supiera la ruta.
   app.get(
     '/api/quizzes/all',
+    requireRole(['ADMIN', 'MENTOR']),
     asyncRoute(async (_req, res) => {
-      const quizzes = getAllStoredQuizzes();
+      const quizzes = await getAllStoredQuizzes();
       res.json({ success: true, quizzes });
+    }),
+  );
+
+  // Solo el recuento de preguntas por modulo. Es lo que necesita el temario
+  // para anunciar el examen y el candado para saber que modulos evaluan, sin
+  // que las respuestas correctas bajen al navegador antes de tiempo.
+  app.get(
+    '/api/courses/:courseId/quiz-summary',
+    requireAuthenticated,
+    asyncRoute(async (req, res) => {
+      const counts = await getQuizCountsByCourse(req.params.courseId);
+      res.json({ success: true, counts });
     }),
   );
 
   app.get(
     '/api/modules/:moduleId/quiz',
+    requireAuthenticated,
     asyncRoute(async (req, res) => {
-      const questions = getQuizByModuleId(req.params.moduleId);
+      // El modulo hereda los permisos de su curso, igual que los videos y los
+      // recursos. Administracion y mentoria entran siempre, porque son quienes
+      // editan el examen desde el gestor.
+      const esPersonal = req.user?.role === 'ADMIN' || req.user?.role === 'MENTOR';
+      if (!esPersonal && !(await userHasModuleAccess(req.user, req.params.moduleId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
+      const questions = await getQuizByModuleId(req.params.moduleId);
       res.json({ success: true, questions });
     }),
   );
@@ -3253,7 +3564,7 @@ app.delete(
       if (!Array.isArray(questions)) {
         return res.status(400).json({ error: 'Formato de preguntas inválido. Se espera un arreglo.' });
       }
-      const saved = saveQuizForModule(req.params.moduleId, questions);
+      const saved = await saveQuizForModule(req.params.moduleId, questions);
       res.json({ success: true, questions: saved, message: 'Evaluación guardada exitosamente.' });
     }),
   );
@@ -3277,7 +3588,7 @@ app.delete(
     '/api/modules/:moduleId/quiz',
     requireRole(['ADMIN', 'MENTOR']),
     asyncRoute(async (req, res) => {
-      deleteQuizForModule(req.params.moduleId);
+      await deleteQuizForModule(req.params.moduleId);
       res.json({ success: true, message: 'Evaluación eliminada del módulo.' });
     }),
   );
@@ -3867,6 +4178,17 @@ async function startServer() {
     console.log(`🔌 Catalogo de plugins verificado (${total})`);
   } catch (error) {
     logger.error('No se pudo asegurar el catalogo de plugins', { error: String(error) });
+  }
+
+  // Los examenes vivian en `data/quizzes.json`, dentro del contenedor y fuera de
+  // la copia de seguridad. Ahora viven en PostgreSQL; esto trae una sola vez lo
+  // que quedara en el archivo. Es idempotente: solo importa modulos que existen
+  // y que aun no tienen examen.
+  try {
+    const importados = await importarExamenesHeredados();
+    if (importados > 0) console.log(`📝 Examenes traidos del archivo antiguo a la base (${importados})`);
+  } catch (error) {
+    logger.error('No se pudieron importar los examenes del archivo antiguo', { error: String(error) });
   }
 
   const httpServer = app.listen(PORT, '0.0.0.0', () => {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, Lock, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { TwoFactorPanel } from './TwoFactorPanel';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -66,7 +67,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   return createPortal(
     <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4" onMouseDown={onClose}>
       <div
-        className="relative w-full max-w-md rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -75,7 +76,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <button type="button" onClick={onClose} className="absolute right-4 top-4 p-2 text-slate-400 hover:text-white" aria-label="Cerrar">
           <X className="h-4 w-4" />
         </button>
-        <h2 id="change-password-title" className="text-xl font-extrabold text-white">Cambiar Contraseña</h2>
+        <h2 id="change-password-title" className="text-xl font-extrabold text-white">Seguridad de la cuenta</h2>
+        <p className="mt-1 text-xs text-ink-muted">Contraseña y verificación en dos pasos.</p>
+
+        <h3 className="mt-5 flex items-center gap-2 text-sm font-bold text-ink">
+          <Lock aria-hidden className="h-4 w-4" /> Contraseña
+        </h3>
         <p className="mt-1 text-xs text-slate-400">Al guardar se cerrarán todas las sesiones por seguridad.</p>
 
         {error && (
@@ -110,6 +116,10 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             {loading ? 'Guardando...' : 'Cambiar Contraseña'}
           </button>
         </form>
+
+        <hr className="my-6 border-line" />
+
+        <TwoFactorPanel />
       </div>
     </div>,
     document.body,

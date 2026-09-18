@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Regresiones de seguridad y rendimiento detectadas sobre v0.4.0-beta.1.
  *
  * Cada bloque fija una vulnerabilidad reproducida en la aplicacion en ejecucion:
@@ -30,10 +30,11 @@ import {
   getQuizByModuleId,
   deleteQuizForModule,
   getAllStoredQuizzes,
+  getQuizCountsByCourse,
   shuffleQuestionOptions,
   type QuizQuestion,
 } from '../server/quizService.js';
-import { QuizzesPluginEngine } from '../src/plugins/QuizzesPlugin.js';
+import { QuizzesPluginEngine, quizzesPlugin } from '../src/plugins/QuizzesPlugin.js';
 
 const TEST_COURSE_ID = 'course-giantucchi-mastery';
 const TEST_USER_ID = 'user-public-01';
@@ -142,6 +143,16 @@ test('Plugins: el catalogo es una sola lista y esta completo', async (t) => {
         }
       }
     }
+  });
+
+  await t.test('4. El umbral de aprobación de exámenes coincide entre el catálogo y el plugin', () => {
+    const catalogQuizzes = PLUGIN_CATALOG.find((p) => p.id === 'interactive-quizzes');
+    assert.ok(catalogQuizzes, 'El catálogo debe contener el plugin interactive-quizzes');
+    assert.equal(
+      catalogQuizzes.config.passingScore,
+      quizzesPlugin.config.passingScore,
+      'El passingScore del catálogo debe coincidir con el de quizzesPlugin',
+    );
   });
 });
 
@@ -342,7 +353,7 @@ test('Videos: el enlace de Google Drive se normaliza antes de guardarse', async 
 });
 
 test('Seguridad Quizzes: inputs maliciosos y control de acceso', async (t) => {
-  await t.test('1. Un texto de pregunta con HTML no se evalua como markup', () => {
+  await t.test('1. Un texto de pregunta con HTML no se evalua como markup', async () => {
     // Si el texto se renderiza sin escape podria ser un vector XSS
     const q: QuizQuestion = {
       id: 'xss_q',
@@ -351,15 +362,29 @@ test('Seguridad Quizzes: inputs maliciosos y control de acceso', async (t) => {
       correctIndex: 1,
       explanation: '<b>Negrita</b>',
     };
-    const saved = saveQuizForModule('xss_mod', [q]);
+    // El examen cuelga de un modulo real: desde que vive en PostgreSQL,
+    // `ModuleQuiz.moduleId` es clave foranea contra `Module`.
+    const curso = await prisma.course.create({
+      data: { title: 'Curso XSS de prueba', description: 'temporal', price: 0, coverImage: '' },
+    });
+    const modulo = await prisma.module.create({
+      data: { title: 'Modulo XSS', order: 1, courseId: curso.id },
+    });
+
+    const saved = await saveQuizForModule(modulo.id, [q]);
     // El servicio NO debe alterar el texto (eso es responsabilidad del renderer)
     // pero si debe guardar el registro correctamente sin lanzar excepciones
     assert.equal(saved.length, 1);
     assert.ok(saved[0].text.includes('<script>'), 'El texto se almacena sin ejecutarse');
-    deleteQuizForModule('xss_mod');
+    await prisma.course.delete({ where: { id: curso.id } });
   });
 
-  await t.test('2. Un moduleId con path traversal no puede afectar otros modulos', () => {
+  await t.test('2. Un moduleId con path traversal no llega a ninguna parte', async () => {
+    // Cuando los examenes vivian en un archivo, esta prueba comprobaba que un
+    // identificador con `../` se trataba como clave de un mapa y no como ruta.
+    // Desde que viven en PostgreSQL la garantia es mas fuerte y mas simple: el
+    // identificador tiene que ser un modulo que exista, y `../../etc/passwd`
+    // no lo es. La base lo rechaza antes de escribir nada.
     const maliciousId = '../../etc/passwd';
     const q: QuizQuestion = {
       id: 'path_q',
@@ -368,13 +393,9 @@ test('Seguridad Quizzes: inputs maliciosos y control de acceso', async (t) => {
       correctIndex: 0,
       explanation: 'Test de path traversal.',
     };
-    // Debe guardarse sin error y poder recuperarse por su clave exacta
-    saveQuizForModule(maliciousId, [q]);
-    const retrieved = getQuizByModuleId(maliciousId);
-    assert.equal(retrieved.length, 1, 'El modulo con ID malicioso se trata como clave de mapa, no como ruta');
-    // Un moduleId normal no debe verse afectado
-    assert.deepEqual(getQuizByModuleId('modulo-legitimo'), [], 'Modulos legitimos no contaminados');
-    deleteQuizForModule(maliciousId);
+    await assert.rejects(() => saveQuizForModule(maliciousId, [q]), 'La clave foránea rechaza el identificador');
+    assert.deepEqual(await getQuizByModuleId(maliciousId), [], 'No quedó nada guardado');
+    assert.deepEqual(await getQuizByModuleId('modulo-legitimo'), [], 'Modulos legitimos no contaminados');
   });
 
   await t.test('3. correctIndex fuera de rango no hace que la evaluacion pase por casualidad', () => {
@@ -404,11 +425,54 @@ test('Seguridad Quizzes: inputs maliciosos y control de acceso', async (t) => {
     assert.equal(engine.isModuleUnlocked(modules, 1, 'user-sec'), true, 'Doble intento aprobado abre el siguiente');
   });
 
-  await t.test('5. Un mentor no puede ver examenes de otros mentores via getAllStoredQuizzes sin restriccion de rol', () => {
+  await t.test('5. El resumen del curso da recuentos, nunca respuestas', async () => {
+    // El temario del alumno solo necesita saber que modulos evaluan. Antes lo
+    // averiguaba descargando el examen entero del modulo abierto, asi que el
+    // `correctIndex` de cada pregunta estaba en su navegador desde que entraba
+    // a la clase, sin haber empezado a rendir nada.
+    const curso = await prisma.course.create({
+      data: { title: 'Curso resumen de prueba', description: 'temporal', price: 0, coverImage: '' },
+    });
+    const conExamen = await prisma.module.create({
+      data: { title: 'Modulo con examen', order: 1, courseId: curso.id },
+    });
+    const sinExamen = await prisma.module.create({
+      data: { title: 'Modulo sin examen', order: 2, courseId: curso.id },
+    });
+
+    await saveQuizForModule(conExamen.id, [
+      {
+        id: 'r1',
+        text: '¿Cuanto es dos mas dos?',
+        options: ['3', '4'],
+        correctIndex: 1,
+        explanation: 'Aritmetica.',
+      },
+      {
+        id: 'r2',
+        text: '¿De que color es el cielo?',
+        options: ['Azul', 'Verde'],
+        correctIndex: 0,
+        explanation: 'Observacion.',
+      },
+    ]);
+
+    const resumen = await getQuizCountsByCourse(curso.id);
+    assert.deepEqual(resumen, { [conExamen.id]: 2 }, 'Solo el modulo que evalua, y solo su recuento');
+    assert.equal(sinExamen.id in resumen, false, 'Un modulo sin examen no aparece');
+
+    const serializado = JSON.stringify(resumen);
+    assert.equal(serializado.includes('correctIndex'), false, 'No viaja la respuesta correcta');
+    assert.equal(serializado.includes('cielo'), false, 'No viaja ningun enunciado');
+
+    await prisma.course.delete({ where: { id: curso.id } });
+  });
+
+  await t.test('6. Un mentor no puede ver examenes de otros mentores via getAllStoredQuizzes sin restriccion de rol', async () => {
     // getAllStoredQuizzes es una funcion del backend; esta prueba verifica que
     // el catalogo global existe y es un objeto plano (la restriccion de rol es
     // responsabilidad del endpoint HTTP, no del servicio en si)
-    const all = getAllStoredQuizzes();
+    const all = await getAllStoredQuizzes();
     assert.equal(typeof all, 'object');
     assert.ok(!Array.isArray(all), 'Debe ser un mapa, no un array plano');
   });

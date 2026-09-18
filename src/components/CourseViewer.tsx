@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Reproductor de curso.
  *
  * Reparte la vista en dos: el video y su identidad a la izquierda, y a la
@@ -26,6 +26,7 @@ import {
   Calendar,
   Play,
   PlaySquare,
+  AlertCircle,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import {
@@ -41,7 +42,7 @@ import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, C
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
-import { syncModuleQuizzes, getModuleQuestions } from '../plugins/QuizzesPlugin';
+import { syncModuleQuizCounts, getModuleQuestionCount } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
@@ -140,6 +141,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [filterMentorOnly, setFilterMentorOnly] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+  /** Aviso cuando el servidor rechaza guardar el progreso de una clase. */
+  const [progressError, setProgressError] = useState<string | null>(null);
 
   // Gamified TTS Guide State
   const [currentTtsGuide, setCurrentTtsGuide] = useState<TTSGuide | null>(null);
@@ -147,6 +150,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // Progress state
   const [completedVideos, setCompletedVideos] = useState<Record<string, boolean>>({});
   const [quizPassKey, setQuizPassKey] = useState<number>(0);
+  /**
+   * Módulo cuyo examen ocupa ahora el escenario, o null mientras se ve clase.
+   *
+   * El examen dejó de ser una tarjeta permanente bajo el reproductor: se abre
+   * desde el temario, como una lección más, y sustituye al video. Montado
+   * siempre, su cronómetro corría durante la clase y el examen se entregaba
+   * solo, en blanco, antes de que el alumno llegara a él.
+   */
+  const [examenModuleIndex, setExamenModuleIndex] = useState<number | null>(null);
   const [certificate, setCertificate] = useState<CertificateRecord | null>(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
@@ -168,10 +180,36 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setActiveModuleIndex(0);
     setActiveVideoIndex(0);
     setSelectedMeetingPlayback(null);
+    setExamenModuleIndex(null);
     // El diploma es de un curso concreto. Arrastrar el del curso anterior
     // mientras carga el progreso anuncia «Curso completado» nada más entrar.
     setCertificate(null);
     loadUserProgress();
+  }, [course.id]);
+
+  /**
+   * Cuántas preguntas tiene el examen de cada módulo del curso.
+   *
+   * Solo el recuento: el temario necesita saber qué módulos evalúan y el
+   * candado necesita lo mismo. Antes esa respuesta salía de haber descargado el
+   * examen entero del módulo abierto, así que las respuestas correctas estaban
+   * en el navegador del alumno desde que entraba a la clase.
+   */
+  useEffect(() => {
+    let vigente = true;
+    api.getCourseQuizSummary(course.id)
+      .then((res) => {
+        if (!vigente) return;
+        syncModuleQuizCounts(res.counts || {});
+        // Los candados dependen de qué módulos evalúan: recalcularlos.
+        setQuizPassKey((prev) => prev + 1);
+      })
+      .catch(() => {
+        if (vigente) syncModuleQuizCounts({});
+      });
+    return () => {
+      vigente = false;
+    };
   }, [course.id]);
 
   const loadUserProgress = async () => {
@@ -237,6 +275,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   const openLesson = (moduleIndex: number, videoIndex: number) => {
     setSelectedMeetingPlayback(null);
+    setExamenModuleIndex(null);
     setPickedByUser(true);
     setActiveModuleIndex(moduleIndex);
     setActiveVideoIndex(videoIndex);
@@ -248,6 +287,17 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     if (!isModuleOpen(moduleLocks, moduleIndex)) return;
     openLesson(moduleIndex, videoIndex);
   };
+
+  /** Abre el examen de un módulo en el escenario principal. */
+  const abrirExamen = (moduleIndex: number) => {
+    if (!isModuleOpen(moduleLocks, moduleIndex)) return;
+    setSelectedMeetingPlayback(null);
+    setPickedByUser(true);
+    setActiveModuleIndex(moduleIndex);
+    setExamenModuleIndex(moduleIndex);
+  };
+
+  const cerrarExamen = () => setExamenModuleIndex(null);
 
   const lessons = flattenLessons(course);
   const currentLessonIndex = indexOfLesson(lessons, {
@@ -400,6 +450,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const toggleVideoCompletion = async (videoId: string) => {
     const isCompleted = !completedVideos[videoId];
     const newCompletedMap = { ...completedVideos, [videoId]: isCompleted };
+    // Se pinta antes de que conteste el servidor para que la marca sea
+    // inmediata. Por eso hay que guardar el estado anterior: si la llamada
+    // falla, la clase se quedaba marcada en pantalla y sin guardar en la base,
+    // y el alumno creia tener un progreso que no existe.
+    const previousCompleted = completedVideos;
+    setProgressError(null);
     setCompletedVideos(newCompletedMap);
 
     try {
@@ -434,6 +490,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       }
     } catch (error) {
       console.error('Error toggling video progress:', error);
+      setCompletedVideos(previousCompleted);
+      setProgressError(
+        isCompleted
+          ? 'No se pudo guardar la clase como terminada. Revisa tu conexión e inténtalo otra vez.'
+          : 'No se pudo desmarcar la clase. Revisa tu conexión e inténtalo otra vez.',
+      );
     }
   };
 
@@ -463,10 +525,17 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
   const showsPlayer = hasAccess && (Boolean(currentVideo) || Boolean(selectedMeetingPlayback));
-  const showsQuiz = hasAccess && pluginManager.isEnabled('interactive-quizzes') && Boolean(currentModule);
+  const examenActivo =
+    examenModuleIndex !== null &&
+    hasAccess &&
+    pluginManager.isEnabled('interactive-quizzes') &&
+    Boolean(course.modules[examenModuleIndex]);
+  const moduloDelExamen = examenModuleIndex !== null ? course.modules[examenModuleIndex] : undefined;
   const showsCertificate =
     hasAccess && pluginManager.isEnabled('pdf-certificates') && (courseProgressPct === 100 || Boolean(courseCertificate));
-  const showsExtras = showsQuiz || showsCertificate;
+  // El examen ya no vive aquí abajo: lo único que queda bajo el video es el
+  // diploma, y sin él esta fila no se monta para no dejar una banda vacía.
+  const showsExtras = showsCertificate;
 
   // Live and synchronous meetings calculation
   const activeLiveMeeting = useMemo(() => {
@@ -495,6 +564,16 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   return (
     <div className="animate-fade-in min-h-screen bg-canvas text-ink">
       <div className="mx-auto w-full max-w-[1800px] lg:px-6 lg:pt-6">
+
+        {progressError && (
+          <div
+            role="alert"
+            className="mx-4 mb-2 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 p-3 text-meta text-danger lg:mx-0"
+          >
+            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{progressError}</span>
+          </div>
+        )}
 
         {/* Ruta y cambio de curso. Sin esta fila, entrar en un curso encerraba
             al alumno dentro de él. */}
@@ -536,6 +615,24 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
           {/* Columna del reproductor */}
           <div className={theaterMode ? '' : 'lg:col-span-8'}>
+            {/* El examen ocupa el sitio del reproductor, con su propio scroll
+                en escritorio para que la fila no crezca y el temario siga a la
+                vista. Verlo debajo del video mientras corría la clase era leer
+                las preguntas —y el cronómetro— antes de llegar a ellas. */}
+            {examenActivo && moduloDelExamen && (
+              <div className="px-4 pb-4 lg:max-h-[calc(100dvh-9.5rem)] lg:overflow-y-auto lg:px-0">
+                <ModuleQuizCard
+                  key={`${moduloDelExamen.id}-examen`}
+                  module={moduloDelExamen}
+                  user={currentUser}
+                  onExit={cerrarExamen}
+                  onPassed={() => setQuizPassKey((prev) => prev + 1)}
+                />
+              </div>
+            )}
+
+            {!examenActivo && (
+            <>
             {/* Banner Destacado de Clase Sincrónica En Vivo */}
             {hasAccess && activeLiveMeeting && (
               <div className="mb-4 mx-4 lg:mx-0 rounded-2xl border border-[var(--color-brand-cyan)] bg-surface p-4 shadow-xl shadow-[var(--color-brand-cyan)]/10 ring-1 ring-[var(--color-brand-cyan)]/30 animate-fade-in">
@@ -787,8 +884,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 {(() => {
                   if (!currentModule || !currentModule.videos || currentModule.videos.length === 0) return null;
                   const isLastLesson = activeVideoIndex >= currentModule.videos.length - 1;
-                  const modQuestions = getModuleQuestions(currentModule.id);
-                  const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && modQuestions && modQuestions.length > 0;
+                  const hasQuiz =
+                    pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(currentModule.id) > 0;
 
                   if (isLastLesson && hasQuiz) {
                     return (
@@ -811,14 +908,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            const el = document.getElementById('module-quiz-section');
-                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                          }}
+                          onClick={() => abrirExamen(activeModuleIndex)}
                           className="btn-brand-primary px-4 py-2 text-xs font-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-cyan-500/20 cursor-pointer"
                         >
                           <CheckSquare className="w-4 h-4 text-amber-300" />
-                          <span>Ir al Examen ↓</span>
+                          <span>Rendir el examen</span>
                         </button>
                       </div>
                     );
@@ -826,6 +920,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   return null;
                 })()}
               </>
+            )}
+            </>
             )}
           </div>
 
@@ -857,6 +953,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           completedCourseVideos={completedCourseVideos}
                           totalCourseVideos={totalCourseVideos}
                           onSelectLesson={goToLesson}
+                          onOpenQuiz={abrirExamen}
+                          quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
                           onToggleComplete={toggleVideoCompletion}
                           onOpenPaywall={onOpenPaywall}
                         />
@@ -1101,19 +1199,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               nunca compite con él. Sin quiz ni diploma no se monta, para no
               dejar una banda de relleno vacía al pie de la página. */}
           {showsExtras && (
-            <div id="module-quiz-section" className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
-              {hasAccess && pluginManager.isEnabled('interactive-quizzes') && currentModule && (
-                <ModuleQuizCard
-                  key={currentModule.id}
-                  module={currentModule}
-                  user={currentUser}
-                  onPassed={(score) => {
-                    console.log(`Quiz passed with ${score}% score!`);
-                    setQuizPassKey((prev) => prev + 1);
-                  }}
-                />
-              )}
-
+            <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
               {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
                 anunciaba «Disponible» desde la primera clase. */}
               {hasAccess &&

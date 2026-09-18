@@ -11,7 +11,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { User } from '../types';
 
@@ -38,6 +38,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [recoveryMode, setRecoveryMode] = useState<'request' | 'reset' | 'sent' | null>(null);
+  /**
+   * Reto del segundo factor.
+   *
+   * Mientras vale algo distinto de nulo, la contraseña ya se comprobó y la
+   * sesión todavía no existe: el modal enseña solo el campo del código.
+   */
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [resetToken, setResetToken] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -54,6 +62,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setSuccessMessage(initialMessage);
       setPassword('');
       setConfirmPassword('');
+      setTwoFactorChallenge(null);
+      setTwoFactorCode('');
     }
   }, [initialMessage, initialMode, isOpen]);
 
@@ -83,7 +93,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     try {
-      if (recoveryMode === 'request') {
+      if (twoFactorChallenge) {
+        if (!twoFactorCode.trim()) throw new Error('Escribe el código de verificación');
+        const res = await api.verifyTwoFactor(twoFactorChallenge, twoFactorCode.trim());
+        onSuccess(res.user, res.redirectPath);
+        onClose();
+      } else if (recoveryMode === 'request') {
         if (!email.trim()) throw new Error('Ingresa el correo de tu cuenta');
         const res = await api.requestPasswordReset(email.trim());
         setSuccessMessage(res.message);
@@ -110,7 +125,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           throw new Error('Ingresa tu email y contraseña');
         }
         const res = await api.login(email.trim(), password);
-        onSuccess(res.user, res.redirectPath);
+        // La contraseña era correcta, pero la cuenta pide segundo factor: aquí
+        // todavía no hay sesión, así que el modal no se cierra.
+        if (res.twoFactorRequired && res.challengeToken) {
+          setTwoFactorChallenge(res.challengeToken);
+          setPassword('');
+          setSuccessMessage(null);
+          return;
+        }
+        onSuccess(res.user!, res.redirectPath!);
         onClose();
       } else {
         if (!name.trim() || !email.trim() || !password) {
@@ -160,7 +183,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <span>DocentOS Engine</span>
           </div>
           <h2 id="auth-modal-title" className="text-2xl font-extrabold text-white tracking-tight">
-            {recoveryMode === 'request'
+            {twoFactorChallenge
+              ? 'Verificación en dos pasos'
+              : recoveryMode === 'request'
               ? 'Recuperar Contraseña'
               : recoveryMode === 'reset'
                 ? 'Crear Nueva Contraseña'
@@ -171,7 +196,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     : 'Crear Cuenta Institucional'}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            {recoveryMode
+            {twoFactorChallenge
+              ? 'Escribe el código de seis dígitos de tu aplicación de autenticación'
+              : recoveryMode
               ? 'Usa un enlace de un solo uso para proteger tu cuenta'
               : mode === 'login'
                 ? 'Accede a tus programas de mentoría y clases grabadas'
@@ -180,7 +207,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Mode Switcher Tabs */}
-        {!recoveryMode && <div className="grid grid-cols-2 gap-1 bg-[#141420] p-1 rounded-xl mb-6 border border-[#262626]">
+        {!recoveryMode && !twoFactorChallenge && <div className="grid grid-cols-2 gap-1 bg-[#141420] p-1 rounded-xl mb-6 border border-[#262626]">
           <button
             type="button"
             onClick={() => { setMode('login'); setError(null); }}
@@ -233,7 +260,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!recoveryMode && mode === 'register' && (
+          {!recoveryMode && !twoFactorChallenge && mode === 'register' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
                 Nombre Completo
@@ -253,7 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {recoveryMode !== 'reset' && <div>
+          {recoveryMode !== 'reset' && !twoFactorChallenge && <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
               Correo Electrónico
             </label>
@@ -271,7 +298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>}
 
-          {recoveryMode !== 'request' && <div>
+          {recoveryMode !== 'request' && !twoFactorChallenge && <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
               {recoveryMode === 'reset' ? 'Nueva Contraseña' : 'Contraseña'}
             </label>
@@ -324,6 +351,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
+          {twoFactorChallenge && (
+            <div>
+              <label
+                htmlFor="auth-two-factor-code"
+                className="block text-[11px] font-bold text-ink-soft uppercase tracking-wider mb-1"
+              >
+                Código de verificación
+              </label>
+              <div className="relative">
+                <ShieldCheck aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint" />
+                <input
+                  id="auth-two-factor-code"
+                  type="text"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value)}
+                  placeholder="000000"
+                  /* `one-time-code` es lo que hace que iOS y Android ofrezcan el
+                     código del teclado sin salir de la pantalla. */
+                  autoComplete="one-time-code"
+                  inputMode="text"
+                  autoFocus
+                  aria-describedby="auth-two-factor-ayuda"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs tracking-[0.3em] text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-surface transition-all"
+                  required
+                />
+              </div>
+              <p id="auth-two-factor-ayuda" className="mt-2 text-[11px] text-ink-muted">
+                ¿Sin el teléfono a mano? Escribe aquí uno de tus códigos de recuperación.
+              </p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -334,7 +393,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ) : (
               <>
                 <span>
-                  {recoveryMode === 'request'
+                  {twoFactorChallenge
+                    ? 'Verificar y entrar'
+                    : recoveryMode === 'request'
                     ? 'Enviar Enlace de Recuperación'
                     : recoveryMode === 'reset'
                       ? 'Guardar Nueva Contraseña'
@@ -347,6 +408,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </button>
         </form>
+        )}
+
+        {twoFactorChallenge && (
+          <button
+            type="button"
+            onClick={() => {
+              setTwoFactorChallenge(null);
+              setTwoFactorCode('');
+              setError(null);
+            }}
+            className="mt-4 w-full text-xs font-semibold text-ink-muted hover:text-ink"
+          >
+            Volver al inicio de sesión
+          </button>
         )}
 
         {recoveryMode && recoveryMode !== 'sent' && (

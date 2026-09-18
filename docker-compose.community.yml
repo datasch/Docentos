@@ -22,7 +22,7 @@ services:
       retries: 10
 
   app:
-    image: ${DOCENTOS_IMAGE:-ghcr.io/datasch/docentos:0.5.0-beta.9}
+    image: ${DOCENTOS_IMAGE:-ghcr.io/datasch/docentos:0.5.0-beta.10}
     container_name: docentos_app
     restart: unless-stopped
     ports:
@@ -41,6 +41,13 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-false}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
       SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+      # Clave de cifrado en reposo (AES-256-GCM): protege el secreto TOTP del
+      # segundo factor y la configuracion sensible de los plugins. En produccion
+      # es obligatoria y la aplicacion se niega a arrancar sin ella. Generala una
+      # vez con `npm run secrets:init` y guardala: si se pierde, lo ya cifrado no
+      # se puede recuperar.
+      DOCENTOS_ENCRYPTION_KEY: ${DOCENTOS_ENCRYPTION_KEY:?Define DOCENTOS_ENCRYPTION_KEY (32 bytes en base64 o hexadecimal)}
+      TWO_FACTOR_CHALLENGE_TTL_MINUTES: ${TWO_FACTOR_CHALLENGE_TTL_MINUTES:-5}
       PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-30}
       PASSWORD_RESET_WEBHOOK_URL: ${PASSWORD_RESET_WEBHOOK_URL:-}
       PASSWORD_RESET_WEBHOOK_TOKEN: ${PASSWORD_RESET_WEBHOOK_TOKEN:-}
@@ -91,7 +98,7 @@ services:
       start_period: 15s
 
   backup:
-    image: ${DOCENTOS_BACKUP_IMAGE:-ghcr.io/datasch/docentos-backup:0.5.0-beta.9}
+    image: ${DOCENTOS_BACKUP_IMAGE:-ghcr.io/datasch/docentos-backup:0.5.0-beta.10}
     container_name: docentos_backup
     restart: unless-stopped
     environment:

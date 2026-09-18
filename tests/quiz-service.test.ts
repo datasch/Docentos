@@ -12,6 +12,7 @@ import {
   shuffleQuestionOptions,
   type QuizQuestion,
 } from '../server/quizService.js';
+import { prisma } from '../server/prisma.js';
 import {
   MODULE_QUIZZES,
   setModuleQuiz,
@@ -21,15 +22,44 @@ import {
   QuizzesPluginEngine,
 } from '../src/plugins/QuizzesPlugin.js';
 
-test('Servicio de Quizzes: Persistencia, Validación y Sanitización', async (t) => {
-  const testModuleId = `test_mod_${Date.now()}`;
+/**
+ * Crea un modulo real y devuelve su identificador.
+ *
+ * Desde que los examenes viven en PostgreSQL, `ModuleQuiz.moduleId` es una clave
+ * foranea contra `Module`: un identificador inventado ya no se puede guardar.
+ * Eso es justo lo que se buscaba —un examen no puede quedar colgando de un
+ * modulo que no existe—, y obliga a que las pruebas trabajen sobre datos
+ * reales en vez de cadenas sueltas.
+ */
+async function crearModuloDePrueba(etiqueta: string) {
+  const curso = await prisma.course.create({
+    data: {
+      title: `Curso de prueba ${etiqueta}`,
+      description: 'Creado por quiz-service.test.ts',
+      price: 0,
+      coverImage: '',
+    },
+  });
+  const modulo = await prisma.module.create({
+    data: { title: `Modulo ${etiqueta}`, order: 1, courseId: curso.id },
+  });
+  return { moduleId: modulo.id, courseId: curso.id };
+}
 
-  await t.test('1. Un módulo nuevo no tiene preguntas por defecto', () => {
-    const questions = getQuizByModuleId(testModuleId);
+/** Borrar el curso arrastra modulo y examen por el borrado en cascada. */
+async function borrarCursoDePrueba(courseId: string) {
+  await prisma.course.deleteMany({ where: { id: courseId } });
+}
+
+test('Servicio de Quizzes: Persistencia, Validación y Sanitización', async (t) => {
+  const { moduleId: testModuleId, courseId } = await crearModuloDePrueba(`persistencia_${Date.now()}`);
+
+  await t.test('1. Un módulo nuevo no tiene preguntas por defecto', async () => {
+    const questions = await getQuizByModuleId(testModuleId);
     assert.deepEqual(questions, []);
   });
 
-  await t.test('2. Guardar preguntas limpia opciones vacías y asegura índices válidos', () => {
+  await t.test('2. Guardar preguntas limpia opciones vacías y asegura índices válidos', async () => {
     const inputQuestions: QuizQuestion[] = [
       {
         id: 'q1',
@@ -47,22 +77,32 @@ test('Servicio de Quizzes: Persistencia, Validación y Sanitización', async (t)
       },
     ];
 
-    const saved = saveQuizForModule(testModuleId, inputQuestions);
+    const saved = await saveQuizForModule(testModuleId, inputQuestions);
     assert.equal(saved.length, 2);
     assert.equal(saved[0].options.length, 2, 'Las opciones vacías fueron filtradas');
     assert.equal(saved[1].correctIndex, 0, 'El índice fuera de rango se corrigió');
     assert.ok(saved[1].explanation.length > 0, 'Se asignó explicación por defecto');
 
     // Comprobar lectura
-    const retrieved = getQuizByModuleId(testModuleId);
+    const retrieved = await getQuizByModuleId(testModuleId);
     assert.equal(retrieved.length, 2);
     assert.equal(retrieved[0].text, '¿Qué es DocentOS?');
   });
 
-  await t.test('3. Eliminar preguntas del módulo limpia el registro', () => {
-    const deleted = deleteQuizForModule(testModuleId);
+  await t.test('3. Eliminar preguntas del módulo limpia el registro', async () => {
+    const deleted = await deleteQuizForModule(testModuleId);
     assert.equal(deleted, true);
-    assert.deepEqual(getQuizByModuleId(testModuleId), []);
+    assert.deepEqual(await getQuizByModuleId(testModuleId), []);
+  });
+
+  await t.test('3b. Un examen no puede colgar de un módulo inexistente', async () => {
+    await assert.rejects(
+      () =>
+        saveQuizForModule('modulo-que-no-existe', [
+          { id: 'q', text: 'Pregunta', options: ['A', 'B'], correctIndex: 0, explanation: 'X' },
+        ]),
+      'La clave foránea debe rechazar el guardado',
+    );
   });
 
   await t.test('4. shuffleQuestionOptions conserva la respuesta correcta y mezcla las opciones', () => {
@@ -78,6 +118,8 @@ test('Servicio de Quizzes: Persistencia, Validación y Sanitización', async (t)
     assert.equal(shuffled.options.length, 4);
     assert.equal(shuffled.options[shuffled.correctIndex], 'París', 'El nuevo índice apunta al texto correcto');
   });
+
+  await borrarCursoDePrueba(courseId);
 });
 
 test('Plugin Frontend Quizzes: Sincronización y Evaluación', async (t) => {
@@ -157,21 +199,21 @@ test('Quizzes: generacion de preguntas - sanitizacion y robustez', async (t) => 
     assert.deepEqual(original, clone, 'El objeto original no debe ser mutado');
   });
 
-  await t.test('3. saveQuizForModule rechaza preguntas con texto vacio', () => {
-    const modId = `sec_test_${Date.now()}`;
+  await t.test('3. saveQuizForModule rechaza preguntas con texto vacio', async () => {
+    const { moduleId: modId, courseId: cursoTemporal } = await crearModuloDePrueba(`vacio_${Date.now()}`);
     const badQuestions: QuizQuestion[] = [
       { id: 'empty_text', text: '   ', options: ['A', 'B'], correctIndex: 0, explanation: 'X' },
       { id: 'valid', text: 'Pregunta valida', options: ['A', 'B'], correctIndex: 0, explanation: 'X' },
     ];
-    const saved = saveQuizForModule(modId, badQuestions);
+    const saved = await saveQuizForModule(modId, badQuestions);
     // Solo la pregunta valida debe guardarse
     assert.equal(saved.length, 1);
     assert.equal(saved[0].id, 'valid');
-    deleteQuizForModule(modId);
+    await borrarCursoDePrueba(cursoTemporal);
   });
 
-  await t.test('4. saveQuizForModule limita las opciones a un maximo de 4', () => {
-    const modId = `sec_max_${Date.now()}`;
+  await t.test('4. saveQuizForModule limita las opciones a un maximo de 4', async () => {
+    const { moduleId: modId, courseId: cursoTemporal } = await crearModuloDePrueba(`maximo_${Date.now()}`);
     const q: QuizQuestion = {
       id: 'q_overflow',
       text: 'Opciones desbordadas',
@@ -179,9 +221,9 @@ test('Quizzes: generacion de preguntas - sanitizacion y robustez', async (t) => 
       correctIndex: 0,
       explanation: 'Solo debe haber 4.',
     };
-    const saved = saveQuizForModule(modId, [q]);
+    const saved = await saveQuizForModule(modId, [q]);
     assert.ok(saved[0].options.length <= 4, 'No debe haber mas de 4 opciones');
-    deleteQuizForModule(modId);
+    await borrarCursoDePrueba(cursoTemporal);
   });
 
   await t.test('5. getAllStoredQuizzes retorna objeto, nunca null ni undefined', () => {

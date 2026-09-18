@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Plugin Core: Exámenes, Cuestionarios & Control de Bloqueo de Módulos (`QuizzesPlugin.ts`)
  *
  * Administra el ciclo de vida completo de las evaluaciones de DocentOS:
@@ -86,6 +86,15 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
   },
 ];
 
+/**
+ * Cuantas preguntas tiene el examen de cada modulo, sin las preguntas.
+ *
+ * El temario y el candado de modulos solo necesitan saber **si** hay examen y
+ * de que tamaño. Cargar el examen entero para responder a eso bajaba las
+ * respuestas correctas al navegador de quien todavia estaba viendo el video.
+ */
+export const MODULE_QUIZ_COUNTS: Record<string, number> = {};
+
 /** Preguntas de un modulo; vacio cuando ese modulo no tiene examen. */
 export function getModuleQuestions(moduleId: string): QuizQuestion[] {
   return MODULE_QUIZZES[moduleId] ?? [];
@@ -94,8 +103,10 @@ export function getModuleQuestions(moduleId: string): QuizQuestion[] {
 export function setModuleQuiz(moduleId: string, questions: QuizQuestion[]): void {
   if (!questions || questions.length === 0) {
     delete MODULE_QUIZZES[moduleId];
+    delete MODULE_QUIZ_COUNTS[moduleId];
   } else {
     MODULE_QUIZZES[moduleId] = questions;
+    MODULE_QUIZ_COUNTS[moduleId] = questions.length;
   }
 }
 
@@ -104,10 +115,33 @@ export function syncModuleQuizzes(quizzesMap: Record<string, QuizQuestion[]>): v
   if (quizzesMap) {
     Object.assign(MODULE_QUIZZES, quizzesMap);
   }
+  Object.keys(MODULE_QUIZ_COUNTS).forEach((k) => delete MODULE_QUIZ_COUNTS[k]);
+  Object.entries(MODULE_QUIZZES).forEach(([moduleId, preguntas]) => {
+    if (preguntas && preguntas.length > 0) MODULE_QUIZ_COUNTS[moduleId] = preguntas.length;
+  });
+}
+
+/** Registra el recuento que devuelve el servidor, sin traer las preguntas. */
+export function syncModuleQuizCounts(counts: Record<string, number>): void {
+  Object.keys(MODULE_QUIZ_COUNTS).forEach((k) => delete MODULE_QUIZ_COUNTS[k]);
+  if (!counts) return;
+  Object.entries(counts).forEach(([moduleId, total]) => {
+    if (typeof total === 'number' && total > 0) MODULE_QUIZ_COUNTS[moduleId] = total;
+  });
+}
+
+/**
+ * Numero de preguntas del examen de un modulo.
+ *
+ * El recuento manda sobre las preguntas cargadas: el alumno tiene el recuento
+ * de todo el curso y las preguntas solo del examen que esta rindiendo.
+ */
+export function getModuleQuestionCount(moduleId: string): number {
+  return MODULE_QUIZ_COUNTS[moduleId] ?? getModuleQuestions(moduleId).length;
 }
 
 export function moduleHasQuiz(moduleId: string): boolean {
-  return getModuleQuestions(moduleId).length > 0;
+  return getModuleQuestionCount(moduleId) > 0;
 }
 
 export class QuizzesPluginEngine {

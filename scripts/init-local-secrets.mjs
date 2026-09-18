@@ -36,6 +36,13 @@ function databasePassword() {
 if (!parsed.DOCENTOS_POSTGRES_PASSWORD) {
   updates.set('DOCENTOS_POSTGRES_PASSWORD', databasePassword());
 }
+if (!parsed.DOCENTOS_ENCRYPTION_KEY) {
+  // Clave maestra del cifrado en reposo (secreto TOTP y configuracion de los
+  // plugins). Si se pierde, lo que ya estaba cifrado no se recupera: no se
+  // regenera nunca sobre una instalacion en marcha, solo se crea si falta.
+  const clave = process.env.DOCENTOS_ENCRYPTION_KEY || randomBytes(32).toString('base64');
+  updates.set('DOCENTOS_ENCRYPTION_KEY', clave);
+}
 if (!parsed.DOCENTOS_BACKUP_PASSPHRASE) {
   const passphrase = process.env.DOCENTOS_BACKUP_PASSPHRASE || randomBytes(48).toString('base64url');
   updates.set('DOCENTOS_BACKUP_PASSPHRASE', passphrase);
