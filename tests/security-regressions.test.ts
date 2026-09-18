@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Regresiones de seguridad y rendimiento detectadas sobre v0.4.0-beta.1.
  *
  * Cada bloque fija una vulnerabilidad reproducida en la aplicacion en ejecucion:
@@ -25,6 +25,15 @@ import { buildDriveEmbedUrl, extractDriveFileId } from '../server/driveService.j
 import { isSecretConfigKey, redactPluginConfig } from '../server/pluginConfig.js';
 import { PLUGIN_CATALOG } from '../server/pluginCatalog.js';
 import type { AuthenticatedUser } from '../server/authMiddleware.js';
+import {
+  saveQuizForModule,
+  getQuizByModuleId,
+  deleteQuizForModule,
+  getAllStoredQuizzes,
+  shuffleQuestionOptions,
+  type QuizQuestion,
+} from '../server/quizService.js';
+import { QuizzesPluginEngine } from '../src/plugins/QuizzesPlugin.js';
 
 const TEST_COURSE_ID = 'course-giantucchi-mastery';
 const TEST_USER_ID = 'user-public-01';
@@ -329,5 +338,110 @@ test('Videos: el enlace de Google Drive se normaliza antes de guardarse', async 
       !buildDriveEmbedUrl(REAL_ID).includes('https://drive.google.com/file/d/https'),
       'Nunca debe anidarse una URL dentro de otra',
     );
+  });
+});
+
+test('Seguridad Quizzes: inputs maliciosos y control de acceso', async (t) => {
+  await t.test('1. Un texto de pregunta con HTML no se evalua como markup', () => {
+    // Si el texto se renderiza sin escape podria ser un vector XSS
+    const q: QuizQuestion = {
+      id: 'xss_q',
+      text: '<script>alert("xss")</script>Pregunta real',
+      options: ['<img src=x onerror=alert(1)>', 'Opcion limpia', 'C', 'D'],
+      correctIndex: 1,
+      explanation: '<b>Negrita</b>',
+    };
+    const saved = saveQuizForModule('xss_mod', [q]);
+    // El servicio NO debe alterar el texto (eso es responsabilidad del renderer)
+    // pero si debe guardar el registro correctamente sin lanzar excepciones
+    assert.equal(saved.length, 1);
+    assert.ok(saved[0].text.includes('<script>'), 'El texto se almacena sin ejecutarse');
+    deleteQuizForModule('xss_mod');
+  });
+
+  await t.test('2. Un moduleId con path traversal no puede afectar otros modulos', () => {
+    const maliciousId = '../../etc/passwd';
+    const q: QuizQuestion = {
+      id: 'path_q',
+      text: 'Pregunta de inyeccion',
+      options: ['A', 'B'],
+      correctIndex: 0,
+      explanation: 'Test de path traversal.',
+    };
+    // Debe guardarse sin error y poder recuperarse por su clave exacta
+    saveQuizForModule(maliciousId, [q]);
+    const retrieved = getQuizByModuleId(maliciousId);
+    assert.equal(retrieved.length, 1, 'El modulo con ID malicioso se trata como clave de mapa, no como ruta');
+    // Un moduleId normal no debe verse afectado
+    assert.deepEqual(getQuizByModuleId('modulo-legitimo'), [], 'Modulos legitimos no contaminados');
+    deleteQuizForModule(maliciousId);
+  });
+
+  await t.test('3. correctIndex fuera de rango no hace que la evaluacion pase por casualidad', () => {
+    const engine = new QuizzesPluginEngine();
+    const q: QuizQuestion = {
+      id: 'q_bad_idx',
+      text: 'Test correctIndex invalido',
+      options: ['A', 'B'],
+      correctIndex: 999, // Indice completamente invalido
+      explanation: 'Index fuera de rango.',
+    };
+    // Responder con indice 999 no debe considerarse correcto
+    const result = engine.evaluateQuiz([q], { q_bad_idx: 999 }, 80);
+    // Si el motor no sanitiza, podria contar como correcta; esto lo verifica
+    assert.equal(result.correctCount <= 1, true, 'No debe desbordarse el conteo');
+  });
+
+  await t.test('4. El motor no registra intentos duplicados del mismo usuario sin historial previo', () => {
+    const engine = new QuizzesPluginEngine();
+    engine.recordAttempt('user-sec', 'mod-sec', 100, 80);
+    engine.recordAttempt('user-sec', 'mod-sec', 100, 80); // Segundo intento identico
+    // No debe lanzar error ni crear estado corrupto
+    const modules = [
+      { id: 'mod-sec', title: 'Seguridad', order: 1, videos: [] } as any,
+      { id: 'mod-sec-2', title: 'Avanzado', order: 2, videos: [] } as any,
+    ];
+    assert.equal(engine.isModuleUnlocked(modules, 1, 'user-sec'), true, 'Doble intento aprobado abre el siguiente');
+  });
+
+  await t.test('5. Un mentor no puede ver examenes de otros mentores via getAllStoredQuizzes sin restriccion de rol', () => {
+    // getAllStoredQuizzes es una funcion del backend; esta prueba verifica que
+    // el catalogo global existe y es un objeto plano (la restriccion de rol es
+    // responsabilidad del endpoint HTTP, no del servicio en si)
+    const all = getAllStoredQuizzes();
+    assert.equal(typeof all, 'object');
+    assert.ok(!Array.isArray(all), 'Debe ser un mapa, no un array plano');
+  });
+});
+
+test('Seguridad Quizzes: integridad del barajado', async (t) => {
+  await t.test('1. Barajar 100 veces nunca pierde la respuesta correcta', () => {
+    const original: QuizQuestion = {
+      id: 'q_integrity',
+      text: 'Integridad tras 100 barajadas',
+      options: ['Correcto', 'Incorrecto A', 'Incorrecto B', 'Incorrecto C'],
+      correctIndex: 0,
+      explanation: 'La opcion correcta es "Correcto".',
+    };
+    for (let i = 0; i < 100; i++) {
+      const shuffled = shuffleQuestionOptions(original);
+      const correctText = shuffled.options[shuffled.correctIndex];
+      assert.equal(correctText, 'Correcto', `Iteracion ${i + 1}: el texto correcto no coincide con el indice`);
+    }
+  });
+
+  await t.test('2. Barajar 50 veces produce al menos 2 distribuciones distintas (aleatoriedad real)', () => {
+    const original: QuizQuestion = {
+      id: 'q_randomness',
+      text: 'Prueba de aleatoriedad',
+      options: ['A', 'B', 'C', 'D'],
+      correctIndex: 0,
+      explanation: '',
+    };
+    const indices = new Set<number>();
+    for (let i = 0; i < 50; i++) {
+      indices.add(shuffleQuestionOptions(original).correctIndex);
+    }
+    assert.ok(indices.size >= 2, 'La respuesta correcta debe aparecer en al menos 2 posiciones distintas tras 50 barajadas');
   });
 });

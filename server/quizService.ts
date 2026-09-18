@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Evaluaciones y Quizzes Interactivos (`server/quizService.ts`)
  *
  * Administra la persistencia de cuestionarios por módulo y la generación
@@ -83,9 +83,9 @@ export function saveQuizForModule(moduleId: string, questions: QuizQuestion[]): 
   // Limpieza y validación de las preguntas
   const cleaned: QuizQuestion[] = (questions || [])
     .map((q, idx) => {
-      const rawOptions = Array.isArray(q.options)
+      const rawOptions = (Array.isArray(q.options)
         ? q.options.map((o) => String(o).trim()).filter(Boolean)
-        : [];
+        : []).slice(0, 4); // maximo 4 opciones
       
       // Asegurar que el correctIndex esté dentro del rango de opciones
       const validIndex =
