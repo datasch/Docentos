@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Panel de Control para Mentores (`MentorDashboard.tsx`)
  * Academia Giantucchi
  *
@@ -33,7 +33,10 @@ import {
 import { MeetingManager } from './MeetingManager';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
-import { Course, User, MenteeStudent, MenteeCandidate, MentorshipComment } from '../types';
+import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment, QuizQuestion } from '../types';
+import { QuizManagerModal } from './QuizManagerModal';
+import { getModuleQuestions, syncModuleQuizzes } from '../plugins/QuizzesPlugin';
+import { Sparkles, CheckSquare, Layers } from 'lucide-react';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -64,7 +67,26 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   courses,
   onRefreshCourses,
 }) => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes'>('courses');
+  const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
+  const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
+  const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
+
+  useEffect(() => {
+    loadAllQuizzes();
+  }, []);
+
+  const loadAllQuizzes = async () => {
+    try {
+      const res = await api.getAllQuizzes();
+      if (res.success && res.quizzes) {
+        setQuizzesMap(res.quizzes);
+        syncModuleQuizzes(res.quizzes);
+      }
+    } catch (err) {
+      console.error('Error al sincronizar evaluaciones:', err);
+    }
+  };
 
   /**
    * Reparto de cursos. El mismo selector sirve en los dos sentidos: desde un
@@ -511,6 +533,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <Video className="w-4 h-4" />
           <span>Clases en Vivo & Sincrónicas</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('quizzes')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'quizzes'
+              ? 'border-purple-500 text-purple-400'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-300" />
+          <span>Evaluaciones & Quizzes IA</span>
+        </button>
       </div>
 
       {/* Tab Content 1: Courses Management */}
@@ -841,6 +875,144 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           currentUser={currentUser}
           courses={courses}
           onRefreshCourses={onRefreshCourses}
+        />
+      )}
+
+            {/* Tab Content 5: Quizzes & Evaluaciones con IA */}
+      {activeTab === 'quizzes' && (
+        <div className="space-y-6">
+          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-400">
+                  <Sparkles className="w-6 h-6 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    Gestor de Evaluaciones & Exámenes con IA
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Crea cuestionarios de validación por módulo o genéralos automáticamente a partir del temario con IA
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {courses.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 text-xs">
+                No hay cursos registrados para gestionar evaluaciones.
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {courses.map((course) => {
+                  const isExpanded = quizCourseExpanded === course.id || courses.length === 1;
+                  const modules = [...(course.modules || [])].sort((a, b) => a.order - b.order);
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="bg-[#141420] border border-[#2d2d44] rounded-2xl overflow-hidden transition-all shadow-md"
+                    >
+                      <div
+                        onClick={() => setQuizCourseExpanded(isExpanded ? null : course.id)}
+                        className="p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-[#1a1a2e]/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400">
+                            <Layers className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-white truncate">{course.title}</h4>
+                            <p className="text-[11px] text-slate-400">
+                              {course.category} • {modules.length} módulo(s) de aprendizaje
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold px-3 py-1 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl text-slate-300">
+                            {modules.filter((m) => getModuleQuestions(m.id).length > 0).length} de {modules.length} con examen
+                          </span>
+                          <span className="text-xs font-bold text-purple-400">
+                            {isExpanded ? 'Ocultar ▲' : 'Ver Módulos ▼'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="p-4 border-t border-[#2d2d44] bg-[#0a0a0f]/60 space-y-3">
+                          {modules.length === 0 ? (
+                            <p className="text-xs text-slate-500 py-3 text-center">
+                              Este curso aún no tiene módulos configurados.
+                            </p>
+                          ) : (
+                            modules.map((module) => {
+                              const questions = quizzesMap[module.id] || getModuleQuestions(module.id);
+                              const hasQuiz = questions.length > 0;
+
+                              return (
+                                <div
+                                  key={module.id}
+                                  className="p-3.5 rounded-xl bg-[#141420] border border-[#2d2d44] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-purple-500/40 transition-all"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                                        Módulo {module.order}
+                                      </span>
+                                      <p className="text-xs font-bold text-white truncate">{module.title}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[10px] text-slate-400">
+                                        {module.videos?.length || 0} clase(s)
+                                      </span>
+                                      <span className="text-slate-600">•</span>
+                                      {hasQuiz ? (
+                                        <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          {questions.length} preguntas configuradas
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                                          Sin examen asignado
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedQuizModule(module)}
+                                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 cursor-pointer transition-all shrink-0"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                                    <span>{hasQuiz ? 'Editar Examen' : '✨ Generar con IA'}</span>
+                                  </button>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Exámenes para Mentores */}
+      {selectedQuizModule && (
+        <QuizManagerModal
+          module={selectedQuizModule}
+          isOpen={Boolean(selectedQuizModule)}
+          onClose={() => setSelectedQuizModule(null)}
+          onSaved={async () => {
+            await loadAllQuizzes();
+            onRefreshCourses();
+          }}
         />
       )}
 

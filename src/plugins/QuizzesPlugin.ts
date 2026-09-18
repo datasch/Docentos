@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Plugin Core: Exámenes, Cuestionarios & Control de Bloqueo de Módulos (`QuizzesPlugin.ts`)
  *
  * Administra el ciclo de vida completo de las evaluaciones de DocentOS:
@@ -41,15 +41,7 @@ export interface UserQuizAttempt {
 }
 
 /**
- * Banco de preguntas por identificador de modulo.
- *
- * Esta claves son identificadores reales de modulo (UUID), asi que hoy el banco
- * esta vacio: DocentOS todavia no tiene modelo de datos para examenes ni editor
- * en el panel. Mientras siga vacio, ningun modulo muestra examen ni bloquea al
- * siguiente. Las preguntas de ejemplo quedan abajo como referencia del formato.
- *
- * Un modulo sin preguntas **no puede exigir aprobado**: pedir un examen que no
- * existe dejaria el temario bloqueado sin manera de avanzar.
+ * Banco de preguntas por identificador de modulo (memoria local sincronizada con API).
  */
 export const MODULE_QUIZZES: Record<string, QuizQuestion[]> = {};
 
@@ -97,6 +89,21 @@ export const SAMPLE_QUIZ: QuizQuestion[] = [
 /** Preguntas de un modulo; vacio cuando ese modulo no tiene examen. */
 export function getModuleQuestions(moduleId: string): QuizQuestion[] {
   return MODULE_QUIZZES[moduleId] ?? [];
+}
+
+export function setModuleQuiz(moduleId: string, questions: QuizQuestion[]): void {
+  if (!questions || questions.length === 0) {
+    delete MODULE_QUIZZES[moduleId];
+  } else {
+    MODULE_QUIZZES[moduleId] = questions;
+  }
+}
+
+export function syncModuleQuizzes(quizzesMap: Record<string, QuizQuestion[]>): void {
+  Object.keys(MODULE_QUIZZES).forEach((k) => delete MODULE_QUIZZES[k]);
+  if (quizzesMap) {
+    Object.assign(MODULE_QUIZZES, quizzesMap);
+  }
 }
 
 export function moduleHasQuiz(moduleId: string): boolean {

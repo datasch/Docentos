@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cliente de API para Academia Giantucchi
  * Gestiona llamadas al backend de Express, RBAC y Google Drive
  */
@@ -18,6 +18,7 @@ import {
   ModeratedTestimonial,
   TestimonialStatus,
   CertificateRecord,
+  QuizQuestion,
   CourseEnrollmentRecord,
   CourseResource,
   PaymentRecord,
@@ -493,6 +494,56 @@ export const api = {
   async getFeedback(): Promise<{ feedback: any[] }> {
     const res = await fetch('/api/feedback');
     if (!res.ok) throw new Error('Error al obtener lista de opiniones');
+    return res.json();
+  },
+
+  // Quizzes & Assessments API (Plugin interactive-quizzes)
+  async getAllQuizzes(): Promise<{ success: boolean; quizzes: Record<string, QuizQuestion[]> }> {
+    const res = await fetch(`/api/quizzes/all?_t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Error al obtener evaluaciones');
+    return res.json();
+  },
+
+  async getModuleQuiz(moduleId: string): Promise<{ success: boolean; questions: QuizQuestion[] }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz?_t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Error al obtener examen del módulo');
+    return res.json();
+  },
+
+  async saveModuleQuiz(moduleId: string, questions: QuizQuestion[]): Promise<{ success: boolean; questions: QuizQuestion[]; message: string }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al guardar la evaluación');
+    }
+    return res.json();
+  },
+
+  async generateModuleQuiz(moduleId: string, count: number = 4): Promise<{ success: boolean; questions: QuizQuestion[]; message: string }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al generar examen con IA');
+    }
+    return res.json();
+  },
+
+  async deleteModuleQuiz(moduleId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar la evaluación');
+    }
     return res.json();
   },
 

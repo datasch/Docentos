@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DocentOS API server.
  *
  * PostgreSQL is the source of truth for application data and authenticated
@@ -80,6 +80,13 @@ import {
   getPaymentStatus,
   simulateDevPaymentSuccess,
 } from './server/paymentService.js';
+import {
+  getQuizByModuleId,
+  saveQuizForModule,
+  deleteQuizForModule,
+  generateModuleQuizWithAi,
+  getAllStoredQuizzes,
+} from './server/quizService.js';
 import {
   DOCENTOS_DEFAULT_EDITION,
   DOCENTOS_RELEASE_CHANNEL,
@@ -3220,6 +3227,60 @@ app.delete(
     res.json({ success: true, message: 'Módulo eliminado exitosamente.' });
   }),
 );
+
+  // --- Quizzes & Module Assessments (Plugin interactive-quizzes) ---
+  app.get(
+    '/api/quizzes/all',
+    asyncRoute(async (_req, res) => {
+      const quizzes = getAllStoredQuizzes();
+      res.json({ success: true, quizzes });
+    }),
+  );
+
+  app.get(
+    '/api/modules/:moduleId/quiz',
+    asyncRoute(async (req, res) => {
+      const questions = getQuizByModuleId(req.params.moduleId);
+      res.json({ success: true, questions });
+    }),
+  );
+
+  app.put(
+    '/api/modules/:moduleId/quiz',
+    requireRole(['ADMIN', 'MENTOR']),
+    asyncRoute(async (req, res) => {
+      const { questions } = req.body;
+      if (!Array.isArray(questions)) {
+        return res.status(400).json({ error: 'Formato de preguntas inválido. Se espera un arreglo.' });
+      }
+      const saved = saveQuizForModule(req.params.moduleId, questions);
+      res.json({ success: true, questions: saved, message: 'Evaluación guardada exitosamente.' });
+    }),
+  );
+
+  app.post(
+    '/api/modules/:moduleId/quiz/generate',
+    requireRole(['ADMIN', 'MENTOR']),
+    asyncRoute(async (req, res) => {
+      const count = typeof req.body.count === 'number' ? req.body.count : 4;
+      try {
+        const generated = await generateModuleQuizWithAi(req.params.moduleId, count);
+        res.json({ success: true, questions: generated, message: 'Examen generado con IA exitosamente.' });
+      } catch (err: any) {
+        logger.error('Error al generar examen con IA', { error: String(err) });
+        res.status(500).json({ error: err.message || 'Error al generar examen con IA' });
+      }
+    }),
+  );
+
+  app.delete(
+    '/api/modules/:moduleId/quiz',
+    requireRole(['ADMIN', 'MENTOR']),
+    asyncRoute(async (req, res) => {
+      deleteQuizForModule(req.params.moduleId);
+      res.json({ success: true, message: 'Evaluación eliminada del módulo.' });
+    }),
+  );
 
 // --- Videos Management ---
 app.put(

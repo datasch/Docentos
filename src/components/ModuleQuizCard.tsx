@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Componente de Evaluación e Interacción de Módulo (`ModuleQuizCard.tsx`)
  * Plugin Core: Exámenes & Cuestionarios
  */
@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, HelpCircle, Clock } from 'lucide-react';
 import { Module, User } from '../types';
-import { getModuleQuestions, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
+import { getModuleQuestions, setModuleQuiz, quizzesPluginEngine, QuizQuestion } from '../plugins/QuizzesPlugin';
+import { api } from '../lib/api';
 import { pluginManager } from '../plugins/PluginManager';
 
 interface ModuleQuizCardProps {
@@ -28,7 +29,28 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   maxAttempts = 3,
   onPassed,
 }) => {
-  const questions = getModuleQuestions(module.id);
+  const [questions, setQuestions] = useState<QuizQuestion[]>(() => getModuleQuestions(module.id));
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getModuleQuiz(module.id)
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success && res.questions && res.questions.length > 0) {
+          setModuleQuiz(module.id, res.questions);
+          setQuestions(res.questions);
+        } else {
+          setQuestions(getModuleQuestions(module.id) || []);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setQuestions(getModuleQuestions(module.id) || []);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [module.id]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [scorePercentage, setScorePercentage] = useState<number>(0);

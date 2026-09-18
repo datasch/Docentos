@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Gestor de Cursos (`CourseManagerView.tsx`)
  * Academia Giantucchi
  *
@@ -34,7 +34,10 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
-import { Course, Module, VideoDriveLink, DriveVideoFile } from '../types';
+import { Course, Module, VideoDriveLink, DriveVideoFile, QuizQuestion } from '../types';
+import { QuizManagerModal } from './QuizManagerModal';
+import { syncModuleQuizzes, getModuleQuestions } from '../plugins/QuizzesPlugin';
+import { Sparkles } from 'lucide-react';
 
 interface CourseManagerViewProps {
   onRefreshData: () => void;
@@ -75,8 +78,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
   const [videoModuleId, setVideoModuleId] = useState<string | null>(null);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDuration, setVideoDuration] = useState('20:00');
+  const [quizModule, setQuizModule] = useState<Module | null>(null);
   const [videoDriveId, setVideoDriveId] = useState('');
   const [videoEmbedUrl, setVideoEmbedUrl] = useState('');
+  const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
 
   // Selector de Google Drive
   const [driveOpen, setDriveOpen] = useState(false);
@@ -95,6 +100,18 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
+  const loadAllQuizzes = async () => {
+    try {
+      const res = await api.getAllQuizzes();
+      if (res.success && res.quizzes) {
+        setQuizzesMap(res.quizzes);
+        syncModuleQuizzes(res.quizzes);
+      }
+    } catch (err) {
+      console.error('Error al sincronizar evaluaciones:', err);
+    }
+  };
+
   const loadCourses = async () => {
     setLoading(true);
     try {
@@ -109,7 +126,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
   };
 
   const refreshAll = async () => {
-    await loadCourses();
+    await Promise.all([loadCourses(), loadAllQuizzes()]);
     onRefreshData();
   };
 
@@ -728,6 +745,15 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
+                                        type="button"
+                                        onClick={() => setQuizModule(module)}
+                                        className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer"
+                                        title="Gestionar Examen con IA"
+                                      >
+                                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                                        <span>Examen IA</span>
+                                      </button>
+                                      <button
                                         onClick={() => {
                                           resetVideoForm();
                                           setVideoModuleId(videoModuleId === module.id ? null : module.id);
@@ -967,6 +993,18 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
           </div>
         )}
       </div>
+
+      {quizModule && (
+        <QuizManagerModal
+          module={quizModule}
+          isOpen={Boolean(quizModule)}
+          onClose={() => setQuizModule(null)}
+          onSaved={async () => {
+            await loadAllQuizzes();
+            loadCourses();
+          }}
+        />
+      )}
     </div>
   );
 };

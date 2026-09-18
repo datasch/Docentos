@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Reproductor de curso.
  *
  * Reparte la vista en dos: el video y su identidad a la izquierda, y a la
@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Award,
+  CheckSquare,
   Bookmark,
   ChevronLeft,
   ChevronRight,
@@ -40,6 +41,7 @@ import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, C
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
+import { syncModuleQuizzes, getModuleQuestions } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
@@ -780,6 +782,49 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     meetingUrl={currentVideo.meetingUrl || (activeLiveMeeting?.id === currentVideo.id ? activeLiveMeeting.meetingUrl : undefined)}
                   />
                 )}
+
+                {/* Notificación destacada cuando está en la última lección de un módulo con examen */}
+                {(() => {
+                  if (!currentModule || !currentModule.videos || currentModule.videos.length === 0) return null;
+                  const isLastLesson = activeVideoIndex >= currentModule.videos.length - 1;
+                  const modQuestions = getModuleQuestions(currentModule.id);
+                  const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && modQuestions && modQuestions.length > 0;
+
+                  if (isLastLesson && hasQuiz) {
+                    return (
+                      <div className="mt-3 mx-4 lg:mx-0 p-4 rounded-2xl bg-gradient-to-r from-purple-950/90 via-indigo-950/90 to-[#141420] border border-purple-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl shadow-purple-950/50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2.5 bg-purple-500/20 rounded-xl text-amber-300 shrink-0 border border-purple-500/30">
+                            <Award className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-extrabold text-white flex flex-wrap items-center gap-2">
+                              <span>🎯 ¡Última lección del módulo!</span>
+                              <span className="text-[10px] bg-purple-500/30 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                                Examen Requerido
+                              </span>
+                            </h4>
+                            <p className="text-[11px] text-slate-300 mt-0.5">
+                              Has llegado a la última clase de <strong className="text-white">"{currentModule.title}"</strong>. Realiza la evaluación para validar tu progreso.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById('module-quiz-section');
+                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className="btn-brand-primary px-4 py-2 text-xs font-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-cyan-500/20 cursor-pointer"
+                        >
+                          <CheckSquare className="w-4 h-4 text-amber-300" />
+                          <span>Ir al Examen ↓</span>
+                        </button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </>
             )}
           </div>
@@ -1056,10 +1101,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               nunca compite con él. Sin quiz ni diploma no se monta, para no
               dejar una banda de relleno vacía al pie de la página. */}
           {showsExtras && (
-            <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
+            <div id="module-quiz-section" className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
               {hasAccess && pluginManager.isEnabled('interactive-quizzes') && currentModule && (
                 <ModuleQuizCard
-                  key={`${currentModule.id}_${quizPassKey}`}
+                  key={currentModule.id}
                   module={currentModule}
                   user={currentUser}
                   onPassed={(score) => {

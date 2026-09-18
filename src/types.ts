@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tipos de Datos y Modelos
  * Academia Giantucchi
  */
@@ -54,6 +54,14 @@ export interface MenteeCandidate {
   name: string;
   email: string;
   avatarUrl?: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
 }
 
 export interface AcademiaPlugin {

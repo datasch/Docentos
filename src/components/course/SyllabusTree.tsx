@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Circle, Download, Lock, Play } from 'lucide-react';
 import { Course } from '../../types';
+import { getModuleQuestions } from '../../plugins/QuizzesPlugin';
+import { pluginManager } from '../../plugins/PluginManager';
+import { Sparkles } from 'lucide-react';
 import type { ModuleLockState } from '../../lib/courseNavigation';
 import { ProgressMeter } from './ProgressMeter';
 
@@ -259,7 +262,12 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
               <div className="accordion-shell" data-open={isOpen}>
                 <div>
                   <ul role="group" className="flex flex-col px-2 pb-2">
-                    {module.videos.map((video, vIdx) => {
+                    {(() => {
+                      const modQuestions = getModuleQuestions(module.id);
+                      const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && modQuestions && modQuestions.length > 0;
+                      return (
+                        <>
+                          {module.videos.map((video, vIdx) => {
                       const isCurrent = isCurrentModule && vIdx === activeVideoIndex;
                       const isDone = Boolean(completedVideos[video.id]);
                       const lessonKey = `m${mIdx}v${vIdx}`;
@@ -349,6 +357,33 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                         </li>
                       );
                     })}
+                          {hasQuiz && (
+                            <li role="none" className="relative flex items-center mt-1.5">
+                              <div
+                                onClick={() => {
+                                  onSelectLesson(mIdx, module.videos.length > 0 ? module.videos.length - 1 : 0);
+                                  setTimeout(() => {
+                                    const el = document.getElementById('module-quiz-section');
+                                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                  }, 150);
+                                }}
+                                className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg p-2 text-left bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-colors"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Sparkles className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                                  <span className="text-xs font-bold text-purple-300 truncate">
+                                    Examen del Módulo ({modQuestions.length} Preguntas)
+                                  </span>
+                                </div>
+                                <span className="text-[10px] bg-purple-500/30 text-purple-200 px-1.5 py-0.5 rounded font-black">
+                                  Evaluar
+                                </span>
+                              </div>
+                            </li>
+                          )}
+                        </>
+                      );
+                    })()}
                   </ul>
 
                   {hasAccess && module.resources && module.resources.length > 0 && (
