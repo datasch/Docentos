@@ -50,6 +50,7 @@ const rawSchema = z.object({
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
   PASSWORD_RESET_WEBHOOK_URL: optionalString,
   PASSWORD_RESET_WEBHOOK_TOKEN: optionalString,
+  INTEGRATION_API_TOKEN: optionalString,
   PASSWORD_RESET_EXPOSE_TOKEN: booleanString(false),
   SEED_DEMO_DATA: booleanString(false),
   APP_NAME: optionalString,
