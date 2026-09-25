@@ -29,6 +29,11 @@ import {
   Meeting,
   CreateMeetingInput,
   UpdateMeetingInput,
+  YouTubeConnectionStatus,
+  YouTubePlaylistData,
+  YouTubeVideoItem,
+  YouTubeAiJob,
+  GeneratedCourseDraft,
 } from '../types';
 
 const fetch: typeof globalThis.fetch = (input, init) =>
@@ -1110,5 +1115,131 @@ export const api = {
       throw error;
     }
     return res.json();
+  },
+
+  // ── YouTube & AI Course Builder ──
+  youtube: {
+    async getStatus(): Promise<YouTubeConnectionStatus> {
+      const res = await fetch('/api/youtube/status');
+      if (!res.ok) throw new Error('Error al obtener estado de YouTube');
+      return res.json();
+    },
+
+    async getAuthUrl(redirectUri?: string): Promise<string> {
+      const url = new URL('/api/youtube/auth', window.location.origin);
+      url.searchParams.set('format', 'json');
+      if (redirectUri) url.searchParams.set('redirectUri', redirectUri);
+      const res = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al obtener URL de autenticación');
+      }
+      const data = await res.json();
+      return data.authUrl;
+    },
+
+    async disconnect(): Promise<boolean> {
+      const res = await fetch('/api/youtube/connection', { method: 'DELETE' });
+      return res.ok;
+    },
+
+    async importPlaylist(playlistUrl: string): Promise<YouTubePlaylistData> {
+      const res = await fetch('/api/youtube/playlists/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playlistUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err: Error & { code?: string } = new Error(data.error || 'Error al importar playlist');
+        err.code = data.code;
+        throw err;
+      }
+      return data.playlist;
+    },
+
+    async listPlaylists(): Promise<any[]> {
+      const res = await fetch('/api/youtube/playlists');
+      if (!res.ok) throw new Error('Error al listar playlists');
+      const data = await res.json();
+      return data.playlists || [];
+    },
+
+    async getPlaylist(id: string): Promise<YouTubePlaylistData> {
+      const res = await fetch(`/api/youtube/playlists/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error('Error al obtener playlist');
+      const data = await res.json();
+      return data.playlist;
+    },
+
+    async updateVideos(
+      playlistId: string,
+      updates: Array<{ id: string; customOrder?: number; excluded?: boolean }>,
+    ): Promise<YouTubePlaylistData> {
+      const res = await fetch(`/api/youtube/playlists/${encodeURIComponent(playlistId)}/videos`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      });
+      if (!res.ok) throw new Error('Error al actualizar videos');
+      const data = await res.json();
+      return data.playlist;
+    },
+
+    async generateCourse(input: {
+      playlistId?: string;
+      courseRequest: string;
+      videos: Array<{
+        id: string;
+        youtubeId: string;
+        title: string;
+        description: string;
+        durationSeconds: number;
+        position: number;
+      }>;
+    }): Promise<{ jobId: string; status: string; progress: number }> {
+      const res = await fetch('/api/youtube/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al iniciar generación con IA');
+      }
+      return { jobId: data.job.id, status: data.job.status, progress: data.job.progress };
+    },
+
+    async getJobStatus(jobId: string): Promise<YouTubeAiJob> {
+      const res = await fetch(`/api/youtube/ai-jobs/${encodeURIComponent(jobId)}`);
+      if (!res.ok) throw new Error('Error al consultar trabajo de IA');
+      const data = await res.json();
+      return data.job;
+    },
+
+    async applyJob(
+      jobId: string,
+      customCourseData?: GeneratedCourseDraft,
+    ): Promise<{ success: boolean; courseId: string; courseTitle: string }> {
+      const res = await fetch(`/api/youtube/ai-apply/${encodeURIComponent(jobId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customCourseData }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al aplicar curso borrador');
+      }
+      return data;
+    },
+
+    async publishCourse(courseId: string): Promise<boolean> {
+      const res = await fetch(`/api/youtube/courses/${encodeURIComponent(courseId)}/publish`, {
+        method: 'POST',
+      });
+      return res.ok;
+    },
   },
 };
