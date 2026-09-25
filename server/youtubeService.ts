@@ -315,7 +315,7 @@ export async function fetchPlaylistFromApi(
   }>;
 }> {
   let youtube = userId ? await getAuthenticatedYouTubeClient(userId) : null;
-  const apiKey = config.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || 'AIzaSyCZqRk_Xq9RvhjTMMUqaTS35Ywf50WsguQ';
+  const apiKey = config.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || null;
 
   if (!youtube && apiKey) {
     youtube = google.youtube({ version: 'v3', auth: apiKey });
