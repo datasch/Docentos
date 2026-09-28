@@ -21,7 +21,7 @@ import { User, Course } from './types';
 import { pluginManager } from './plugins/PluginManager';
 import { siteConfig } from './config/theme';
 import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
-import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
+import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink, BookOpen } from 'lucide-react';
 
 /**
  * Destinos de la barra de navegacion.
@@ -500,6 +500,18 @@ export default function App() {
             </span>
             <span className="hidden md:inline">· {siteConfig.authorCredit}</span>
           </div>
+
+          {siteConfig.complaintsBookUrl && (
+            <a
+              href={siteConfig.complaintsBookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
+            >
+              <BookOpen aria-hidden className="h-3.5 w-3.5" />
+              Libro de Reclamaciones
+            </a>
+          )}
 
           {/* White-Label Credit */}
           <a

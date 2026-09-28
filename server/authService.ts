@@ -66,9 +66,9 @@ export async function verifyPassword(password: string, passwordHash: string) {
   return bcrypt.compare(password, passwordHash);
 }
 
-export async function createPasswordResetToken(userId: string) {
+export async function createPasswordResetToken(userId: string, ttlMinutes: number = config.PASSWORD_RESET_TTL_MINUTES) {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + config.PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
   await prisma.passwordResetToken.deleteMany({
     where: {

@@ -50,6 +50,22 @@ const rawSchema = z.object({
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
   PASSWORD_RESET_WEBHOOK_URL: optionalString,
   PASSWORD_RESET_WEBHOOK_TOKEN: optionalString,
+  // Integracion servidor a servidor (API de pagos de la landing): da de alta al
+  // alumno y su matricula cuando el pago esta confirmado. Sin token, la ruta no
+  // existe. Minimo 32 caracteres: es la unica llave de esa puerta.
+  INTEGRATION_API_TOKEN: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(32, 'INTEGRATION_API_TOKEN debe tener al menos 32 caracteres').optional(),
+  ),
+  // Vigencia del enlace para crear la contraseña de una cuenta nacida de un pago.
+  // Es mas larga que la de recuperacion: el correo de bienvenida puede leerse dias despues.
+  ACTIVATION_TTL_HOURS: numberWithDefault(72, 1, 336),
+  // Mentor (ADMIN o MENTOR) al que se asigna quien llega pagando. Vacio = el
+  // primero activo, como hace "Asignar Mentee" sin mentor indicado.
+  INTEGRATION_MENTOR_EMAIL: optionalString,
+  // Libro de Reclamaciones virtual (obligatorio en Peru para vender en linea).
+  // Vacio = no se muestra el enlace.
+  COMPLAINTS_BOOK_URL: optionalString,
   PASSWORD_RESET_EXPOSE_TOKEN: booleanString(false),
   SEED_DEMO_DATA: booleanString(false),
   APP_NAME: optionalString,

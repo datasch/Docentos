@@ -7,7 +7,8 @@
  */
 
 import React, { useState } from 'react';
-import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, RefreshCw, AlertCircle } from 'lucide-react';
+import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
+import { siteConfig } from '../config/theme';
 import { api } from '../lib/api';
 import { UserRole } from '../types';
 
@@ -229,6 +230,18 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           Encriptación SSL de 256 bits • Pasarela verificada Stripe
         </div>
+
+        {siteConfig.complaintsBookUrl && (
+          <a
+            href={siteConfig.complaintsBookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-400 underline-offset-4 hover:text-white hover:underline"
+          >
+            <BookOpen aria-hidden className="w-3.5 h-3.5" />
+            Libro de Reclamaciones
+          </a>
+        )}
       </div>
     </div>
   );

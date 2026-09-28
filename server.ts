@@ -106,6 +106,12 @@ import {
   DOCENTOS_VERSION,
 } from './src/version.js';
 import { requestTracingMiddleware, logger, getMetricsSnapshot } from './server/logger.js';
+import {
+  enrollFromIntegration,
+  integrationEnrollmentSchema,
+  IntegrationError,
+  isIntegrationAuthorized,
+} from './server/integrationEnrollment.js';
 import { escapeHtml, isCrawlerUserAgent, renderSeoLandingHtml } from './server/seo.js';
 
 const app = express();
@@ -358,6 +364,8 @@ async function getPublicRuntimeConfig() {
     authorCredit: instance?.authorCredit || defaults.authorCredit,
     defaultLanguage: instance?.defaultLanguage || defaults.defaultLanguage,
     assistantName: instance?.assistantName || defaults.assistantName,
+    // Solo http(s): va a un href de la portada, el pie y el muro de pago.
+    complaintsBookUrl: /^https?:\/\//i.test(config.COMPLAINTS_BOOK_URL || '') ? config.COMPLAINTS_BOOK_URL : '',
   };
 }
 
@@ -1038,6 +1046,35 @@ app.post(
       res.json(result);
     } catch (err: any) {
       res.status(403).json({ error: err.message || 'No se pudo simular el pago.' });
+    }
+  }),
+);
+
+/**
+ * Alta de alumno y matricula desde la API de pagos (servidor a servidor).
+ * Sin INTEGRATION_API_TOKEN configurado responde 404, como si no existiera.
+ * Detalle de las reglas en server/integrationEnrollment.ts.
+ */
+app.post(
+  '/api/integrations/enrollments',
+  asyncRoute(async (req, res) => {
+    if (!config.INTEGRATION_API_TOKEN) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    if (!isIntegrationAuthorized(req.get('authorization'))) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+    const parsed = integrationEnrollmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
+      });
+    }
+    try {
+      const result = await enrollFromIntegration(parsed.data);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      if (error instanceof IntegrationError) return res.status(error.status).json({ error: error.message });
+      throw error;
     }
   }),
 );

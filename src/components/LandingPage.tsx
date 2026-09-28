@@ -1365,6 +1365,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </a>
                 </li>
               )}
+              {siteConfig.complaintsBookUrl && (
+                <li>
+                  <a href={siteConfig.complaintsBookUrl} target="_blank" rel="noopener noreferrer">
+                    <BookOpen aria-hidden className="h-4 w-4" />
+                    Libro de Reclamaciones
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
 
