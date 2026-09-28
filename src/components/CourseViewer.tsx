@@ -873,7 +873,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     totalLessons={lessons.length}
                     isCompleted={isCurrentCompleted}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
-                    playbackUrl={showsPlayer ? currentVideo.playbackUrl : undefined}
+                    playbackUrl={showsPlayer ? (currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
                     meetingType={currentVideo.meetingType || activeLiveMeeting?.meetingType}
                     meetingUrl={currentVideo.meetingUrl || (activeLiveMeeting?.id === currentVideo.id ? activeLiveMeeting.meetingUrl : undefined)}

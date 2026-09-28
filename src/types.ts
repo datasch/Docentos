@@ -477,4 +477,93 @@ export interface UpdateMeetingInput {
   recordingUrl?: string | null;
 }
 
+// ── AI YouTube Course Builder ───────────────────────────────────────────────
+
+export type YouTubePrivacyStatus = 'PUBLIC' | 'UNLISTED' | 'PRIVATE' | 'UNKNOWN';
+
+export interface YouTubeConnectionStatus {
+  connected: boolean;
+  googleEmail?: string;
+  tokenExpiresAt?: string | null;
+  isExpired?: boolean;
+  scopesGranted?: string;
+}
+
+export interface YouTubeVideoItem {
+  id: string;
+  youtubeId: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  channelTitle: string;
+  durationSeconds: number;
+  durationFormatted: string;
+  privacyStatus: YouTubePrivacyStatus;
+  position: number;
+  customOrder: number;
+  excluded: boolean;
+  publishedAt?: string | null;
+}
+
+export interface YouTubePlaylistData {
+  id: string;
+  youtubeId: string;
+  title: string;
+  description: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  privacyStatus: YouTubePrivacyStatus;
+  itemCount: number;
+  publishedAt?: string | null;
+  lastSyncedAt?: string | null;
+  videos: YouTubeVideoItem[];
+}
+
+export interface GeneratedLessonDraft {
+  title: string;
+  description: string;
+  learningObjectives: string[];
+  youtubeVideoId: string;
+  durationSeconds: number;
+  durationFormatted?: string;
+  order: number;
+  summary?: string;
+  comprehensionQuestions?: string[];
+}
+
+export interface GeneratedModuleDraft {
+  title: string;
+  description: string;
+  objectives: string[];
+  order: number;
+  lessons: GeneratedLessonDraft[];
+}
+
+export interface GeneratedCourseDraft {
+  course: {
+    title: string;
+    description: string;
+    summary: string;
+    level: string;
+    requirements: string[];
+    targetAudience: string[];
+    generalObjectives: string[];
+    category?: string;
+  };
+  modules: GeneratedModuleDraft[];
+}
+
+export interface YouTubeAiJob {
+  id: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  progress: number;
+  provider: string;
+  errorMessage?: string | null;
+  result?: GeneratedCourseDraft | null;
+  courseId?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+
 

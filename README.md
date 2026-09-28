@@ -19,6 +19,7 @@
 ## ✨ Características Principales
 
 * 🧠 **AI-Native Learning Engine:** Asistente conversacional "Ian", generación automática de guiones de mentoría con Google Gemini AI y locución sintetizada TTS.
+* 📺 **AI YouTube Course Builder:** Convierte playlists de YouTube (públicas, no listadas o privadas autorizadas con OAuth 2.0) en cursos estructurados con IA pedagógica, lecciones, objetivos y publicación controlada en borrador. Consulta la [Arquitectura](ARCHITECTURE.md), [Integración con YouTube](YOUTUBE_INTEGRATION.md) e [Integración de IA](AI_INTEGRATION.md).
 * 🎥 **Google Drive Video Streaming:** Reproductor nativo optimizado con indexación de archivos en tiempo real directamente desde carpetas conectadas.
 * 📥 **Importación de cursos desde Drive:** Pega el enlace de una carpeta y DocentOS construye el temario completo: subcarpetas como módulos, vídeos como lecciones y ZIP, PDF o subtítulos como recursos descargables. Revisas el plan antes de crear nada, y opcionalmente dejas que OpenAI o DeepSeek pulan los títulos.
 * ⭐ **Testimonios de verdad:** los escribe el alumnado desde la portada, con su
