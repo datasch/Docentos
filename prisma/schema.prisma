@@ -44,7 +44,24 @@ enum EnrollmentSource {
 enum ContentSource {
   GOOGLE_DRIVE
   EXTERNAL_URL
+  YOUTUBE
   DEMO
+}
+
+/// Estado de visibilidad de una playlist/video de YouTube segun la API.
+enum YouTubePrivacyStatus {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+  UNKNOWN
+}
+
+/// Estado del job de procesamiento de IA.
+enum AIJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 enum ResourceKind {
@@ -94,6 +111,8 @@ model User {
   enrollments         CourseEnrollment[]
   certificates        Certificate[]
   hostedMeetings      Meeting[]            @relation("MeetingHost")
+  youtubeConnection   YouTubeConnection?
+  aiJobs              AIJob[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -284,6 +303,7 @@ model Course {
   resources         CourseResource[]
   menteeAssignments MenteeAssignment[]
   meetings          Meeting[]
+  aiJob             AIJob?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -563,3 +583,129 @@ model Meeting {
   @@index([hostId])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI YouTube Course Builder
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Conexion OAuth de un usuario con YouTube.
+///
+/// Solo se guarda un token de acceso cifrado (AES-256-GCM) y el refresh token
+/// cifrado. Nunca se almacenan credenciales de Google en texto plano.
+/// Un usuario solo puede tener UNA conexion activa a la vez (unique userId).
+model YouTubeConnection {
+  id                 String              @id @default(uuid())
+  userId             String              @unique
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Google account email asociado al token.
+  googleEmail        String
+  /// Token de acceso cifrado con AES-256-GCM (server/crypto.ts).
+  accessTokenEnc     String
+  /// Refresh token cifrado. Puede ser nulo si Google no lo emitio (flujo corto).
+  refreshTokenEnc    String?
+  /// Cuando expira el access token actual.
+  tokenExpiresAt     DateTime?
+  /// Scopes autorizados separados por espacio.
+  scopesGranted      String              @default("")
+  playlists          YouTubePlaylist[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([userId])
+}
+
+/// Playlist de YouTube importada por un mentor.
+///
+/// Puede ser publica, no listada o privada. El acceso a playlists privadas
+/// requiere que el usuario haya autorizado el scope youtube.readonly y que
+/// la playlist pertenezca a su cuenta o le haya sido compartida.
+model YouTubePlaylist {
+  id              String               @id @default(uuid())
+  /// ID de playlist tal como lo devuelve la YouTube Data API (ej: PLxxxxxx).
+  youtubeId       String
+  connectionId    String
+  connection      YouTubeConnection    @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  title           String
+  description     String               @default("")
+  channelTitle    String               @default("")
+  thumbnailUrl    String               @default("")
+  privacyStatus   YouTubePrivacyStatus @default(UNKNOWN)
+  itemCount       Int                  @default(0)
+  publishedAt     DateTime?
+  /// Ultima vez que se sincronizo con la API de YouTube.
+  lastSyncedAt    DateTime?
+  videos          YouTubeVideo[]
+  aiJobs          AIJob[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([connectionId, youtubeId])
+  @@index([connectionId])
+}
+
+/// Video individual dentro de una playlist importada.
+///
+/// Los videos eliminados o privados (a los que el usuario no tiene acceso) se
+/// marcan con privacyStatus=PRIVATE y title='[Video privado o eliminado]'.
+model YouTubeVideo {
+  id             String               @id @default(uuid())
+  /// ID del video en YouTube (ej: dQw4w9WgXcQ).
+  youtubeId      String
+  playlistId     String
+  playlist       YouTubePlaylist      @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  title          String
+  description    String               @default("")
+  thumbnailUrl   String               @default("")
+  channelTitle   String               @default("")
+  /// Duracion en segundos. 0 si no esta disponible.
+  durationSeconds Int                 @default(0)
+  privacyStatus  YouTubePrivacyStatus @default(UNKNOWN)
+  /// Posicion original dentro de la playlist (0-indexed).
+  position       Int                  @default(0)
+  /// Posicion modificada por el mentor tras la importacion.
+  customOrder    Int                  @default(0)
+  /// Si el mentor deselecciono este video para el curso.
+  excluded       Boolean              @default(false)
+  publishedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([playlistId, youtubeId])
+  @@index([playlistId, customOrder])
+}
+
+/// Job de generacion asincrona de curso por IA.
+///
+/// Cuando el mentor solicita generar un curso, se crea un AIJob en estado
+/// PENDING. El servidor lo procesa, llama a Gemini y guarda el resultado
+/// como JSON en resultJson. El frontend hace polling de GET /api/youtube/ai-jobs/:id
+/// hasta que el estado sea COMPLETED o FAILED.
+model AIJob {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playlistId    String?
+  playlist      YouTubePlaylist? @relation(fields: [playlistId], references: [id], onDelete: SetNull)
+  /// Descripcion del curso que el mentor escribio.
+  courseRequest String
+  /// JSON de los videos seleccionados enviado al procesamiento.
+  inputJson     String        @default("{}")
+  /// JSON con la estructura de curso generada por la IA.
+  resultJson    String?
+  /// Curso borrador creado si el mentor aplico el resultado.
+  courseId      String?       @unique
+  course        Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  status        AIJobStatus   @default(PENDING)
+  /// Mensaje de error si status=FAILED.
+  errorMessage  String?
+  /// Progreso 0-100 reportado durante el procesamiento.
+  progress      Int           @default(0)
+  /// Proveedor de IA usado (gemini, openai, etc).
+  provider      String        @default("gemini")
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId, status])
+  @@index([createdAt])
+}

@@ -37,6 +37,7 @@ const rawSchema = z.object({
   DOCENTOS_ENV: z.enum(['development', 'staging', 'production']).optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.string().trim().min(1, 'DATABASE_URL es obligatoria'),
+  DOCENTOS_POSTGRES_PASSWORD: optionalString,
   APP_URL: z.string().url().default('http://localhost:3000'),
   ALLOWED_ORIGIN: optionalString,
   DOCENTOS_EDITION: z.string().trim().min(1).default('community'),
@@ -106,6 +107,11 @@ const rawSchema = z.object({
   GOOGLE_DRIVE_FOLDER_ID: optionalString,
   STRIPE_SECRET_KEY: optionalString,
   STRIPE_WEBHOOK_SECRET: optionalString,
+  YOUTUBE_CLIENT_ID: optionalString,
+  YOUTUBE_CLIENT_SECRET: optionalString,
+  YOUTUBE_REDIRECT_URI: optionalString,
+  YOUTUBE_API_KEY: optionalString,
+  AI_API_KEY: optionalString,
   VITE_APP_NAME: optionalString,
   VITE_APP_TAGLINE: optionalString,
   VITE_APP_LOGO_INITIAL: optionalString,
@@ -258,8 +264,21 @@ if (!['postgres:', 'postgresql:'].includes(databaseUrl.protocol)) {
   throw new Error('Configuracion de DocentOS invalida: DATABASE_URL debe apuntar a PostgreSQL.');
 }
 
+// `secrets:init` genera DOCENTOS_POSTGRES_PASSWORD para Docker, mientras que
+// `.env.example` deja una URL local con este marcador. Resuelvelo solo fuera de
+// produccion para que `npm run dev` pueda usar la misma base que Compose sin
+// copiar el secreto a otra variable.
+if (
+  deploymentEnvironment !== 'production' &&
+  decodeURIComponent(databaseUrl.password) === '<URL_ENCODED_PASSWORD>' &&
+  raw.DOCENTOS_POSTGRES_PASSWORD
+) {
+  databaseUrl.password = raw.DOCENTOS_POSTGRES_PASSWORD;
+}
+
 export const config = {
   ...raw,
+  DATABASE_URL: databaseUrl.toString(),
   DOCENTOS_ENV: deploymentEnvironment,
   TRUST_PROXY: trustProxy,
   AI_PROVIDER: aiProvider,

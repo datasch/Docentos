@@ -29,6 +29,7 @@ import {
   Lock,
   Video,
   Radio,
+  Youtube,
 } from 'lucide-react';
 import { MeetingManager } from './MeetingManager';
 import { avatarSrc } from '../lib/avatar.js';
@@ -37,6 +38,7 @@ import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment
 import { QuizManagerModal } from './QuizManagerModal';
 import { getModuleQuestions, syncModuleQuizzes } from '../plugins/QuizzesPlugin';
 import { Sparkles, CheckSquare, Layers } from 'lucide-react';
+import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -67,13 +69,17 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   courses,
   onRefreshCourses,
 }) => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>('courses');
   const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
   const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
 
   useEffect(() => {
     loadAllQuizzes();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'youtube-builder') {
+      setActiveTab('youtube-builder');
+    }
   }, []);
 
   const loadAllQuizzes = async () => {
@@ -545,11 +551,41 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <Sparkles className="w-4 h-4 text-amber-300" />
           <span>Evaluaciones & Quizzes IA</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('youtube-builder')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'youtube-builder'
+              ? 'border-red-500 text-red-400'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Youtube className="w-4 h-4 text-red-500" />
+          <span>AI YouTube Course Builder</span>
+        </button>
       </div>
 
       {/* Tab Content 1: Courses Management */}
       {activeTab === 'courses' && (
         <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-red-950/40 via-slate-900 to-slate-900 border border-red-500/20 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-red-600/20 border border-red-500/30 text-red-400">
+                <Youtube className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">¿Quieres crear un curso rápidamente?</h3>
+                <p className="text-xs text-slate-400">Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('youtube-builder')}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-md shadow-red-600/20 self-stretch sm:self-auto justify-center"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Crear con IA desde YouTube</span>
+            </button>
+          </div>
           {courses.length === 0 ? (
             <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-10 text-center space-y-3">
               <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
@@ -1001,6 +1037,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {/* Tab Content: YouTube AI Course Builder */}
+      {activeTab === 'youtube-builder' && (
+        <YouTubeCourseBuilder
+          currentUser={currentUser}
+          onCourseCreated={(_courseId) => {
+            onRefreshCourses();
+            announce('¡Curso generado y guardado exitosamente desde YouTube!');
+          }}
+          onCancel={() => setActiveTab('courses')}
+        />
       )}
 
       {/* Modal de Exámenes para Mentores */}

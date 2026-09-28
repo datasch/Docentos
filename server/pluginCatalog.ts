@@ -87,7 +87,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     name: 'Plugin de Clases Sincrónicas & Live Meetings',
     description: 'Permite a los mentores programar y transmitir clases en vivo mediante Google Meet, Jitsi Meet abierto o grabaciones asincrónicas.',
     version: '1.0.0',
-    category: 'integrations',
+    category: 'meetings',
     icon: 'Video',
     config: {
       defaultProvider: 'jitsi',
