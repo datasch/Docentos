@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DocentOS API server.
  *
  * PostgreSQL is the source of truth for application data and authenticated
@@ -387,42 +387,42 @@ async function getPublicRuntimeConfig() {
 }
 
 const loginSchema = z.object({
-  email: z.string().email('Formato de email invÃ¡lido').max(255),
-  password: z.string().min(1, 'La contraseÃ±a es obligatoria').max(128),
+  email: z.string().email('Formato de email inválido').max(255),
+  password: z.string().min(1, 'La contraseña es obligatoria').max(128),
 });
 
 const registerSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
-  email: z.string().email('Formato de email invÃ¡lido').max(255),
-  password: z.string().min(8, 'La contraseÃ±a debe tener al menos 8 caracteres').max(128),
+  email: z.string().email('Formato de email inválido').max(255),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email('Formato de email invÃ¡lido').max(255),
+  email: z.string().email('Formato de email inválido').max(255),
 });
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(32, 'Token de recuperaciÃ³n invÃ¡lido').max(256),
-  newPassword: z.string().min(8, 'La contraseÃ±a debe tener al menos 8 caracteres').max(128),
+  token: z.string().min(32, 'Token de recuperación inválido').max(256),
+  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'La contraseÃ±a actual es obligatoria').max(128),
-  newPassword: z.string().min(8, 'La contraseÃ±a debe tener al menos 8 caracteres').max(128),
+  currentPassword: z.string().min(1, 'La contraseña actual es obligatoria').max(128),
+  newPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128),
 });
 
 /**
- * El campo admite un codigo de la aplicaciÃ³n (seis dÃ­gitos) y uno de
- * recuperaciÃ³n (diez caracteres con o sin guion). Se valida por longitud y no
- * por forma exacta: el servicio decide cuÃ¡l es cuÃ¡l, y estrechar aquÃ­ serÃ­a
- * decirle a quien ataca quÃ© tipo de cÃ³digo acaba de fallar.
+ * El campo admite un codigo de la aplicación (seis dígitos) y uno de
+ * recuperación (diez caracteres con o sin guion). Se valida por longitud y no
+ * por forma exacta: el servicio decide cuál es cuál, y estrechar aquí sería
+ * decirle a quien ataca qué tipo de código acaba de fallar.
  */
 const twoFactorCodeSchema = z.object({
-  code: z.string().trim().min(6, 'El cÃ³digo es obligatorio').max(32),
+  code: z.string().trim().min(6, 'El código es obligatorio').max(32),
 });
 
 const twoFactorVerifySchema = twoFactorCodeSchema.extend({
-  challengeToken: z.string().min(32, 'SesiÃ³n de verificaciÃ³n invÃ¡lida').max(256),
+  challengeToken: z.string().min(32, 'Sesión de verificación inválida').max(256),
 });
 
 /**
@@ -437,13 +437,13 @@ const pluginConfigSchema = z.object({
 });
 
 const twoFactorPasswordSchema = z.object({
-  password: z.string().min(1, 'La contraseÃ±a es obligatoria').max(128),
+  password: z.string().min(1, 'La contraseña es obligatoria').max(128),
 });
 
 const setupSchema = z.object({
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
-  password: z.string().min(12, 'La contraseÃ±a debe tener al menos 12 caracteres').max(128),
+  password: z.string().min(12, 'La contraseña debe tener al menos 12 caracteres').max(128),
   appName: z.string().trim().min(2).max(100),
   consentTelemetry: z.boolean().default(false),
 });
@@ -486,9 +486,9 @@ async function deliverPasswordReset(
           expiresAt: expiresAt.toISOString(),
         }),
       });
-      if (!response.ok) console.warn(`Webhook de recuperaciÃ³n respondiÃ³ HTTP ${response.status}.`);
+      if (!response.ok) console.warn(`Webhook de recuperación respondió HTTP ${response.status}.`);
     } catch (error) {
-      console.warn('No se pudo entregar el enlace de recuperaciÃ³n:', error);
+      console.warn('No se pudo entregar el enlace de recuperación:', error);
     }
   }
 
@@ -551,7 +551,7 @@ const authRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'Demasiados intentos de autenticaciÃ³n. Por seguridad, reintenta en 15 minutos.' },
+  message: { success: false, error: 'Demasiados intentos de autenticación. Por seguridad, reintenta en 15 minutos.' },
 });
 
 const passwordResetRateLimiter = rateLimit({
@@ -560,7 +560,7 @@ const passwordResetRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'Demasiadas solicitudes de recuperaciÃ³n. Reintenta en 15 minutos.' },
+  message: { success: false, error: 'Demasiadas solicitudes de recuperación. Reintenta en 15 minutos.' },
 });
 
 const apiRateLimiter = rateLimit({
@@ -569,13 +569,13 @@ const apiRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'LÃ­mite de solicitudes de la API alcanzado. Intenta de nuevo mÃ¡s tarde.' },
+  message: { success: false, error: 'Límite de solicitudes de la API alcanzado. Intenta de nuevo más tarde.' },
 });
 
 /**
  * Escanear una carpeta abre decenas de peticiones hacia Google. Un limite
- * propio evita que una cuenta de administrador comprometida â€”o un bucle en la
- * interfazâ€” convierta a DocentOS en un amplificador de trafico.
+ * propio evita que una cuenta de administrador comprometida —o un bucle en la
+ * interfaz— convierta a DocentOS en un amplificador de trafico.
  */
 const driveImportRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -591,8 +591,8 @@ const driveImportRateLimiter = rateLimit({
 
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/register', authRateLimiter);
-// El segundo tramo del login se limita como el primero: sin esto, la contraseÃ±a
-// quedarÃ­a protegida contra fuerza bruta y el cÃ³digo de seis dÃ­gitos no.
+// El segundo tramo del login se limita como el primero: sin esto, la contraseña
+// quedaría protegida contra fuerza bruta y el código de seis dígitos no.
 app.use('/api/auth/2fa/verify', authRateLimiter);
 app.use('/api/auth/password/forgot', passwordResetRateLimiter);
 app.use('/api/auth/password/reset', passwordResetRateLimiter);
@@ -604,7 +604,7 @@ app.get('/api/version', (_req, res) => {
   res.json(getReleaseMetadata());
 });
 
-// Sonda Liveness: comprobaciÃ³n de proceso en ejecuciÃ³n
+// Sonda Liveness: comprobación de proceso en ejecución
 app.get('/api/live', (_req, res) => {
   res.json({
     status: 'ok',
@@ -639,7 +639,7 @@ app.get(
   }),
 );
 
-// Sonda Readiness: comprobaciÃ³n activa de PostgreSQL con mediciÃ³n de latencia
+// Sonda Readiness: comprobación activa de PostgreSQL con medición de latencia
 app.get(
   '/api/ready',
   asyncRoute(async (_req, res) => {
@@ -654,18 +654,18 @@ app.get(
         ...getReleaseMetadata(),
       });
     } catch (error: any) {
-      logger.error('Sonda de readiness fallida: error de conexiÃ³n a PostgreSQL', { error: error?.message });
+      logger.error('Sonda de readiness fallida: error de conexión a PostgreSQL', { error: error?.message });
       res.status(503).json({
         status: 'unavailable',
         database: 'disconnected',
-        error: 'No se pudo verificar la conexiÃ³n con PostgreSQL',
+        error: 'No se pudo verificar la conexión con PostgreSQL',
         ...getReleaseMetadata(),
       });
     }
   }),
 );
 
-// Endpoint de MÃ©tricas operativas de sistema
+// Endpoint de Métricas operativas de sistema
 app.get(
   '/api/admin/metrics',
   requireAuthenticated,
@@ -807,7 +807,7 @@ app.post(
 
     res.json({
       success: true,
-      message: 'Â¡InstalaciÃ³n inicial completada con Ã©xito! Usuario Administrador registrado.',
+      message: '¡Instalación inicial completada con éxito! Usuario Administrador registrado.',
       user: toRuntimeUser(newAdminUser),
       appName: setupData.appName,
       telemetry: telemetryResult,
@@ -957,7 +957,7 @@ app.get(
 
     const hasAccess = await userHasCourseAccess(req.user, video.module.courseId);
     if (!hasAccess) {
-      return res.status(403).json({ error: 'No tienes autorizaciÃ³n para ver este video.' });
+      return res.status(403).json({ error: 'No tienes autorización para ver este video.' });
     }
 
     const targetUrl = video.embedUrl || video.previewUrl;
@@ -988,7 +988,7 @@ app.get(
 
     const hasAccess = await userHasResourceAccess(req.user, resource.id);
     if (!hasAccess) {
-      return res.status(403).json({ error: 'No tienes autorizaciÃ³n para acceder a este recurso.' });
+      return res.status(403).json({ error: 'No tienes autorización para acceder a este recurso.' });
     }
 
     if (req.headers.accept?.includes('application/json')) {
@@ -1022,7 +1022,7 @@ app.post(
       });
       res.json({ success: true, ...result });
     } catch (err: any) {
-      res.status(400).json({ error: err.message || 'No se pudo generar la sesiÃ³n de pago.' });
+      res.status(400).json({ error: err.message || 'No se pudo generar la sesión de pago.' });
     }
   }),
 );
@@ -1108,7 +1108,7 @@ app.post(
   requireAuthenticated,
   (_req, res) =>
     res.status(501).json({
-      error: 'La activaciÃ³n VIP directa estÃ¡ deshabilitada. Los pases VIP se gestionan mediante pago verificado o asignaciÃ³n administrativa.',
+      error: 'La activación VIP directa está deshabilitada. Los pases VIP se gestionan mediante pago verificado o asignación administrativa.',
     }),
 );
 
@@ -1160,7 +1160,7 @@ app.post(
   asyncRoute(async (req, res) => {
     if (!config.DRIVE_IMPORT_ENABLED) {
       return res.status(503).json({
-        error: 'La importaciÃ³n desde Google Drive estÃ¡ desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
+        error: 'La importación desde Google Drive está desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
       });
     }
 
@@ -1226,7 +1226,7 @@ app.post(
   asyncRoute(async (req, res) => {
     if (!config.DRIVE_IMPORT_ENABLED) {
       return res.status(503).json({
-        error: 'La importaciÃ³n desde Google Drive estÃ¡ desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
+        error: 'La importación desde Google Drive está desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
       });
     }
 
@@ -1305,7 +1305,7 @@ app.post(
   asyncRoute(async (req, res) => {
     if (!config.DRIVE_IMPORT_ENABLED) {
       return res.status(503).json({
-        error: 'La importaciÃ³n desde Google Drive estÃ¡ desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
+        error: 'La importación desde Google Drive está desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
       });
     }
 
@@ -1335,7 +1335,7 @@ app.post(
       });
 
     if (requestedCourseId && !target) {
-      return res.status(404).json({ error: 'El curso al que querÃ­as aÃ±adir el contenido ya no existe.' });
+      return res.status(404).json({ error: 'El curso al que querías añadir el contenido ya no existe.' });
     }
 
     // Reimportacion no confirmada: se para y se pregunta en vez de crear un
@@ -1343,7 +1343,7 @@ app.post(
     if (!requestedCourseId && target && onDuplicate !== 'append' && onDuplicate !== 'create') {
       return res.status(409).json({
         code: 'duplicate',
-        error: `Esta carpeta de Drive ya se importÃ³ como "${target.title}".`,
+        error: `Esta carpeta de Drive ya se importó como "${target.title}".`,
         course: { id: target.id, title: target.title, modules: target.modules.length },
       });
     }
@@ -1457,7 +1457,7 @@ app.post(
                 courseId: id,
                 moduleId: slot!.id,
                 title: resource.title,
-                description: resource.isSubtitle ? 'SubtÃ­tulos de la lecciÃ³n.' : null,
+                description: resource.isSubtitle ? 'Subtítulos de la lección.' : null,
                 kind: 'FILE' as const,
                 source: 'GOOGLE_DRIVE' as const,
                 externalFileId: resource.driveFileId,
@@ -1524,14 +1524,14 @@ app.post(
   asyncRoute(async (req, res) => {
     if (!config.DRIVE_IMPORT_ENABLED) {
       return res.status(503).json({
-        error: 'La importaciÃ³n desde Google Drive estÃ¡ desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
+        error: 'La importación desde Google Drive está desactivada en esta instancia (DRIVE_IMPORT_ENABLED).',
       });
     }
     if (config.AI_PROVIDER === 'none') {
       return res.status(503).json({
         code: 'ai_disabled',
         error:
-          'No hay proveedor de IA configurado. AÃ±ade OPENAI_API_KEY o DEEPSEEK_API_KEY para organizar el curso automÃ¡ticamente; la importaciÃ³n funciona igual sin ello.',
+          'No hay proveedor de IA configurado. Añade OPENAI_API_KEY o DEEPSEEK_API_KEY para organizar el curso automáticamente; la importación funciona igual sin ello.',
       });
     }
 
@@ -1773,7 +1773,7 @@ app.get(
     if (!certificate) {
       return res.status(404).json({
         valid: false,
-        error: 'Certificado no encontrado con el cÃ³digo proporcionado.',
+        error: 'Certificado no encontrado con el código proporcionado.',
       });
     }
 
@@ -1809,7 +1809,7 @@ app.get(
       },
     });
     if (!certificate) {
-      return res.status(404).json({ error: 'AÃºn no se ha emitido un certificado para este curso.' });
+      return res.status(404).json({ error: 'Aún no se ha emitido un certificado para este curso.' });
     }
     res.json({
       certificate: {
@@ -1859,7 +1859,7 @@ app.put(
   '/api/admin/certificates/:id/revoke',
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
-    const reason = String(req.body.reason || 'Revocado por administraciÃ³n').trim();
+    const reason = String(req.body.reason || 'Revocado por administración').trim();
     const certificate = await prisma.certificate.findUnique({
       where: { id: req.params.id },
     });
@@ -1971,7 +1971,7 @@ app.put(
       (await countOtherActiveAdmins(existing.id)) === 0
     ) {
       return res.status(400).json({
-        error: 'No se puede suspender al Ãºltimo administrador activo. Nombra antes a otro.',
+        error: 'No se puede suspender al último administrador activo. Nombra antes a otro.',
       });
     }
     const user = await prisma.user.update({ where: { id: existing.id }, data });
@@ -2000,7 +2000,7 @@ app.put(
     const course = await prisma.course.update({
       where: { id: existing.id },
       // Se acota igual que en los otros tres sitios que escriben un precio. Sin
-      // el tope inferior, este endpoint â€”y solo esteâ€” aceptaba precios
+      // el tope inferior, este endpoint —y solo este— aceptaba precios
       // negativos, que el muro de pago lee como "gratis".
       data: { price: Math.max(0, Number(req.body.price) || 0) },
     });
@@ -2015,7 +2015,7 @@ app.post(
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2028,15 +2028,15 @@ app.post(
     );
 
     if (!user || !user.passwordHash || !passwordMatches) {
-      return res.status(401).json({ error: 'Correo o contraseÃ±a incorrectos.' });
+      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
     }
 
     if (!user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
 
     /**
-     * Con segundo factor activo la contraseÃ±a correcta **no abre sesiÃ³n**.
-     * Devuelve un reto de vida corta y ahÃ­ se detiene: mientras no llegue un
-     * cÃ³digo vÃ¡lido no existe ninguna sesiÃ³n, ni completa ni a medias.
+     * Con segundo factor activo la contraseña correcta **no abre sesión**.
+     * Devuelve un reto de vida corta y ahí se detiene: mientras no llegue un
+     * código válido no existe ninguna sesión, ni completa ni a medias.
      */
     if (user.twoFactorEnabledAt) {
       await revokeRequestSession(req);
@@ -2074,12 +2074,12 @@ app.post(
 );
 
 /**
- * Segundo tramo del inicio de sesiÃ³n.
+ * Segundo tramo del inicio de sesión.
  *
- * Es el Ãºnico sitio donde nace una sesiÃ³n para una cuenta con segundo factor.
- * Acepta indistintamente el cÃ³digo de la aplicaciÃ³n y uno de recuperaciÃ³n: quien
- * ha perdido el mÃ³vil necesita entrar igual, y distinguirlos en la respuesta
- * solo ayudarÃ­a a quien prueba cÃ³digos.
+ * Es el único sitio donde nace una sesión para una cuenta con segundo factor.
+ * Acepta indistintamente el código de la aplicación y uno de recuperación: quien
+ * ha perdido el móvil necesita entrar igual, y distinguirlos en la respuesta
+ * solo ayudaría a quien prueba códigos.
  */
 app.post(
   '/api/auth/2fa/verify',
@@ -2087,7 +2087,7 @@ app.post(
     const parsed = twoFactorVerifySchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2095,9 +2095,9 @@ app.post(
     const resultado = await resolverRetoDosFactores(parsed.data.challengeToken, parsed.data.code, req);
     if (resultado.estado !== 'ok') {
       const mensajes = {
-        'reto-invalido': 'La verificaciÃ³n caducÃ³ o ya se usÃ³. Vuelve a iniciar sesiÃ³n.',
-        'codigo-invalido': 'El cÃ³digo no es vÃ¡lido.',
-        'sin-intentos': 'Demasiados cÃ³digos incorrectos. Vuelve a iniciar sesiÃ³n.',
+        'reto-invalido': 'La verificación caducó o ya se usó. Vuelve a iniciar sesión.',
+        'codigo-invalido': 'El código no es válido.',
+        'sin-intentos': 'Demasiados códigos incorrectos. Vuelve a iniciar sesión.',
       } as const;
       await recordAuditEvent(req, {
         actorUserId: null,
@@ -2130,8 +2130,8 @@ app.post(
       success: true,
       user: toRuntimeUser(user),
       redirectPath: redirectPathForRole(user.role),
-      // Quien entra con un cÃ³digo de recuperaciÃ³n se queda con uno menos y no
-      // se entera si nadie se lo dice. Avisar aquÃ­ es la Ãºnica ocasiÃ³n.
+      // Quien entra con un código de recuperación se queda con uno menos y no
+      // se entera si nadie se lo dice. Avisar aquí es la única ocasión.
       usedRecoveryCode: resultado.via === 'recuperacion',
       remainingRecoveryCodes: codigosRestantes,
     });
@@ -2146,7 +2146,7 @@ app.get(
   }),
 );
 
-/** Genera el secreto y el QR. No activa nada: eso lo hace `/activate` con un cÃ³digo vÃ¡lido. */
+/** Genera el secreto y el QR. No activa nada: eso lo hace `/activate` con un código válido. */
 app.post(
   '/api/auth/2fa/setup',
   requireAuthenticated,
@@ -2162,7 +2162,7 @@ app.post(
       });
       res.json({ success: true, otpauthUri: uri, qrDataUrl: qr, secret: secreto });
     } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : 'No se pudo iniciar la configuraciÃ³n.' });
+      res.status(400).json({ error: error instanceof Error ? error.message : 'No se pudo iniciar la configuración.' });
     }
   }),
 );
@@ -2175,7 +2175,7 @@ app.post(
     const parsed = twoFactorCodeSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2183,7 +2183,7 @@ app.post(
     try {
       const resultado = await activarDosFactores(req.user!.id, parsed.data.code);
       if (!resultado) {
-        return res.status(401).json({ error: 'El cÃ³digo no coincide. Comprueba la hora del telÃ©fono e intÃ©ntalo otra vez.' });
+        return res.status(401).json({ error: 'El código no coincide. Comprueba la hora del teléfono e inténtalo otra vez.' });
       }
       await recordAuditEvent(req, {
         actorUserId: req.user!.id,
@@ -2194,7 +2194,7 @@ app.post(
       res.json({
         success: true,
         recoveryCodes: resultado.codigos,
-        message: 'VerificaciÃ³n en dos pasos activada. Guarda los cÃ³digos de recuperaciÃ³n: no se vuelven a mostrar.',
+        message: 'Verificación en dos pasos activada. Guarda los códigos de recuperación: no se vuelven a mostrar.',
       });
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : 'No se pudo activar.' });
@@ -2203,10 +2203,10 @@ app.post(
 );
 
 /**
- * Retirar el segundo factor exige la contraseÃ±a.
+ * Retirar el segundo factor exige la contraseña.
  *
- * Sin ella, una sesiÃ³n robada bastarÃ­a para desactivar justo la defensa que
- * existe por si roban la contraseÃ±a.
+ * Sin ella, una sesión robada bastaría para desactivar justo la defensa que
+ * existe por si roban la contraseña.
  */
 app.delete(
   '/api/auth/2fa',
@@ -2216,14 +2216,14 @@ app.delete(
     const parsed = twoFactorPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user?.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-      return res.status(401).json({ error: 'La contraseÃ±a es incorrecta.' });
+      return res.status(401).json({ error: 'La contraseña es incorrecta.' });
     }
 
     await desactivarDosFactores(user.id);
@@ -2233,7 +2233,7 @@ app.delete(
       targetType: 'User',
       targetId: user.id,
     });
-    res.json({ success: true, message: 'VerificaciÃ³n en dos pasos desactivada.' });
+    res.json({ success: true, message: 'Verificación en dos pasos desactivada.' });
   }),
 );
 
@@ -2245,17 +2245,17 @@ app.post(
     const parsed = twoFactorPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user?.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-      return res.status(401).json({ error: 'La contraseÃ±a es incorrecta.' });
+      return res.status(401).json({ error: 'La contraseña es incorrecta.' });
     }
     if (!user.twoFactorEnabledAt) {
-      return res.status(400).json({ error: 'La verificaciÃ³n en dos pasos no estÃ¡ activa en esta cuenta.' });
+      return res.status(400).json({ error: 'La verificación en dos pasos no está activa en esta cuenta.' });
     }
 
     const codigos = await regenerarCodigosDosFactores(user.id);
@@ -2268,7 +2268,7 @@ app.post(
     res.json({
       success: true,
       recoveryCodes: codigos,
-      message: 'CÃ³digos nuevos generados. Los anteriores dejaron de servir.',
+      message: 'Códigos nuevos generados. Los anteriores dejaron de servir.',
     });
   }),
 );
@@ -2279,7 +2279,7 @@ app.post(
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2287,7 +2287,7 @@ app.post(
     const { name, password } = parsed.data;
     const email = parsed.data.email.toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return res.status(400).json({ error: 'El email ya se encuentra registrado. Inicia sesiÃ³n.' });
+    if (existing) return res.status(400).json({ error: 'El email ya se encuentra registrado. Inicia sesión.' });
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
@@ -2336,7 +2336,7 @@ app.post(
     }
     await revokeRequestSession(req);
     clearSessionCookie(res);
-    res.json({ success: true, message: 'SesiÃ³n cerrada correctamente' });
+    res.json({ success: true, message: 'Sesión cerrada correctamente' });
   }),
 );
 
@@ -2346,7 +2346,7 @@ app.post(
     const parsed = forgotPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2370,7 +2370,7 @@ app.post(
 
     res.json({
       success: true,
-      message: 'Si la cuenta existe, se enviaron las instrucciones para restablecer la contraseÃ±a.',
+      message: 'Si la cuenta existe, se enviaron las instrucciones para restablecer la contraseña.',
       ...developmentReset,
     });
   }),
@@ -2382,7 +2382,7 @@ app.post(
     const parsed = resetPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2392,7 +2392,7 @@ app.post(
       include: { user: true },
     });
     if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt <= new Date() || !tokenRecord.user.isActive) {
-      return res.status(400).json({ error: 'El enlace de recuperaciÃ³n es invÃ¡lido o ha expirado.' });
+      return res.status(400).json({ error: 'El enlace de recuperación es inválido o ha expirado.' });
     }
 
     const passwordHash = await hashPassword(parsed.data.newPassword);
@@ -2413,7 +2413,7 @@ app.post(
     });
 
     if (!passwordChanged) {
-      return res.status(400).json({ error: 'El enlace de recuperaciÃ³n ya fue utilizado.' });
+      return res.status(400).json({ error: 'El enlace de recuperación ya fue utilizado.' });
     }
     clearSessionCookie(res);
     await recordAuditEvent(req, {
@@ -2422,7 +2422,7 @@ app.post(
       targetType: 'User',
       targetId: tokenRecord.userId,
     });
-    res.json({ success: true, message: 'ContraseÃ±a actualizada. Inicia sesiÃ³n con tu nueva contraseÃ±a.' });
+    res.json({ success: true, message: 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.' });
   }),
 );
 
@@ -2433,17 +2433,17 @@ app.put(
     const parsed = changePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user?.passwordHash || !(await verifyPassword(parsed.data.currentPassword, user.passwordHash))) {
-      return res.status(401).json({ error: 'La contraseÃ±a actual es incorrecta.' });
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
     }
     if (await verifyPassword(parsed.data.newPassword, user.passwordHash)) {
-      return res.status(400).json({ error: 'La nueva contraseÃ±a debe ser diferente de la actual.' });
+      return res.status(400).json({ error: 'La nueva contraseña debe ser diferente de la actual.' });
     }
 
     const passwordHash = await hashPassword(parsed.data.newPassword);
@@ -2469,7 +2469,7 @@ app.put(
     res.json({
       success: true,
       requiresLogin: true,
-      message: 'ContraseÃ±a actualizada. Se cerraron todas las sesiones por seguridad.',
+      message: 'Contraseña actualizada. Se cerraron todas las sesiones por seguridad.',
     });
   }),
 );
@@ -2515,7 +2515,7 @@ app.post(
     const parsed = pluginConfigSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n de entrada',
+        error: 'Error de validación de entrada',
         details: parsed.error.issues.map((issue) => issue.message),
       });
     }
@@ -2543,10 +2543,10 @@ app.post(
 
 // Live Meetings Endpoints (Plugin LiveMeetings)
 const createMeetingSchema = z.object({
-  title: z.string().trim().min(2, 'El tÃ­tulo debe tener al menos 2 caracteres').max(200),
+  title: z.string().trim().min(2, 'El título debe tener al menos 2 caracteres').max(200),
   description: z.string().trim().max(2000).optional().nullable(),
   meetingType: z.enum(['meet', 'jitsi', 'async_record']).default('meet'),
-  meetingUrl: z.string().trim().min(3, 'La URL de la reuniÃ³n es requerida').max(1000),
+  meetingUrl: z.string().trim().min(3, 'La URL de la reunión es requerida').max(1000),
   scheduledAt: z.string().optional(),
   isLive: z.boolean().default(false),
   courseId: z.string().optional().nullable(),
@@ -2555,7 +2555,7 @@ const createMeetingSchema = z.object({
 });
 
 const updateMeetingSchema = z.object({
-  title: z.string().trim().min(2, 'El tÃ­tulo debe tener al menos 2 caracteres').max(200).optional(),
+  title: z.string().trim().min(2, 'El título debe tener al menos 2 caracteres').max(200).optional(),
   description: z.string().trim().max(2000).optional().nullable(),
   meetingType: z.enum(['meet', 'jitsi', 'async_record']).optional(),
   meetingUrl: z.string().trim().min(3).max(1000).optional(),
@@ -2620,7 +2620,7 @@ app.post(
     const parsed = createMeetingSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n',
+        error: 'Error de validación',
         details: parsed.error.issues.map((i) => i.message),
       });
     }
@@ -2673,13 +2673,13 @@ app.put(
     const meetingId = req.params.id;
     const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
     if (!existing) {
-      return res.status(404).json({ error: 'ReuniÃ³n no encontrada' });
+      return res.status(404).json({ error: 'Reunión no encontrada' });
     }
 
     const parsed = updateMeetingSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
-        error: 'Error de validaciÃ³n',
+        error: 'Error de validación',
         details: parsed.error.issues.map((i) => i.message),
       });
     }
@@ -2730,7 +2730,7 @@ app.post(
     const meetingId = req.params.id;
     const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
     if (!existing) {
-      return res.status(404).json({ error: 'ReuniÃ³n no encontrada' });
+      return res.status(404).json({ error: 'Reunión no encontrada' });
     }
 
     const nextLiveStatus = req.body.isLive !== undefined ? Boolean(req.body.isLive) : !existing.isLive;
@@ -2763,7 +2763,7 @@ app.delete(
     const meetingId = req.params.id;
     const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
     if (!existing) {
-      return res.status(404).json({ error: 'ReuniÃ³n no encontrada' });
+      return res.status(404).json({ error: 'Reunión no encontrada' });
     }
 
     await prisma.meeting.delete({ where: { id: meetingId } });
@@ -2776,7 +2776,7 @@ app.delete(
       metadata: { title: existing.title },
     });
 
-    res.json({ success: true, message: 'ReuniÃ³n eliminada correctamente' });
+    res.json({ success: true, message: 'Reunión eliminada correctamente' });
   }),
 );
 
@@ -3133,7 +3133,7 @@ app.post(
     if (requestedCourseId && !course) {
       return res.status(404).json({ error: 'El curso indicado no existe.' });
     }
-    if (!mentor || !course) return res.status(400).json({ error: 'No existe mentor o curso disponible para la asignaciÃ³n.' });
+    if (!mentor || !course) return res.status(400).json({ error: 'No existe mentor o curso disponible para la asignación.' });
 
     const existingMentee = await prisma.user.findUnique({ where: { email } });
     if (existingMentee && ['ADMIN', 'MENTOR'].includes(existingMentee.role)) {
@@ -3142,7 +3142,7 @@ app.post(
       });
     }
     if (existingMentee && !existingMentee.isActive) {
-      return res.status(409).json({ error: 'La cuenta indicada estÃ¡ desactivada.' });
+      return res.status(409).json({ error: 'La cuenta indicada está desactivada.' });
     }
 
     /**
@@ -3150,8 +3150,8 @@ app.post(
      * le pisa el nombre.
      *
      * Antes este boton hacia `role: 'MENTEE'` sobre la cuenta encontrada, y eso
-     * hacia dos danos. Uno, a una cuenta VIP le retiraba la membresia â€”y con
-     * ella el acceso a todos los cursos publicadosâ€” a cambio de darle uno: el
+     * hacia dos danos. Uno, a una cuenta VIP le retiraba la membresia —y con
+     * ella el acceso a todos los cursos publicados— a cambio de darle uno: el
      * saldo era negativo y nadie lo habia pedido. Dos, el panel se contradecia:
      * el selector "Asignar mentees al curso" reparte cursos a cualquier cuenta
      * registrada sin tocarle el rol, y este boton, para la misma persona,
@@ -3266,11 +3266,11 @@ app.put(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const role = req.body.role as UserRole;
-    if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'Rol no vÃ¡lido' });
+    if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'Rol no válido' });
     const target = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
     // Regla (17 sep 2026): puede haber varios administradores, pero nunca
-    // cero. Antes solo cabia uno, asi que el boton Â«AdminÂ» fallaba en cuanto
+    // cero. Antes solo cabia uno, asi que el boton «Admin» fallaba en cuanto
     // existia otro y el rol no se podia retirar nunca. Lo unico que se protege
     // ahora es quedarse sin nadie que pueda entrar al panel.
     if (target.role === 'ADMIN' && role !== 'ADMIN') {
@@ -3279,12 +3279,12 @@ app.put(
       // cuenta administradora.
       if (target.id === req.user!.id) {
         return res.status(400).json({
-          error: 'No puedes retirarte a ti mismo el rol de administrador. PÃ­deselo a otro administrador.',
+          error: 'No puedes retirarte a ti mismo el rol de administrador. Pídeselo a otro administrador.',
         });
       }
       if ((await countOtherActiveAdmins(target.id)) === 0) {
         return res.status(400).json({
-          error: 'No se puede retirar el rol al Ãºltimo administrador activo. Nombra antes a otro.',
+          error: 'No se puede retirar el rol al último administrador activo. Nombra antes a otro.',
         });
       }
     }
@@ -3311,7 +3311,7 @@ app.put(
   '/api/admin/landing-config',
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
-    if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'ConfiguraciÃ³n no vÃ¡lida' });
+    if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Configuración no válida' });
     const current = toLandingConfig(await getLandingRecord());
     const merged = { ...current, ...req.body };
     const config = await prisma.landingConfig.update({
@@ -3343,7 +3343,7 @@ app.put(
     res.json({
       success: true,
       config: toLandingConfig(config),
-      message: 'Â¡ConfiguraciÃ³n de la portada actualizada exitosamente!',
+      message: '¡Configuración de la portada actualizada exitosamente!',
     });
   }),
 );
@@ -3374,7 +3374,7 @@ function resolveVideoSource(
 
   if (embedInput) {
     if (!/^https?:\/\//i.test(embedInput)) {
-      return { error: 'La URL de reproducciÃ³n debe empezar por http:// o https://.' };
+      return { error: 'La URL de reproducción debe empezar por http:// o https://.' };
     }
     return { driveFileId: `external-${Date.now()}`, embedUrl: embedInput };
   }
@@ -3392,7 +3392,7 @@ app.post(
       where: { id: req.params.moduleId },
       include: { videos: true },
     });
-    if (!targetModule) return res.status(404).json({ error: 'MÃ³dulo no encontrado' });
+    if (!targetModule) return res.status(404).json({ error: 'Módulo no encontrado' });
 
     const resolved = resolveVideoSource(req.body.driveFileId, req.body.embedUrl);
     if ('error' in resolved) return res.status(400).json({ error: resolved.error });
@@ -3401,7 +3401,7 @@ app.post(
       data: {
         moduleId: targetModule.id,
         driveFileId: resolved.driveFileId,
-        title: req.body.title || 'Nuevo Video de MentorÃ­a',
+        title: req.body.title || 'Nuevo Video de Mentoría',
         duration: req.body.duration || '20:00',
         description: req.body.description || 'Video importado desde Google Drive.',
         mimeType: 'video/mp4',
@@ -3425,7 +3425,7 @@ app.post(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const title = String(req.body.title || '').trim();
-    if (!title) return res.status(400).json({ error: 'El tÃ­tulo del curso es obligatorio.' });
+    if (!title) return res.status(400).json({ error: 'El título del curso es obligatorio.' });
 
     const course = await prisma.course.create({
       data: {
@@ -3436,7 +3436,7 @@ app.post(
         published: Boolean(req.body.published),
         publishedAt: req.body.published ? new Date() : null,
         coverImage: String(req.body.coverImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'),
-        category: String(req.body.category || 'MentorÃ­a Elite').trim(),
+        category: String(req.body.category || 'Mentoría Elite').trim(),
         isDemo: Boolean(req.body.isDemo),
         sequentialUnlock: Boolean(req.body.sequentialUnlock),
         openToAllRegistered: Boolean(req.body.openToAllRegistered),
@@ -3523,7 +3523,7 @@ app.post(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const title = String(req.body.title || '').trim();
-    if (!title) return res.status(400).json({ error: 'El tÃ­tulo del mÃ³dulo es obligatorio.' });
+    if (!title) return res.status(400).json({ error: 'El título del módulo es obligatorio.' });
 
     const maxOrder = await prisma.module.aggregate({
       where: { courseId: req.params.courseId },
@@ -3549,7 +3549,7 @@ app.put(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const existing = await prisma.module.findUnique({ where: { id: req.params.moduleId } });
-    if (!existing) return res.status(404).json({ error: 'MÃ³dulo no encontrado.' });
+    if (!existing) return res.status(404).json({ error: 'Módulo no encontrado.' });
 
     const updated = await prisma.module.update({
       where: { id: existing.id },
@@ -3569,17 +3569,17 @@ app.delete(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const existing = await prisma.module.findUnique({ where: { id: req.params.moduleId } });
-    if (!existing) return res.status(404).json({ error: 'MÃ³dulo no encontrado.' });
+    if (!existing) return res.status(404).json({ error: 'Módulo no encontrado.' });
 
     await prisma.module.delete({ where: { id: existing.id } });
-    res.json({ success: true, message: 'MÃ³dulo eliminado exitosamente.' });
+    res.json({ success: true, message: 'Módulo eliminado exitosamente.' });
   }),
 );
 
   // --- Quizzes & Module Assessments (Plugin interactive-quizzes) ---
   // El listado completo solo lo consumen el panel del mentor y el gestor de
-  // cursos. Sin guardia devolvia todos los examenes del sistema â€”con la
-  // respuesta correcta de cada preguntaâ€” a cualquiera que supiera la ruta.
+  // cursos. Sin guardia devolvia todos los examenes del sistema —con la
+  // respuesta correcta de cada pregunta— a cualquiera que supiera la ruta.
   app.get(
     '/api/quizzes/all',
     requireRole(['ADMIN', 'MENTOR']),
@@ -3623,10 +3623,10 @@ app.delete(
     asyncRoute(async (req, res) => {
       const { questions } = req.body;
       if (!Array.isArray(questions)) {
-        return res.status(400).json({ error: 'Formato de preguntas invÃ¡lido. Se espera un arreglo.' });
+        return res.status(400).json({ error: 'Formato de preguntas inválido. Se espera un arreglo.' });
       }
       const saved = await saveQuizForModule(req.params.moduleId, questions);
-      res.json({ success: true, questions: saved, message: 'EvaluaciÃ³n guardada exitosamente.' });
+      res.json({ success: true, questions: saved, message: 'Evaluación guardada exitosamente.' });
     }),
   );
 
@@ -3650,7 +3650,7 @@ app.delete(
     requireRole(['ADMIN', 'MENTOR']),
     asyncRoute(async (req, res) => {
       await deleteQuizForModule(req.params.moduleId);
-      res.json({ success: true, message: 'EvaluaciÃ³n eliminada del mÃ³dulo.' });
+      res.json({ success: true, message: 'Evaluación eliminada del módulo.' });
     }),
   );
 
@@ -3713,7 +3713,7 @@ app.post(
     const title = String(req.body.title || '').trim();
     const privateUrl = String(req.body.privateUrl || '').trim();
     if (!title || !privateUrl) {
-      return res.status(400).json({ error: 'El tÃ­tulo y la URL privada del recurso son obligatorios.' });
+      return res.status(400).json({ error: 'El título y la URL privada del recurso son obligatorios.' });
     }
 
     const resource = await prisma.courseResource.create({
@@ -3829,7 +3829,7 @@ app.put(
   asyncRoute(async (req, res) => {
     const status = req.body.status;
     if (!['ACTIVE', 'COMPLETED', 'REVOKED', 'EXPIRED'].includes(status)) {
-      return res.status(400).json({ error: 'Estado de matrÃ­cula no vÃ¡lido.' });
+      return res.status(400).json({ error: 'Estado de matrícula no válido.' });
     }
 
     const enrollment = await prisma.courseEnrollment.update({
@@ -3935,9 +3935,9 @@ app.post(
   }),
 );
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // AI YouTube Course Builder Endpoints
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Iniciar flujo OAuth 2.0 con YouTube
 app.get(
@@ -3968,7 +3968,7 @@ app.get(
     } catch (err: any) {
       logger.error('youtube.auth.error', { error: err.message });
       res.status(err instanceof YouTubeError ? err.statusCode : 500).json({
-        error: err.message || 'Error al iniciar autenticaciÃ³n con YouTube.',
+        error: err.message || 'Error al iniciar autenticación con YouTube.',
         code: err.code || 'UNKNOWN',
       });
     }
@@ -3989,7 +3989,7 @@ app.get(
     }
 
     if (!code) {
-      return res.status(400).json({ error: 'Falta el cÃ³digo de autorizaciÃ³n de Google.' });
+      return res.status(400).json({ error: 'Falta el código de autorización de Google.' });
     }
 
     let userId = req.user?.id;
@@ -4001,7 +4001,7 @@ app.get(
     }
 
     if (!userId) {
-      return res.status(401).json({ error: 'SesiÃ³n no identificada para el callback de YouTube.' });
+      return res.status(401).json({ error: 'Sesión no identificada para el callback de YouTube.' });
     }
 
     try {
@@ -4014,7 +4014,7 @@ app.get(
   }),
 );
 
-// Estado de conexiÃ³n del mentor con YouTube
+// Estado de conexión del mentor con YouTube
 app.get(
   '/api/youtube/status',
   requireRole(['ADMIN', 'MENTOR']),
@@ -4083,7 +4083,7 @@ app.get(
   }),
 );
 
-// Actualizar selecciÃ³n y orden de videos de una playlist
+// Actualizar selección y orden de videos de una playlist
 app.patch(
   '/api/youtube/playlists/:id/videos',
   requireRole(['ADMIN', 'MENTOR']),
@@ -4099,7 +4099,7 @@ app.patch(
   }),
 );
 
-// Iniciar generaciÃ³n de curso con IA a partir de videos
+// Iniciar generación de curso con IA a partir de videos
 app.post(
   '/api/youtube/ai-generate',
   requireRole(['ADMIN', 'MENTOR']),
@@ -4212,13 +4212,13 @@ app.post(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const scriptText = String(req.body.scriptText || '').trim();
-    if (!scriptText) return res.status(400).json({ error: 'El texto del guion de la guÃ­a es obligatorio' });
+    if (!scriptText) return res.status(400).json({ error: 'El texto del guion de la guía es obligatorio' });
     const guide = await prisma.tTSGuide.create({
       data: {
         courseId: req.body.courseId || 'course-giantucchi-mastery',
         moduleId: req.body.moduleId || 'module-1',
         videoId: req.body.videoId || 'video-1a',
-        title: req.body.title || 'GuÃ­a Gamificada de MentorÃ­a',
+        title: req.body.title || 'Guía Gamificada de Mentoría',
         scriptText,
         voiceId: req.body.voiceId || 'es-ES-Carlos',
         voiceSpeed: Number(req.body.voiceSpeed) || 1,
@@ -4230,7 +4230,7 @@ app.post(
     res.json({
       success: true,
       guide: { ...guide, createdAt: guide.createdAt.toISOString() },
-      message: 'Â¡GuÃ­a de mentorÃ­a TTS generada y guardada con Ã©xito!',
+      message: '¡Guía de mentoría TTS generada y guardada con éxito!',
     });
   }),
 );
@@ -4240,9 +4240,9 @@ app.delete(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const existing = await prisma.tTSGuide.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ error: 'GuÃ­a no encontrada' });
+    if (!existing) return res.status(404).json({ error: 'Guía no encontrada' });
     await prisma.tTSGuide.delete({ where: { id: existing.id } });
-    res.json({ success: true, message: 'GuÃ­a eliminada correctamente' });
+    res.json({ success: true, message: 'Guía eliminada correctamente' });
   }),
 );
 
@@ -4284,7 +4284,7 @@ app.post(
         comment: feedback.comment,
         createdAt: feedback.createdAt.toISOString(),
       },
-      message: 'Â¡Gracias por tu opiniÃ³n!',
+      message: '¡Gracias por tu opinión!',
     });
   }),
 );
@@ -4316,7 +4316,7 @@ app.get(
 
 /**
  * Lo que pinta la portada. Es publico y sin sesion: solo lo aprobado, y solo
- * los campos que se enseÃ±an.
+ * los campos que se enseñan.
  */
 app.get(
   '/api/testimonials',
@@ -4361,11 +4361,11 @@ app.post(
   asyncRoute(async (req, res) => {
     const comment = String(req.body.comment || '').trim();
     if (!comment) {
-      res.status(400).json({ error: 'Escribe tu opiniÃ³n antes de enviarla' });
+      res.status(400).json({ error: 'Escribe tu opinión antes de enviarla' });
       return;
     }
     if (comment.length > TESTIMONIAL_MAX_CHARS) {
-      res.status(400).json({ error: `La opiniÃ³n no puede pasar de ${TESTIMONIAL_MAX_CHARS} caracteres` });
+      res.status(400).json({ error: `La opinión no puede pasar de ${TESTIMONIAL_MAX_CHARS} caracteres` });
       return;
     }
     const rating = Math.min(5, Math.max(1, Math.round(Number(req.body.rating) || 5)));
@@ -4389,7 +4389,7 @@ app.post(
     res.json({
       success: true,
       testimonial: toModerationTestimonial(guardado),
-      message: 'Gracias. Tu opiniÃ³n se publicarÃ¡ en cuanto la revisemos.',
+      message: 'Gracias. Tu opinión se publicará en cuanto la revisemos.',
     });
   }),
 );
@@ -4418,7 +4418,7 @@ app.patch(
   asyncRoute(async (req, res) => {
     const estado = String(req.body.status || '').toUpperCase();
     if (!['PENDING', 'APPROVED', 'REJECTED'].includes(estado)) {
-      res.status(400).json({ error: 'Estado no vÃ¡lido' });
+      res.status(400).json({ error: 'Estado no válido' });
       return;
     }
     const existe = await prisma.feedback.findUnique({ where: { id: req.params.id } });
@@ -4458,26 +4458,26 @@ app.post(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const targetLang = req.body.language || 'es';
-    const topic = req.body.lessonTitle || 'LecciÃ³n de MentorÃ­a TÃ©cnica';
+    const topic = req.body.lessonTitle || 'Lección de Mentoría Técnica';
     let generatedScript = '';
 
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey.length > 5) {
         const ai = new GoogleGenAI({ apiKey });
-        const prompt = `ActÃºa como Mentor Senior. Redacta un guion introductorio motivador de mÃ¡ximo 90 palabras para "${topic}". Idioma: ${targetLang}. Instrucciones: ${req.body.customInstructions || 'Ninguna'}. Devuelve sÃ³lo texto apto para TTS.`;
+        const prompt = `Actúa como Mentor Senior. Redacta un guion introductorio motivador de máximo 90 palabras para "${topic}". Idioma: ${targetLang}. Instrucciones: ${req.body.customInstructions || 'Ninguna'}. Devuelve sólo texto apto para TTS.`;
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         generatedScript = response.text?.trim() || '';
       }
     } catch (error) {
-      console.warn('Gemini no disponible; se usarÃ¡ el guion local:', error);
+      console.warn('Gemini no disponible; se usará el guion local:', error);
     }
 
     if (!generatedScript) {
       if (String(targetLang).startsWith('en')) {
         generatedScript = `Welcome to the lesson "${topic}". Today we will explore the key strategies to master this topic step by step. Review the resources and share your questions in the mentorship forum. Let's begin!`;
       } else {
-        generatedScript = `Â¡Hola! Bienvenido a la lecciÃ³n "${topic}". En esta clase exploraremos las estrategias clave para dominar este concepto paso a paso. Revisa los recursos y deja tus dudas en la zona de mentorÃ­a al finalizar. Â¡Comencemos!`;
+        generatedScript = `¡Hola! Bienvenido a la lección "${topic}". En esta clase exploraremos las estrategias clave para dominar este concepto paso a paso. Revisa los recursos y deja tus dudas en la zona de mentoría al finalizar. ¡Comencemos!`;
       }
     }
     res.json({ success: true, scriptText: generatedScript, message: 'Guion generado exitosamente con IA.' });
@@ -4558,7 +4558,7 @@ async function startServer() {
 
   app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof SyntaxError && ('status' in error || 'statusCode' in error) && ((error as any).status === 400 || (error as any).statusCode === 400)) {
-      return res.status(400).json({ error: 'Cuerpo de solicitud JSON invÃ¡lido' });
+      return res.status(400).json({ error: 'Cuerpo de solicitud JSON inválido' });
     }
     console.error('Error procesando la solicitud:', error);
     if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor' });
@@ -4570,7 +4570,7 @@ async function startServer() {
   // configurado; si falla, se registra y la aplicacion arranca igual.
   try {
     const total = await ensurePluginCatalog();
-    console.log(`ðŸ”Œ Catalogo de plugins verificado (${total})`);
+    console.log(`🔌 Catalogo de plugins verificado (${total})`);
   } catch (error) {
     logger.error('No se pudo asegurar el catalogo de plugins', { error: String(error) });
   }
@@ -4581,14 +4581,14 @@ async function startServer() {
   // y que aun no tienen examen.
   try {
     const importados = await importarExamenesHeredados();
-    if (importados > 0) console.log(`ðŸ“ Examenes traidos del archivo antiguo a la base (${importados})`);
+    if (importados > 0) console.log(`📝 Examenes traidos del archivo antiguo a la base (${importados})`);
   } catch (error) {
     logger.error('No se pudieron importar los examenes del archivo antiguo', { error: String(error) });
   }
 
   const httpServer = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ðŸš€ DocentOS v${DOCENTOS_VERSION} activo en http://localhost:${PORT}`);
-    console.log('ðŸ—„ï¸ PostgreSQL conectado mediante Prisma');
+    console.log(`🚀 DocentOS v${DOCENTOS_VERSION} activo en http://localhost:${PORT}`);
+    console.log('🗄️ PostgreSQL conectado mediante Prisma');
   });
 
   const shutdown = async () => {
@@ -4606,8 +4606,8 @@ async function startServer() {
  *
  * Las pruebas de extremo a extremo la importan para levantarla en un puerto
  * efimero y hablarle por HTTP de verdad: es la unica forma de comprobar lo que
- * vive dentro de una ruta â€”permisos, codigos de estado, que se guarda y que
- * noâ€” sin reescribir esa logica en el test y acabar probando la copia.
+ * vive dentro de una ruta —permisos, codigos de estado, que se guarda y que
+ * no— sin reescribir esa logica en el test y acabar probando la copia.
  */
 export { app };
 
@@ -4624,8 +4624,8 @@ export { ensureLegacyInstanceConfig };
  * Arranque automatico al importar, salvo que se pida lo contrario.
  *
  * `DOCENTOS_SKIP_LISTEN=1` es la puerta que usan las pruebas: sin ella,
- * importar este archivo abriria un segundo servidor en el 3000 â€”o moriria con
- * EADDRINUSE contra el que ya este corriendoâ€” y dejaria el proceso vivo al
+ * importar este archivo abriria un segundo servidor en el 3000 —o moriria con
+ * EADDRINUSE contra el que ya este corriendo— y dejaria el proceso vivo al
  * acabar el test.
  *
  * Se comprueba la variable en vez de deducir si este archivo es el punto de
@@ -4637,7 +4637,7 @@ export { ensureLegacyInstanceConfig };
  */
 if (process.env.DOCENTOS_SKIP_LISTEN !== '1') {
   startServer().catch(async (error) => {
-    console.error('âŒ No se pudo iniciar DocentOS:', error);
+    console.error('❌ No se pudo iniciar DocentOS:', error);
     await prisma.$disconnect();
     process.exitCode = 1;
   });
