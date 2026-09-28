@@ -3853,89 +3853,6 @@ app.put(
 );
 
 
-// --- Integration API for Landing / n8n Automation ---
-app.post(
-  '/api/integrations/enrollments',
-  asyncRoute(async (req, res) => {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-    const expectedToken = (process.env.INTEGRATION_API_TOKEN || config.INTEGRATION_API_TOKEN || '').trim();
-
-    if (!expectedToken || token !== expectedToken) {
-      return res.status(401).json({ error: 'Token de integracion no autorizado.' });
-    }
-
-    let payload = req.body || {};
-    if (typeof payload === 'string') {
-      try { payload = JSON.parse(payload); } catch (e) {}
-    }
-    const { student, courseId, plan, paymentId, amountInCents } = payload;
-    if (!student?.email) {
-      return res.status(400).json({ error: 'student.email es requerido.' });
-    }
-
-    const email = String(student.email).trim().toLowerCase();
-    const name = String(student.name || email.split('@')[0]).trim();
-
-    let user = await prisma.user.findUnique({ where: { email } });
-    let isNewUser = false;
-    if (!user) {
-      const crypto = await import('node:crypto');
-      const tempPassword = crypto.randomBytes(24).toString('hex');
-      const passwordHash = await hashPassword(tempPassword);
-      user = await prisma.user.create({
-        data: {
-          email,
-          name,
-          passwordHash,
-          role: 'MENTEE',
-        },
-      });
-      isNewUser = true;
-    }
-
-    // Verify course exists, or fallback to first active course
-    let targetCourseId = courseId;
-    let course = targetCourseId ? await prisma.course.findUnique({ where: { id: targetCourseId } }) : null;
-    if (!course) {
-      course = await prisma.course.findFirst({ where: { published: true } }) || await prisma.course.findFirst();
-      if (!course) {
-        return res.status(404).json({ error: 'No se encontraron cursos disponibles en DocentOS.' });
-      }
-    }
-
-    const enrollment = await prisma.courseEnrollment.upsert({
-      where: { userId_courseId: { userId: user.id, courseId: course.id } },
-      create: {
-        userId: user.id,
-        courseId: course.id,
-        status: 'ACTIVE',
-        source: 'PAYMENT',
-      },
-      update: {
-        status: 'ACTIVE',
-        source: 'PAYMENT',
-      },
-    });
-
-    // Generate password reset and notify webhook
-    const { token: resetToken, expiresAt } = await createPasswordResetToken(user.id);
-    await deliverPasswordReset(req, user, resetToken, expiresAt);
-
-    res.json({
-      success: true,
-      user: { id: user.id, email: user.email, name: user.name, isNewUser },
-      enrollment: {
-        id: enrollment.id,
-        courseId: course.id,
-        courseTitle: course.title,
-        status: enrollment.status,
-      },
-    });
-  }),
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
 // AI YouTube Course Builder Endpoints
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -4556,7 +4473,7 @@ async function startServer() {
     app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
 
-  app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof SyntaxError && ('status' in error || 'statusCode' in error) && ((error as any).status === 400 || (error as any).statusCode === 400)) {
       return res.status(400).json({ error: 'Cuerpo de solicitud JSON inválido' });
     }
