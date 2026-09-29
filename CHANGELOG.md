@@ -14,6 +14,46 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.11 - 2026-09-29
+
+**Esta version migra el esquema de la base de datos (5 migraciones aditivas).
+Haz backup antes.** Tablas nuevas para el importador de YouTube, los intentos de
+examen y el `state` de OAuth, y siete claves foraneas que pasan de `CASCADE` a
+`RESTRICT`. El contenedor las aplica al arrancar. Se borra: nada.
+
+**Variables nuevas** (hay que volver a pegar `docker-compose.community.yml` en
+Coolify): `INTEGRATION_API_TOKEN`, `INTEGRATION_MENTOR_EMAIL`,
+`ACTIVATION_TTL_HOURS`, `COMPLAINTS_BOOK_URL`, `CSP_MODE` y `YOUTUBE_*`. Ninguna
+es obligatoria para arrancar.
+
+### Added
+
+- Alta automatica desde la pasarela de pagos de Giantucchi: cuenta, matricula,
+  mentoria y enlace de activacion (`INTEGRATION_API_TOKEN`).
+- Constructor de cursos desde playlists de YouTube, con IA opcional.
+- Examenes calificados en el servidor: las respuestas correctas ya no llegan al
+  navegador y los intentos quedan guardados.
+- Content-Security-Policy (`CSP_MODE`), en modo bloqueo fuera de desarrollo.
+
+### Changed
+
+- El certificado exige, ademas de los videos, los examenes del curso aprobados.
+- Las clases en vivo y grabaciones solo las ve quien tiene acceso al curso.
+- Los plugins solo los configura administracion; un mentor publica solo sus
+  borradores; las reuniones las edita su anfitrion.
+- Borrar un curso con pagos, matriculas o certificados se rechaza: hay que
+  despublicarlo.
+- 2FA: codigos de recuperacion mas largos; activar el segundo factor pide la
+  contraseña y cierra las demas sesiones.
+
+### Fixed
+
+- Los tokens de recuperacion ya no quedan en los logs.
+- `staging` exige las mismas claves que produccion.
+- Un reintento de la pasarela ya no reactiva una matricula revocada.
+- Stripe: un evento tardio ya no deshace un reembolso.
+- `/api/admin/metrics` respondia siempre 401.
+
 ## 0.5.0-beta.10 - 2026-09-18
 
 **Esta version migra el esquema de la base de datos.** Añade el segundo factor
