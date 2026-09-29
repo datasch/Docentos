@@ -46,6 +46,7 @@ import {
 } from './server/twoFactorService.js';
 import {
   searchDriveVideos,
+  DriveQueryError,
   getDriveFileInfo,
   extractDriveFileId,
   buildDriveEmbedUrl,
@@ -671,31 +672,6 @@ app.get(
   }),
 );
 
-// Endpoint de Métricas operativas de sistema
-app.get(
-  '/api/admin/metrics',
-  requireAuthenticated,
-  requireRole(['ADMIN']),
-  asyncRoute(async (_req, res) => {
-    const [userCount, courseCount, activeSessions] = await Promise.all([
-      prisma.user.count(),
-      prisma.course.count(),
-      prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
-    ]);
-
-    const snapshot = getMetricsSnapshot();
-    res.json({
-      ...snapshot,
-      database: {
-        users: userCount,
-        courses: courseCount,
-        activeSessions,
-      },
-      ...getReleaseMetadata(),
-    });
-  }),
-);
-
 app.get(
   '/api/setup/status',
   asyncRoute(async (_req, res) => {
@@ -833,6 +809,32 @@ app.use(
       req.authSession = authentication.session;
     }
     next();
+  }),
+);
+
+// Endpoint de Métricas operativas de sistema. Va detrás de la resolución de
+// sesión: registrado antes, req.user no existía y respondía 401 siempre.
+app.get(
+  '/api/admin/metrics',
+  requireAuthenticated,
+  requireRole(['ADMIN']),
+  asyncRoute(async (_req, res) => {
+    const [userCount, courseCount, activeSessions] = await Promise.all([
+      prisma.user.count(),
+      prisma.course.count(),
+      prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
+    ]);
+
+    const snapshot = getMetricsSnapshot();
+    res.json({
+      ...snapshot,
+      database: {
+        users: userCount,
+        courses: courseCount,
+        activeSessions,
+      },
+      ...getReleaseMetadata(),
+    });
   }),
 );
 
@@ -1022,7 +1024,9 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     const courseId = req.body.courseId || 'course-giantucchi-mastery';
-    const originUrl = `${req.protocol}://${req.get('host') || 'localhost:3000'}`;
+    // La URL de vuelta de Stripe sale de la configuración, no de la cabecera Host,
+    // que controla el cliente.
+    const originUrl = config.APP_URL.replace(/\/$/, '');
 
     try {
       const result = await createCheckoutSession({
@@ -1128,7 +1132,13 @@ app.get(
   '/api/drive/videos',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
-    const videos = await searchDriveVideos(req.query.q as string, req.query.folderId as string);
+    let videos;
+    try {
+      videos = await searchDriveVideos(req.query.q as string, req.query.folderId as string);
+    } catch (error) {
+      if (error instanceof DriveQueryError) return res.status(400).json({ error: error.message });
+      throw error;
+    }
     // Sin credenciales el buscador devuelve un catalogo de demostracion con
     // identificadores ficticios: enlazarlos deja el reproductor vacio, asi que
     // la interfaz necesita poder advertirlo.
@@ -4582,7 +4592,11 @@ app.post(
       if (apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey.length > 5) {
         const ai = new GoogleGenAI({ apiKey });
         const prompt = `Actúa como Mentor Senior. Redacta un guion introductorio motivador de máximo 90 palabras para "${topic}". Idioma: ${targetLang}. Instrucciones: ${req.body.customInstructions || 'Ninguna'}. Devuelve sólo texto apto para TTS.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: { abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS) },
+        });
         generatedScript = response.text?.trim() || '';
       }
     } catch (error) {

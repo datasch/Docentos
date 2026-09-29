@@ -295,9 +295,12 @@ Formato esperado:
       
       for (const m of candidateModels) {
         try {
+          // Sin plazo, un Gemini que no responde retiene la petición y su conexión
+          // indefinidamente; el mismo tope que el resto de llamadas de IA.
           const resp = await ai.models.generateContent({
             model: m,
             contents: prompt,
+            config: { abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS) },
           });
           if (resp.text) {
             responseText = resp.text;

@@ -141,6 +141,10 @@ export function getDriveClient() {
   return null;
 }
 
+const DRIVE_FOLDER_ID = /^[A-Za-z0-9_-]{10,}$/;
+
+export class DriveQueryError extends Error {}
+
 /**
  * Searches Google Drive folder for video files
  */
@@ -152,10 +156,14 @@ export async function searchDriveVideos(query?: string, folderId?: string): Prom
     try {
       let q = "mimeType contains 'video/' and trashed = false";
       if (targetFolder) {
+        // Va dentro de la consulta de Drive: sin validar, un folderId con comillas
+        // anulaba el filtro de carpeta y listaba todo lo que ve la cuenta.
+        if (!DRIVE_FOLDER_ID.test(targetFolder)) throw new DriveQueryError('Identificador de carpeta de Drive inválido.');
         q += ` and '${targetFolder}' in parents`;
       }
       if (query && query.trim()) {
-        q += ` and name contains '${query.trim().replace(/'/g, "\\'")}'`;
+        // Primero la barra invertida: si no, «\'» cerraba la cadena igualmente.
+        q += ` and name contains '${query.trim().replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
       }
 
       const response = await drive.files.list({
@@ -179,6 +187,7 @@ export async function searchDriveVideos(query?: string, folderId?: string): Prom
         }));
       }
     } catch (error) {
+      if (error instanceof DriveQueryError) throw error;
       console.warn('⚠️ Error fetching Google Drive API, falling back to curated Drive videos:', error);
     }
   }

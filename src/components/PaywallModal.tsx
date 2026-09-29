@@ -45,8 +45,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
       if (res.checkoutUrl) {
         window.location.href = res.checkoutUrl;
       } else {
+        // Ninguna respuesta válida llega sin enlace de pago: antes se cerraba el
+        // muro como si se hubiera pagado y el alumno creía estar matriculado.
         setIsProcessing(false);
-        onPaymentSuccess();
+        setErrorMessage('No se pudo iniciar el pago. Inténtalo de nuevo en unos minutos.');
       }
     } catch (error: any) {
       console.error('Error al procesar checkout:', error);

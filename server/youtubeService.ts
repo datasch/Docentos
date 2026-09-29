@@ -318,6 +318,8 @@ export async function fetchPlaylistFromApi(
     position: number;
     publishedAt?: string | null;
   }>;
+  /** false si se cortó en el tope de videos: entonces no se sabe qué falta en la playlist. */
+  complete: boolean;
 }> {
   let youtube = userId ? await getAuthenticatedYouTubeClient(userId) : null;
   const apiKey = config.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || null;
@@ -390,10 +392,17 @@ export async function fetchPlaylistFromApi(
       rawVideos.push(...items);
       nextPageToken = itemsRes.data.nextPageToken || undefined;
     } catch (err: any) {
+      // Antes: break, y la importación se guardaba como completa con las páginas
+      // leídas hasta el fallo. Mejor fallar y que el mentor reintente.
       logger.warn('youtube.playlistItems.page_error', { playlistId, error: err.message });
-      break;
+      throw new YouTubeError(
+        'YouTube falló a mitad de la lista (cuota o error temporal). No se guardó nada: vuelve a intentarlo.',
+        'UNKNOWN',
+        502,
+      );
     }
   } while (nextPageToken && rawVideos.length < maxVideos);
+  const complete = !nextPageToken;
 
   // 3. Extraer IDs de video para consultar duraciones en bloques de 50
   const videoIds = rawVideos
@@ -424,13 +433,15 @@ export async function fetchPlaylistFromApi(
   const videos = rawVideos.map((item, index) => {
     const vidId = item.contentDetails?.videoId || item.snippet?.resourceId?.videoId || `unknown-${index}`;
     const title = item.snippet?.title || '';
+    const details = durationMap.get(vidId);
+    // Un video privado que la cuenta conectada sí puede ver trae sus metadatos:
+    // solo se oculta el que YouTube devuelve sin datos.
     const isDeletedOrPrivate =
       title === 'Private video' ||
       title === 'Deleted video' ||
-      item.status?.privacyStatus === 'private' ||
-      !item.snippet;
+      !item.snippet ||
+      (item.status?.privacyStatus === 'private' && !details);
 
-    const details = durationMap.get(vidId);
     const durationSeconds = details?.durationSeconds || 0;
     const privacyStatus = isDeletedOrPrivate
       ? 'PRIVATE'
@@ -469,6 +480,7 @@ export async function fetchPlaylistFromApi(
       publishedAt: pSnippet?.publishedAt || null,
     },
     videos,
+    complete,
   };
 }
 
@@ -492,7 +504,7 @@ export async function importPlaylist(
   let conn = await prisma.youTubeConnection.findUnique({ where: { userId } });
 
   // Consultar API oficial de YouTube PRIMERO
-  const { playlist: pData, videos: vData } = await fetchPlaylistFromApi(playlistId, userId);
+  const { playlist: pData, videos: vData, complete } = await fetchPlaylistFromApi(playlistId, userId);
 
   // Si no está conectado con OAuth, crear conexión local/asociada para persistir en DB
   if (!conn) {
@@ -573,6 +585,16 @@ export async function importPlaylist(
           position: v.position,
           publishedAt: v.publishedAt ? new Date(v.publishedAt) : null,
         },
+      });
+    }
+
+    // Lo que ya no está en la playlist deja de ofrecerse para nuevos cursos. Se
+    // excluye en vez de borrarlo: puede estar enlazado a lecciones existentes.
+    // Solo tras una lectura completa: cortada en el tope, faltan videos que sí están.
+    if (complete) {
+      await tx.youTubeVideo.updateMany({
+        where: { playlistId: pl.id, youtubeId: { notIn: vData.map((v) => v.youtubeId) } },
+        data: { excluded: true },
       });
     }
 
