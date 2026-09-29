@@ -10,7 +10,7 @@ import { renderSeoLandingHtml } from '../server/seo.js';
 
 const databaseUrl = process.env.DATABASE_URL!;
 const encryptionKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=';
-const childEnv = { ...process.env, DATABASE_URL: databaseUrl, DOTENV_CONFIG_PATH: '.codex-tmp/noenv', DOCENTOS_ENCRYPTION_KEY: encryptionKey, DOCENTOS_SKIP_LISTEN: '1' };
+const childEnv = { ...process.env, DATABASE_URL: databaseUrl, DOTENV_CONFIG_PATH: '.codex-tmp/noenv', DOCENTOS_ENCRYPTION_KEY: encryptionKey, DOCENTOS_SKIP_LISTEN: '1', SEED_DEMO_DATA: 'false' };
 
 test('D2: staging exige secretos y rechaza exposición de recuperación', () => {
   for (const [key, value] of [['DOCENTOS_ENCRYPTION_KEY', ''], ['PASSWORD_RESET_EXPOSE_TOKEN', 'true'], ['SEED_DEMO_DATA', 'true'], ['STRIPE_SECRET_KEY', 'sk_test_example']]) {
