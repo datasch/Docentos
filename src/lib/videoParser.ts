@@ -11,6 +11,12 @@
 export type VideoProvider = 'youtube' | 'drive' | 'embed';
 import { safeExternalUrl } from './safeUrl';
 
+// Las clases llegan como `/api/content/videos/<id>`: una ruta de nuestro propio
+// origen. Se acepta tal cual; «//host» y la contrabarra quedan fuera porque el
+// navegador los convierte en una URL de otro dominio.
+const safeVideoUrl = (value: string) =>
+  /^\/(?!\/)[^\s\\]*$/.test(value) ? value : safeExternalUrl(value, import.meta.env?.DEV);
+
 export interface ParsedVideoSource {
   provider: VideoProvider;
   embedUrl: string;
@@ -31,7 +37,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
     const extractedUrl = match ? match[1] : '';
     return {
       provider: 'embed',
-      embedUrl: safeExternalUrl(extractedUrl, import.meta.env?.DEV),
+      embedUrl: safeVideoUrl(extractedUrl),
       originalUrl: str,
     };
   }
@@ -121,7 +127,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
 
   return {
     provider: preferredProvider || 'embed',
-    embedUrl: safeExternalUrl(str, import.meta.env?.DEV),
+    embedUrl: safeVideoUrl(str),
     originalUrl: str,
   };
 }

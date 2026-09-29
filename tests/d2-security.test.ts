@@ -73,6 +73,10 @@ test('D2: las URLs externas y el iframe pegado no aceptan esquemas ejecutables',
   assert.equal(safeExternalUrl('http://example.com', true), 'http://example.com/');
   assert.equal(parseVideoSource('<iframe src="javascript:alert(1)"></iframe>').embedUrl, '');
   assert.equal(parseVideoSource('data:text/html,evil').embedUrl, '');
+  // La clase llega como ruta propia (courseAccess.playbackUrl): debe reproducirse.
+  assert.equal(parseVideoSource('/api/content/videos/abc123').embedUrl, '/api/content/videos/abc123');
+  assert.equal(parseVideoSource('//evil.example/video').embedUrl, '');
+  assert.equal(parseVideoSource('/\\evil.example/video').embedUrl, '');
   const { redactRequestUrl } = await import('../server/logger.js');
   assert.equal(redactRequestUrl('/?resetToken=abc123secreto&Code=xyz&ok=1'), '/?resetToken=[REDACTADO]&Code=[REDACTADO]&ok=1');
 });

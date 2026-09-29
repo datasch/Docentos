@@ -14,6 +14,17 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.12 - 2026-09-29
+
+Correccion urgente de la 0.5.0-beta.11. Sin migraciones ni variables nuevas.
+
+### Fixed
+
+- Los videos de las clases no se reproducian: el filtro de URLs descartaba la
+  ruta propia `/api/content/videos/<id>` por no ser `https://` absoluta.
+- Un `CSP_MODE` vacio, que es lo que pasa el manifiesto si no se rellena,
+  impedia arrancar en vez de usar el valor por defecto.
+
 ## 0.5.0-beta.11 - 2026-09-29
 
 **Esta version migra el esquema de la base de datos (5 migraciones aditivas).
