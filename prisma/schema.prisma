@@ -114,6 +114,7 @@ model User {
   hostedMeetings      Meeting[]            @relation("MeetingHost")
   youtubeConnection   YouTubeConnection?
   aiJobs              AIJob[]
+  oauthStates         OAuthState[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -130,6 +131,21 @@ model Session {
   ipAddress  String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Estado opaco para vincular una autorizacion OAuth con la cuenta que la inicio.
+model OAuthState {
+  id         String    @id @default(uuid())
+  stateHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  redirectUri String?
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
   @@index([expiresAt])

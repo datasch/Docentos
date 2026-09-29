@@ -201,6 +201,12 @@ test('Seguridad: la configuracion de un plugin no entrega credenciales a quien n
     const vacio = redactPluginConfig({ webhookUrl: '' }, false);
     assert.equal('webhookUrl' in vacio, true);
   });
+
+  await t.test('6. Retira secretos dentro de objetos y arreglos sin mutar el original', () => {
+    const config = { nested: [{ credentials: { apiKey: 'secreta', ready: true } }, { webhookUrl: '' }] };
+    assert.deepEqual(redactPluginConfig(config, false), { nested: [{ credentials: { ready: true } }, { webhookUrl: '' }] });
+    assert.ok(JSON.stringify(config).includes('secreta'));
+  });
 });
 
 test('Seguridad: X-Forwarded-For solo se respeta con un proxy declarado', async (t) => {

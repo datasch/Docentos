@@ -14,12 +14,12 @@
  *     existe en ningun instante una sesion a medio autenticar que el middleware
  *     pudiera aceptar por error.
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import type { Request } from 'express';
 import QRCode from 'qrcode';
 import { prisma } from './prisma.js';
 import { config } from './config.js';
-import { cifrar, descifrar } from './crypto.js';
+import { cifrar, decodificarClave, descifrar } from './crypto.js';
 import { construirUriOtpauth, generarSecreto, verificarCodigo } from './totp.js';
 
 /** Diez codigos es el numero que usan GitHub y Google: bastantes para no quedarse sin ellos, pocos para imprimirlos. */
@@ -48,10 +48,16 @@ export function normalizarCodigoRecuperacion(codigo: string) {
 }
 
 function generarCodigoRecuperacion() {
-  // 5 bytes -> 10 caracteres hexadecimales, presentados en dos grupos para que
-  // se puedan leer en voz alta sin perder el sitio.
-  const bruto = randomBytes(5).toString('hex').toUpperCase();
-  return `${bruto.slice(0, 5)}-${bruto.slice(5)}`;
+  const bruto = randomBytes(10).toString('hex').toUpperCase();
+  return bruto.match(/.{1,5}/g)!.join('-');
+}
+
+export function hashCodigoRecuperacion(codigo: string) {
+  const maestra = config.DOCENTOS_ENCRYPTION_KEY
+    ? decodificarClave(config.DOCENTOS_ENCRYPTION_KEY)
+    : createHash('sha256').update('docentos-clave-de-desarrollo-no-usar-en-produccion').digest();
+  const clave = createHmac('sha256', maestra).update('docentos:recovery-code:v2').digest();
+  return createHmac('sha256', clave).update(normalizarCodigoRecuperacion(codigo)).digest('hex');
 }
 
 export type EstadoDosFactores = {
@@ -142,7 +148,7 @@ export async function activar(userId: string, codigo: string) {
     prisma.twoFactorRecoveryCode.createMany({
       data: codigos.map((codigoClaro) => ({
         userId,
-        codeHash: hashDeToken(normalizarCodigoRecuperacion(codigoClaro)),
+        codeHash: hashCodigoRecuperacion(codigoClaro),
       })),
     }),
   ]);
@@ -170,7 +176,7 @@ export async function regenerarCodigos(userId: string) {
     prisma.twoFactorRecoveryCode.createMany({
       data: codigos.map((codigoClaro) => ({
         userId,
-        codeHash: hashDeToken(normalizarCodigoRecuperacion(codigoClaro)),
+        codeHash: hashCodigoRecuperacion(codigoClaro),
       })),
     }),
   ]);
@@ -226,39 +232,50 @@ export async function resolverReto(token: string, codigo: string, _req: Request)
     return { estado: 'sin-intentos' };
   }
 
-  const usuario = await prisma.user.findUnique({
-    where: { id: reto.userId },
-    select: { twoFactorLastStep: true },
-  });
-
   const paso = verificarCodigo(descifrar(reto.user.twoFactorSecret), codigo);
   if (paso !== null) {
-    // Un codigo ya usado no vale, aunque siga dentro de su ventana de 30 s.
-    if (usuario?.twoFactorLastStep != null && paso <= usuario.twoFactorLastStep) {
-      await prisma.twoFactorChallenge.update({
-        where: { id: reto.id },
-        data: { attempts: { increment: 1 } },
+    const aceptado = await prisma.$transaction(async (tx) => {
+      const userClaim = await tx.user.updateMany({
+        where: { id: reto.userId, OR: [{ twoFactorLastStep: null }, { twoFactorLastStep: { lt: paso } }] },
+        data: { twoFactorLastStep: paso },
       });
-      return { estado: 'codigo-invalido' };
-    }
-
-    await prisma.$transaction([
-      prisma.twoFactorChallenge.update({ where: { id: reto.id }, data: { consumedAt: new Date() } }),
-      prisma.user.update({ where: { id: reto.userId }, data: { twoFactorLastStep: paso } }),
-    ]);
+      if (userClaim.count !== 1) return false;
+      const challengeClaim = await tx.twoFactorChallenge.updateMany({
+        where: { id: reto.id, consumedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: MAX_INTENTOS_RETO } },
+        data: { consumedAt: new Date() },
+      });
+      if (challengeClaim.count !== 1) throw new ClaimLostError();
+      return true;
+    }).catch((error) => {
+      if (error instanceof ClaimLostError) return false;
+      throw error;
+    });
+    if (!aceptado) return { estado: 'codigo-invalido' };
     return { estado: 'ok', userId: reto.userId, via: 'totp' };
   }
 
   const normalizado = normalizarCodigoRecuperacion(codigo);
   if (normalizado.length >= 10) {
-    const guardado = await prisma.twoFactorRecoveryCode.findUnique({
-      where: { codeHash: hashDeToken(normalizado) },
+    const guardado = await prisma.twoFactorRecoveryCode.findFirst({
+      where: { codeHash: { in: [hashCodigoRecuperacion(normalizado), hashDeToken(normalizado)] } },
     });
     if (guardado && guardado.userId === reto.userId && !guardado.usedAt) {
-      await prisma.$transaction([
-        prisma.twoFactorRecoveryCode.update({ where: { id: guardado.id }, data: { usedAt: new Date() } }),
-        prisma.twoFactorChallenge.update({ where: { id: reto.id }, data: { consumedAt: new Date() } }),
-      ]);
+      const aceptado = await prisma.$transaction(async (tx) => {
+        const codeClaim = await tx.twoFactorRecoveryCode.updateMany({
+          where: { id: guardado.id, usedAt: null }, data: { usedAt: new Date() },
+        });
+        if (codeClaim.count !== 1) return false;
+        const challengeClaim = await tx.twoFactorChallenge.updateMany({
+          where: { id: reto.id, consumedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: MAX_INTENTOS_RETO } },
+          data: { consumedAt: new Date() },
+        });
+        if (challengeClaim.count !== 1) throw new ClaimLostError();
+        return true;
+      }).catch((error) => {
+        if (error instanceof ClaimLostError) return false;
+        throw error;
+      });
+      if (!aceptado) return { estado: 'codigo-invalido' };
       return { estado: 'ok', userId: reto.userId, via: 'recuperacion' };
     }
   }
@@ -266,3 +283,5 @@ export async function resolverReto(token: string, codigo: string, _req: Request)
   await prisma.twoFactorChallenge.update({ where: { id: reto.id }, data: { attempts: { increment: 1 } } });
   return { estado: 'codigo-invalido' };
 }
+
+class ClaimLostError extends Error {}

@@ -66,7 +66,7 @@ export async function verifyPassword(password: string, passwordHash: string) {
   return bcrypt.compare(password, passwordHash);
 }
 
-export async function createPasswordResetToken(userId: string, ttlMinutes: number = config.PASSWORD_RESET_TTL_MINUTES) {
+export async function createPasswordResetToken(userId: string, ttlMinutes: number = config.PASSWORD_RESET_TTL_MINUTES, options: { preserveExisting?: boolean } = {}) {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
@@ -76,10 +76,12 @@ export async function createPasswordResetToken(userId: string, ttlMinutes: numbe
       OR: [{ expiresAt: { lte: new Date() } }, { usedAt: { not: null } }],
     },
   });
-  await prisma.passwordResetToken.updateMany({
-    where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
-    data: { usedAt: new Date() },
-  });
+  if (!options.preserveExisting) {
+    await prisma.passwordResetToken.updateMany({
+      where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+  }
   await prisma.passwordResetToken.create({
     data: { userId, tokenHash: hashSessionToken(token), expiresAt },
   });

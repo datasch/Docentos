@@ -55,10 +55,17 @@ export function redactPluginConfig(
   isAdmin: boolean,
 ): Record<string, unknown> {
   if (isAdmin) return config;
-  const visible: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(config)) {
-    if (isSecretConfigKey(key) && typeof value === 'string' && value.trim() !== '') continue;
-    visible[key] = value;
-  }
-  return visible;
+  const redactar = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(redactar);
+    if (value && typeof value === 'object') {
+      const visible: Record<string, unknown> = {};
+      for (const [key, nested] of Object.entries(value)) {
+        if (isSecretConfigKey(key) && typeof nested === 'string' && nested.trim() !== '') continue;
+        visible[key] = redactar(nested);
+      }
+      return visible;
+    }
+    return value;
+  };
+  return redactar(config) as Record<string, unknown>;
 }

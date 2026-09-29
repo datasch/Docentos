@@ -222,12 +222,12 @@ export async function enrollFromIntegration(input: IntegrationEnrollmentInput): 
     }
   }
 
-  const { user, course, payment, enrollment, previous } = result;
+  const { user, course, payment, enrollment } = result;
   const needsActivation = user.isActive && !user.passwordHash;
   let activationUrl: string | null = null;
   let activationExpiresAt: string | null = null;
-  if (needsActivation && !previous) {
-    const { token, expiresAt } = await createPasswordResetToken(user.id, config.ACTIVATION_TTL_HOURS * 60);
+  if (needsActivation) {
+    const { token, expiresAt } = await createPasswordResetToken(user.id, config.ACTIVATION_TTL_HOURS * 60, { preserveExisting: true });
     activationUrl = `${config.APP_URL.replace(/\/$/, '')}/?resetToken=${encodeURIComponent(token)}`;
     activationExpiresAt = expiresAt.toISOString();
   }
@@ -240,7 +240,7 @@ export async function enrollFromIntegration(input: IntegrationEnrollmentInput): 
     accountActive: user.isActive,
     activationUrl,
     activationExpiresAt,
-    activationPending: needsActivation && previous,
+    activationPending: false,
     loginUrl: config.APP_URL.replace(/\/$/, ''),
     courseTitle: course.title,
   };

@@ -128,8 +128,10 @@ export const api = {
   },
 
   /** Genera el secreto y devuelve el QR. No activa nada todavia. */
-  async startTwoFactorSetup(): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
-    const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+  async startTwoFactorSetup(password: string): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
+    const res = await fetch('/api/auth/2fa/setup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'No se pudo iniciar la configuración');
@@ -137,11 +139,11 @@ export const api = {
     return res.json();
   },
 
-  async activateTwoFactor(code: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
+  async activateTwoFactor(code: string, password: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
     const res = await fetch('/api/auth/2fa/activate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

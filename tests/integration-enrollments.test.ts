@@ -117,9 +117,10 @@ test('reintento del mismo pedido: mismo pago y matricula, sin duplicados', async
   const user = await prisma.user.findUniqueOrThrow({ where: { email: b.student.email }, include: { payments: true, enrollments: true } });
   assert.equal(user.payments.length, 1);
   assert.equal(user.enrollments.length, 1);
-  assert.equal(r3.json.activationUrl, null);
-  assert.equal(r3.json.activationPending, true);
-  assert.equal(await prisma.passwordResetToken.count({ where: { userId: user.id } }), 1);
+  assert.match(r3.json.activationUrl, /\?resetToken=/);
+  assert.notEqual(r3.json.activationUrl, r1.json.activationUrl);
+  assert.equal(r3.json.activationPending, false);
+  assert.equal(await prisma.passwordResetToken.count({ where: { userId: user.id, usedAt: null } }), 3);
 });
 
 test('cuenta existente (VIP con contraseña): conserva todo y NO recibe enlace de activacion', async () => {
@@ -151,11 +152,12 @@ test('reintentar un pedido revocado y reembolsado conserva matrícula, mentoría
   assert.equal(reintento.status, 200, JSON.stringify(reintento.json));
   assert.equal(reintento.json.paymentId, primera.json.paymentId);
   assert.equal(reintento.json.enrollmentId, primera.json.enrollmentId);
-  assert.equal(reintento.json.activationUrl, null);
-  assert.equal(reintento.json.activationPending, true);
+  assert.match(reintento.json.activationUrl, /\?resetToken=/);
+  assert.notEqual(reintento.json.activationUrl, primera.json.activationUrl);
+  assert.equal(reintento.json.activationPending, false);
   assert.equal((await prisma.courseEnrollment.findUniqueOrThrow({ where: { id: primera.json.enrollmentId } })).status, 'REVOKED');
   if (asignacion) assert.equal((await prisma.menteeAssignment.findUniqueOrThrow({ where: { id: asignacion.id } })).status, 'REVOKED');
-  assert.equal(await prisma.passwordResetToken.count({ where: { userId: primera.json.userId } }), 1);
+  assert.equal(await prisma.passwordResetToken.count({ where: { userId: primera.json.userId, usedAt: null } }), 2);
   const originalToken = await prisma.passwordResetToken.findFirstOrThrow({ where: { userId: primera.json.userId } });
   assert.ok(token);
   assert.equal(originalToken.usedAt, null);

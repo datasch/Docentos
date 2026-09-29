@@ -14,6 +14,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { prisma } from '../server/prisma.js';
 import { hashPassword } from '../server/authService.js';
 import { cifrar, descifrar, descifrarSiHaceFalta, estaCifrado } from '../server/crypto.js';
@@ -33,6 +34,7 @@ import {
   iniciarConfiguracion,
   regenerarCodigos,
   resolverReto,
+  hashCodigoRecuperacion,
 } from '../server/twoFactorService.js';
 
 const CORREO_PRUEBA = 'dos-factores@docentos.test';
@@ -197,6 +199,8 @@ test('Verificación en dos pasos: alta, login y recuperación', async (t) => {
       assert.match(fila.codeHash, /^[0-9a-f]{64}$/, 'debe ser un sha256 en hexadecimal');
       assert.ok(!codigosRecuperacion.includes(fila.codeHash));
     }
+    assert.match(codigosRecuperacion[0], /^[0-9A-F]{5}(?:-[0-9A-F]{5}){3}$/);
+    assert.ok(filas.some((fila) => fila.codeHash === hashCodigoRecuperacion(codigosRecuperacion[0])));
   });
 
   /**
@@ -245,6 +249,31 @@ test('Verificación en dos pasos: alta, login y recuperación', async (t) => {
     assert.equal(segundo.estado, 'codigo-invalido', 'ya estaba gastado');
 
     assert.equal((await estadoDeUsuario(usuario.id)).codigosDisponibles, 9);
+  });
+
+  await t.test('9b. dos verificaciones simultáneas del mismo reto solo aceptan una', async () => {
+    await simularQuePasoElTiempo();
+    const { token } = await crearReto(usuario.id, peticionFalsa());
+    const codigo = calcularCodigo(secreto, pasoActual());
+    const resultados = await Promise.all([resolverReto(token, codigo, peticionFalsa()), resolverReto(token, codigo, peticionFalsa())]);
+    assert.equal(resultados.filter((r) => r.estado === 'ok').length, 1);
+  });
+
+  await t.test('9c. dos retos simultáneos no gastan el mismo código de recuperación dos veces', async () => {
+    const codigo = codigosRecuperacion[1];
+    const uno = await crearReto(usuario.id, peticionFalsa());
+    const dos = await crearReto(usuario.id, peticionFalsa());
+    const resultados = await Promise.all([resolverReto(uno.token, codigo, peticionFalsa()), resolverReto(dos.token, codigo, peticionFalsa())]);
+    assert.equal(resultados.filter((r) => r.estado === 'ok').length, 1);
+  });
+
+  await t.test('9d. acepta los códigos antiguos de 40 bits', async () => {
+    const viejo = 'ABCDE-12345';
+    await prisma.twoFactorRecoveryCode.create({ data: {
+      userId: usuario.id, codeHash: createHash('sha256').update('ABCDE12345').digest('hex'),
+    } });
+    const resultado = await resolverReto((await crearReto(usuario.id, peticionFalsa())).token, viejo, peticionFalsa());
+    assert.equal(resultado.estado, 'ok');
   });
 
   await t.test('10. el reto se agota tras cinco intentos fallidos', async () => {

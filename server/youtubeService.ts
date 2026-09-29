@@ -56,6 +56,8 @@ export class YouTubeError extends Error {
     public readonly code:
       | 'NOT_CONNECTED'
       | 'INVALID_URL'
+      | 'INVALID_REDIRECT_URI'
+      | 'VIDEO_NOT_IN_PLAYLIST'
       | 'PLAYLIST_NOT_FOUND'
       | 'PLAYLIST_PRIVATE_UNAUTHORIZED'
       | 'TOKEN_EXPIRED'
@@ -104,11 +106,14 @@ export function parseIsoDuration(durationStr: string): number {
 export function getOAuth2Client(customRedirectUri?: string) {
   const clientId = config.YOUTUBE_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID;
   const clientSecret = config.YOUTUBE_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET;
-  const redirectUri =
-    customRedirectUri ||
-    config.YOUTUBE_REDIRECT_URI ||
-    process.env.YOUTUBE_REDIRECT_URI ||
-    `${config.APP_URL}/api/youtube/callback`;
+  const allowedRedirects = [
+    `${config.APP_URL.replace(/\/$/, '')}/api/youtube/callback`,
+    config.YOUTUBE_REDIRECT_URI,
+  ].filter((uri): uri is string => Boolean(uri));
+  if (customRedirectUri && !allowedRedirects.includes(customRedirectUri)) {
+    throw new YouTubeError('URI de retorno de YouTube no autorizada.', 'INVALID_REDIRECT_URI', 400);
+  }
+  const redirectUri = customRedirectUri || config.YOUTUBE_REDIRECT_URI || allowedRedirects[0];
 
   if (!clientId || !clientSecret) {
     throw new YouTubeError(
@@ -679,10 +684,16 @@ export async function updateVideosSelection(
     throw new YouTubeError('Playlist no encontrada.', 'PLAYLIST_NOT_FOUND', 404);
   }
 
+  const ids = [...new Set(updates.map((u) => u.id))];
+  if (ids.some((id) => typeof id !== 'string') ||
+      await prisma.youTubeVideo.count({ where: { id: { in: ids }, playlistId } }) !== ids.length) {
+    throw new YouTubeError('Algún video no pertenece a esta playlist.', 'VIDEO_NOT_IN_PLAYLIST', 400);
+  }
+
   await prisma.$transaction(
     updates.map((u) =>
       prisma.youTubeVideo.update({
-        where: { id: u.id },
+        where: { id: u.id, playlistId },
         data: {
           ...(typeof u.customOrder === 'number' ? { customOrder: u.customOrder } : {}),
           ...(typeof u.excluded === 'boolean' ? { excluded: u.excluded } : {}),
