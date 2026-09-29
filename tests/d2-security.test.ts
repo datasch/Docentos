@@ -25,7 +25,7 @@ test('D2: CSP HTTP en report y enforce, con valores por defecto seguros', () => 
   for (const mode of ['report', 'enforce'] as const) for (const explicit of [true, false]) {
     const env: NodeJS.ProcessEnv = { ...childEnv, DOCENTOS_ENV: mode === 'report' ? 'development' : 'staging' };
     if (explicit) env.CSP_MODE = mode;
-    else delete env.CSP_MODE;
+    else env.CSP_MODE = '';
     const output = execFileSync(process.execPath, ['--import', 'tsx', 'tests/csp-probe.ts', mode], {
       cwd: process.cwd(),
       env,

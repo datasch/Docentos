@@ -35,7 +35,10 @@ const booleanString = (defaultValue: boolean) =>
 const rawSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DOCENTOS_ENV: z.enum(['development', 'staging', 'production']).optional(),
-  CSP_MODE: z.enum(['report', 'enforce']).optional(),
+  CSP_MODE: z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim().toLowerCase() || undefined : value),
+    z.enum(['report', 'enforce']).optional(),
+  ),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.string().trim().min(1, 'DATABASE_URL es obligatoria'),
   APP_URL: z.string().url().default('http://localhost:3000'),
