@@ -624,6 +624,25 @@ export const api = {
     return res.json();
   },
 
+  async getCourseQuizAttempts(courseId: string): Promise<{ success: boolean; attempts: { moduleId: string; scorePercentage: number; passed: boolean; createdAt: string }[] }> {
+    const res = await fetch(`/api/courses/${courseId}/quiz-attempts`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Error al obtener intentos del curso');
+    return res.json();
+  },
+
+  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; correctIndexes: Record<number, number>; explanations: Record<number, string> }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz/attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Error al calificar el examen');
+    }
+    return res.json();
+  },
+
   async saveModuleQuiz(moduleId: string, questions: QuizQuestion[]): Promise<{ success: boolean; questions: QuizQuestion[]; message: string }> {
     const res = await fetch(`/api/modules/${moduleId}/quiz`, {
       method: 'PUT',

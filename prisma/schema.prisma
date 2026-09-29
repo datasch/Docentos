@@ -110,6 +110,7 @@ model User {
   menteeAssignments   MenteeAssignment[]   @relation("MenteeAssignments")
   enrollments         CourseEnrollment[]
   certificates        Certificate[]
+  quizAttempts        QuizAttempt[]
   hostedMeetings      Meeting[]            @relation("MeetingHost")
   youtubeConnection   YouTubeConnection?
   aiJobs              AIJob[]
@@ -202,6 +203,20 @@ model ModuleQuiz {
   questionsJson String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model QuizAttempt {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moduleId        String
+  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  scorePercentage Int
+  passed          Boolean
+  answersJson     String
+  createdAt       DateTime @default(now())
+
+  @@index([userId, moduleId, createdAt])
 }
 
 model AuditLog {
@@ -321,6 +336,7 @@ model Module {
   resources   CourseResource[]
   meetings    Meeting[]
   quiz        ModuleQuiz?
+  quizAttempts QuizAttempt[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

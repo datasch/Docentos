@@ -2566,6 +2566,18 @@ const updateMeetingSchema = z.object({
   recordingUrl: z.string().trim().max(1000).optional().nullable(),
 });
 
+async function visibleMeetings<T extends { courseId: string | null }>(user: AuthenticatedUser, meetings: T[]): Promise<T[]> {
+  if (user.role === 'ADMIN' || user.role === 'MENTOR') return meetings;
+  const ids = [...new Set(meetings.map((meeting) => meeting.courseId).filter((id): id is string => id !== null))];
+  if (ids.length === 0) return meetings;
+  const courses = await prisma.course.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, published: true, price: true, openToAllRegistered: true },
+  });
+  const access = await getCourseAccessDecisions(user, courses);
+  return meetings.filter((meeting) => meeting.courseId === null || access.get(meeting.courseId)?.allowed);
+}
+
 app.get(
   '/api/meetings',
   requireAuthenticated,
@@ -2592,14 +2604,14 @@ app.get(
       orderBy: [{ isLive: 'desc' }, { scheduledAt: 'asc' }],
     });
 
-    res.json({ success: true, meetings: meetings.map(toApiMeeting) });
+    res.json({ success: true, meetings: (await visibleMeetings(req.user!, meetings)).map(toApiMeeting) });
   }),
 );
 
 app.get(
   '/api/meetings/live',
   requireAuthenticated,
-  asyncRoute(async (_req, res) => {
+  asyncRoute(async (req, res) => {
     const meetings = await prisma.meeting.findMany({
       where: { isLive: true },
       include: {
@@ -2609,7 +2621,7 @@ app.get(
       },
       orderBy: { scheduledAt: 'desc' },
     });
-    res.json({ success: true, meetings: meetings.map(toApiMeeting) });
+    res.json({ success: true, meetings: (await visibleMeetings(req.user!, meetings)).map(toApiMeeting) });
   }),
 );
 
@@ -3596,8 +3608,27 @@ app.delete(
     '/api/courses/:courseId/quiz-summary',
     requireAuthenticated,
     asyncRoute(async (req, res) => {
+      if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
       const counts = await getQuizCountsByCourse(req.params.courseId);
       res.json({ success: true, counts });
+    }),
+  );
+
+  app.get(
+    '/api/courses/:courseId/quiz-attempts',
+    requireAuthenticated,
+    asyncRoute(async (req, res) => {
+      if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
+      const attempts = await prisma.quizAttempt.findMany({
+        where: { userId: req.user!.id, module: { courseId: req.params.courseId } },
+        select: { moduleId: true, scorePercentage: true, passed: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json({ success: true, attempts });
     }),
   );
 
@@ -3613,7 +3644,63 @@ app.delete(
         return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
       }
       const questions = await getQuizByModuleId(req.params.moduleId);
-      res.json({ success: true, questions });
+      res.json({
+        success: true,
+        questions: esPersonal ? questions : questions.map(({ correctIndex, explanation, ...question }) => question),
+      });
+    }),
+  );
+
+  app.post(
+    '/api/modules/:moduleId/quiz/attempts',
+    requireAuthenticated,
+    asyncRoute(async (req, res) => {
+      const moduleId = req.params.moduleId;
+      if (!(await userHasModuleAccess(req.user, moduleId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
+      const questions = await getQuizByModuleId(moduleId);
+      if (questions.length === 0) return res.status(404).json({ error: 'El módulo no tiene examen.' });
+      const answers = req.body?.answers;
+      if (!answers || typeof answers !== 'object' || Array.isArray(answers) ||
+          Object.entries(answers).some(([key, value]) =>
+            !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= questions.length ||
+            !Number.isInteger(value) || (value as number) < 0 || (value as number) >= questions[Number(key)].options.length)) {
+        return res.status(400).json({ error: 'Respuestas inválidas.' });
+      }
+      const plugin = await prisma.plugin.findUnique({ where: { id: 'interactive-quizzes' }, select: { configJson: true } });
+      let settings: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(plugin?.configJson || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) settings = parsed;
+      } catch { /* Configuración inválida: usar valores seguros. */ }
+      const maxAttempts = Number.isInteger(settings.maxAttempts) && (settings.maxAttempts as number) > 0
+        ? settings.maxAttempts as number : 3;
+      const passingScore = typeof settings.passingScore === 'number' && settings.passingScore > 0 && settings.passingScore <= 100
+        ? settings.passingScore : 80;
+      const userId = req.user!.id;
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      // El bloqueo por usuario y módulo impide superar el límite con envíos simultáneos.
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${moduleId}))`;
+        const used = await tx.quizAttempt.count({ where: { userId, moduleId, createdAt: { gte: since } } });
+        if (used >= maxAttempts) return null;
+        const correctCount = questions.reduce((count, question, index) => count + (answers[index] === question.correctIndex ? 1 : 0), 0);
+        const scorePercentage = Math.round(correctCount / questions.length * 100);
+        const passed = scorePercentage >= passingScore;
+        await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers) } });
+        return {
+          scorePercentage, passed,
+          correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
+          explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
+        };
+      });
+      if (!result) return res.status(429).json({ error: `Límite de ${maxAttempts} intentos en 24 horas.` });
+      if (result.passed) {
+        const modulo = await prisma.module.findUnique({ where: { id: moduleId }, select: { courseId: true } });
+        if (modulo) await calculateCourseProgress(userId, modulo.courseId);
+      }
+      res.json(result);
     }),
   );
 
@@ -4563,4 +4650,3 @@ if (process.env.DOCENTOS_SKIP_LISTEN !== '1') {
 // Reload env
 
 // Reload after youtube fix
-

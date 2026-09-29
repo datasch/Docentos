@@ -41,15 +41,19 @@ const ARCHIVO_HEREDADO = path.join(path.resolve(process.cwd(), 'data'), 'quizzes
 function limpiarPreguntas(questions: QuizQuestion[]): QuizQuestion[] {
   return (questions || [])
     .map((q, idx) => {
-      const rawOptions = (Array.isArray(q.options)
-        ? q.options.map((o) => String(o).trim()).filter(Boolean)
-        : []).slice(0, 4);
+      const originalOptions = Array.isArray(q.options) ? q.options.map((o) => String(o).trim()) : [];
+      const rawOptions = originalOptions.filter(Boolean).slice(0, 4);
+      // El indice recibido apunta a la lista original, antes de quitar vacios.
+      const adjustedIndex = originalOptions.slice(0, q.correctIndex).filter(Boolean).length;
+      if (Number.isInteger(q.correctIndex) && q.correctIndex >= 0 &&
+          q.correctIndex < originalOptions.length && !originalOptions[q.correctIndex]) return null;
 
       const validIndex =
         typeof q.correctIndex === 'number' &&
         q.correctIndex >= 0 &&
-        q.correctIndex < rawOptions.length
-          ? q.correctIndex
+        q.correctIndex < originalOptions.length &&
+        Boolean(originalOptions[q.correctIndex]) && adjustedIndex < rawOptions.length
+          ? adjustedIndex
           : 0;
 
       return {
@@ -60,7 +64,7 @@ function limpiarPreguntas(questions: QuizQuestion[]): QuizQuestion[] {
         explanation: String(q.explanation || '').trim() || 'Respuesta validada por el temario del módulo.',
       };
     })
-    .filter((q) => q.text.length > 0 && q.options.length >= 2);
+    .filter((q): q is QuizQuestion => q !== null && q.text.length > 0 && q.options.length >= 2);
 }
 
 function parsearPreguntas(questionsJson: string, moduleId: string): QuizQuestion[] {
