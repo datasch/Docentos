@@ -36,13 +36,13 @@ export function escapeHtml(value: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Solo se emiten URLs http(s) en atributos; cualquier otro esquema se descarta. */
+/** Solo se emiten imágenes HTTPS en la página pública para rastreadores. */
 export function safeHttpUrl(value: unknown): string {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   try {
     const parsed = new URL(raw);
-    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.toString() : '';
+    return parsed.protocol === 'https:' ? parsed.toString() : '';
   } catch {
     return '';
   }

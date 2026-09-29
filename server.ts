@@ -71,6 +71,8 @@ import { createSetupGuard } from './server/setupGuard.js';
 import { sendTelemetryCallHome } from './server/telemetryService.js';
 import { prisma } from './server/prisma.js';
 import { config } from './server/config.js';
+import { allowSeoJsonLd, cspDirectives } from './server/csp.js';
+import { safeExternalUrl, safeLandingLink } from './src/lib/safeUrl.js';
 import {
   getCourseAccessDecision,
   getCourseAccessDecisions,
@@ -501,7 +503,7 @@ async function deliverPasswordReset(
 app.set('trust proxy', config.TRUST_PROXY);
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: { directives: cspDirectives, reportOnly: config.CSP_MODE === 'report' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
@@ -964,17 +966,19 @@ app.get(
     if (!targetUrl) {
       return res.status(404).json({ error: 'URL del video no disponible.' });
     }
+    const safeUrl = safeExternalUrl(targetUrl, config.DOCENTOS_ENV === 'development');
+    if (!safeUrl) return res.status(400).json({ error: 'URL del video no segura.' });
 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
         id: video.id,
-        playbackUrl: targetUrl,
+        playbackUrl: safeUrl,
         mimeType: video.mimeType,
         source: video.source,
       });
     }
 
-    return res.redirect(targetUrl);
+    return res.redirect(safeUrl);
   }),
 );
 
@@ -994,14 +998,16 @@ app.get(
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
         id: resource.id,
-        downloadUrl: resource.privateUrl,
+        downloadUrl: safeExternalUrl(resource.privateUrl),
         title: resource.title,
         kind: resource.kind,
         mimeType: resource.mimeType,
       });
     }
 
-    return res.redirect(resource.privateUrl);
+    const safeUrl = safeExternalUrl(resource.privateUrl);
+    if (!safeUrl) return res.status(400).json({ error: 'URL privada del recurso no segura.' });
+    return res.redirect(safeUrl);
   }),
 );
 
@@ -2566,16 +2572,23 @@ const updateMeetingSchema = z.object({
   recordingUrl: z.string().trim().max(1000).optional().nullable(),
 });
 
-async function visibleMeetings<T extends { courseId: string | null }>(user: AuthenticatedUser, meetings: T[]): Promise<T[]> {
+async function visibleMeetings<T extends { courseId: string | null; moduleId: string | null }>(user: AuthenticatedUser, meetings: T[]): Promise<T[]> {
   if (user.role === 'ADMIN' || user.role === 'MENTOR') return meetings;
-  const ids = [...new Set(meetings.map((meeting) => meeting.courseId).filter((id): id is string => id !== null))];
-  if (ids.length === 0) return meetings;
+  const moduleIds = [...new Set(meetings.map((meeting) => meeting.moduleId).filter((id): id is string => id !== null))];
+  const modules = moduleIds.length ? await prisma.module.findMany({ where: { id: { in: moduleIds } }, select: { id: true, courseId: true } }) : [];
+  const moduleCourses = new Map(modules.map((module) => [module.id, module.courseId]));
+  const courseIdFor = (meeting: T) => meeting.courseId || (meeting.moduleId ? moduleCourses.get(meeting.moduleId) : null);
+  const ids = [...new Set(meetings.map(courseIdFor).filter((id): id is string => typeof id === 'string'))];
+  if (ids.length === 0) return meetings.filter((meeting) => !meeting.moduleId && !meeting.courseId);
   const courses = await prisma.course.findMany({
     where: { id: { in: ids } },
     select: { id: true, published: true, price: true, openToAllRegistered: true },
   });
   const access = await getCourseAccessDecisions(user, courses);
-  return meetings.filter((meeting) => meeting.courseId === null || access.get(meeting.courseId)?.allowed);
+  return meetings.filter((meeting) => {
+    const courseId = courseIdFor(meeting);
+    return courseId ? access.get(courseId)?.allowed : !meeting.moduleId;
+  });
 }
 
 app.get(
@@ -3326,7 +3339,15 @@ app.put(
     if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Configuración no válida' });
     const current = toLandingConfig(await getLandingRecord());
     const merged = { ...current, ...req.body };
-    const config = await prisma.landingConfig.update({
+    const urlFields = ['heroMediaUrl', 'githubUrl', 'discordUrl', 'twitterUrl', 'linkedinUrl'];
+    const linkFields = ['heroCtaLink', 'heroSecondaryCtaLink', 'bannerLinkUrl'];
+    const allowHttp = config.DOCENTOS_ENV === 'development';
+    if (urlFields.some((field) => merged[field] && !safeExternalUrl(merged[field], allowHttp)) ||
+        linkFields.some((field) => merged[field] && !safeLandingLink(merged[field], allowHttp)) ||
+        (Array.isArray(merged.testimonials) && merged.testimonials.some((item: any) => item.avatarUrl && !safeExternalUrl(item.avatarUrl, allowHttp)))) {
+      return res.status(400).json({ error: 'La portada contiene una URL no permitida.' });
+    }
+    const savedConfig = await prisma.landingConfig.update({
       where: { id: 'singleton' },
       data: {
         heroTitle: String(merged.heroTitle),
@@ -3354,7 +3375,7 @@ app.put(
     });
     res.json({
       success: true,
-      config: toLandingConfig(config),
+      config: toLandingConfig(savedConfig),
       message: '¡Configuración de la portada actualizada exitosamente!',
     });
   }),
@@ -3372,6 +3393,9 @@ function resolveVideoSource(
 ): { driveFileId: string; embedUrl: string } | { error: string } {
   const driveInput = String(rawDriveInput ?? '').trim();
   const embedInput = String(rawEmbedUrl ?? '').trim();
+  if (embedInput && !safeExternalUrl(embedInput, config.DOCENTOS_ENV === 'development')) {
+    return { error: 'La URL de reproducción debe usar HTTPS.' };
+  }
 
   if (driveInput) {
     const fileId = extractDriveFileId(driveInput);
@@ -3385,9 +3409,6 @@ function resolveVideoSource(
   }
 
   if (embedInput) {
-    if (!/^https?:\/\//i.test(embedInput)) {
-      return { error: 'La URL de reproducción debe empezar por http:// o https://.' };
-    }
     return { driveFileId: `external-${Date.now()}`, embedUrl: embedInput };
   }
 
@@ -3689,10 +3710,13 @@ app.delete(
         const scorePercentage = Math.round(correctCount / questions.length * 100);
         const passed = scorePercentage >= passingScore;
         await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers) } });
+        const attemptsLeft = maxAttempts - used - 1;
         return {
-          scorePercentage, passed,
-          correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
-          explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
+          scorePercentage, passed, attemptsLeft,
+          ...(passed || attemptsLeft === 0 ? {
+            correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
+            explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
+          } : {}),
         };
       });
       if (!result) return res.status(429).json({ error: `Límite de ${maxAttempts} intentos en 24 horas.` });
@@ -3799,7 +3823,7 @@ app.post(
   asyncRoute(async (req, res) => {
     const title = String(req.body.title || '').trim();
     const privateUrl = String(req.body.privateUrl || '').trim();
-    if (!title || !privateUrl) {
+    if (!title || !safeExternalUrl(privateUrl, config.DOCENTOS_ENV === 'development')) {
       return res.status(400).json({ error: 'El título y la URL privada del recurso son obligatorios.' });
     }
 
@@ -3825,6 +3849,28 @@ app.post(
         sizeBytes: resource.sizeBytes ? String(resource.sizeBytes) : null,
       },
     });
+  }),
+);
+
+app.put(
+  '/api/admin/courses/:courseId/resources/:resourceId',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const existing = await prisma.courseResource.findFirst({ where: { id: req.params.resourceId, courseId: req.params.courseId } });
+    if (!existing) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    const privateUrl = req.body.privateUrl === undefined ? existing.privateUrl : String(req.body.privateUrl).trim();
+    if (!safeExternalUrl(privateUrl, config.DOCENTOS_ENV === 'development')) {
+      return res.status(400).json({ error: 'URL privada del recurso no permitida.' });
+    }
+    const resource = await prisma.courseResource.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.title !== undefined ? { title: String(req.body.title).trim() } : {}),
+        ...(req.body.description !== undefined ? { description: String(req.body.description).trim() } : {}),
+        privateUrl,
+      },
+    });
+    res.json({ success: true, resource: { ...resource, sizeBytes: resource.sizeBytes ? String(resource.sizeBytes) : null } });
   }),
 );
 
@@ -4540,6 +4586,9 @@ app.use(
       courses,
       baseUrl: `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`,
     });
+    const cspHeader = config.CSP_MODE === 'report' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
+    const policy = res.getHeader(cspHeader);
+    if (typeof policy === 'string') res.setHeader(cspHeader, allowSeoJsonLd(policy, html));
     res.setHeader('Content-Type', 'text/html').send(html);
   }),
 );

@@ -630,7 +630,7 @@ export const api = {
     return res.json();
   },
 
-  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; correctIndexes: Record<number, number>; explanations: Record<number, string> }> {
+  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; attemptsLeft: number; correctIndexes?: Record<number, number>; explanations?: Record<number, string> }> {
     const res = await fetch(`/api/modules/${moduleId}/quiz/attempts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

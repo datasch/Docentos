@@ -143,6 +143,12 @@ cursos desde Google Drive (sección 5.2 del plan). Esta versión sigue siendo
 beta; antes de exponerla configura HTTPS, `STRIPE_WEBHOOK_SECRET`, entrega de
 recuperación de contraseña, almacenamiento S3 y alertas.
 
+`CSP_MODE` acepta `report` y `enforce`: por defecto usa `report` en
+`DOCENTOS_ENV=development` y `enforce` en staging y producción. La política
+permite Google Fonts, imágenes HTTPS y marcos HTTPS para videos configurables;
+los scripts de la aplicación salen del mismo origen y el JSON-LD para rastreadores
+se autoriza mediante hash.
+
 ## 🧪 Ejecutar la suite de pruebas
 
 Las pruebas se ejecutan contra PostgreSQL real y requieren los datos de

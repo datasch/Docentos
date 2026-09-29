@@ -9,6 +9,7 @@
  */
 
 export type VideoProvider = 'youtube' | 'drive' | 'embed';
+import { safeExternalUrl } from './safeUrl';
 
 export interface ParsedVideoSource {
   provider: VideoProvider;
@@ -30,7 +31,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
     const extractedUrl = match ? match[1] : '';
     return {
       provider: 'embed',
-      embedUrl: extractedUrl || str,
+      embedUrl: safeExternalUrl(extractedUrl, import.meta.env?.DEV),
       originalUrl: str,
     };
   }
@@ -103,7 +104,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (preferredProvider === 'youtube') {
     return {
       provider: 'youtube',
-      embedUrl: str.startsWith('http') ? str : `https://www.youtube-nocookie.com/embed/${str}`,
+      embedUrl: safeExternalUrl(str, import.meta.env?.DEV) || (/^[\w-]+$/.test(str) ? `https://www.youtube-nocookie.com/embed/${str}` : ''),
       originalUrl: str,
       videoId: str,
     };
@@ -112,7 +113,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (preferredProvider === 'drive') {
     return {
       provider: 'drive',
-      embedUrl: str.startsWith('http') ? str : `https://drive.google.com/file/d/${str}/preview`,
+      embedUrl: safeExternalUrl(str, import.meta.env?.DEV) || (/^[\w-]+$/.test(str) ? `https://drive.google.com/file/d/${str}/preview` : ''),
       originalUrl: str,
       videoId: str,
     };
@@ -120,7 +121,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
 
   return {
     provider: preferredProvider || 'embed',
-    embedUrl: str,
+    embedUrl: safeExternalUrl(str, import.meta.env?.DEV),
     originalUrl: str,
   };
 }

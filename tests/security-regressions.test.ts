@@ -81,6 +81,7 @@ test('Seguridad: la pre-renderizacion para rastreadores escapa el contenido alma
     assert.equal(safeHttpUrl('data:text/html,<script>alert(1)</script>'), '', 'Descarta data:');
     assert.equal(safeHttpUrl('  '), '', 'Descarta valores vacios');
     assert.equal(safeHttpUrl('https://cdn.example.com/a.png'), 'https://cdn.example.com/a.png');
+    assert.equal(safeHttpUrl('http://cdn.example.com/a.png'), '');
 
     const html = renderSeoLandingHtml({
       landing: {

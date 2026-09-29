@@ -124,11 +124,13 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
         submittedAnswers[question.id] === undefined ? [] : [[index, submittedAnswers[question.id]]]
       ));
       const result = await quizzesPluginEngine.submitAttempt(module.id, indexed);
-      setQuestions((prev) => prev.map((question, index) => ({
-        ...question,
-        correctIndex: result.correctIndexes[index],
-        explanation: result.explanations[index],
-      })));
+      if (result.correctIndexes && result.explanations) {
+        setQuestions((prev) => prev.map((question, index) => ({
+          ...question,
+          correctIndex: result.correctIndexes![index],
+          explanation: result.explanations![index],
+        })));
+      }
       setScorePercentage(result.scorePercentage);
       setPassed(result.passed);
       setSubmitted(true);
@@ -344,8 +346,9 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       <form onSubmit={handleSubmitQuiz} className="space-y-6">
         {questions.map((q, idx) => {
           const selectedOption = answers[q.id];
-          const isQuestionCorrect = submitted && selectedOption === q.correctIndex;
-          const isQuestionWrong = submitted && selectedOption !== undefined && selectedOption !== q.correctIndex;
+          const canReview = submitted && q.correctIndex !== undefined;
+          const isQuestionCorrect = canReview && selectedOption === q.correctIndex;
+          const isQuestionWrong = canReview && selectedOption !== undefined && selectedOption !== q.correctIndex;
 
           return (
             <fieldset
@@ -371,7 +374,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                   const isChoiceSelected = selectedOption === optIdx;
                   let optStyle = 'border-line bg-canvas text-ink-soft hover:border-brand-cyan';
 
-                  if (submitted) {
+                  if (canReview) {
                     if (optIdx === q.correctIndex) {
                       optStyle = 'border-success bg-success/20 text-success-light font-semibold';
                     } else if (isChoiceSelected) {
@@ -401,7 +404,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                 })}
               </div>
 
-              {submitted && (
+              {canReview && q.explanation && (
                 <p className="mt-3 border-l-2 border-brand-violet pl-6 text-micro italic text-ink-muted">
                   Explicación: {q.explanation}
                 </p>

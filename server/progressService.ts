@@ -7,7 +7,7 @@ function newVerificationCode() {
 }
 
 export async function calculateCourseProgress(userId: string, courseId: string) {
-  const [user, course, totalVideos, completedVideos, quizCounts, passedAttempts] = await Promise.all([
+  const [user, course, totalVideos, completedVideos, quizCounts, passedAttempts, quizPlugin] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true } }),
     prisma.course.findUnique({ where: { id: courseId }, select: { id: true, title: true } }),
     prisma.videoDriveLink.count({ where: { module: { courseId } } }),
@@ -20,6 +20,7 @@ export async function calculateCourseProgress(userId: string, courseId: string) 
       select: { moduleId: true },
       distinct: ['moduleId'],
     }),
+    prisma.plugin.findUnique({ where: { id: 'interactive-quizzes' }, select: { enabled: true } }),
   ]);
 
   if (!user || !course) return null;
@@ -27,7 +28,7 @@ export async function calculateCourseProgress(userId: string, courseId: string) 
   const percentage = totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0;
   const completed = totalVideos > 0 && completedVideos === totalVideos;
   const passedModules = new Set(passedAttempts.map((attempt) => attempt.moduleId));
-  const certificateEligible = completed && Object.keys(quizCounts).every((moduleId) => passedModules.has(moduleId));
+  const certificateEligible = completed && (!quizPlugin?.enabled || Object.keys(quizCounts).every((moduleId) => passedModules.has(moduleId)));
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {

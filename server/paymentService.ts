@@ -153,11 +153,11 @@ export async function handleStripeWebhook(
       signatureHeader,
       config.STRIPE_WEBHOOK_SECRET,
     );
-  } else if (config.DOCENTOS_ENV === 'production') {
-    // Nunca se aceptan eventos sin firma verificada en produccion: un webhook no
+  } else if (config.DOCENTOS_ENV !== 'development') {
+    // Nunca se aceptan eventos sin firma verificada fuera de development: un webhook no
     // autenticado permitiria conceder matriculas falsificando checkout.session.completed.
     throw new Error(
-      'Webhook rechazado: STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET son obligatorios para procesar pagos en produccion.',
+      'Webhook rechazado: STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET son obligatorios para procesar pagos fuera de development.',
     );
   } else {
     // Si no hay firma configurada (entorno dev/test local), parsear el payload directamente
@@ -372,10 +372,10 @@ export async function handleStripeWebhook(
 }
 
 export async function simulateDevPaymentSuccess(paymentId: string, requestingUserId?: string) {
-  // La simulacion concede matricula sin cobro real: solo puede existir fuera de
-  // produccion y nunca cuando hay credenciales de Stripe activas.
-  if (config.DOCENTOS_ENV === 'production') {
-    throw new Error('La simulación de pagos está deshabilitada en producción.');
+  // La simulacion concede matricula sin cobro real: solo puede existir en
+  // development y nunca cuando hay credenciales de Stripe activas.
+  if (config.DOCENTOS_ENV !== 'development') {
+    throw new Error('La simulación de pagos está deshabilitada fuera de development.');
   }
   if (stripeClient) {
     throw new Error('La simulación de pagos no está disponible con Stripe configurado.');

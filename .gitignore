@@ -22,5 +22,6 @@ notas/
 AGENTS.md
 .agents/
 .agy-salida/
+.codex-tmp/
 .agy-arms/
 scripts/verificar-diseno.sh

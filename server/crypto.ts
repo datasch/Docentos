@@ -33,8 +33,8 @@ const BYTES_CLAVE = 32;
 /**
  * Clave de desarrollo, derivada de una cadena fija.
  *
- * Solo se usa fuera de produccion, y existe para que `npm test` y un `git
- * clone` recien hecho funcionen sin preparar secretos. En produccion la
+ * Solo se usa en development, y existe para que `npm test` y un `git
+ * clone` recien hecho funcionen sin preparar secretos. Fuera de development la
  * configuracion **se niega a arrancar** sin `DOCENTOS_ENCRYPTION_KEY`
  * (`server/config.ts`), asi que esta rama no puede alcanzarse alli.
  */

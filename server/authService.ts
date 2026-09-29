@@ -209,7 +209,8 @@ export async function revokeAllUserSessions(userId: string) {
 }
 
 export function requireSameOrigin(req: Request, res: Response, next: NextFunction) {
-  if (req.path === '/api/payments/webhook' || req.originalUrl?.includes('/api/payments/webhook')) return next();
+  // Montado bajo /api: req.path contiene solo /payments/webhook.
+  if (req.path === '/payments/webhook') return next();
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
 
   const fetchSite = req.get('sec-fetch-site');

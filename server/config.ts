@@ -35,6 +35,7 @@ const booleanString = (defaultValue: boolean) =>
 const rawSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DOCENTOS_ENV: z.enum(['development', 'staging', 'production']).optional(),
+  CSP_MODE: z.enum(['report', 'enforce']).optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.string().trim().min(1, 'DATABASE_URL es obligatoria'),
   APP_URL: z.string().url().default('http://localhost:3000'),
@@ -132,6 +133,7 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 const deploymentEnvironment = raw.DOCENTOS_ENV || (raw.NODE_ENV === 'production' ? 'production' : 'development');
+const isDeployed = deploymentEnvironment !== 'development';
 const appUrl = new URL(raw.APP_URL);
 const allowedOrigins = (raw.ALLOWED_ORIGIN || raw.APP_URL)
   .split(',')
@@ -145,37 +147,37 @@ for (const origin of allowedOrigins) {
 }
 
 const isLoopback = ['localhost', '127.0.0.1', '::1'].includes(appUrl.hostname);
-if (deploymentEnvironment === 'production' && appUrl.protocol !== 'https:' && !isLoopback) {
-  throw new Error('Configuracion de DocentOS invalida: APP_URL debe usar HTTPS en produccion.');
+if (isDeployed && appUrl.protocol !== 'https:' && !isLoopback) {
+  throw new Error('Configuracion de DocentOS invalida: APP_URL debe usar HTTPS fuera de development.');
 }
 if (raw.SESSION_COOKIE_SECURE === 'false' && appUrl.protocol === 'https:') {
   throw new Error('Configuracion de DocentOS invalida: no se puede desactivar Secure con APP_URL HTTPS.');
 }
-if (deploymentEnvironment === 'production' && raw.PASSWORD_RESET_EXPOSE_TOKEN) {
-  throw new Error('Configuracion de DocentOS invalida: PASSWORD_RESET_EXPOSE_TOKEN debe ser false en produccion.');
+if (isDeployed && raw.PASSWORD_RESET_EXPOSE_TOKEN) {
+  throw new Error('Configuracion de DocentOS invalida: PASSWORD_RESET_EXPOSE_TOKEN debe ser false fuera de development.');
 }
-if (deploymentEnvironment === 'production' && raw.SEED_DEMO_DATA) {
-  throw new Error('Configuracion de DocentOS invalida: SEED_DEMO_DATA no puede activarse en produccion.');
+if (isDeployed && raw.SEED_DEMO_DATA) {
+  throw new Error('Configuracion de DocentOS invalida: SEED_DEMO_DATA no puede activarse fuera de development.');
 }
-if (deploymentEnvironment === 'production' && raw.STRIPE_SECRET_KEY && !raw.STRIPE_WEBHOOK_SECRET) {
+if (isDeployed && raw.STRIPE_SECRET_KEY && !raw.STRIPE_WEBHOOK_SECRET) {
   throw new Error(
-    'Configuracion de DocentOS invalida: STRIPE_WEBHOOK_SECRET es obligatorio en produccion cuando STRIPE_SECRET_KEY esta definido; sin el, los webhooks no pueden verificarse.',
+    'Configuracion de DocentOS invalida: STRIPE_WEBHOOK_SECRET es obligatorio fuera de development cuando STRIPE_SECRET_KEY esta definido; sin el, los webhooks no pueden verificarse.',
   );
 }
 
 /**
- * La clave maestra de cifrado no puede faltar en produccion.
+ * La clave maestra de cifrado no puede faltar fuera de development.
  *
  * Sin ella, `server/crypto.ts` cae a una clave de desarrollo derivada de una
  * cadena que esta escrita en el propio repositorio: publica, por tanto. Con esa
  * clave, el secreto TOTP guardado en la base **no esta protegido** y el segundo
  * factor deja de serlo. Es el mismo criterio que ya se aplica a
- * STRIPE_WEBHOOK_SECRET: en produccion, un secreto ausente detiene el arranque
+ * STRIPE_WEBHOOK_SECRET: en un despliegue, un secreto ausente detiene el arranque
  * en vez de degradarse en silencio.
  */
-if (deploymentEnvironment === 'production' && !raw.DOCENTOS_ENCRYPTION_KEY) {
+if (isDeployed && !raw.DOCENTOS_ENCRYPTION_KEY) {
   throw new Error(
-    'Configuracion de DocentOS invalida: DOCENTOS_ENCRYPTION_KEY es obligatoria en produccion. Generala con `npm run secrets:init` y guardala: si se pierde, los secretos ya cifrados no se pueden recuperar.',
+    'Configuracion de DocentOS invalida: DOCENTOS_ENCRYPTION_KEY es obligatoria fuera de development. Generala con `npm run secrets:init` y guardala: si se pierde, los secretos ya cifrados no se pueden recuperar.',
   );
 }
 if (raw.DOCENTOS_ENCRYPTION_KEY) {
@@ -267,6 +269,7 @@ if (!['postgres:', 'postgresql:'].includes(databaseUrl.protocol)) {
 export const config = {
   ...raw,
   DOCENTOS_ENV: deploymentEnvironment,
+  CSP_MODE: raw.CSP_MODE || (isDeployed ? 'enforce' : 'report'),
   TRUST_PROXY: trustProxy,
   AI_PROVIDER: aiProvider,
   AI_PROVIDER_PREFERENCE: raw.AI_PROVIDER,

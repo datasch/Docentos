@@ -192,6 +192,8 @@ test('Portada: los botones del encabezado llevan a algún sitio', async (t) => {
 
   await t.test('3. Un enlace externo se deja intacto', () => {
     assert.equal(resolveLandingCta('https://ejemplo.com/inscripcion', '#cursos'), 'https://ejemplo.com/inscripcion');
+    assert.equal(resolveLandingCta('http://ejemplo.com/inscripcion', '#cursos'), '#cursos');
+    assert.equal(resolveLandingCta('javascript:alert(1)', '#cursos'), '#cursos');
   });
 
   await t.test('4. Un destino vacío o desconocido cae al catálogo, no a la nada', () => {

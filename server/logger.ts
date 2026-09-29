@@ -102,6 +102,19 @@ export const logger = {
   error: (msg: string, meta?: Record<string, any>) => emitLog('error', msg, meta),
 };
 
+export function redactRequestUrl(rawUrl: string): string {
+  const question = rawUrl.indexOf('?');
+  if (question < 0) return rawUrl;
+  const path = rawUrl.slice(0, question);
+  const query = new URLSearchParams(rawUrl.slice(question + 1));
+  for (const key of [...query.keys()]) {
+    if (['resettoken', 'token', 'code', 'state', 'key', 'signature'].includes(key.toLowerCase())) {
+      query.set(key, '[REDACTADO]');
+    }
+  }
+  return `${path}?${query.toString().replaceAll('%5BREDACTADO%5D', '[REDACTADO]')}`;
+}
+
 // Contadores de métricas en memoria para monitoreo operativo
 let requestCounter = 0;
 const requestLatencies: number[] = [];
@@ -163,7 +176,7 @@ export function requestTracingMiddleware(req: Request, res: Response, next: Next
     const isHealthCheck = req.path === '/api/health' || req.path === '/api/ready';
     if (!isHealthCheck || res.statusCode >= 400) {
       const level: LogLevel = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
-      logger[level](`${req.method} ${req.originalUrl || req.url} ${res.statusCode} (${durationMs}ms)`, {
+      logger[level](`${req.method} ${redactRequestUrl(req.originalUrl || req.url)} ${res.statusCode} (${durationMs}ms)`, {
         requestId,
         method: req.method,
         path: req.path,
