@@ -12,6 +12,11 @@ export function safeExternalUrl(value: unknown, allowHttp = false): string {
 }
 
 export function safeLandingLink(value: unknown, allowHttp = false): string {
-  if (typeof value === 'string' && /^#[a-zA-Z][\w-]*$/.test(value.trim())) return value.trim();
+  if (typeof value === 'string') {
+    const link = value.trim();
+    if (link === '#' || /^#[a-zA-Z][\w-]*$/.test(link)) return link;
+    // La doble barra y la contrabarra pueden convertir una ruta en URL externa.
+    if (/^\/(?!\/)[^\s\\]*$/.test(link)) return link;
+  }
   return safeExternalUrl(value, allowHttp);
 }

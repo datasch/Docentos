@@ -32,6 +32,9 @@ const base = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;
 
 test.before(async () => {
   // Igual que http-mentorship: sin esto, en una base recien sembrada el setupGuard responde 428.
+  const adminEmail = `admin-${SUFIJO}@ejemplo.invalid`;
+  await prisma.user.create({ data: { email: adminEmail, name: 'Administrador de prueba', role: 'ADMIN', avatarUrl: '/logo.avif' } });
+  correos.push(adminEmail);
   await ensureLegacyInstanceConfig();
   const curso = await prisma.course.create({
     data: { title: `Especialización ${SUFIJO}`, description: 'Prueba', price: 1990, currency: 'PEN', coverImage: '/logo.avif' },
@@ -114,6 +117,9 @@ test('reintento del mismo pedido: mismo pago y matricula, sin duplicados', async
   const user = await prisma.user.findUniqueOrThrow({ where: { email: b.student.email }, include: { payments: true, enrollments: true } });
   assert.equal(user.payments.length, 1);
   assert.equal(user.enrollments.length, 1);
+  assert.equal(r3.json.activationUrl, null);
+  assert.equal(r3.json.activationPending, true);
+  assert.equal(await prisma.passwordResetToken.count({ where: { userId: user.id } }), 1);
 });
 
 test('cuenta existente (VIP con contraseña): conserva todo y NO recibe enlace de activacion', async () => {
@@ -130,14 +136,42 @@ test('cuenta existente (VIP con contraseña): conserva todo y NO recibe enlace d
   assert.equal(await prisma.passwordResetToken.count({ where: { userId: user.id } }), 0);
 });
 
-test('una matricula revocada vuelve a estar activa al pagar de nuevo', async () => {
+test('reintentar un pedido revocado y reembolsado conserva matrícula, mentoría y enlace; otro pedido reactiva', async () => {
   const correo = `revocada-${SUFIJO}@ejemplo.invalid`;
-  const primera = await enviar(cuerpo(correo));
+  const pedido = cuerpo(correo);
+  const primera = await enviar(pedido);
+  assert.equal(primera.status, 200, JSON.stringify(primera.json));
+  const token = new URL(primera.json.activationUrl).searchParams.get('resetToken');
   await prisma.courseEnrollment.update({ where: { id: primera.json.enrollmentId }, data: { status: 'REVOKED' } });
-  const segunda = await enviar(cuerpo(correo));
+  await prisma.payment.update({ where: { id: primera.json.paymentId }, data: { status: 'REFUNDED' } });
+  const asignacion = await prisma.menteeAssignment.findUnique({ where: { menteeId_courseId: { menteeId: primera.json.userId, courseId: cursoId } } });
+  if (asignacion) await prisma.menteeAssignment.update({ where: { id: asignacion.id }, data: { status: 'REVOKED' } });
+
+  const reintento = await enviar(pedido);
+  assert.equal(reintento.status, 200, JSON.stringify(reintento.json));
+  assert.equal(reintento.json.paymentId, primera.json.paymentId);
+  assert.equal(reintento.json.enrollmentId, primera.json.enrollmentId);
+  assert.equal(reintento.json.activationUrl, null);
+  assert.equal(reintento.json.activationPending, true);
+  assert.equal((await prisma.courseEnrollment.findUniqueOrThrow({ where: { id: primera.json.enrollmentId } })).status, 'REVOKED');
+  if (asignacion) assert.equal((await prisma.menteeAssignment.findUniqueOrThrow({ where: { id: asignacion.id } })).status, 'REVOKED');
+  assert.equal(await prisma.passwordResetToken.count({ where: { userId: primera.json.userId } }), 1);
+  const originalToken = await prisma.passwordResetToken.findFirstOrThrow({ where: { userId: primera.json.userId } });
+  assert.ok(token);
+  assert.equal(originalToken.usedAt, null);
+  const reset = await fetch(`${base}/api/auth/password/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword: 'EnlaceOriginal#2026' }),
+  });
+  assert.equal(reset.status, 200, await reset.text());
+
+  const segunda = await enviar({ ...pedido, orderId: `${pedido.orderId}-nuevo` });
+  assert.equal(segunda.status, 200, JSON.stringify(segunda.json));
   assert.equal(segunda.json.enrollmentId, primera.json.enrollmentId);
   const e = await prisma.courseEnrollment.findUniqueOrThrow({ where: { id: primera.json.enrollmentId } });
   assert.equal(e.status, 'ACTIVE');
+  assert.notEqual(segunda.json.paymentId, primera.json.paymentId);
 });
 
 test('el mismo pedido con otro alumno es un conflicto, no una segunda alta', async () => {

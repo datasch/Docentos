@@ -8,7 +8,7 @@ import { parseVideoSource } from '../src/lib/videoParser.js';
 import { allowSeoJsonLd } from '../server/csp.js';
 import { renderSeoLandingHtml } from '../server/seo.js';
 
-const databaseUrl = 'postgresql://pruebas:pruebas@127.0.0.1:55432/docentos_pruebas_brazo_d2';
+const databaseUrl = process.env.DATABASE_URL!;
 const encryptionKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=';
 const childEnv = { ...process.env, DATABASE_URL: databaseUrl, DOTENV_CONFIG_PATH: '.codex-tmp/noenv', DOCENTOS_ENCRYPTION_KEY: encryptionKey, DOCENTOS_SKIP_LISTEN: '1' };
 
@@ -112,7 +112,7 @@ test('D2: petición real oculta token, valida origen y rechaza URLs peligrosas a
     assert.equal((await putLanding({ bannerLinkUrl: 'javascript:alert(1)' })).status, 400);
     const resource = await fetch(`${base}/api/admin/courses/${course.id}/resources`, { method: 'POST', headers, body: JSON.stringify({ title: 'Peligroso', privateUrl: 'javascript:alert(1)' }) });
     assert.equal(resource.status, 400);
-    const saved = await prisma.courseResource.create({ data: { courseId: course.id, title: 'Legado inseguro', privateUrl: 'http://example.invalid/file' } });
+    const saved = await prisma.courseResource.create({ data: { courseId: course.id, title: 'Legado inseguro', privateUrl: 'javascript:alert(1)' } });
     const redirect = await fetch(`${base}/api/content/resources/${saved.id}`, { headers, redirect: 'manual' });
     assert.equal(redirect.status, 400);
     const update = await fetch(`${base}/api/admin/courses/${course.id}/resources/${saved.id}`, { method: 'PUT', headers, body: JSON.stringify({ privateUrl: 'javascript:alert(1)' }) });

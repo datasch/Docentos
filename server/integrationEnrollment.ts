@@ -69,6 +69,7 @@ export interface IntegrationEnrollmentResult {
   accountActive: boolean;
   activationUrl: string | null;
   activationExpiresAt: string | null;
+  activationPending: boolean;
   loginUrl: string;
   courseTitle: string;
 }
@@ -112,9 +113,14 @@ async function enrollInTransaction(input: IntegrationEnrollmentInput) {
       if (previous.courseId !== course.id || previous.user.email !== input.student.email) {
         throw new IntegrationError(409, 'Ese pedido ya se registro con otro alumno o curso.');
       }
+      const enrollment = await tx.courseEnrollment.findUnique({
+        where: { userId_courseId: { userId: previous.userId, courseId: course.id } },
+      });
+      if (!enrollment) throw new IntegrationError(409, 'Ese pedido ya existe sin matrícula; requiere revisión.');
+      return { user: previous.user, course, payment: previous, enrollment, previous: true };
     }
 
-    let user = previous?.user ?? (await tx.user.findUnique({ where: { email: input.student.email } }));
+    let user = await tx.user.findUnique({ where: { email: input.student.email } });
     let createdNow = false;
     if (!user) {
       user = await tx.user.create({
@@ -130,7 +136,7 @@ async function enrollInTransaction(input: IntegrationEnrollmentInput) {
     }
 
     const now = new Date();
-    const payment = previous ?? (await tx.payment.create({
+    const payment = await tx.payment.create({
       data: {
         userId: user.id,
         courseId: course.id,
@@ -141,7 +147,7 @@ async function enrollInTransaction(input: IntegrationEnrollmentInput) {
         idempotencyKey,
         completedAt: now,
       },
-    }));
+    });
 
     const existingEnrollment = await tx.courseEnrollment.findUnique({
       where: { userId_courseId: { userId: user.id, courseId: course.id } },
@@ -181,26 +187,24 @@ async function enrollInTransaction(input: IntegrationEnrollmentInput) {
       console.warn(`[integracion] Sin mentor activo: ${input.student.email} queda matriculado sin asignacion de mentoria.`);
     }
 
-    if (!previous) {
-      await tx.auditLog.create({
-        data: {
-          actorUserId: null,
-          action: 'integration.enrollment_created',
-          targetType: 'CourseEnrollment',
-          targetId: enrollment.id,
-          metadataJson: JSON.stringify({
-            orderId: input.orderId,
-            provider: input.payment.provider,
-            reference: input.payment.reference ?? null,
-            amount: input.payment.amount,
-            currency: input.payment.currency,
-            userCreated: createdNow,
-          }),
-        },
-      });
-    }
+    await tx.auditLog.create({
+      data: {
+        actorUserId: null,
+        action: 'integration.enrollment_created',
+        targetType: 'CourseEnrollment',
+        targetId: enrollment.id,
+        metadataJson: JSON.stringify({
+          orderId: input.orderId,
+          provider: input.payment.provider,
+          reference: input.payment.reference ?? null,
+          amount: input.payment.amount,
+          currency: input.payment.currency,
+          userCreated: createdNow,
+        }),
+      },
+    });
 
-    return { user, course, payment, enrollment };
+    return { user, course, payment, enrollment, previous: false };
   });
 }
 
@@ -218,11 +222,11 @@ export async function enrollFromIntegration(input: IntegrationEnrollmentInput): 
     }
   }
 
-  const { user, course, payment, enrollment } = result;
+  const { user, course, payment, enrollment, previous } = result;
   const needsActivation = user.isActive && !user.passwordHash;
   let activationUrl: string | null = null;
   let activationExpiresAt: string | null = null;
-  if (needsActivation) {
+  if (needsActivation && !previous) {
     const { token, expiresAt } = await createPasswordResetToken(user.id, config.ACTIVATION_TTL_HOURS * 60);
     activationUrl = `${config.APP_URL.replace(/\/$/, '')}/?resetToken=${encodeURIComponent(token)}`;
     activationExpiresAt = expiresAt.toISOString();
@@ -236,6 +240,7 @@ export async function enrollFromIntegration(input: IntegrationEnrollmentInput): 
     accountActive: user.isActive,
     activationUrl,
     activationExpiresAt,
+    activationPending: needsActivation && previous,
     loginUrl: config.APP_URL.replace(/\/$/, ''),
     courseTitle: course.title,
   };

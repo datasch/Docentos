@@ -995,18 +995,19 @@ app.get(
       return res.status(403).json({ error: 'No tienes autorización para acceder a este recurso.' });
     }
 
+    const safeUrl = safeExternalUrl(resource.privateUrl, config.DOCENTOS_ENV === 'development');
+    if (!safeUrl) return res.status(400).json({ error: 'URL privada del recurso no segura.' });
+
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
         id: resource.id,
-        downloadUrl: safeExternalUrl(resource.privateUrl),
+        downloadUrl: safeUrl,
         title: resource.title,
         kind: resource.kind,
         mimeType: resource.mimeType,
       });
     }
 
-    const safeUrl = safeExternalUrl(resource.privateUrl);
-    if (!safeUrl) return res.status(400).json({ error: 'URL privada del recurso no segura.' });
     return res.redirect(safeUrl);
   }),
 );
@@ -3534,10 +3535,25 @@ app.delete(
   '/api/admin/courses/:courseId',
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
-    const existing = await prisma.course.findUnique({ where: { id: req.params.courseId } });
+    const existing = await prisma.course.findUnique({
+      where: { id: req.params.courseId },
+      include: { _count: { select: { payments: true, enrollments: true, certificates: true } } },
+    });
     if (!existing) return res.status(404).json({ error: 'Curso no encontrado.' });
 
-    await prisma.course.delete({ where: { id: existing.id } });
+    if (existing._count.payments || existing._count.enrollments || existing._count.certificates) {
+      return res.status(409).json({ error: 'El curso tiene pagos, matrículas o certificados: despublícalo.' });
+    }
+
+    try {
+      await prisma.course.delete({ where: { id: existing.id } });
+    } catch (error) {
+      // Una escritura concurrente o el historial de un módulo también impide el borrado.
+      if ((error as { code?: string }).code === 'P2003') {
+        return res.status(409).json({ error: 'El curso tiene pagos, matrículas, certificados o historial de alumnos: despublícalo.' });
+      }
+      throw error;
+    }
 
     await recordAuditEvent(req, {
       action: 'course.delete',

@@ -210,7 +210,7 @@ model QuizAttempt {
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   moduleId        String
-  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module          Module   @relation(fields: [moduleId], references: [id], onDelete: Restrict)
   scorePercentage Int
   passed          Boolean
   answersJson     String
@@ -375,7 +375,7 @@ model Payment {
   userId                String
   user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId              String
-  course                Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course                Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
   amount                Float
   currency              String        @default("USD")
   status                PaymentStatus @default(PENDING)
@@ -413,7 +413,7 @@ model CourseEnrollment {
   userId          String
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId        String
-  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course          Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
   status          EnrollmentStatus @default(ACTIVE)
   source          EnrollmentSource
   accessExpiresAt DateTime?
@@ -455,7 +455,7 @@ model Certificate {
   userId              String
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId            String
-  course              Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course              Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
   recipientName       String
   courseTitle         String
   completionPercent   Int      @default(100)
@@ -477,7 +477,7 @@ model MentorshipComment {
   userId           String
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId          String
-  video            VideoDriveLink      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video            VideoDriveLink      @relation(fields: [videoId], references: [id], onDelete: Restrict)
   parentId         String?
   parent           MentorshipComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies          MentorshipComment[] @relation("CommentReplies")
@@ -494,7 +494,7 @@ model UserProgress {
   userId      String
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId     String
-  video       VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video       VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Restrict)
   completed   Boolean        @default(true)
   completedAt DateTime       @default(now())
 
@@ -506,7 +506,7 @@ model VideoNote {
   userId           String
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId          String
-  video            VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  video            VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Restrict)
   timestampSeconds Int            @default(0)
   content          String
   createdAt        DateTime       @default(now())
