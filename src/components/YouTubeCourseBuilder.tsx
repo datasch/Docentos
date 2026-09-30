@@ -12,7 +12,7 @@
  * 7. Guardado en la base de datos como Curso BORRADOR (published: false) y opción de publicación directa.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Youtube,
   Sparkles,
@@ -241,8 +241,16 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     }
   };
 
-  // Polling del estado del AIJob
+  // Polling del estado del AIJob. El intervalo vive en una ref para poder
+  // pararlo al desmontar (salir o cancelar a mitad de la generación): antes
+  // seguía consultando y actualizaba un componente que ya no existía.
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+  }, []);
+
   const pollJobStatus = (jobId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
     const interval = setInterval(async () => {
       try {
         const job = await api.youtube.getJobStatus(jobId);
@@ -269,6 +277,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
       }
     }, 2000);
+    pollRef.current = interval;
   };
 
   // Paso 4: Guardar como Borrador en DocentOS

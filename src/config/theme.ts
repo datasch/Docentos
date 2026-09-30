@@ -10,4 +10,5 @@ export const siteConfig = {
   authorCredit: runtimeConfig.authorCredit || 'DocentOS Community Edition',
   defaultLanguage: runtimeConfig.defaultLanguage || 'es',
   assistantName: runtimeConfig.assistantName || 'Ian',
+  complaintsBookUrl: runtimeConfig.complaintsBookUrl || '',
 };

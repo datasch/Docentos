@@ -66,9 +66,9 @@ export async function verifyPassword(password: string, passwordHash: string) {
   return bcrypt.compare(password, passwordHash);
 }
 
-export async function createPasswordResetToken(userId: string) {
+export async function createPasswordResetToken(userId: string, ttlMinutes: number = config.PASSWORD_RESET_TTL_MINUTES, options: { preserveExisting?: boolean } = {}) {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + config.PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
   await prisma.passwordResetToken.deleteMany({
     where: {
@@ -76,10 +76,12 @@ export async function createPasswordResetToken(userId: string) {
       OR: [{ expiresAt: { lte: new Date() } }, { usedAt: { not: null } }],
     },
   });
-  await prisma.passwordResetToken.updateMany({
-    where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
-    data: { usedAt: new Date() },
-  });
+  if (!options.preserveExisting) {
+    await prisma.passwordResetToken.updateMany({
+      where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+  }
   await prisma.passwordResetToken.create({
     data: { userId, tokenHash: hashSessionToken(token), expiresAt },
   });
@@ -209,7 +211,8 @@ export async function revokeAllUserSessions(userId: string) {
 }
 
 export function requireSameOrigin(req: Request, res: Response, next: NextFunction) {
-  if (req.path === '/api/payments/webhook' || req.originalUrl?.includes('/api/payments/webhook') || req.originalUrl?.includes('/api/integrations')) return next();
+  // Montado bajo /api: req.path contiene solo /payments/webhook.
+  if (req.path === '/payments/webhook') return next();
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
 
   const fetchSite = req.get('sec-fetch-site');

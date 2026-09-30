@@ -9,9 +9,8 @@
  *  - Los códigos de recuperación se enseñan **una sola vez**, justo después de
  *    activar. No hay forma de volver a verlos: el servidor los guarda hasheados.
  *    Por eso ocupan media pantalla y hay un botón para copiarlos.
- *  - Apagar la verificación o pedir códigos nuevos exige la contraseña. Una
- *    sesión robada no debe bastar para retirar la defensa que existe por si
- *    roban la contraseña.
+ *  - Configurar, activar, apagar o pedir códigos nuevos exige la contraseña.
+ *    Una sesión robada no debe bastar para cambiar esta defensa.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Check, Copy, KeyRound, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
@@ -53,7 +52,7 @@ export const TwoFactorPanel: React.FC = () => {
     setAviso(null);
     setTrabajando(true);
     try {
-      const respuesta = await api.startTwoFactorSetup();
+      const respuesta = await api.startTwoFactorSetup(contrasena);
       setAlta({ qrDataUrl: respuesta.qrDataUrl, secret: respuesta.secret });
       setCodigo('');
     } catch (fallo) {
@@ -68,10 +67,11 @@ export const TwoFactorPanel: React.FC = () => {
     setError(null);
     setTrabajando(true);
     try {
-      const respuesta = await api.activateTwoFactor(codigo.trim());
+      const respuesta = await api.activateTwoFactor(codigo.trim(), contrasena);
       setCodigosRecuperacion(respuesta.recoveryCodes);
       setAlta(null);
       setCodigo('');
+      setContrasena('');
       setAviso(respuesta.message);
       await refrescar();
     } catch (fallo) {
@@ -177,11 +177,24 @@ export const TwoFactorPanel: React.FC = () => {
         </div>
       )}
 
+      {!estado?.activo && (
+        <label className="block space-y-1 text-meta text-ink-soft">
+          <span>Contraseña actual</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={contrasena}
+            onChange={(evento) => setContrasena(evento.target.value)}
+            className={`block w-full max-w-xs rounded-xl border border-line bg-canvas px-3 py-2 text-ink ${ANILLO_FOCO}`}
+          />
+        </label>
+      )}
+
       {!estado?.activo && !alta && (
         <button
           type="button"
           onClick={empezarAlta}
-          disabled={trabajando}
+          disabled={trabajando || !contrasena}
           className={`inline-flex items-center gap-2 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-2.5 text-meta font-bold text-brand-cyan hover:border-brand-cyan disabled:opacity-60 ${ANILLO_FOCO}`}
         >
           <KeyRound aria-hidden className="h-4 w-4" /> Activar verificación en dos pasos
@@ -220,7 +233,7 @@ export const TwoFactorPanel: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <button
               type="submit"
-              disabled={trabajando}
+              disabled={trabajando || !contrasena}
               className={`rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-2 text-meta font-bold text-brand-cyan hover:border-brand-cyan disabled:opacity-60 ${ANILLO_FOCO}`}
             >
               {trabajando ? 'Comprobando…' : 'Confirmar y activar'}

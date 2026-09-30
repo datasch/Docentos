@@ -82,7 +82,11 @@ export class DriveFolderError extends Error {
 }
 
 /** Listador de una carpeta. Se inyecta en las pruebas para no tocar la red. */
-export type DriveFolderLister = (folderId: string) => Promise<{ name: string; entries: DriveEntry[] }>;
+/** `maxEntries`: cuántas entradas caben aún en el recorrido; quien pagina deja de pedir al llegar. */
+export type DriveFolderLister = (
+  folderId: string,
+  maxEntries: number,
+) => Promise<{ name: string; entries: DriveEntry[] }>;
 
 // ── Enlace → identificador de carpeta ───────────────────────────────
 
@@ -273,6 +277,7 @@ type DriveClient = NonNullable<ReturnType<typeof getDriveClient>>;
 async function listFolderApi(
   folderId: string,
   drive: DriveClient,
+  maxEntries: number,
 ): Promise<{ name: string; entries: DriveEntry[] }> {
   let name = '';
   try {
@@ -326,7 +331,9 @@ async function listFolderApi(
       });
     }
     pageToken = page.data.nextPageToken ?? undefined;
-  } while (pageToken);
+    // Una carpeta con cientos de miles de archivos directos se leeria entera
+    // en memoria: se corta al llegar a lo que el recorrido aun puede aceptar.
+  } while (pageToken && entries.length < maxEntries);
 
   return { name, entries };
 }
@@ -398,7 +405,7 @@ export async function walkDriveFolder(
     options.listFolder ??
     (() => {
       const drive = getDriveClient();
-      if (drive) return (id: string) => listFolderApi(id, drive);
+      if (drive) return (id: string, maxEntries: number) => listFolderApi(id, drive, maxEntries);
       // El presupuesto por peticion se acota para que una carpeta lenta no
       // consuma ella sola todo el tiempo del recorrido.
       const perRequest = Math.max(5_000, Math.min(30_000, options.timeoutMs));
@@ -425,9 +432,14 @@ export async function walkDriveFolder(
     if (seen.has(id)) return { id, name: fallbackName, files: [], folders: [] };
     seen.add(id);
 
-    const { name, entries } = await listFolder(id);
+    const remaining = Math.max(0, options.maxNodes - nodeCount);
+    const listed = await listFolder(id, remaining);
     scannedFolders++;
-    const resolvedName = name || fallbackName;
+    const resolvedName = listed.name || fallbackName;
+    // El tope cuenta tambien los archivos directos, no solo al bajar a
+    // subcarpetas: si no, una carpeta plana enorme lo esquivaba.
+    const entries = listed.entries.length > remaining ? listed.entries.slice(0, remaining) : listed.entries;
+    if (listed.entries.length > remaining) limits.nodeLimitReached = true;
 
     const files = entries.filter((entry) => !entry.isFolder);
     const subfolders = entries.filter((entry) => entry.isFolder);

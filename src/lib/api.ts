@@ -128,8 +128,10 @@ export const api = {
   },
 
   /** Genera el secreto y devuelve el QR. No activa nada todavia. */
-  async startTwoFactorSetup(): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
-    const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+  async startTwoFactorSetup(password: string): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
+    const res = await fetch('/api/auth/2fa/setup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'No se pudo iniciar la configuración');
@@ -137,11 +139,11 @@ export const api = {
     return res.json();
   },
 
-  async activateTwoFactor(code: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
+  async activateTwoFactor(code: string, password: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
     const res = await fetch('/api/auth/2fa/activate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -621,6 +623,25 @@ export const api = {
   async getModuleQuiz(moduleId: string): Promise<{ success: boolean; questions: QuizQuestion[] }> {
     const res = await fetch(`/api/modules/${moduleId}/quiz?_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Error al obtener examen del módulo');
+    return res.json();
+  },
+
+  async getCourseQuizAttempts(courseId: string): Promise<{ success: boolean; attempts: { moduleId: string; scorePercentage: number; passed: boolean; createdAt: string }[] }> {
+    const res = await fetch(`/api/courses/${courseId}/quiz-attempts`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Error al obtener intentos del curso');
+    return res.json();
+  },
+
+  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; attemptsLeft: number; correctIndexes?: Record<number, number>; explanations?: Record<number, string> }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz/attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Error al calificar el examen');
+    }
     return res.json();
   },
 

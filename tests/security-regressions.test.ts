@@ -81,6 +81,7 @@ test('Seguridad: la pre-renderizacion para rastreadores escapa el contenido alma
     assert.equal(safeHttpUrl('data:text/html,<script>alert(1)</script>'), '', 'Descarta data:');
     assert.equal(safeHttpUrl('  '), '', 'Descarta valores vacios');
     assert.equal(safeHttpUrl('https://cdn.example.com/a.png'), 'https://cdn.example.com/a.png');
+    assert.equal(safeHttpUrl('http://cdn.example.com/a.png'), '');
 
     const html = renderSeoLandingHtml({
       landing: {
@@ -199,6 +200,12 @@ test('Seguridad: la configuracion de un plugin no entrega credenciales a quien n
     // donde escribir la URL la primera vez.
     const vacio = redactPluginConfig({ webhookUrl: '' }, false);
     assert.equal('webhookUrl' in vacio, true);
+  });
+
+  await t.test('6. Retira secretos dentro de objetos y arreglos sin mutar el original', () => {
+    const config = { nested: [{ credentials: { apiKey: 'secreta', ready: true } }, { webhookUrl: '' }] };
+    assert.deepEqual(redactPluginConfig(config, false), { nested: [{ credentials: { ready: true } }, { webhookUrl: '' }] });
+    assert.ok(JSON.stringify(config).includes('secreta'));
   });
 });
 

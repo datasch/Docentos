@@ -41,6 +41,7 @@ import { api } from '../lib/api';
 import { DOCENTOS_VERSION } from '../version';
 import { PublicNavbar, PublicNavLink } from './PublicNavbar';
 import { siteConfig } from '../config/theme';
+import { safeExternalUrl, safeLandingLink } from '../lib/safeUrl';
 
 interface LandingPageProps {
   courses: Course[];
@@ -195,10 +196,11 @@ export function shouldShowTestimonials(approvedCount: number, hasSession: boolea
 export function resolveLandingCta(link: string | undefined, fallback: string): string {
   const value = String(link ?? '').trim();
   if (!value) return fallback;
-  if (/^https?:\/\//i.test(value)) return value;
+  const external = safeExternalUrl(value, import.meta.env?.DEV);
+  if (external) return external;
   const alias = SECTION_ALIASES[value.toLowerCase()];
   if (alias) return alias;
-  if (value.startsWith('#')) return value;
+  if (safeLandingLink(value)) return value;
   return fallback;
 }
 
@@ -444,11 +446,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     try {
       const res = await api.getLandingConfig();
       if (res && res.config) {
-        setLandingConfig({
+        const nextConfig = {
           ...DEFAULT_LANDING_CONFIG,
           ...res.config,
           benefits: res.config.benefits && res.config.benefits.length > 0 ? res.config.benefits : DEFAULT_LANDING_CONFIG.benefits,
-        });
+        };
+        // La base puede conservar enlaces antiguos: se limpian tambien al pintar.
+        for (const field of ['heroMediaUrl', 'githubUrl', 'discordUrl', 'twitterUrl', 'linkedinUrl'] as const) {
+          nextConfig[field] = safeExternalUrl(nextConfig[field], import.meta.env?.DEV);
+        }
+        for (const field of ['heroCtaLink', 'heroSecondaryCtaLink', 'bannerLinkUrl'] as const) {
+          nextConfig[field] = safeLandingLink(nextConfig[field], import.meta.env?.DEV);
+        }
+        setLandingConfig(nextConfig);
       }
     } catch (err) {
       console.warn('Usando configuración por defecto para Landing Page:', err);
@@ -623,55 +633,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const pageTitle = `${plainHeroTitle} | DocentOS Open Source LMS`;
   const pageDescription = landingConfig.heroSubtitle;
 
-  const softwareSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    'name': 'DocentOS',
-    'operatingSystem': 'Web, Linux, Docker',
-    'applicationCategory': 'EducationalApplication',
-    'offers': {
-      '@type': 'Offer',
-      'price': '0',
-      'priceCurrency': 'USD',
-    },
-    'description': pageDescription,
-  };
-
-  const orgSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'EducationalOrganization',
-    'name': 'Giantucchi Inc. EIRL',
-    'alternateName': 'DocentOS Open Source LMS',
-    'url': currentOrigin,
-    'logo': landingConfig.heroMediaUrl,
-    'description': 'Institución líder en programas e-Learning de alto rendimiento, IA Nativa y Mentoría de Software.',
-    'sameAs': [
-      landingConfig.githubUrl || 'https://github.com/giantucchi/docentos',
-      'https://linkedin.com/company/giantucchi',
-    ],
-  };
-
-  // Marcado para buscadores: aqui va el catalogo completo, no el filtrado.
-  // Quien lo lee nunca tiene sesion y describe la oferta, no lo que ve un alumno.
-  const coursesSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    'itemListElement': courses.map((c, idx) => ({
-      '@type': 'ListItem',
-      'position': idx + 1,
-      'item': {
-        '@type': 'Course',
-        'name': c.title,
-        'description': c.description,
-        'provider': {
-          '@type': 'EducationalOrganization',
-          'name': 'Giantucchi Inc. EIRL',
-        },
-        'educationalLevel': 'Intermediate / Advanced',
-      },
-    })),
-  };
-
   return (
     <div className="lp-root">
       <Helmet>
@@ -697,9 +658,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <meta name="twitter:image" content={landingConfig.heroMediaUrl} />
 
         {/* JSON-LD Structured Data for AEO / SEO */}
-        <script type="application/ld+json">{JSON.stringify(softwareSchema)}</script>
-        <script type="application/ld+json">{JSON.stringify(orgSchema)}</script>
-        <script type="application/ld+json">{JSON.stringify(coursesSchema)}</script>
       </Helmet>
 
       {/* 1. Barra de navegación */}
@@ -1362,6 +1320,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <a href={landingConfig.linkedinUrl} target="_blank" rel="noopener noreferrer">
                     <Linkedin aria-hidden className="h-4 w-4" />
                     LinkedIn
+                  </a>
+                </li>
+              )}
+              {siteConfig.complaintsBookUrl && (
+                <li>
+                  <a href={siteConfig.complaintsBookUrl} target="_blank" rel="noopener noreferrer">
+                    <BookOpen aria-hidden className="h-4 w-4" />
+                    Libro de Reclamaciones
                   </a>
                 </li>
               )}

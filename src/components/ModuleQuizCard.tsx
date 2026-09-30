@@ -9,7 +9,7 @@
  * intento sin que nadie lo hubiera leído.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, Clock, ArrowLeft, Loader2 } from 'lucide-react';
 import { Module, User } from '../types';
 import { getModuleQuestions, setModuleQuiz, quizzesPluginEngine, QuizQuestion } from '../plugins/QuizzesPlugin';
@@ -18,6 +18,7 @@ import { pluginManager } from '../plugins/PluginManager';
 
 interface ModuleQuizCardProps {
   module: Module;
+  courseId?: string;
   user?: User;
   passingScore?: number;
   hasTimer?: boolean;
@@ -30,6 +31,7 @@ interface ModuleQuizCardProps {
 
 export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   module,
+  courseId,
   user,
   passingScore = pluginManager.getQuizPassingScore(),
   hasTimer = true,
@@ -48,10 +50,27 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   /** El cronómetro y las preguntas no aparecen hasta que se pulsa «Comenzar». */
   const [iniciado, setIniciado] = useState<boolean>(false);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const answersRef = useRef<Record<string, number>>({});
+  const sendingRef = useRef(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [sending, setSending] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [passed, setPassed] = useState(false);
   const [scorePercentage, setScorePercentage] = useState<number>(0);
   const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number>(timeLimitMinutes * 60);
+
+  useEffect(() => {
+    if (!courseId || !user) return;
+    let active = true;
+    api.getCourseQuizAttempts(courseId).then(({ attempts }) => {
+      if (!active) return;
+      const recent = attempts.filter((attempt) => attempt.moduleId === module.id &&
+        Date.now() - new Date(attempt.createdAt).getTime() < 24 * 60 * 60 * 1000);
+      setAttemptsUsed(recent.length);
+    }).catch(() => setSubmitError('No se pudieron cargar los intentos.'));
+    return () => { active = false; };
+  }, [courseId, module.id, user?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -93,29 +112,46 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     return () => clearInterval(timer);
   }, [iniciado, hasTimer, submitted, questions.length]);
 
-  const triggerAutoSubmit = () => {
-    // Usar la lógica centralizada de evaluación automática del QuizzesPluginEngine
-    const result = quizzesPluginEngine.evaluateQuiz(questions, answers, passingScore);
-    setScorePercentage(result.scorePercentage);
-    setSubmitted(true);
-    setAttemptsUsed((prev) => prev + 1);
-
-    const activeUserId = user?.id || 'current-user';
-    quizzesPluginEngine.recordAttempt(activeUserId, module.id, result.scorePercentage, passingScore);
-
-    if (result.passed) {
-      if (user) {
-        pluginManager.onQuizPass(user, module.id, result.scorePercentage);
+  const triggerAutoSubmit = async () => {
+    if (sendingRef.current || submitted) return;
+    sendingRef.current = true;
+    setSending(true);
+    setSubmitError(null);
+    try {
+      // La ref contiene las respuestas del último clic incluso si el reloj vence antes del render.
+      const submittedAnswers = answersRef.current;
+      const indexed = Object.fromEntries(questions.flatMap((question, index) =>
+        submittedAnswers[question.id] === undefined ? [] : [[index, submittedAnswers[question.id]]]
+      ));
+      const result = await quizzesPluginEngine.submitAttempt(module.id, indexed);
+      if (result.correctIndexes && result.explanations) {
+        setQuestions((prev) => prev.map((question, index) => ({
+          ...question,
+          correctIndex: result.correctIndexes![index],
+          explanation: result.explanations![index],
+        })));
       }
-      if (onPassed) {
-        onPassed(result.scorePercentage);
+      setScorePercentage(result.scorePercentage);
+      setPassed(result.passed);
+      setSubmitted(true);
+      setAttemptsUsed((prev) => prev + 1);
+      if (result.passed) {
+        if (user) quizzesPluginEngine.recordAttempt(user.id, module.id, result.scorePercentage, passingScore);
+        if (user) pluginManager.onQuizPass(user, module.id, result.scorePercentage);
+        onPassed?.(result.scorePercentage);
       }
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'No se pudo calificar el examen.');
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
     }
   };
 
   const handleSelectOption = (qId: string, optionIdx: number) => {
     if (submitted) return;
-    setAnswers((prev) => ({ ...prev, [qId]: optionIdx }));
+    answersRef.current = { ...answersRef.current, [qId]: optionIdx };
+    setAnswers(answersRef.current);
   };
 
   const handleSubmitQuiz = (e: React.FormEvent) => {
@@ -125,6 +161,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
 
   const handleStartQuiz = () => {
     setAnswers({});
+    answersRef.current = {};
     setSubmitted(false);
     setScorePercentage(0);
     setTimeLeft(timeLimitMinutes * 60);
@@ -135,13 +172,14 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   const handleResetQuiz = () => {
     if (attemptsUsed >= maxAttempts) return;
     setAnswers({});
+    answersRef.current = {};
     setSubmitted(false);
     setScorePercentage(0);
     setTimeLeft(timeLimitMinutes * 60);
     setIniciado(false);
   };
 
-  const isPassed = scorePercentage >= passingScore;
+  const isPassed = passed;
   const intentosAgotados = attemptsUsed >= maxAttempts;
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -308,8 +346,9 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       <form onSubmit={handleSubmitQuiz} className="space-y-6">
         {questions.map((q, idx) => {
           const selectedOption = answers[q.id];
-          const isQuestionCorrect = submitted && selectedOption === q.correctIndex;
-          const isQuestionWrong = submitted && selectedOption !== undefined && selectedOption !== q.correctIndex;
+          const canReview = submitted && q.correctIndex !== undefined;
+          const isQuestionCorrect = canReview && selectedOption === q.correctIndex;
+          const isQuestionWrong = canReview && selectedOption !== undefined && selectedOption !== q.correctIndex;
 
           return (
             <fieldset
@@ -335,7 +374,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                   const isChoiceSelected = selectedOption === optIdx;
                   let optStyle = 'border-line bg-canvas text-ink-soft hover:border-brand-cyan';
 
-                  if (submitted) {
+                  if (canReview) {
                     if (optIdx === q.correctIndex) {
                       optStyle = 'border-success bg-success/20 text-success-light font-semibold';
                     } else if (isChoiceSelected) {
@@ -365,7 +404,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                 })}
               </div>
 
-              {submitted && (
+              {canReview && q.explanation && (
                 <p className="mt-3 border-l-2 border-brand-violet pl-6 text-micro italic text-ink-muted">
                   Explicación: {q.explanation}
                 </p>
@@ -393,10 +432,11 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             botonVolver || <span />
           )}
 
+          {submitError && <p role="alert" className="text-meta text-danger-light">{submitError}</p>}
           {!submitted && (
             <button
               type="submit"
-              disabled={Object.keys(answers).length < questions.length}
+              disabled={sending || Object.keys(answers).length < questions.length}
               className="btn-brand-primary flex items-center gap-2 px-6 py-2.5 text-meta font-semibold disabled:opacity-50"
             >
               <Award aria-hidden className="h-4 w-4" />

@@ -12,6 +12,14 @@ export function getStripeClient(): Stripe | null {
   return stripeClient;
 }
 
+const zeroDecimalCurrencies = new Set([
+  'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+]);
+
+function currencyScale(currency: string): number {
+  return zeroDecimalCurrencies.has(currency.toUpperCase()) ? 1 : 100;
+}
+
 export interface CreateCheckoutParams {
   userId: string;
   courseId: string;
@@ -70,6 +78,7 @@ export async function createCheckoutSession({
         userId,
         courseId,
       },
+      payment_intent_data: { metadata: { paymentId, userId, courseId } },
       line_items: [
         {
           price_data: {
@@ -78,7 +87,7 @@ export async function createCheckoutSession({
               name: course.title,
               description: course.description?.slice(0, 500) || undefined,
             },
-            unit_amount: Math.round(amount * 100),
+            unit_amount: Math.round(amount * currencyScale(currency)),
           },
           quantity: 1,
         },
@@ -153,11 +162,11 @@ export async function handleStripeWebhook(
       signatureHeader,
       config.STRIPE_WEBHOOK_SECRET,
     );
-  } else if (config.DOCENTOS_ENV === 'production') {
-    // Nunca se aceptan eventos sin firma verificada en produccion: un webhook no
+  } else if (config.DOCENTOS_ENV !== 'development') {
+    // Nunca se aceptan eventos sin firma verificada fuera de development: un webhook no
     // autenticado permitiria conceder matriculas falsificando checkout.session.completed.
     throw new Error(
-      'Webhook rechazado: STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET son obligatorios para procesar pagos en produccion.',
+      'Webhook rechazado: STRIPE_SECRET_KEY y STRIPE_WEBHOOK_SECRET son obligatorios para procesar pagos fuera de development.',
     );
   } else {
     // Si no hay firma configurada (entorno dev/test local), parsear el payload directamente
@@ -219,13 +228,14 @@ export async function handleStripeWebhook(
           },
         });
 
-        if (payment) {
+        if (payment && !['REFUNDED', 'PARTIALLY_REFUNDED'].includes(payment.status)) {
           const paymentIntentId = typeof session.payment_intent === 'string'
             ? session.payment_intent
             : (session.payment_intent?.id || payment.stripePaymentIntentId);
 
-          await tx.payment.update({
-            where: { id: payment.id },
+          // La condición en SQL evita reactivar un pago reembolsado entre lectura y escritura.
+          const updated = await tx.payment.updateMany({
+            where: { id: payment.id, status: { notIn: ['REFUNDED', 'PARTIALLY_REFUNDED'] } },
             data: {
               status: 'COMPLETED',
               completedAt: now,
@@ -233,7 +243,7 @@ export async function handleStripeWebhook(
             },
           });
 
-          await tx.courseEnrollment.upsert({
+          if (updated.count) await tx.courseEnrollment.upsert({
             where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
             create: {
               id: `enr_${randomBytes(12).toString('hex')}`,
@@ -266,9 +276,9 @@ export async function handleStripeWebhook(
           },
         });
 
-        if (payment) {
-          await tx.payment.update({
-            where: { id: payment.id },
+        if (payment && !['REFUNDED', 'PARTIALLY_REFUNDED'].includes(payment.status)) {
+          const updated = await tx.payment.updateMany({
+            where: { id: payment.id, status: { notIn: ['REFUNDED', 'PARTIALLY_REFUNDED'] } },
             data: {
               status: 'COMPLETED',
               stripePaymentIntentId: intent.id,
@@ -276,7 +286,7 @@ export async function handleStripeWebhook(
             },
           });
 
-          await tx.courseEnrollment.upsert({
+          if (updated.count) await tx.courseEnrollment.upsert({
             where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
             create: {
               id: `enr_${randomBytes(12).toString('hex')}`,
@@ -309,9 +319,9 @@ export async function handleStripeWebhook(
           },
         });
 
-        if (payment) {
-          await tx.payment.update({
-            where: { id: payment.id },
+        if (payment && !['REFUNDED', 'PARTIALLY_REFUNDED'].includes(payment.status)) {
+          await tx.payment.updateMany({
+            where: { id: payment.id, status: { notIn: ['REFUNDED', 'PARTIALLY_REFUNDED'] } },
             data: {
               status: 'FAILED',
               failedAt: now,
@@ -335,7 +345,7 @@ export async function handleStripeWebhook(
           });
 
           if (payment) {
-            const refundedAmount = (charge.amount_refunded || 0) / 100;
+            const refundedAmount = (charge.amount_refunded || 0) / currencyScale(payment.currency);
             const isFullRefund = Boolean(charge.refunded) || refundedAmount >= payment.amount;
 
             await tx.payment.update({
@@ -349,7 +359,7 @@ export async function handleStripeWebhook(
 
             if (isFullRefund) {
               await tx.courseEnrollment.updateMany({
-                where: { userId: payment.userId, courseId: payment.courseId },
+                where: { userId: payment.userId, courseId: payment.courseId, source: 'PAYMENT' },
                 data: { status: 'REVOKED' },
               });
             }
@@ -372,10 +382,10 @@ export async function handleStripeWebhook(
 }
 
 export async function simulateDevPaymentSuccess(paymentId: string, requestingUserId?: string) {
-  // La simulacion concede matricula sin cobro real: solo puede existir fuera de
-  // produccion y nunca cuando hay credenciales de Stripe activas.
-  if (config.DOCENTOS_ENV === 'production') {
-    throw new Error('La simulación de pagos está deshabilitada en producción.');
+  // La simulacion concede matricula sin cobro real: solo puede existir en
+  // development y nunca cuando hay credenciales de Stripe activas.
+  if (config.DOCENTOS_ENV !== 'development') {
+    throw new Error('La simulación de pagos está deshabilitada fuera de development.');
   }
   if (stripeClient) {
     throw new Error('La simulación de pagos no está disponible con Stripe configurado.');

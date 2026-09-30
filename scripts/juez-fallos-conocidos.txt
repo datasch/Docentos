@@ -1,0 +1,13 @@
+1. Debe generar una sesión de checkout con pago en estado PENDING
+2. Webhook checkout.session.completed activa matrícula y completa pago
+4. Reembolso total (charge.refunded) revoca matrícula y cambia pago a REFUNDED
+5. La matrícula sigue siendo la vía normal
+Acceso a cursos: la resolucion por lotes coincide con la individual
+Acceso: un curso gratuito ya no se abre solo
+Flujo de Negocio: Control de Acceso y Protección de Contenidos
+Flujo de Negocio: Pagos, Webhooks e Idempotencia
+Flujo de Negocio: Progreso al 100%, Certificado Persistente y Verificación
+HTTP · POST /api/mentor/assign-mentee no toca la cuenta que ya existe
+HTTP · PUT /api/mentor/mentees/:id/courses alcanza a quien sale en la lista
+Mentoría: quien sale en la lista se puede editar
+Seguridad de Pagos: la simulación de desarrollo no puede conceder acceso ajeno

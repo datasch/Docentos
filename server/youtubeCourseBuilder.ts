@@ -14,7 +14,14 @@ import { prisma } from './prisma.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { requestAiJson, extractJsonObject, isAiEnabled } from './aiProvider.js';
-import { formatDuration } from './courseImportPlan.js';
+import { formatDuration, IMPORT_LIMITS } from './courseImportPlan.js';
+
+/** Trabajos de IA en curso por usuario: cada uno llama a un modelo en segundo plano. */
+const MAX_TRABAJOS_EN_CURSO = 3;
+/** Un trabajo que lleva más de esto sin terminar se da por muerto (reinicio a mitad). */
+const TRABAJO_COLGADO_MS = 30 * 60 * 1000;
+// Lo que importa es el juego de caracteres: el id va dentro de la URL del reproductor.
+const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export interface VideoInputItem {
   id: string;
@@ -228,6 +235,7 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
       contents: `${systemPrompt}\n\n${userPrompt}`,
       config: {
         responseMimeType: 'application/json',
+        abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS),
       },
     });
 
@@ -253,6 +261,19 @@ export async function createAiJob(
 ): Promise<{ id: string; status: string; progress: number }> {
   if (!videos || videos.length === 0) {
     throw new AiJobError('Debes seleccionar al menos un video para generar el curso.');
+  }
+  if (videos.length > IMPORT_LIMITS.maxLessons) {
+    throw new AiJobError(`Como máximo ${IMPORT_LIMITS.maxLessons} videos por curso.`);
+  }
+  const enCurso = await prisma.aIJob.count({
+    where: {
+      userId,
+      status: { in: ['PENDING', 'PROCESSING'] },
+      createdAt: { gt: new Date(Date.now() - TRABAJO_COLGADO_MS) },
+    },
+  });
+  if (enCurso >= MAX_TRABAJOS_EN_CURSO) {
+    throw new AiJobError(`Ya tienes ${enCurso} cursos generándose. Espera a que terminen.`);
   }
 
   // Verificar si playlistId existe en la base de datos para no violar la FK
@@ -434,10 +455,20 @@ export async function applyJobToDraftCourse(
     throw new AiJobError('No hay una estructura de curso válida para aplicar.');
   }
 
+  validarEstructura(structure);
   const cInfo = structure.course;
 
   // Transacción atómica en PostgreSQL: crea Course borrador + Modules + VideoDriveLinks
   const course = await prisma.$transaction(async (tx) => {
+    // Aplicar dos veces (doble clic, reintento) creaba otro borrador y dejaba el
+    // primero huérfano. Con el bloqueo, la segunda petición ve el curso ya creado.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ai-apply:' + job.id}))`;
+    const actual = await tx.aIJob.findUnique({ where: { id: job.id }, select: { courseId: true } });
+    if (actual?.courseId) {
+      const existente = await tx.course.findUnique({ where: { id: actual.courseId } });
+      if (existente) return existente;
+    }
+
     // 1. Crear el Curso en estado borrador (published: false)
     const newCourse = await tx.course.create({
       data: {
@@ -463,6 +494,7 @@ export async function applyJobToDraftCourse(
       });
 
       for (const [lIdx, les] of mod.lessons.entries()) {
+        // Validado arriba: el id va dentro de la URL del reproductor.
         const vidId = les.youtubeVideoId || `yt-${mIdx}-${lIdx}`;
         await tx.videoDriveLink.create({
           data: {
@@ -496,4 +528,40 @@ export async function applyJobToDraftCourse(
     courseId: course.id,
     courseTitle: course.title,
   };
+}
+
+/**
+ * La estructura puede venir editada por el mentor en el cuerpo de la petición:
+ * sin topes, miles de módulos se crean dentro de una sola transacción. Mismos
+ * límites que el importador de Drive.
+ */
+function validarEstructura(structure: GeneratedCourseStructure) {
+  const texto = (v: unknown, max: number) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
+  if (!texto(structure.course.title, IMPORT_LIMITS.maxTitleLength)) {
+    throw new AiJobError('El curso necesita un título de hasta 200 caracteres.');
+  }
+  if (structure.modules.length > IMPORT_LIMITS.maxModules) {
+    throw new AiJobError(`Como máximo ${IMPORT_LIMITS.maxModules} módulos por curso.`);
+  }
+  let total = 0;
+  for (const mod of structure.modules) {
+    if (!mod || !texto(mod.title, IMPORT_LIMITS.maxTitleLength) || !Array.isArray(mod.lessons)) {
+      throw new AiJobError('Cada módulo necesita título y lista de lecciones.');
+    }
+    if (mod.lessons.length > IMPORT_LIMITS.maxLessonsPerModule) {
+      throw new AiJobError(`Como máximo ${IMPORT_LIMITS.maxLessonsPerModule} lecciones por módulo.`);
+    }
+    total += mod.lessons.length;
+    for (const les of mod.lessons) {
+      if (!les || !texto(les.title, IMPORT_LIMITS.maxTitleLength)) {
+        throw new AiJobError('Cada lección necesita un título de hasta 200 caracteres.');
+      }
+      if (les.youtubeVideoId && !YOUTUBE_VIDEO_ID.test(les.youtubeVideoId)) {
+        throw new AiJobError('Hay una lección con un identificador de video de YouTube inválido.');
+      }
+    }
+  }
+  if (total > IMPORT_LIMITS.maxLessons) {
+    throw new AiJobError(`Como máximo ${IMPORT_LIMITS.maxLessons} lecciones por curso.`);
+  }
 }

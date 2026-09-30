@@ -11,5 +11,6 @@ interface Window {
     authorCredit?: string;
     defaultLanguage?: string;
     assistantName?: string;
+    complaintsBookUrl?: string;
   };
 }

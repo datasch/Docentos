@@ -56,6 +56,8 @@ export class YouTubeError extends Error {
     public readonly code:
       | 'NOT_CONNECTED'
       | 'INVALID_URL'
+      | 'INVALID_REDIRECT_URI'
+      | 'VIDEO_NOT_IN_PLAYLIST'
       | 'PLAYLIST_NOT_FOUND'
       | 'PLAYLIST_PRIVATE_UNAUTHORIZED'
       | 'TOKEN_EXPIRED'
@@ -104,11 +106,14 @@ export function parseIsoDuration(durationStr: string): number {
 export function getOAuth2Client(customRedirectUri?: string) {
   const clientId = config.YOUTUBE_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID;
   const clientSecret = config.YOUTUBE_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET;
-  const redirectUri =
-    customRedirectUri ||
-    config.YOUTUBE_REDIRECT_URI ||
-    process.env.YOUTUBE_REDIRECT_URI ||
-    `${config.APP_URL}/api/youtube/callback`;
+  const allowedRedirects = [
+    `${config.APP_URL.replace(/\/$/, '')}/api/youtube/callback`,
+    config.YOUTUBE_REDIRECT_URI,
+  ].filter((uri): uri is string => Boolean(uri));
+  if (customRedirectUri && !allowedRedirects.includes(customRedirectUri)) {
+    throw new YouTubeError('URI de retorno de YouTube no autorizada.', 'INVALID_REDIRECT_URI', 400);
+  }
+  const redirectUri = customRedirectUri || config.YOUTUBE_REDIRECT_URI || allowedRedirects[0];
 
   if (!clientId || !clientSecret) {
     throw new YouTubeError(
@@ -313,6 +318,8 @@ export async function fetchPlaylistFromApi(
     position: number;
     publishedAt?: string | null;
   }>;
+  /** false si se cortó en el tope de videos: entonces no se sabe qué falta en la playlist. */
+  complete: boolean;
 }> {
   let youtube = userId ? await getAuthenticatedYouTubeClient(userId) : null;
   const apiKey = config.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || null;
@@ -385,10 +392,17 @@ export async function fetchPlaylistFromApi(
       rawVideos.push(...items);
       nextPageToken = itemsRes.data.nextPageToken || undefined;
     } catch (err: any) {
+      // Antes: break, y la importación se guardaba como completa con las páginas
+      // leídas hasta el fallo. Mejor fallar y que el mentor reintente.
       logger.warn('youtube.playlistItems.page_error', { playlistId, error: err.message });
-      break;
+      throw new YouTubeError(
+        'YouTube falló a mitad de la lista (cuota o error temporal). No se guardó nada: vuelve a intentarlo.',
+        'UNKNOWN',
+        502,
+      );
     }
   } while (nextPageToken && rawVideos.length < maxVideos);
+  const complete = !nextPageToken;
 
   // 3. Extraer IDs de video para consultar duraciones en bloques de 50
   const videoIds = rawVideos
@@ -419,13 +433,15 @@ export async function fetchPlaylistFromApi(
   const videos = rawVideos.map((item, index) => {
     const vidId = item.contentDetails?.videoId || item.snippet?.resourceId?.videoId || `unknown-${index}`;
     const title = item.snippet?.title || '';
+    const details = durationMap.get(vidId);
+    // Un video privado que la cuenta conectada sí puede ver trae sus metadatos:
+    // solo se oculta el que YouTube devuelve sin datos.
     const isDeletedOrPrivate =
       title === 'Private video' ||
       title === 'Deleted video' ||
-      item.status?.privacyStatus === 'private' ||
-      !item.snippet;
+      !item.snippet ||
+      (item.status?.privacyStatus === 'private' && !details);
 
-    const details = durationMap.get(vidId);
     const durationSeconds = details?.durationSeconds || 0;
     const privacyStatus = isDeletedOrPrivate
       ? 'PRIVATE'
@@ -464,6 +480,7 @@ export async function fetchPlaylistFromApi(
       publishedAt: pSnippet?.publishedAt || null,
     },
     videos,
+    complete,
   };
 }
 
@@ -487,7 +504,7 @@ export async function importPlaylist(
   let conn = await prisma.youTubeConnection.findUnique({ where: { userId } });
 
   // Consultar API oficial de YouTube PRIMERO
-  const { playlist: pData, videos: vData } = await fetchPlaylistFromApi(playlistId, userId);
+  const { playlist: pData, videos: vData, complete } = await fetchPlaylistFromApi(playlistId, userId);
 
   // Si no está conectado con OAuth, crear conexión local/asociada para persistir en DB
   if (!conn) {
@@ -568,6 +585,16 @@ export async function importPlaylist(
           position: v.position,
           publishedAt: v.publishedAt ? new Date(v.publishedAt) : null,
         },
+      });
+    }
+
+    // Lo que ya no está en la playlist deja de ofrecerse para nuevos cursos. Se
+    // excluye en vez de borrarlo: puede estar enlazado a lecciones existentes.
+    // Solo tras una lectura completa: cortada en el tope, faltan videos que sí están.
+    if (complete) {
+      await tx.youTubeVideo.updateMany({
+        where: { playlistId: pl.id, youtubeId: { notIn: vData.map((v) => v.youtubeId) } },
+        data: { excluded: true },
       });
     }
 
@@ -679,10 +706,16 @@ export async function updateVideosSelection(
     throw new YouTubeError('Playlist no encontrada.', 'PLAYLIST_NOT_FOUND', 404);
   }
 
+  const ids = [...new Set(updates.map((u) => u.id))];
+  if (ids.some((id) => typeof id !== 'string') ||
+      await prisma.youTubeVideo.count({ where: { id: { in: ids }, playlistId } }) !== ids.length) {
+    throw new YouTubeError('Algún video no pertenece a esta playlist.', 'VIDEO_NOT_IN_PLAYLIST', 400);
+  }
+
   await prisma.$transaction(
     updates.map((u) =>
       prisma.youTubeVideo.update({
-        where: { id: u.id },
+        where: { id: u.id, playlistId },
         data: {
           ...(typeof u.customOrder === 'number' ? { customOrder: u.customOrder } : {}),
           ...(typeof u.excluded === 'boolean' ? { excluded: u.excluded } : {}),

@@ -58,15 +58,6 @@ const FIELD_LABELS: Record<string, string> = {
   roomPrefix: 'Prefijo de sala Jitsi Meet',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  ALL: 'Todos los Plugins',
-  meetings: 'Meetings & En Vivo',
-  certificates: 'Certificados',
-  quizzes: 'Exámenes & Quizzes',
-  integrations: 'Integraciones',
-  analytics: 'Analítica',
-};
-
 export const PluginManagerView: React.FC = () => {
   const { t } = useTranslation();
   const [plugins, setPlugins] = useState<AcademiaPlugin[]>(pluginManager.getPlugins());
@@ -217,16 +208,16 @@ export const PluginManagerView: React.FC = () => {
 
       {/* Category Pills */}
       <div className="flex flex-wrap gap-2">
-        {['ALL', 'meetings', 'certificates', 'quizzes', 'integrations', 'analytics'].map((cat) => (
+        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics', 'meetings'].map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat
               ? 'bg-brand-cyan text-black shadow-md'
               : 'bg-canvas text-ink-muted hover:text-ink border border-line'
               }`}
           >
-            {CATEGORY_LABELS[cat] || cat}
+            {cat === 'ALL' ? 'Todos los Plugins' : cat.toUpperCase()}
           </button>
         ))}
       </div>

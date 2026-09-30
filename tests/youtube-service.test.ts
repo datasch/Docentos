@@ -153,7 +153,7 @@ test('YouTube Service: Errores y restricciones de seguridad de Playlists', async
   await t.test('1. Rechaza URLs vacías o inválidas con código INVALID_URL', async () => {
     await assert.rejects(
       async () => {
-        await importPlaylist(TEST_USER_ID, 'url-invalida');
+        await importPlaylist(TEST_USER_ID, 'esto no es una url');
       },
       (err: any) => {
         assert.ok(err instanceof YouTubeError);
