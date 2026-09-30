@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DocentOS API server.
  *
  * PostgreSQL is the source of truth for application data and authenticated
@@ -8,6 +8,7 @@
 import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
 import path from 'path';
+import fs from 'node:fs';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -518,6 +519,10 @@ app.use((req, res, next) => {
   // El filtro XSS heredado se desactiva de forma explicita: su modo de bloqueo
   // introduce vectores propios y los navegadores actuales lo ignoran.
   res.setHeader('X-XSS-Protection', '0');
+  res.setHeader(
+    'Permissions-Policy',
+    'picture-in-picture=*, fullscreen=*, accelerometer=*, autoplay=*, encrypted-media=*, gyroscope=*',
+  );
   next();
 });
 app.use(requestTracingMiddleware);
@@ -590,6 +595,19 @@ app.use('/api/auth/password/forgot', passwordResetRateLimiter);
 app.use('/api/auth/password/reset', passwordResetRateLimiter);
 app.use('/api/admin/drive/', driveImportRateLimiter);
 app.use('/api/', apiRateLimiter);
+
+// Favicon fallback
+app.get('/favicon.ico', (_req, res) => {
+  const icoPath = path.join(process.cwd(), 'public', 'favicon.ico');
+  if (fs.existsSync(icoPath)) {
+    return res.sendFile(icoPath);
+  }
+  const logoPath = path.join(process.cwd(), 'public', 'logo.avif');
+  if (fs.existsSync(logoPath)) {
+    return res.type('image/avif').sendFile(logoPath);
+  }
+  return res.status(204).end();
+});
 
 // Database health, observability probes and first-run setup
 app.get('/api/version', (_req, res) => {
