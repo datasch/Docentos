@@ -24,6 +24,7 @@ export const cspDirectives = {
     'https:',
   ],
   connectSrc: ["'self'", 'https:', 'wss:'],
+  upgradeInsecureRequests: null,
 };
 
 export function allowSeoJsonLd(header: string, html: string): string {

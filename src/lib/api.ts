@@ -1263,4 +1263,82 @@ export const api = {
       return res.ok;
     },
   },
+
+  contracts: {
+    async getPending(): Promise<{
+      requiresSignature: boolean;
+      contract?: {
+        version: string;
+        title: string;
+        content: string;
+        contractHash: string;
+        calculatedDates: {
+          startDate: string;
+          endDate: string;
+          retentionPeriodMonths: number;
+          dataRetentionUntil: string;
+        };
+      };
+      signature?: any;
+    }> {
+      const res = await fetch('/api/contracts/pending');
+      if (!res.ok) throw new Error('Error al verificar estado de contratos');
+      return res.json();
+    },
+
+    async sign(payload: {
+      contractVersion: string;
+      contractHash: string;
+      acceptedTerms: boolean;
+      acceptedPrivacy: boolean;
+      acceptedDataPolicy: boolean;
+      acceptedCommercials?: boolean;
+    }): Promise<{ success: boolean; signatureId: string; signedAt: string; contractSummary: any }> {
+      const res = await fetch('/api/contracts/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al firmar el contrato');
+      }
+      return data;
+    },
+
+    async getAdminSignatures(search?: string): Promise<{
+      success: boolean;
+      signatures: Array<{
+        id: string;
+        userId: string;
+        userName: string;
+        userEmail: string;
+        userAvatarUrl?: string | null;
+        userRole: string;
+        contractVersion: string;
+        contractHash: string;
+        ipAddress: string;
+        userAgent: string;
+        signedAt: string;
+        startDate: string;
+        endDate: string;
+        dataRetentionUntil: string;
+        acceptedTerms: boolean;
+        acceptedPrivacy: boolean;
+        acceptedDataPolicy: boolean;
+        acceptedCommercials: boolean;
+        daysRemaining: number;
+        status: 'VIGENTE' | 'POR_VENCER' | 'EXPIRADO';
+      }>;
+      total: number;
+    }> {
+      const url = search
+        ? `/api/admin/contracts/signatures?search=${encodeURIComponent(search)}`
+        : '/api/admin/contracts/signatures';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Error al cargar firmas de contratos');
+      return res.json();
+    },
+  },
 };
+

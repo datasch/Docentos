@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
@@ -43,10 +43,16 @@ const CURSO_VACIO: Course = {
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'contracts' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [roleErrorMsg, setRoleErrorMsg] = useState('');
+
+  // Contracts / Legal Audit State
+  const [contractSignatures, setContractSignatures] = useState<any[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+  const [contractSearch, setContractSearch] = useState('');
+  const [selectedAuditSignature, setSelectedAuditSignature] = useState<any | null>(null);
 
   /**
    * El catálogo completo, no solo el curso abierto.
@@ -119,8 +125,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     loadDriveVideos();
     loadEnrollments();
     loadCertificates();
+    loadContracts();
     loadCatalog();
   }, []);
+
+  const loadContracts = async (query?: string) => {
+    setLoadingContracts(true);
+    try {
+      const res = await api.contracts.getAdminSignatures(query);
+      setContractSignatures(res.signatures || []);
+    } catch (err) {
+      console.error('Error loading contract signatures:', err);
+    } finally {
+      setLoadingContracts(false);
+    }
+  };
 
   /**
    * El catálogo que alimenta al selector de curso de todas las pestañas.
@@ -666,6 +685,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               }`}
           >
             <Award className="w-3.5 h-3.5 text-amber-400" /> Certificados
+          </button>
+          <button
+            onClick={() => setActiveTab('contracts')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'contracts' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
+          >
+            <FileCheck className="w-3.5 h-3.5 text-blue-400" /> Contratos
           </button>
           <button
             onClick={() => setActiveTab('resources')}
@@ -1803,6 +1829,194 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               ) : (
                 <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene recursos.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contracts & Legal Compliance Audit Tab */}
+      {activeTab === 'contracts' && (
+        <div className="space-y-6">
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-blue-400" />
+                  Auditoría de Contratos y Consentimientos Legales
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Evidencia forense inmutable de términos, fechas de vigencia y custodia de datos por usuario.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por alumno o IP..."
+                    value={contractSearch}
+                    onChange={(e) => {
+                      setContractSearch(e.target.value);
+                      loadContracts(e.target.value);
+                    }}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={() => loadContracts(contractSearch)}
+                  className="p-2 bg-[#0a0a0f] border border-[#2d2d44] hover:border-slate-500 text-slate-300 rounded-xl transition-colors shrink-0"
+                  title="Recargar firmas"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingContracts ? 'animate-spin text-blue-400' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {loadingContracts ? (
+              <div className="py-16 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                <span className="text-xs">Consultando evidencias en base de datos...</span>
+              </div>
+            ) : contractSignatures.length === 0 ? (
+              <div className="py-16 text-center text-slate-500 text-xs bg-[#0a0a0f]/50 border border-dashed border-[#2d2d44] rounded-xl">
+                No se encontraron firmas de contratos registradas.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-[#2d2d44]">
+                    <tr>
+                      <th className="p-3">Alumno</th>
+                      <th className="p-3">Fecha Firma</th>
+                      <th className="p-3">Vigencia Acceso</th>
+                      <th className="p-3">Custodia Datos</th>
+                      <th className="p-3">IP Origen</th>
+                      <th className="p-3">Estado</th>
+                      <th className="p-3 text-right">Evidencia</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2d2d44]">
+                    {contractSignatures.map((sig) => (
+                      <tr key={sig.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={avatarSrc(sig.userAvatarUrl)}
+                              alt=""
+                              className="w-7 h-7 rounded-full bg-slate-800 object-cover shrink-0"
+                            />
+                            <div>
+                              <div className="font-semibold text-white">{sig.userName}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">{sig.userEmail}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 font-mono text-slate-400 text-[11px]">
+                          {new Date(sig.signedAt).toLocaleDateString('es-ES', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="p-3 text-[11px]">
+                          <span className="text-slate-200">
+                            {new Date(sig.startDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                          </span>
+                          {' → '}
+                          <span className="text-slate-400 font-medium">
+                            {new Date(sig.endDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                          </span>
+                        </td>
+                        <td className="p-3 text-[11px] text-purple-300">
+                          {new Date(sig.dataRetentionUntil).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="p-3 font-mono text-[11px] text-slate-400">
+                          {sig.ipAddress}
+                        </td>
+                        <td className="p-3">
+                          {sig.status === 'VIGENTE' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 className="w-3 h-3" /> Vigente
+                            </span>
+                          )}
+                          {sig.status === 'POR_VENCER' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              <AlertTriangle className="w-3 h-3" /> Por Vencer
+                            </span>
+                          )}
+                          {sig.status === 'EXPIRADO' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                              <XCircle className="w-3 h-3" /> Expirado
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => setSelectedAuditSignature(sig)}
+                            className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-colors inline-flex items-center gap-1 text-[11px] font-medium"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Ver Acta</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalle y Acta Forense de Firma */}
+      {selectedAuditSignature && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 text-xs text-slate-300 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-blue-400" />
+                <h3 className="text-base font-bold text-white">Acta Digital de Firma y Consentimiento</h3>
+              </div>
+              <button
+                onClick={() => setSelectedAuditSignature(null)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 bg-[#0a0a0f] p-4 rounded-xl border border-slate-800 font-mono text-[11px]">
+              <div><strong className="text-slate-400">ID Registro:</strong> {selectedAuditSignature.id}</div>
+              <div><strong className="text-slate-400">Titular:</strong> {selectedAuditSignature.userName} ({selectedAuditSignature.userEmail})</div>
+              <div><strong className="text-slate-400">Fecha y Hora UTC:</strong> {new Date(selectedAuditSignature.signedAt).toISOString()}</div>
+              <div><strong className="text-slate-400">IP de Firma:</strong> {selectedAuditSignature.ipAddress}</div>
+              <div><strong className="text-slate-400">SHA-256 Hash:</strong> <span className="text-blue-400 break-all">{selectedAuditSignature.contractHash}</span></div>
+              <div className="pt-2 border-t border-slate-800/60 text-slate-400 break-all text-[10px]">
+                <strong>User-Agent:</strong> {selectedAuditSignature.userAgent}
+              </div>
+            </div>
+
+            <div className="space-y-1 text-slate-300 text-[11px]">
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <Check className="w-3.5 h-3.5" /> Términos y Condiciones Generales Aceptados
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <Check className="w-3.5 h-3.5" /> Política de Privacidad Aceptada
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <Check className="w-3.5 h-3.5" /> Custodia de Datos Personales y Progreso (24 meses)
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setSelectedAuditSignature(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors"
+              >
+                Cerrar Acta
+              </button>
             </div>
           </div>
         </div>

@@ -536,7 +536,7 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '0');
   res.setHeader(
     'Permissions-Policy',
-    'picture-in-picture=*, fullscreen=*, accelerometer=*, autoplay=*, encrypted-media=*, gyroscope=*, web-share=*',
+    'picture-in-picture=*, fullscreen=*, accelerometer=*, autoplay=*, encrypted-media=*, gyroscope=*',
   );
   next();
 });
@@ -549,7 +549,7 @@ app.use(
     },
   }),
 );
-app.use(function(err: any, _req: Request, res: Response, next: NextFunction) {
+app.use(function (err: any, _req: Request, res: Response, next: NextFunction) {
   if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
     return res.status(400).json({ error: 'Body JSON invalido' });
   }
@@ -3397,8 +3397,8 @@ app.put(
     const linkFields = ['heroCtaLink', 'heroSecondaryCtaLink', 'bannerLinkUrl'];
     const allowHttp = config.DOCENTOS_ENV === 'development';
     if (urlFields.some((field) => merged[field] && !safeExternalUrl(merged[field], allowHttp)) ||
-        linkFields.some((field) => merged[field] && !safeLandingLink(merged[field], allowHttp)) ||
-        (Array.isArray(merged.testimonials) && merged.testimonials.some((item: any) => item.avatarUrl && !safeExternalUrl(item.avatarUrl, allowHttp)))) {
+      linkFields.some((field) => merged[field] && !safeLandingLink(merged[field], allowHttp)) ||
+      (Array.isArray(merged.testimonials) && merged.testimonials.some((item: any) => item.avatarUrl && !safeExternalUrl(item.avatarUrl, allowHttp)))) {
       return res.status(400).json({ error: 'La portada contiene una URL no permitida.' });
     }
     const savedConfig = await prisma.landingConfig.update({
@@ -3685,167 +3685,167 @@ app.delete(
   }),
 );
 
-  // --- Quizzes & Module Assessments (Plugin interactive-quizzes) ---
-  // El listado completo solo lo consumen el panel del mentor y el gestor de
-  // cursos. Sin guardia devolvia todos los examenes del sistema —con la
-  // respuesta correcta de cada pregunta— a cualquiera que supiera la ruta.
-  app.get(
-    '/api/quizzes/all',
-    requireRole(['ADMIN', 'MENTOR']),
-    asyncRoute(async (_req, res) => {
-      const quizzes = await getAllStoredQuizzes();
-      res.json({ success: true, quizzes });
-    }),
-  );
+// --- Quizzes & Module Assessments (Plugin interactive-quizzes) ---
+// El listado completo solo lo consumen el panel del mentor y el gestor de
+// cursos. Sin guardia devolvia todos los examenes del sistema —con la
+// respuesta correcta de cada pregunta— a cualquiera que supiera la ruta.
+app.get(
+  '/api/quizzes/all',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (_req, res) => {
+    const quizzes = await getAllStoredQuizzes();
+    res.json({ success: true, quizzes });
+  }),
+);
 
-  // Solo el recuento de preguntas por modulo. Es lo que necesita el temario
-  // para anunciar el examen y el candado para saber que modulos evaluan, sin
-  // que las respuestas correctas bajen al navegador antes de tiempo.
-  app.get(
-    '/api/courses/:courseId/quiz-summary',
-    requireAuthenticated,
-    asyncRoute(async (req, res) => {
-      if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
-        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
-      }
-      const counts = await getQuizCountsByCourse(req.params.courseId);
-      res.json({ success: true, counts });
-    }),
-  );
+// Solo el recuento de preguntas por modulo. Es lo que necesita el temario
+// para anunciar el examen y el candado para saber que modulos evaluan, sin
+// que las respuestas correctas bajen al navegador antes de tiempo.
+app.get(
+  '/api/courses/:courseId/quiz-summary',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    const counts = await getQuizCountsByCourse(req.params.courseId);
+    res.json({ success: true, counts });
+  }),
+);
 
-  app.get(
-    '/api/courses/:courseId/quiz-attempts',
-    requireAuthenticated,
-    asyncRoute(async (req, res) => {
-      if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
-        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
-      }
-      const attempts = await prisma.quizAttempt.findMany({
-        where: { userId: req.user!.id, module: { courseId: req.params.courseId } },
-        select: { moduleId: true, scorePercentage: true, passed: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      });
-      res.json({ success: true, attempts });
-    }),
-  );
+app.get(
+  '/api/courses/:courseId/quiz-attempts',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    const attempts = await prisma.quizAttempt.findMany({
+      where: { userId: req.user!.id, module: { courseId: req.params.courseId } },
+      select: { moduleId: true, scorePercentage: true, passed: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, attempts });
+  }),
+);
 
-  app.get(
-    '/api/modules/:moduleId/quiz',
-    requireAuthenticated,
-    asyncRoute(async (req, res) => {
-      // El modulo hereda los permisos de su curso, igual que los videos y los
-      // recursos. Administracion y mentoria entran siempre, porque son quienes
-      // editan el examen desde el gestor.
-      const esPersonal = req.user?.role === 'ADMIN' || req.user?.role === 'MENTOR';
-      if (!esPersonal && !(await userHasModuleAccess(req.user, req.params.moduleId))) {
-        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
-      }
-      const questions = await getQuizByModuleId(req.params.moduleId);
-      res.json({
-        success: true,
-        questions: esPersonal ? questions : questions.map(({ correctIndex, explanation, ...question }) => question),
-      });
-    }),
-  );
+app.get(
+  '/api/modules/:moduleId/quiz',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    // El modulo hereda los permisos de su curso, igual que los videos y los
+    // recursos. Administracion y mentoria entran siempre, porque son quienes
+    // editan el examen desde el gestor.
+    const esPersonal = req.user?.role === 'ADMIN' || req.user?.role === 'MENTOR';
+    if (!esPersonal && !(await userHasModuleAccess(req.user, req.params.moduleId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    const questions = await getQuizByModuleId(req.params.moduleId);
+    res.json({
+      success: true,
+      questions: esPersonal ? questions : questions.map(({ correctIndex, explanation, ...question }) => question),
+    });
+  }),
+);
 
-  app.post(
-    '/api/modules/:moduleId/quiz/attempts',
-    requireAuthenticated,
-    asyncRoute(async (req, res) => {
-      const moduleId = req.params.moduleId;
-      if (!(await userHasModuleAccess(req.user, moduleId))) {
-        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
-      }
-      const questions = await getQuizByModuleId(moduleId);
-      if (questions.length === 0) return res.status(404).json({ error: 'El módulo no tiene examen.' });
-      const answers = req.body?.answers;
-      if (!answers || typeof answers !== 'object' || Array.isArray(answers) ||
-          Object.entries(answers).some(([key, value]) =>
-            !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= questions.length ||
-            !Number.isInteger(value) || (value as number) < 0 || (value as number) >= questions[Number(key)].options.length)) {
-        return res.status(400).json({ error: 'Respuestas inválidas.' });
-      }
-      const plugin = await prisma.plugin.findUnique({ where: { id: 'interactive-quizzes' }, select: { configJson: true } });
-      let settings: Record<string, unknown> = {};
-      try {
-        const parsed = JSON.parse(plugin?.configJson || '{}');
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) settings = parsed;
-      } catch { /* Configuración inválida: usar valores seguros. */ }
-      const maxAttempts = Number.isInteger(settings.maxAttempts) && (settings.maxAttempts as number) > 0
-        ? settings.maxAttempts as number : 3;
-      const passingScore = typeof settings.passingScore === 'number' && settings.passingScore > 0 && settings.passingScore <= 100
-        ? settings.passingScore : 80;
-      const userId = req.user!.id;
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      // El bloqueo por usuario y módulo impide superar el límite con envíos simultáneos.
-      const result = await prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${moduleId}))`;
-        const used = await tx.quizAttempt.count({ where: { userId, moduleId, createdAt: { gte: since } } });
-        if (used >= maxAttempts) return null;
-        const correctCount = questions.reduce((count, question, index) => count + (answers[index] === question.correctIndex ? 1 : 0), 0);
-        const scorePercentage = Math.round(correctCount / questions.length * 100);
-        const passed = scorePercentage >= passingScore;
-        await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers) } });
-        const attemptsLeft = maxAttempts - used - 1;
-        return {
-          scorePercentage, passed, attemptsLeft,
-          ...(passed || attemptsLeft === 0 ? {
-            correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
-            explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
-          } : {}),
-        };
-      });
-      if (!result) return res.status(429).json({ error: `Límite de ${maxAttempts} intentos en 24 horas.` });
-      if (result.passed) {
-        const modulo = await prisma.module.findUnique({ where: { id: moduleId }, select: { courseId: true } });
-        if (modulo) await calculateCourseProgress(userId, modulo.courseId);
-      }
-      res.json(result);
-    }),
-  );
+app.post(
+  '/api/modules/:moduleId/quiz/attempts',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const moduleId = req.params.moduleId;
+    if (!(await userHasModuleAccess(req.user, moduleId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    const questions = await getQuizByModuleId(moduleId);
+    if (questions.length === 0) return res.status(404).json({ error: 'El módulo no tiene examen.' });
+    const answers = req.body?.answers;
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers) ||
+      Object.entries(answers).some(([key, value]) =>
+        !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= questions.length ||
+        !Number.isInteger(value) || (value as number) < 0 || (value as number) >= questions[Number(key)].options.length)) {
+      return res.status(400).json({ error: 'Respuestas inválidas.' });
+    }
+    const plugin = await prisma.plugin.findUnique({ where: { id: 'interactive-quizzes' }, select: { configJson: true } });
+    let settings: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse(plugin?.configJson || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) settings = parsed;
+    } catch { /* Configuración inválida: usar valores seguros. */ }
+    const maxAttempts = Number.isInteger(settings.maxAttempts) && (settings.maxAttempts as number) > 0
+      ? settings.maxAttempts as number : 3;
+    const passingScore = typeof settings.passingScore === 'number' && settings.passingScore > 0 && settings.passingScore <= 100
+      ? settings.passingScore : 80;
+    const userId = req.user!.id;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // El bloqueo por usuario y módulo impide superar el límite con envíos simultáneos.
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${moduleId}))`;
+      const used = await tx.quizAttempt.count({ where: { userId, moduleId, createdAt: { gte: since } } });
+      if (used >= maxAttempts) return null;
+      const correctCount = questions.reduce((count, question, index) => count + (answers[index] === question.correctIndex ? 1 : 0), 0);
+      const scorePercentage = Math.round(correctCount / questions.length * 100);
+      const passed = scorePercentage >= passingScore;
+      await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers) } });
+      const attemptsLeft = maxAttempts - used - 1;
+      return {
+        scorePercentage, passed, attemptsLeft,
+        ...(passed || attemptsLeft === 0 ? {
+          correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
+          explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
+        } : {}),
+      };
+    });
+    if (!result) return res.status(429).json({ error: `Límite de ${maxAttempts} intentos en 24 horas.` });
+    if (result.passed) {
+      const modulo = await prisma.module.findUnique({ where: { id: moduleId }, select: { courseId: true } });
+      if (modulo) await calculateCourseProgress(userId, modulo.courseId);
+    }
+    res.json(result);
+  }),
+);
 
-  app.put(
-    '/api/modules/:moduleId/quiz',
-    requireRole(['ADMIN', 'MENTOR']),
-    asyncRoute(async (req, res) => {
-      const { questions } = req.body;
-      if (!Array.isArray(questions)) {
-        return res.status(400).json({ error: 'Formato de preguntas inválido. Se espera un arreglo.' });
-      }
-      const saved = await saveQuizForModule(req.params.moduleId, questions);
-      if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
-        action: 'quiz.updated', targetType: 'Module', targetId: req.params.moduleId,
-      });
-      res.json({ success: true, questions: saved, message: 'Evaluación guardada exitosamente.' });
-    }),
-  );
+app.put(
+  '/api/modules/:moduleId/quiz',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const { questions } = req.body;
+    if (!Array.isArray(questions)) {
+      return res.status(400).json({ error: 'Formato de preguntas inválido. Se espera un arreglo.' });
+    }
+    const saved = await saveQuizForModule(req.params.moduleId, questions);
+    if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
+      action: 'quiz.updated', targetType: 'Module', targetId: req.params.moduleId,
+    });
+    res.json({ success: true, questions: saved, message: 'Evaluación guardada exitosamente.' });
+  }),
+);
 
-  app.post(
-    '/api/modules/:moduleId/quiz/generate',
-    requireRole(['ADMIN', 'MENTOR']),
-    asyncRoute(async (req, res) => {
-      const count = typeof req.body.count === 'number' ? req.body.count : 4;
-      try {
-        const generated = await generateModuleQuizWithAi(req.params.moduleId, count);
-        res.json({ success: true, questions: generated, message: 'Examen generado con IA exitosamente.' });
-      } catch (err: any) {
-        logger.error('Error al generar examen con IA', { error: String(err) });
-        res.status(500).json({ error: err.message || 'Error al generar examen con IA' });
-      }
-    }),
-  );
+app.post(
+  '/api/modules/:moduleId/quiz/generate',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const count = typeof req.body.count === 'number' ? req.body.count : 4;
+    try {
+      const generated = await generateModuleQuizWithAi(req.params.moduleId, count);
+      res.json({ success: true, questions: generated, message: 'Examen generado con IA exitosamente.' });
+    } catch (err: any) {
+      logger.error('Error al generar examen con IA', { error: String(err) });
+      res.status(500).json({ error: err.message || 'Error al generar examen con IA' });
+    }
+  }),
+);
 
-  app.delete(
-    '/api/modules/:moduleId/quiz',
-    requireRole(['ADMIN', 'MENTOR']),
-    asyncRoute(async (req, res) => {
-      await deleteQuizForModule(req.params.moduleId);
-      if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
-        action: 'quiz.deleted', targetType: 'Module', targetId: req.params.moduleId,
-      });
-      res.json({ success: true, message: 'Evaluación eliminada del módulo.' });
-    }),
-  );
+app.delete(
+  '/api/modules/:moduleId/quiz',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    await deleteQuizForModule(req.params.moduleId);
+    if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
+      action: 'quiz.deleted', targetType: 'Module', targetId: req.params.moduleId,
+    });
+    res.json({ success: true, message: 'Evaluación eliminada del módulo.' });
+  }),
+);
 
 // --- Videos Management ---
 app.put(
@@ -4629,6 +4629,237 @@ app.post(
       }
     }
     res.json({ success: true, scriptText: generatedScript, message: 'Guion generado exitosamente con IA.' });
+  }),
+);
+
+// --- CONTRATOS VIRTUALES Y ONBOARDING LEGAL ---
+const CURRENT_CONTRACT_VERSION = 'v1.0.2026';
+const CONTRACT_TEXT = `# Contrato de Servicios Educativos y Tratamiento de Datos
+
+**Plataforma DocentOS - Academia Giantucchi**
+
+### 1. Objeto y Acceso a la Plataforma
+El presente contrato regula el acceso y uso de los contenidos formativos, lecciones multimedia, mentorías y herramientas tecnológicas provistas por la plataforma DocentOS.
+
+### 2. Vigencia y Periodo de Acceso
+- Fecha de Inicio: A partir del momento exacto del registro y firma electrónica de este acuerdo.
+- Fecha de Fin de Vigencia: El acceso estándar a los materiales se otorga por un período renovable de 12 meses calendario.
+
+### 3. Tratamiento y Periodo Prolongado de Retención de Datos
+- Custodia de Datos y Progreso: En cumplimiento de las normativas de protección de datos personales y con la finalidad de acreditar certificaciones académicas emitidas, DocentOS conservará de forma segura su historial de usuario, calificaciones y progreso por un periodo prolongado de 24 meses tras la finalización del servicio.
+- Derechos ARCO: El usuario podrá solicitar en cualquier momento la rectificación o supresión anticipada de sus datos de contacto conforme a los canales oficiales.
+
+### 4. Propiedad Intelectual y Normas de Conducta
+Los contenidos multimedia, guiones y recursos descargables son de uso personal e intransferible. Queda prohibida la redistribución o comercialización no autorizada.`;
+
+app.get(
+  '/api/contracts/pending',
+  asyncRoute(async (req, res) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'No autenticado.' });
+    }
+
+    const latestSignature = await prisma.userContractSignature.findFirst({
+      where: {
+        userId: user.id,
+        contractVersion: CURRENT_CONTRACT_VERSION,
+      },
+      orderBy: { signedAt: 'desc' },
+    });
+
+    if (latestSignature) {
+      return res.json({
+        requiresSignature: false,
+        signature: {
+          id: latestSignature.id,
+          signedAt: latestSignature.signedAt,
+          startDate: latestSignature.startDate,
+          endDate: latestSignature.endDate,
+          dataRetentionUntil: latestSignature.dataRetentionUntil,
+          contractVersion: latestSignature.contractVersion,
+        },
+      });
+    }
+
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+
+    const retentionDate = new Date(now);
+    retentionDate.setFullYear(retentionDate.getFullYear() + 2);
+
+    const crypto = await import('crypto');
+    const contractHash = crypto.createHash('sha256').update(CONTRACT_TEXT).digest('hex');
+
+    res.json({
+      requiresSignature: true,
+      contract: {
+        version: CURRENT_CONTRACT_VERSION,
+        title: 'Contrato de Servicios Educativos y Política de Retención de Datos',
+        content: CONTRACT_TEXT,
+        contractHash,
+        calculatedDates: {
+          startDate: now.toISOString(),
+          endDate: endDate.toISOString(),
+          retentionPeriodMonths: 24,
+          dataRetentionUntil: retentionDate.toISOString(),
+        },
+      },
+    });
+  }),
+);
+
+app.post(
+  '/api/contracts/sign',
+  asyncRoute(async (req, res) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'No autenticado.' });
+    }
+
+    const {
+      contractVersion,
+      contractHash,
+      acceptedTerms,
+      acceptedPrivacy,
+      acceptedDataPolicy,
+      acceptedCommercials = false,
+      fullNameConfirmation,
+    } = req.body || {};
+
+    if (!acceptedTerms || !acceptedPrivacy || !acceptedDataPolicy) {
+      return res.status(400).json({
+        code: 'TERMS_NOT_ACCEPTED',
+        error: 'Debes aceptar los Términos, la Política de Privacidad y el período de Retención de Datos para continuar.',
+      });
+    }
+
+    if (contractVersion !== CURRENT_CONTRACT_VERSION) {
+      return res.status(412).json({
+        code: 'STALE_CONTRACT_VERSION',
+        error: 'La versión del contrato ha sido actualizada. Por favor recarga e intenta de nuevo.',
+      });
+    }
+
+    const existing = await prisma.userContractSignature.findFirst({
+      where: {
+        userId: user.id,
+        contractVersion: CURRENT_CONTRACT_VERSION,
+      },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        code: 'CONTRACT_ALREADY_SIGNED',
+        error: 'El contrato ya ha sido firmado por este usuario.',
+      });
+    }
+
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+
+    const retentionDate = new Date(now);
+    retentionDate.setFullYear(retentionDate.getFullYear() + 2);
+
+    const ipAddress = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
+    const userAgent = String(req.headers['user-agent'] || 'Desconocido');
+
+    const signature = await prisma.userContractSignature.create({
+      data: {
+        userId: user.id,
+        contractVersion,
+        contractHash: String(contractHash || ''),
+        ipAddress,
+        userAgent,
+        startDate: now,
+        endDate,
+        dataRetentionUntil: retentionDate,
+        acceptedTerms: Boolean(acceptedTerms),
+        acceptedPrivacy: Boolean(acceptedPrivacy),
+        acceptedDataPolicy: Boolean(acceptedDataPolicy),
+        acceptedCommercials: Boolean(acceptedCommercials),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      signatureId: signature.id,
+      signedAt: signature.signedAt,
+      contractSummary: {
+        startDate: signature.startDate,
+        endDate: signature.endDate,
+        dataRetentionUntil: signature.dataRetentionUntil,
+      },
+    });
+  }),
+);
+
+// --- AUDITORIA DE CONTRATOS PARA ADMINISTRACION ---
+app.get(
+  '/api/admin/contracts/signatures',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const signatures = await prisma.userContractSignature.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatarUrl: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { signedAt: 'desc' },
+      take: 100,
+    });
+
+    const now = new Date();
+    const formatted = signatures
+      .filter((sig) => {
+        if (!search) return true;
+        return (
+          sig.user.name.toLowerCase().includes(search) ||
+          sig.user.email.toLowerCase().includes(search) ||
+          sig.ipAddress.toLowerCase().includes(search)
+        );
+      })
+      .map((sig) => {
+        const isExpired = new Date(sig.endDate) < now;
+        const daysRemaining = Math.ceil((new Date(sig.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        let status = 'VIGENTE';
+        if (isExpired) status = 'EXPIRADO';
+        else if (daysRemaining <= 30) status = 'POR_VENCER';
+
+        return {
+          id: sig.id,
+          userId: sig.userId,
+          userName: sig.user.name,
+          userEmail: sig.user.email,
+          userAvatarUrl: sig.user.avatarUrl,
+          userRole: sig.user.role,
+          contractVersion: sig.contractVersion,
+          contractHash: sig.contractHash,
+          ipAddress: sig.ipAddress,
+          userAgent: sig.userAgent,
+          signedAt: sig.signedAt,
+          startDate: sig.startDate,
+          endDate: sig.endDate,
+          dataRetentionUntil: sig.dataRetentionUntil,
+          acceptedTerms: sig.acceptedTerms,
+          acceptedPrivacy: sig.acceptedPrivacy,
+          acceptedDataPolicy: sig.acceptedDataPolicy,
+          acceptedCommercials: sig.acceptedCommercials,
+          daysRemaining,
+          status,
+        };
+      });
+
+    res.json({ success: true, signatures: formatted, total: formatted.length });
   }),
 );
 

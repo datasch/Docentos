@@ -16,6 +16,7 @@ import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { SetupWizard } from './components/SetupWizard';
 import { AIAssistantTour } from './components/AIAssistantTour';
 import { CertificateVerifyModal } from './components/CertificateVerifyModal';
+import { ContractSignatureModal } from './components/ContractSignatureModal';
 import { api } from './lib/api';
 import { User, Course } from './types';
 import { pluginManager } from './plugins/PluginManager';
@@ -97,6 +98,7 @@ export default function App() {
   const [showTour, setShowTour] = useState<boolean>(false);
   const [showVerifyModal, setShowVerifyModal] = useState<boolean>(false);
   const [verifyCode, setVerifyCode] = useState<string>('');
+  const [pendingContract, setPendingContract] = useState<any | null>(null);
 
   const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
     const path = TAB_PATHS[tab];
@@ -197,6 +199,19 @@ export default function App() {
         } catch {
           // Si no hay acceso o falla la red, se mantienen los defaults
         }
+
+        try {
+          const contractRes = await api.contracts.getPending();
+          if (contractRes.requiresSignature && contractRes.contract) {
+            setPendingContract(contractRes.contract);
+          } else {
+            setPendingContract(null);
+          }
+        } catch (e) {
+          console.warn('No se pudo verificar el contrato legal:', e);
+        }
+      } else {
+        setPendingContract(null);
       }
 
       // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
@@ -565,6 +580,17 @@ export default function App() {
         onClose={() => setShowVerifyModal(false)}
         initialCode={verifyCode}
       />
+
+      {/* Modal Obligatorio de Firma de Contrato Virtual */}
+      {pendingContract && currentUser && (
+        <ContractSignatureModal
+          contractData={pendingContract}
+          onSuccess={() => {
+            setPendingContract(null);
+            loadData();
+          }}
+        />
+      )}
 
     </div>
   );

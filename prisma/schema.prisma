@@ -115,6 +115,7 @@ model User {
   youtubeConnection   YouTubeConnection?
   aiJobs              AIJob[]
   oauthStates         OAuthState[]
+  signedContracts     UserContractSignature[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -740,4 +741,31 @@ model AIJob {
 
   @@index([userId, status])
   @@index([createdAt])
+}
+
+/// Registro inmutable de firma digital / clickwrap de terminos y contrato de servicio.
+model UserContractSignature {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractVersion     String   // Ej: "v1.0.2026"
+  contractHash        String   // Hash SHA-256 del contenido
+  ipAddress           String
+  userAgent           String
+  signedAt            DateTime @default(now())
+
+  // Fechas de vigencia y retencion
+  startDate           DateTime @default(now())
+  endDate             DateTime // Fin de acceso
+  dataRetentionUntil  DateTime // Plazo de custodia de datos personales
+
+  acceptedTerms       Boolean  @default(true)
+  acceptedPrivacy     Boolean  @default(true)
+  acceptedDataPolicy  Boolean  @default(true)
+  acceptedCommercials Boolean  @default(false)
+
+  createdAt           DateTime @default(now())
+
+  @@index([userId])
+  @@index([contractVersion])
 }
