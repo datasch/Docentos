@@ -9,6 +9,13 @@
  */
 
 export type VideoProvider = 'youtube' | 'drive' | 'embed';
+import { safeExternalUrl } from './safeUrl';
+
+// Las clases llegan como `/api/content/videos/<id>`: una ruta de nuestro propio
+// origen. Se acepta tal cual; «//host» y la contrabarra quedan fuera porque el
+// navegador los convierte en una URL de otro dominio.
+const safeVideoUrl = (value: string) =>
+  /^\/(?!\/)[^\s\\]*$/.test(value) ? value : safeExternalUrl(value, import.meta.env?.DEV);
 
 export interface ParsedVideoSource {
   provider: VideoProvider;
@@ -30,7 +37,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
     const extractedUrl = match ? match[1] : '';
     return {
       provider: 'embed',
-      embedUrl: extractedUrl || str,
+      embedUrl: safeVideoUrl(extractedUrl),
       originalUrl: str,
     };
   }
@@ -103,7 +110,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (preferredProvider === 'youtube') {
     return {
       provider: 'youtube',
-      embedUrl: str.startsWith('http') ? str : `https://www.youtube-nocookie.com/embed/${str}`,
+      embedUrl: safeExternalUrl(str, import.meta.env?.DEV) || (/^[\w-]+$/.test(str) ? `https://www.youtube-nocookie.com/embed/${str}` : ''),
       originalUrl: str,
       videoId: str,
     };
@@ -112,7 +119,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (preferredProvider === 'drive') {
     return {
       provider: 'drive',
-      embedUrl: str.startsWith('http') ? str : `https://drive.google.com/file/d/${str}/preview`,
+      embedUrl: safeExternalUrl(str, import.meta.env?.DEV) || (/^[\w-]+$/.test(str) ? `https://drive.google.com/file/d/${str}/preview` : ''),
       originalUrl: str,
       videoId: str,
     };
@@ -120,7 +127,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
 
   return {
     provider: preferredProvider || 'embed',
-    embedUrl: str,
+    embedUrl: safeVideoUrl(str),
     originalUrl: str,
   };
 }

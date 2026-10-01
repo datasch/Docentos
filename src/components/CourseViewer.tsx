@@ -42,7 +42,7 @@ import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, C
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
-import { syncModuleQuizCounts, getModuleQuestionCount } from '../plugins/QuizzesPlugin';
+import { syncModuleQuizCounts, getModuleQuestionCount, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
@@ -197,10 +197,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
    */
   useEffect(() => {
     let vigente = true;
-    api.getCourseQuizSummary(course.id)
-      .then((res) => {
+    Promise.all([api.getCourseQuizSummary(course.id), api.getCourseQuizAttempts(course.id)])
+      .then(([res, attemptsRes]) => {
         if (!vigente) return;
         syncModuleQuizCounts(res.counts || {});
+        quizzesPluginEngine.restoreAttempts(currentUser.id, attemptsRes.attempts, course.modules.map((module) => module.id));
         // Los candados dependen de qué módulos evalúan: recalcularlos.
         setQuizPassKey((prev) => prev + 1);
       })
@@ -210,7 +211,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     return () => {
       vigente = false;
     };
-  }, [course.id]);
+  }, [course.id, currentUser.id]);
 
   const loadUserProgress = async () => {
     try {
@@ -624,9 +625,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 <ModuleQuizCard
                   key={`${moduloDelExamen.id}-examen`}
                   module={moduloDelExamen}
+                  courseId={course.id}
                   user={currentUser}
                   onExit={cerrarExamen}
-                  onPassed={() => setQuizPassKey((prev) => prev + 1)}
+                  onPassed={() => { setQuizPassKey((prev) => prev + 1); void loadUserProgress(); }}
                 />
               </div>
             )}
@@ -722,7 +724,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
                   className="h-full w-full border-0"
                   referrerPolicy="strict-origin-when-cross-origin"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen"
                   allowFullScreen
                 />
               ) : hasAccess ? (
@@ -873,7 +875,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     totalLessons={lessons.length}
                     isCompleted={isCurrentCompleted}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
-                    playbackUrl={showsPlayer ? currentVideo.playbackUrl : undefined}
+                    playbackUrl={showsPlayer ? (currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
                     meetingType={currentVideo.meetingType || activeLiveMeeting?.meetingType}
                     meetingUrl={currentVideo.meetingUrl || (activeLiveMeeting?.id === currentVideo.id ? activeLiveMeeting.meetingUrl : undefined)}

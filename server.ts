@@ -6,8 +6,10 @@
  */
 
 import 'dotenv/config';
+import { randomBytes } from 'node:crypto';
 import express, { NextFunction, Request, Response } from 'express';
 import path from 'path';
+import fs from 'node:fs';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -45,6 +47,7 @@ import {
 } from './server/twoFactorService.js';
 import {
   searchDriveVideos,
+  DriveQueryError,
   getDriveFileInfo,
   extractDriveFileId,
   buildDriveEmbedUrl,
@@ -71,6 +74,8 @@ import { createSetupGuard } from './server/setupGuard.js';
 import { sendTelemetryCallHome } from './server/telemetryService.js';
 import { prisma } from './server/prisma.js';
 import { config } from './server/config.js';
+import { allowSeoJsonLd, cspDirectives } from './server/csp.js';
+import { safeExternalUrl, safeLandingLink } from './src/lib/safeUrl.js';
 import {
   getCourseAccessDecision,
   getCourseAccessDecisions,
@@ -106,7 +111,30 @@ import {
   DOCENTOS_VERSION,
 } from './src/version.js';
 import { requestTracingMiddleware, logger, getMetricsSnapshot } from './server/logger.js';
+import {
+  enrollFromIntegration,
+  integrationEnrollmentSchema,
+  IntegrationError,
+  isIntegrationAuthorized,
+} from './server/integrationEnrollment.js';
 import { escapeHtml, isCrawlerUserAgent, renderSeoLandingHtml } from './server/seo.js';
+import {
+  generateAuthUrl,
+  handleOAuthCallback,
+  getConnectionStatus,
+  disconnectConnection,
+  importPlaylist,
+  getPlaylistWithVideos,
+  listUserPlaylists,
+  updateVideosSelection,
+  YouTubeError,
+} from './server/youtubeService.js';
+import {
+  createAiJob,
+  getAiJobStatus,
+  applyJobToDraftCourse,
+  AiJobError,
+} from './server/youtubeCourseBuilder.js';
 
 const app = express();
 const PORT = config.PORT;
@@ -358,6 +386,8 @@ async function getPublicRuntimeConfig() {
     authorCredit: instance?.authorCredit || defaults.authorCredit,
     defaultLanguage: instance?.defaultLanguage || defaults.defaultLanguage,
     assistantName: instance?.assistantName || defaults.assistantName,
+    // Solo http(s): va a un href de la portada, el pie y el muro de pago.
+    complaintsBookUrl: /^https?:\/\//i.test(config.COMPLAINTS_BOOK_URL || '') ? config.COMPLAINTS_BOOK_URL : '',
   };
 }
 
@@ -388,12 +418,15 @@ const changePasswordSchema = z.object({
 
 /**
  * El campo admite un codigo de la aplicación (seis dígitos) y uno de
- * recuperación (diez caracteres con o sin guion). Se valida por longitud y no
+ * recuperación (veinte caracteres con o sin guiones; diez en los antiguos). Se valida por longitud y no
  * por forma exacta: el servicio decide cuál es cuál, y estrechar aquí sería
  * decirle a quien ataca qué tipo de código acaba de fallar.
  */
 const twoFactorCodeSchema = z.object({
   code: z.string().trim().min(6, 'El código es obligatorio').max(32),
+});
+const twoFactorActivateSchema = twoFactorCodeSchema.extend({
+  password: z.string().min(1, 'La contraseña actual es obligatoria').max(128),
 });
 
 const twoFactorVerifySchema = twoFactorCodeSchema.extend({
@@ -476,9 +509,10 @@ async function deliverPasswordReset(
 app.set('trust proxy', config.TRUST_PROXY);
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: { directives: cspDirectives, reportOnly: config.CSP_MODE === 'report' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }),
 );
 app.use(
@@ -500,6 +534,10 @@ app.use((req, res, next) => {
   // El filtro XSS heredado se desactiva de forma explicita: su modo de bloqueo
   // introduce vectores propios y los navegadores actuales lo ignoran.
   res.setHeader('X-XSS-Protection', '0');
+  res.setHeader(
+    'Permissions-Policy',
+    'picture-in-picture=*, fullscreen=*, accelerometer=*, autoplay=*, encrypted-media=*, gyroscope=*, unload=()',
+  );
   next();
 });
 app.use(requestTracingMiddleware);
@@ -511,6 +549,12 @@ app.use(
     },
   }),
 );
+app.use(function(err: any, _req: Request, res: Response, next: NextFunction) {
+  if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'Body JSON invalido' });
+  }
+  next(err);
+});
 app.use('/api', requireSameOrigin);
 
 const authRateLimiter = rateLimit({
@@ -566,6 +610,19 @@ app.use('/api/auth/password/forgot', passwordResetRateLimiter);
 app.use('/api/auth/password/reset', passwordResetRateLimiter);
 app.use('/api/admin/drive/', driveImportRateLimiter);
 app.use('/api/', apiRateLimiter);
+
+// Favicon fallback
+app.get('/favicon.ico', (_req, res) => {
+  const icoPath = path.join(process.cwd(), 'public', 'favicon.ico');
+  if (fs.existsSync(icoPath)) {
+    return res.sendFile(icoPath);
+  }
+  const logoPath = path.join(process.cwd(), 'public', 'logo.avif');
+  if (fs.existsSync(logoPath)) {
+    return res.type('image/avif').sendFile(logoPath);
+  }
+  return res.status(204).end();
+});
 
 // Database health, observability probes and first-run setup
 app.get('/api/version', (_req, res) => {
@@ -630,31 +687,6 @@ app.get(
         ...getReleaseMetadata(),
       });
     }
-  }),
-);
-
-// Endpoint de Métricas operativas de sistema
-app.get(
-  '/api/admin/metrics',
-  requireAuthenticated,
-  requireRole(['ADMIN']),
-  asyncRoute(async (_req, res) => {
-    const [userCount, courseCount, activeSessions] = await Promise.all([
-      prisma.user.count(),
-      prisma.course.count(),
-      prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
-    ]);
-
-    const snapshot = getMetricsSnapshot();
-    res.json({
-      ...snapshot,
-      database: {
-        users: userCount,
-        courses: courseCount,
-        activeSessions,
-      },
-      ...getReleaseMetadata(),
-    });
   }),
 );
 
@@ -798,6 +830,32 @@ app.use(
   }),
 );
 
+// Endpoint de Métricas operativas de sistema. Va detrás de la resolución de
+// sesión: registrado antes, req.user no existía y respondía 401 siempre.
+app.get(
+  '/api/admin/metrics',
+  requireAuthenticated,
+  requireRole(['ADMIN']),
+  asyncRoute(async (_req, res) => {
+    const [userCount, courseCount, activeSessions] = await Promise.all([
+      prisma.user.count(),
+      prisma.course.count(),
+      prisma.session.count({ where: { expiresAt: { gt: new Date() } } }),
+    ]);
+
+    const snapshot = getMetricsSnapshot();
+    res.json({
+      ...snapshot,
+      database: {
+        users: userCount,
+        courses: courseCount,
+        activeSessions,
+      },
+      ...getReleaseMetadata(),
+    });
+  }),
+);
+
 // Users and current session
 app.get(
   '/api/me',
@@ -932,17 +990,19 @@ app.get(
     if (!targetUrl) {
       return res.status(404).json({ error: 'URL del video no disponible.' });
     }
+    const safeUrl = safeExternalUrl(targetUrl, config.DOCENTOS_ENV === 'development');
+    if (!safeUrl) return res.status(400).json({ error: 'URL del video no segura.' });
 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
         id: video.id,
-        playbackUrl: targetUrl,
+        playbackUrl: safeUrl,
         mimeType: video.mimeType,
         source: video.source,
       });
     }
 
-    return res.redirect(targetUrl);
+    return res.redirect(safeUrl);
   }),
 );
 
@@ -959,17 +1019,20 @@ app.get(
       return res.status(403).json({ error: 'No tienes autorización para acceder a este recurso.' });
     }
 
+    const safeUrl = safeExternalUrl(resource.privateUrl, config.DOCENTOS_ENV === 'development');
+    if (!safeUrl) return res.status(400).json({ error: 'URL privada del recurso no segura.' });
+
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
         id: resource.id,
-        downloadUrl: resource.privateUrl,
+        downloadUrl: safeUrl,
         title: resource.title,
         kind: resource.kind,
         mimeType: resource.mimeType,
       });
     }
 
-    return res.redirect(resource.privateUrl);
+    return res.redirect(safeUrl);
   }),
 );
 
@@ -979,7 +1042,9 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     const courseId = req.body.courseId || 'course-giantucchi-mastery';
-    const originUrl = `${req.protocol}://${req.get('host') || 'localhost:3000'}`;
+    // La URL de vuelta de Stripe sale de la configuración, no de la cabecera Host,
+    // que controla el cliente.
+    const originUrl = config.APP_URL.replace(/\/$/, '');
 
     try {
       const result = await createCheckoutSession({
@@ -1042,6 +1107,35 @@ app.post(
   }),
 );
 
+/**
+ * Alta de alumno y matricula desde la API de pagos (servidor a servidor).
+ * Sin INTEGRATION_API_TOKEN configurado responde 404, como si no existiera.
+ * Detalle de las reglas en server/integrationEnrollment.ts.
+ */
+app.post(
+  '/api/integrations/enrollments',
+  asyncRoute(async (req, res) => {
+    if (!config.INTEGRATION_API_TOKEN) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    if (!isIntegrationAuthorized(req.get('authorization'))) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+    const parsed = integrationEnrollmentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Error de validación de entrada',
+        details: parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
+      });
+    }
+    try {
+      const result = await enrollFromIntegration(parsed.data);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      if (error instanceof IntegrationError) return res.status(error.status).json({ error: error.message });
+      throw error;
+    }
+  }),
+);
+
 app.post(
   '/api/vip/activate',
   requireAuthenticated,
@@ -1056,7 +1150,13 @@ app.get(
   '/api/drive/videos',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
-    const videos = await searchDriveVideos(req.query.q as string, req.query.folderId as string);
+    let videos;
+    try {
+      videos = await searchDriveVideos(req.query.q as string, req.query.folderId as string);
+    } catch (error) {
+      if (error instanceof DriveQueryError) return res.status(400).json({ error: error.message });
+      throw error;
+    }
     // Sin credenciales el buscador devuelve un catalogo de demostracion con
     // identificadores ficticios: enlazarlos deja el reproductor vacio, asi que
     // la interfaz necesita poder advertirlo.
@@ -2091,6 +2191,12 @@ app.post(
   requireAuthenticated,
   requireSameOrigin,
   asyncRoute(async (req, res) => {
+    const parsed = twoFactorPasswordSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'La contraseña actual es obligatoria.' });
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { passwordHash: true } });
+    if (!user?.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+    }
     try {
       const { uri, qr, secreto } = await iniciarDosFactores(req.user!.id);
       await recordAuditEvent(req, {
@@ -2111,7 +2217,7 @@ app.post(
   requireAuthenticated,
   requireSameOrigin,
   asyncRoute(async (req, res) => {
-    const parsed = twoFactorCodeSchema.safeParse(req.body);
+    const parsed = twoFactorActivateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
         error: 'Error de validación de entrada',
@@ -2119,11 +2225,20 @@ app.post(
       });
     }
 
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { passwordHash: true } });
+    if (!user?.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+    }
+
     try {
       const resultado = await activarDosFactores(req.user!.id, parsed.data.code);
       if (!resultado) {
         return res.status(401).json({ error: 'El código no coincide. Comprueba la hora del teléfono e inténtalo otra vez.' });
       }
+      await prisma.session.updateMany({
+        where: { userId: req.user!.id, id: { not: req.authSession!.id }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
       await recordAuditEvent(req, {
         actorUserId: req.user!.id,
         action: 'auth.two_factor_enabled',
@@ -2426,7 +2541,7 @@ app.get(
 
 app.post(
   '/api/plugins/toggle',
-  requireRole(['ADMIN', 'MENTOR']),
+  requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const plugin = await prisma.plugin.findUnique({ where: { id: req.body.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
@@ -2434,9 +2549,7 @@ app.post(
       where: { id: plugin.id },
       data: { enabled: req.body.enabled !== undefined ? Boolean(req.body.enabled) : !plugin.enabled },
     });
-    // La respuesta se recorta igual que en GET /api/plugins. Devolverla
-    // siempre como administracion convertia este boton en una via para que un
-    // mentor leyera credenciales que el GET ya le negaba.
+    // La respuesta se recorta igual que en GET /api/plugins.
     const isAdmin = req.user?.role === 'ADMIN';
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
     res.json({
@@ -2449,7 +2562,7 @@ app.post(
 
 app.post(
   '/api/plugins/config',
-  requireRole(['ADMIN', 'MENTOR']),
+  requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const parsed = pluginConfigSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -2460,8 +2573,7 @@ app.post(
     }
     const plugin = await prisma.plugin.findUnique({ where: { id: parsed.data.pluginId } });
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
-    // La fusion parte SIEMPRE de la configuracion completa: recortarla aqui
-    // borraria de la base las credenciales que quien edita no puede ver.
+    // La fusion parte de la configuracion completa para conservar claves no enviadas.
     const mergedConfig = { ...parsePlugin(plugin, true).config, ...(parsed.data.config || {}) };
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
@@ -2505,6 +2617,25 @@ const updateMeetingSchema = z.object({
   recordingUrl: z.string().trim().max(1000).optional().nullable(),
 });
 
+async function visibleMeetings<T extends { courseId: string | null; moduleId: string | null }>(user: AuthenticatedUser, meetings: T[]): Promise<T[]> {
+  if (user.role === 'ADMIN' || user.role === 'MENTOR') return meetings;
+  const moduleIds = [...new Set(meetings.map((meeting) => meeting.moduleId).filter((id): id is string => id !== null))];
+  const modules = moduleIds.length ? await prisma.module.findMany({ where: { id: { in: moduleIds } }, select: { id: true, courseId: true } }) : [];
+  const moduleCourses = new Map(modules.map((module) => [module.id, module.courseId]));
+  const courseIdFor = (meeting: T) => meeting.courseId || (meeting.moduleId ? moduleCourses.get(meeting.moduleId) : null);
+  const ids = [...new Set(meetings.map(courseIdFor).filter((id): id is string => typeof id === 'string'))];
+  if (ids.length === 0) return meetings.filter((meeting) => !meeting.moduleId && !meeting.courseId);
+  const courses = await prisma.course.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, published: true, price: true, openToAllRegistered: true },
+  });
+  const access = await getCourseAccessDecisions(user, courses);
+  return meetings.filter((meeting) => {
+    const courseId = courseIdFor(meeting);
+    return courseId ? access.get(courseId)?.allowed : !meeting.moduleId;
+  });
+}
+
 app.get(
   '/api/meetings',
   requireAuthenticated,
@@ -2531,14 +2662,14 @@ app.get(
       orderBy: [{ isLive: 'desc' }, { scheduledAt: 'asc' }],
     });
 
-    res.json({ success: true, meetings: meetings.map(toApiMeeting) });
+    res.json({ success: true, meetings: (await visibleMeetings(req.user!, meetings)).map(toApiMeeting) });
   }),
 );
 
 app.get(
   '/api/meetings/live',
   requireAuthenticated,
-  asyncRoute(async (_req, res) => {
+  asyncRoute(async (req, res) => {
     const meetings = await prisma.meeting.findMany({
       where: { isLive: true },
       include: {
@@ -2548,7 +2679,7 @@ app.get(
       },
       orderBy: { scheduledAt: 'desc' },
     });
-    res.json({ success: true, meetings: meetings.map(toApiMeeting) });
+    res.json({ success: true, meetings: (await visibleMeetings(req.user!, meetings)).map(toApiMeeting) });
   }),
 );
 
@@ -2614,6 +2745,9 @@ app.put(
     if (!existing) {
       return res.status(404).json({ error: 'Reunión no encontrada' });
     }
+    if (req.user!.role !== 'ADMIN' && existing.hostId !== req.user!.id) {
+      return res.status(403).json({ error: 'Solo el anfitrión puede editar esta reunión.' });
+    }
 
     const parsed = updateMeetingSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -2671,6 +2805,9 @@ app.post(
     if (!existing) {
       return res.status(404).json({ error: 'Reunión no encontrada' });
     }
+    if (req.user!.role !== 'ADMIN' && existing.hostId !== req.user!.id) {
+      return res.status(403).json({ error: 'Solo el anfitrión puede cambiar esta reunión.' });
+    }
 
     const nextLiveStatus = req.body.isLive !== undefined ? Boolean(req.body.isLive) : !existing.isLive;
     const updated = await prisma.meeting.update({
@@ -2703,6 +2840,9 @@ app.delete(
     const existing = await prisma.meeting.findUnique({ where: { id: meetingId } });
     if (!existing) {
       return res.status(404).json({ error: 'Reunión no encontrada' });
+    }
+    if (req.user!.role !== 'ADMIN' && existing.hostId !== req.user!.id) {
+      return res.status(403).json({ error: 'Solo el anfitrión puede eliminar esta reunión.' });
     }
 
     await prisma.meeting.delete({ where: { id: meetingId } });
@@ -3253,7 +3393,15 @@ app.put(
     if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Configuración no válida' });
     const current = toLandingConfig(await getLandingRecord());
     const merged = { ...current, ...req.body };
-    const config = await prisma.landingConfig.update({
+    const urlFields = ['heroMediaUrl', 'githubUrl', 'discordUrl', 'twitterUrl', 'linkedinUrl'];
+    const linkFields = ['heroCtaLink', 'heroSecondaryCtaLink', 'bannerLinkUrl'];
+    const allowHttp = config.DOCENTOS_ENV === 'development';
+    if (urlFields.some((field) => merged[field] && !safeExternalUrl(merged[field], allowHttp)) ||
+        linkFields.some((field) => merged[field] && !safeLandingLink(merged[field], allowHttp)) ||
+        (Array.isArray(merged.testimonials) && merged.testimonials.some((item: any) => item.avatarUrl && !safeExternalUrl(item.avatarUrl, allowHttp)))) {
+      return res.status(400).json({ error: 'La portada contiene una URL no permitida.' });
+    }
+    const savedConfig = await prisma.landingConfig.update({
       where: { id: 'singleton' },
       data: {
         heroTitle: String(merged.heroTitle),
@@ -3281,7 +3429,7 @@ app.put(
     });
     res.json({
       success: true,
-      config: toLandingConfig(config),
+      config: toLandingConfig(savedConfig),
       message: '¡Configuración de la portada actualizada exitosamente!',
     });
   }),
@@ -3299,6 +3447,9 @@ function resolveVideoSource(
 ): { driveFileId: string; embedUrl: string } | { error: string } {
   const driveInput = String(rawDriveInput ?? '').trim();
   const embedInput = String(rawEmbedUrl ?? '').trim();
+  if (embedInput && !safeExternalUrl(embedInput, config.DOCENTOS_ENV === 'development')) {
+    return { error: 'La URL de reproducción debe usar HTTPS.' };
+  }
 
   if (driveInput) {
     const fileId = extractDriveFileId(driveInput);
@@ -3312,9 +3463,6 @@ function resolveVideoSource(
   }
 
   if (embedInput) {
-    if (!/^https?:\/\//i.test(embedInput)) {
-      return { error: 'La URL de reproducción debe empezar por http:// o https://.' };
-    }
     return { driveFileId: `external-${Date.now()}`, embedUrl: embedInput };
   }
 
@@ -3440,10 +3588,25 @@ app.delete(
   '/api/admin/courses/:courseId',
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
-    const existing = await prisma.course.findUnique({ where: { id: req.params.courseId } });
+    const existing = await prisma.course.findUnique({
+      where: { id: req.params.courseId },
+      include: { _count: { select: { payments: true, enrollments: true, certificates: true } } },
+    });
     if (!existing) return res.status(404).json({ error: 'Curso no encontrado.' });
 
-    await prisma.course.delete({ where: { id: existing.id } });
+    if (existing._count.payments || existing._count.enrollments || existing._count.certificates) {
+      return res.status(409).json({ error: 'El curso tiene pagos, matrículas o certificados: despublícalo.' });
+    }
+
+    try {
+      await prisma.course.delete({ where: { id: existing.id } });
+    } catch (error) {
+      // Una escritura concurrente o el historial de un módulo también impide el borrado.
+      if ((error as { code?: string }).code === 'P2003') {
+        return res.status(409).json({ error: 'El curso tiene pagos, matrículas, certificados o historial de alumnos: despublícalo.' });
+      }
+      throw error;
+    }
 
     await recordAuditEvent(req, {
       action: 'course.delete',
@@ -3510,7 +3673,14 @@ app.delete(
     const existing = await prisma.module.findUnique({ where: { id: req.params.moduleId } });
     if (!existing) return res.status(404).json({ error: 'Módulo no encontrado.' });
 
-    await prisma.module.delete({ where: { id: existing.id } });
+    try {
+      await prisma.module.delete({ where: { id: existing.id } });
+    } catch (error) {
+      if ((error as { code?: string }).code === 'P2003') {
+        return res.status(409).json({ error: 'El módulo tiene progreso de alumnos.' });
+      }
+      throw error;
+    }
     res.json({ success: true, message: 'Módulo eliminado exitosamente.' });
   }),
 );
@@ -3535,8 +3705,27 @@ app.delete(
     '/api/courses/:courseId/quiz-summary',
     requireAuthenticated,
     asyncRoute(async (req, res) => {
+      if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
       const counts = await getQuizCountsByCourse(req.params.courseId);
       res.json({ success: true, counts });
+    }),
+  );
+
+  app.get(
+    '/api/courses/:courseId/quiz-attempts',
+    requireAuthenticated,
+    asyncRoute(async (req, res) => {
+      if (!(await userHasCourseAccess(req.user, req.params.courseId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
+      const attempts = await prisma.quizAttempt.findMany({
+        where: { userId: req.user!.id, module: { courseId: req.params.courseId } },
+        select: { moduleId: true, scorePercentage: true, passed: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      res.json({ success: true, attempts });
     }),
   );
 
@@ -3552,7 +3741,66 @@ app.delete(
         return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
       }
       const questions = await getQuizByModuleId(req.params.moduleId);
-      res.json({ success: true, questions });
+      res.json({
+        success: true,
+        questions: esPersonal ? questions : questions.map(({ correctIndex, explanation, ...question }) => question),
+      });
+    }),
+  );
+
+  app.post(
+    '/api/modules/:moduleId/quiz/attempts',
+    requireAuthenticated,
+    asyncRoute(async (req, res) => {
+      const moduleId = req.params.moduleId;
+      if (!(await userHasModuleAccess(req.user, moduleId))) {
+        return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      }
+      const questions = await getQuizByModuleId(moduleId);
+      if (questions.length === 0) return res.status(404).json({ error: 'El módulo no tiene examen.' });
+      const answers = req.body?.answers;
+      if (!answers || typeof answers !== 'object' || Array.isArray(answers) ||
+          Object.entries(answers).some(([key, value]) =>
+            !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= questions.length ||
+            !Number.isInteger(value) || (value as number) < 0 || (value as number) >= questions[Number(key)].options.length)) {
+        return res.status(400).json({ error: 'Respuestas inválidas.' });
+      }
+      const plugin = await prisma.plugin.findUnique({ where: { id: 'interactive-quizzes' }, select: { configJson: true } });
+      let settings: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(plugin?.configJson || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) settings = parsed;
+      } catch { /* Configuración inválida: usar valores seguros. */ }
+      const maxAttempts = Number.isInteger(settings.maxAttempts) && (settings.maxAttempts as number) > 0
+        ? settings.maxAttempts as number : 3;
+      const passingScore = typeof settings.passingScore === 'number' && settings.passingScore > 0 && settings.passingScore <= 100
+        ? settings.passingScore : 80;
+      const userId = req.user!.id;
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      // El bloqueo por usuario y módulo impide superar el límite con envíos simultáneos.
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${moduleId}))`;
+        const used = await tx.quizAttempt.count({ where: { userId, moduleId, createdAt: { gte: since } } });
+        if (used >= maxAttempts) return null;
+        const correctCount = questions.reduce((count, question, index) => count + (answers[index] === question.correctIndex ? 1 : 0), 0);
+        const scorePercentage = Math.round(correctCount / questions.length * 100);
+        const passed = scorePercentage >= passingScore;
+        await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers) } });
+        const attemptsLeft = maxAttempts - used - 1;
+        return {
+          scorePercentage, passed, attemptsLeft,
+          ...(passed || attemptsLeft === 0 ? {
+            correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
+            explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
+          } : {}),
+        };
+      });
+      if (!result) return res.status(429).json({ error: `Límite de ${maxAttempts} intentos en 24 horas.` });
+      if (result.passed) {
+        const modulo = await prisma.module.findUnique({ where: { id: moduleId }, select: { courseId: true } });
+        if (modulo) await calculateCourseProgress(userId, modulo.courseId);
+      }
+      res.json(result);
     }),
   );
 
@@ -3565,6 +3813,9 @@ app.delete(
         return res.status(400).json({ error: 'Formato de preguntas inválido. Se espera un arreglo.' });
       }
       const saved = await saveQuizForModule(req.params.moduleId, questions);
+      if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
+        action: 'quiz.updated', targetType: 'Module', targetId: req.params.moduleId,
+      });
       res.json({ success: true, questions: saved, message: 'Evaluación guardada exitosamente.' });
     }),
   );
@@ -3589,6 +3840,9 @@ app.delete(
     requireRole(['ADMIN', 'MENTOR']),
     asyncRoute(async (req, res) => {
       await deleteQuizForModule(req.params.moduleId);
+      if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
+        action: 'quiz.deleted', targetType: 'Module', targetId: req.params.moduleId,
+      });
       res.json({ success: true, message: 'Evaluación eliminada del módulo.' });
     }),
   );
@@ -3628,6 +3882,10 @@ app.put(
       },
     });
 
+    if (req.user!.role === 'MENTOR') await recordAuditEvent(req, {
+      action: 'video.updated', targetType: 'VideoDriveLink', targetId: updated.id,
+    });
+
     res.json({ success: true, video: updated });
   }),
 );
@@ -3639,7 +3897,14 @@ app.delete(
     const existing = await prisma.videoDriveLink.findUnique({ where: { id: req.params.videoId } });
     if (!existing) return res.status(404).json({ error: 'Video no encontrado.' });
 
-    await prisma.videoDriveLink.delete({ where: { id: existing.id } });
+    try {
+      await prisma.videoDriveLink.delete({ where: { id: existing.id } });
+    } catch (error) {
+      if ((error as { code?: string }).code === 'P2003') {
+        return res.status(409).json({ error: 'El video tiene progreso de alumnos.' });
+      }
+      throw error;
+    }
     res.json({ success: true, message: 'Video eliminado exitosamente.' });
   }),
 );
@@ -3651,7 +3916,7 @@ app.post(
   asyncRoute(async (req, res) => {
     const title = String(req.body.title || '').trim();
     const privateUrl = String(req.body.privateUrl || '').trim();
-    if (!title || !privateUrl) {
+    if (!title || !safeExternalUrl(privateUrl, config.DOCENTOS_ENV === 'development')) {
       return res.status(400).json({ error: 'El título y la URL privada del recurso son obligatorios.' });
     }
 
@@ -3677,6 +3942,28 @@ app.post(
         sizeBytes: resource.sizeBytes ? String(resource.sizeBytes) : null,
       },
     });
+  }),
+);
+
+app.put(
+  '/api/admin/courses/:courseId/resources/:resourceId',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const existing = await prisma.courseResource.findFirst({ where: { id: req.params.resourceId, courseId: req.params.courseId } });
+    if (!existing) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    const privateUrl = req.body.privateUrl === undefined ? existing.privateUrl : String(req.body.privateUrl).trim();
+    if (!safeExternalUrl(privateUrl, config.DOCENTOS_ENV === 'development')) {
+      return res.status(400).json({ error: 'URL privada del recurso no permitida.' });
+    }
+    const resource = await prisma.courseResource.update({
+      where: { id: existing.id },
+      data: {
+        ...(req.body.title !== undefined ? { title: String(req.body.title).trim() } : {}),
+        ...(req.body.description !== undefined ? { description: String(req.body.description).trim() } : {}),
+        privateUrl,
+      },
+    });
+    res.json({ success: true, resource: { ...resource, sizeBytes: resource.sizeBytes ? String(resource.sizeBytes) : null } });
   }),
 );
 
@@ -3788,6 +4075,255 @@ app.put(
     });
 
     res.json({ success: true, enrollment });
+  }),
+);
+
+
+// AI YouTube Course Builder Endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Iniciar flujo OAuth 2.0 con YouTube
+app.get(
+  '/api/youtube/auth',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    try {
+      const state = randomBytes(32).toString('base64url');
+
+      const redirectUri =
+        typeof req.query.redirectUri === 'string' && req.query.redirectUri.trim()
+          ? req.query.redirectUri.trim()
+          : undefined;
+
+      const authUrl = generateAuthUrl(state, redirectUri);
+      await prisma.oAuthState.create({
+        data: { userId: req.user!.id, stateHash: hashSessionToken(state), expiresAt: new Date(Date.now() + 10 * 60_000), redirectUri },
+      });
+
+      if (req.query.format === 'json' || req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.json({ authUrl, url: authUrl });
+      }
+
+      res.redirect(authUrl);
+    } catch (err: any) {
+      logger.error('youtube.auth.error', { error: err.message });
+      res.status(err instanceof YouTubeError ? err.statusCode : 500).json({
+        error: err.message || 'Error al iniciar autenticación con YouTube.',
+        code: err.code || 'UNKNOWN',
+      });
+    }
+  }),
+);
+
+// Callback de OAuth 2.0 desde Google
+app.get(
+  '/api/youtube/callback',
+  asyncRoute(async (req, res) => {
+    const code = String(req.query.code || '').trim();
+    const state = String(req.query.state || '').trim();
+    const errorParam = req.query.error;
+
+    const oauthState = state ? await prisma.oAuthState.findUnique({ where: { stateHash: hashSessionToken(state) } }) : null;
+    if (!oauthState || oauthState.usedAt || oauthState.expiresAt <= new Date()) {
+      return res.status(401).json({ error: 'Estado OAuth inválido o caducado.' });
+    }
+    if (req.user && req.user.id !== oauthState.userId) {
+      return res.status(403).json({ error: 'La sesión no coincide con la autorización de YouTube.' });
+    }
+    const claimed = await prisma.oAuthState.updateMany({
+      where: { id: oauthState.id, usedAt: null, expiresAt: { gt: new Date() } },
+      data: { usedAt: new Date() },
+    });
+    if (claimed.count !== 1) return res.status(401).json({ error: 'Estado OAuth ya utilizado.' });
+
+    if (errorParam) {
+      logger.warn('youtube.oauth.cancelled', { error: String(errorParam) });
+      return res.redirect('/mentor/dashboard?tab=youtube-builder&youtube=cancelled');
+    }
+    if (!code) return res.status(400).json({ error: 'Falta el código de autorización de Google.' });
+
+    try {
+      await handleOAuthCallback(code, oauthState.userId, oauthState.redirectUri ?? undefined);
+      res.redirect('/mentor/dashboard?tab=youtube-builder&youtube=connected');
+    } catch (err: any) {
+      logger.error('youtube.oauth.callback_error', { error: err.message });
+      res.redirect(`/mentor/dashboard?tab=youtube-builder&youtube_error=${encodeURIComponent(err.message)}`);
+    }
+  }),
+);
+
+// Estado de conexión del mentor con YouTube
+app.get(
+  '/api/youtube/status',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const status = await getConnectionStatus(req.user!.id);
+    res.json(status);
+  }),
+);
+
+// Desconectar cuenta de YouTube
+app.delete(
+  '/api/youtube/connection',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const disconnected = await disconnectConnection(req.user!.id);
+    res.json({ success: disconnected });
+  }),
+);
+
+// Importar una playlist desde YouTube (URL o ID)
+app.post(
+  '/api/youtube/playlists/import',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const playlistUrl = String(req.body.playlistUrl || req.body.url || '').trim();
+    if (!playlistUrl) {
+      return res.status(400).json({ error: 'Debes proporcionar la URL o ID de la playlist de YouTube.' });
+    }
+
+    try {
+      const playlist = await importPlaylist(req.user!.id, playlistUrl);
+      res.json({ success: true, playlist });
+    } catch (err: any) {
+      logger.warn('youtube.import.failed', { userId: req.user!.id, error: err.message });
+      const statusCode = err instanceof YouTubeError ? err.statusCode : 400;
+      res.status(statusCode).json({
+        error: err.message || 'Error al importar la playlist de YouTube.',
+        code: err.code || 'UNKNOWN',
+      });
+    }
+  }),
+);
+
+// Listar playlists importadas por el usuario actual
+app.get(
+  '/api/youtube/playlists',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const playlists = await listUserPlaylists(req.user!.id);
+    res.json({ playlists });
+  }),
+);
+
+// Obtener detalle de playlist con sus videos
+app.get(
+  '/api/youtube/playlists/:id',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    try {
+      const playlist = await getPlaylistWithVideos(req.params.id, req.user!.id);
+      res.json({ playlist });
+    } catch (err: any) {
+      const statusCode = err instanceof YouTubeError ? err.statusCode : 404;
+      res.status(statusCode).json({ error: err.message });
+    }
+  }),
+);
+
+// Actualizar selección y orden de videos de una playlist
+app.patch(
+  '/api/youtube/playlists/:id/videos',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const updates = Array.isArray(req.body.updates) ? req.body.updates : [];
+    try {
+      const playlist = await updateVideosSelection(req.params.id, req.user!.id, updates);
+      res.json({ success: true, playlist });
+    } catch (err: any) {
+      const statusCode = err instanceof YouTubeError ? err.statusCode : 400;
+      res.status(statusCode).json({ error: err.message });
+    }
+  }),
+);
+
+// Iniciar generación de curso con IA a partir de videos
+app.post(
+  '/api/youtube/ai-generate',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const { playlistId, courseRequest, videos } = req.body;
+    if (!videos || !Array.isArray(videos) || videos.length === 0) {
+      return res.status(400).json({ error: 'Debes seleccionar al menos un video para generar el curso.' });
+    }
+
+    try {
+      const job = await createAiJob(
+        req.user!.id,
+        playlistId || null,
+        String(courseRequest || '').trim(),
+        videos,
+      );
+      res.json({ success: true, job });
+    } catch (err: any) {
+      logger.error('youtube.ai-generate.failed', { error: err.message });
+      res.status(err instanceof AiJobError ? 400 : 500).json({ error: err.message });
+    }
+  }),
+);
+
+// Consultar progreso/resultado de un trabajo de IA
+app.get(
+  '/api/youtube/ai-jobs/:id',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    try {
+      const job = await getAiJobStatus(req.params.id, req.user!.id);
+      res.json({ job });
+    } catch (err: any) {
+      res.status(err instanceof AiJobError ? 404 : 500).json({ error: err.message });
+    }
+  }),
+);
+
+// Aplicar el resultado generado/editado como un Curso BORRADOR en DocentOS
+app.post(
+  '/api/youtube/ai-apply/:id',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    try {
+      const result = await applyJobToDraftCourse(
+        req.params.id,
+        req.user!.id,
+        req.body.customCourseData,
+      );
+      res.json(result);
+    } catch (err: any) {
+      logger.error('youtube.ai-apply.failed', { error: err.message });
+      res.status(err instanceof AiJobError ? 400 : 500).json({ error: err.message });
+    }
+  }),
+);
+
+// Publicar un curso generado por el mentor
+app.post(
+  '/api/youtube/courses/:id/publish',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const course = await prisma.course.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!course) {
+      return res.status(404).json({ error: 'Curso no encontrado.' });
+    }
+    if (req.user!.role === 'MENTOR') {
+      const ownDraft = !course.published && await prisma.aIJob.findFirst({
+        where: { courseId: course.id, userId: req.user!.id }, select: { id: true },
+      });
+      if (!ownDraft) return res.status(403).json({ error: 'Solo puedes publicar un borrador generado por ti.' });
+    }
+
+    const updated = await prisma.course.update({
+      where: { id: req.params.id },
+      data: {
+        published: true,
+        publishedAt: new Date(),
+      },
+    });
+
+    logger.info('youtube.course_published', { courseId: updated.id, userId: req.user!.id });
+    res.json({ success: true, courseId: updated.id, published: updated.published });
   }),
 );
 
@@ -4074,7 +4610,11 @@ app.post(
       if (apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey.length > 5) {
         const ai = new GoogleGenAI({ apiKey });
         const prompt = `Actúa como Mentor Senior. Redacta un guion introductorio motivador de máximo 90 palabras para "${topic}". Idioma: ${targetLang}. Instrucciones: ${req.body.customInstructions || 'Ninguna'}. Devuelve sólo texto apto para TTS.`;
-        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: { abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS) },
+        });
         generatedScript = response.text?.trim() || '';
       }
     } catch (error) {
@@ -4144,6 +4684,9 @@ app.use(
       courses,
       baseUrl: `${req.protocol}://${req.get('host') || `localhost:${PORT}`}`,
     });
+    const cspHeader = config.CSP_MODE === 'report' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy';
+    const policy = res.getHeader(cspHeader);
+    if (typeof policy === 'string') res.setHeader(cspHeader, allowSeoJsonLd(policy, html));
     res.setHeader('Content-Type', 'text/html').send(html);
   }),
 );
@@ -4165,6 +4708,9 @@ async function startServer() {
   }
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (error instanceof SyntaxError && ('status' in error || 'statusCode' in error) && ((error as any).status === 400 || (error as any).statusCode === 400)) {
+      return res.status(400).json({ error: 'Cuerpo de solicitud JSON inválido' });
+    }
     console.error('Error procesando la solicitud:', error);
     if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor' });
   });
@@ -4247,3 +4793,7 @@ if (process.env.DOCENTOS_SKIP_LISTEN !== '1') {
     process.exitCode = 1;
   });
 }
+
+// Reload env
+
+// Reload after youtube fix

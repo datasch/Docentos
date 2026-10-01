@@ -21,7 +21,7 @@ import { User, Course } from './types';
 import { pluginManager } from './plugins/PluginManager';
 import { siteConfig } from './config/theme';
 import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
-import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink } from 'lucide-react';
+import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink, BookOpen } from 'lucide-react';
 
 /**
  * Destinos de la barra de navegacion.
@@ -166,7 +166,11 @@ export default function App() {
       }
 
       const courseRes = await api.getCourses();
-      if (courseRes.courses && courseRes.courses.length > 0) {
+      if (courseRes.courses && courseRes.courses.length === 0) {
+        // Se borró el último curso: sin esto seguía en pantalla hasta recargar.
+        setCourses([]);
+        setCourse(null);
+      } else if (courseRes.courses && courseRes.courses.length > 0) {
         const list = courseRes.courses;
         setCourses(list);
 
@@ -259,7 +263,22 @@ export default function App() {
     setCurrentUser(null);
     setCourse(null);
     setShowTour(false);
+    // El catálogo en memoria era el de la sesión: el de un admin incluye
+    // borradores que la landing pública mostraría. Se vuelve a pedir ya como
+    // visitante, y se olvida qué estudiaba quien cerró la sesión.
+    setCourses([]);
+    try {
+      localStorage.removeItem(LAST_COURSE_KEY);
+    } catch {
+      /* almacenamiento bloqueado: no había nada que olvidar */
+    }
     navigateTo('landing');
+    try {
+      const publicCourses = await api.getCourses();
+      setCourses(publicCourses.courses ?? []);
+    } catch {
+      /* sin red el catálogo queda vacío hasta la próxima carga */
+    }
   };
 
   const isAuthenticated = Boolean(currentUser && activeTab !== 'landing');
@@ -500,6 +519,18 @@ export default function App() {
             </span>
             <span className="hidden md:inline">· {siteConfig.authorCredit}</span>
           </div>
+
+          {siteConfig.complaintsBookUrl && (
+            <a
+              href={siteConfig.complaintsBookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
+            >
+              <BookOpen aria-hidden className="h-3.5 w-3.5" />
+              Libro de Reclamaciones
+            </a>
+          )}
 
           {/* White-Label Credit */}
           <a

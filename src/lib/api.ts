@@ -29,6 +29,11 @@ import {
   Meeting,
   CreateMeetingInput,
   UpdateMeetingInput,
+  YouTubeConnectionStatus,
+  YouTubePlaylistData,
+  YouTubeVideoItem,
+  YouTubeAiJob,
+  GeneratedCourseDraft,
 } from '../types';
 
 const fetch: typeof globalThis.fetch = (input, init) =>
@@ -123,8 +128,10 @@ export const api = {
   },
 
   /** Genera el secreto y devuelve el QR. No activa nada todavia. */
-  async startTwoFactorSetup(): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
-    const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+  async startTwoFactorSetup(password: string): Promise<{ success: boolean; otpauthUri: string; qrDataUrl: string; secret: string }> {
+    const res = await fetch('/api/auth/2fa/setup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }),
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'No se pudo iniciar la configuración');
@@ -132,11 +139,11 @@ export const api = {
     return res.json();
   },
 
-  async activateTwoFactor(code: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
+  async activateTwoFactor(code: string, password: string): Promise<{ success: boolean; recoveryCodes: string[]; message: string }> {
     const res = await fetch('/api/auth/2fa/activate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, password }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -616,6 +623,25 @@ export const api = {
   async getModuleQuiz(moduleId: string): Promise<{ success: boolean; questions: QuizQuestion[] }> {
     const res = await fetch(`/api/modules/${moduleId}/quiz?_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Error al obtener examen del módulo');
+    return res.json();
+  },
+
+  async getCourseQuizAttempts(courseId: string): Promise<{ success: boolean; attempts: { moduleId: string; scorePercentage: number; passed: boolean; createdAt: string }[] }> {
+    const res = await fetch(`/api/courses/${courseId}/quiz-attempts`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Error al obtener intentos del curso');
+    return res.json();
+  },
+
+  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; attemptsLeft: number; correctIndexes?: Record<number, number>; explanations?: Record<number, string> }> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz/attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Error al calificar el examen');
+    }
     return res.json();
   },
 
@@ -1110,5 +1136,131 @@ export const api = {
       throw error;
     }
     return res.json();
+  },
+
+  // ── YouTube & AI Course Builder ──
+  youtube: {
+    async getStatus(): Promise<YouTubeConnectionStatus> {
+      const res = await fetch('/api/youtube/status');
+      if (!res.ok) throw new Error('Error al obtener estado de YouTube');
+      return res.json();
+    },
+
+    async getAuthUrl(redirectUri?: string): Promise<string> {
+      const url = new URL('/api/youtube/auth', window.location.origin);
+      url.searchParams.set('format', 'json');
+      if (redirectUri) url.searchParams.set('redirectUri', redirectUri);
+      const res = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al obtener URL de autenticación');
+      }
+      const data = await res.json();
+      return data.authUrl;
+    },
+
+    async disconnect(): Promise<boolean> {
+      const res = await fetch('/api/youtube/connection', { method: 'DELETE' });
+      return res.ok;
+    },
+
+    async importPlaylist(playlistUrl: string): Promise<YouTubePlaylistData> {
+      const res = await fetch('/api/youtube/playlists/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playlistUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err: Error & { code?: string } = new Error(data.error || 'Error al importar playlist');
+        err.code = data.code;
+        throw err;
+      }
+      return data.playlist;
+    },
+
+    async listPlaylists(): Promise<any[]> {
+      const res = await fetch('/api/youtube/playlists');
+      if (!res.ok) throw new Error('Error al listar playlists');
+      const data = await res.json();
+      return data.playlists || [];
+    },
+
+    async getPlaylist(id: string): Promise<YouTubePlaylistData> {
+      const res = await fetch(`/api/youtube/playlists/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error('Error al obtener playlist');
+      const data = await res.json();
+      return data.playlist;
+    },
+
+    async updateVideos(
+      playlistId: string,
+      updates: Array<{ id: string; customOrder?: number; excluded?: boolean }>,
+    ): Promise<YouTubePlaylistData> {
+      const res = await fetch(`/api/youtube/playlists/${encodeURIComponent(playlistId)}/videos`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      });
+      if (!res.ok) throw new Error('Error al actualizar videos');
+      const data = await res.json();
+      return data.playlist;
+    },
+
+    async generateCourse(input: {
+      playlistId?: string;
+      courseRequest: string;
+      videos: Array<{
+        id: string;
+        youtubeId: string;
+        title: string;
+        description: string;
+        durationSeconds: number;
+        position: number;
+      }>;
+    }): Promise<{ jobId: string; status: string; progress: number }> {
+      const res = await fetch('/api/youtube/ai-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al iniciar generación con IA');
+      }
+      return { jobId: data.job.id, status: data.job.status, progress: data.job.progress };
+    },
+
+    async getJobStatus(jobId: string): Promise<YouTubeAiJob> {
+      const res = await fetch(`/api/youtube/ai-jobs/${encodeURIComponent(jobId)}`);
+      if (!res.ok) throw new Error('Error al consultar trabajo de IA');
+      const data = await res.json();
+      return data.job;
+    },
+
+    async applyJob(
+      jobId: string,
+      customCourseData?: GeneratedCourseDraft,
+    ): Promise<{ success: boolean; courseId: string; courseTitle: string }> {
+      const res = await fetch(`/api/youtube/ai-apply/${encodeURIComponent(jobId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customCourseData }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al aplicar curso borrador');
+      }
+      return data;
+    },
+
+    async publishCourse(courseId: string): Promise<boolean> {
+      const res = await fetch(`/api/youtube/courses/${encodeURIComponent(courseId)}/publish`, {
+        method: 'POST',
+      });
+      return res.ok;
+    },
   },
 };

@@ -8,6 +8,7 @@
  */
 
 import { AcademiaPlugin, Module, User } from '../types';
+import { api } from '../lib/api';
 
 export interface QuizQuestion {
   id: string;
@@ -146,6 +147,21 @@ export function moduleHasQuiz(moduleId: string): boolean {
 
 export class QuizzesPluginEngine {
   private userAttemptsStore: Map<string, UserQuizAttempt> = new Map();
+
+  public async submitAttempt(moduleId: string, answers: Record<number, number>) {
+    return api.submitQuizAttempt(moduleId, answers);
+  }
+
+  public restoreAttempts(userId: string, attempts: { moduleId: string; scorePercentage: number; passed: boolean; createdAt: string }[], moduleIds: string[]): void {
+    for (const moduleId of moduleIds) this.userAttemptsStore.delete(`${userId}_${moduleId}`);
+    for (const attempt of attempts) {
+      const key = `${userId}_${attempt.moduleId}`;
+      const prior = this.userAttemptsStore.get(key);
+      if (!prior || attempt.scorePercentage > prior.scorePercentage) {
+        this.userAttemptsStore.set(key, { userId, moduleId: attempt.moduleId, scorePercentage: attempt.scorePercentage, passed: attempt.passed, timestamp: attempt.createdAt });
+      }
+    }
+  }
 
   /**
    * Evalúa automáticamente las respuestas enviadas contra las respuestas correctas.

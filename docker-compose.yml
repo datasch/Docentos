@@ -45,6 +45,23 @@ services:
       PASSWORD_RESET_WEBHOOK_URL: ${PASSWORD_RESET_WEBHOOK_URL:-}
       PASSWORD_RESET_WEBHOOK_TOKEN: ${PASSWORD_RESET_WEBHOOK_TOKEN:-}
       PASSWORD_RESET_EXPOSE_TOKEN: ${PASSWORD_RESET_EXPOSE_TOKEN:-false}
+      # Alta desde la pasarela de pagos (POST /api/integrations/enrollments).
+      # Vacio = la ruta responde 404. El mismo valor va en la API de pagos como
+      # DOCENTOS_TOKEN_INTEGRACION; minimo 32 caracteres.
+      INTEGRATION_API_TOKEN: ${INTEGRATION_API_TOKEN:-}
+      # Mentor (ADMIN o MENTOR) que recibe a quien paga; vacio = el primero activo.
+      INTEGRATION_MENTOR_EMAIL: ${INTEGRATION_MENTOR_EMAIL:-}
+      ACTIVATION_TTL_HOURS: ${ACTIVATION_TTL_HOURS:-72}
+      COMPLAINTS_BOOK_URL: ${COMPLAINTS_BOOK_URL:-}
+      # Content-Security-Policy: enforce (bloquea) o report (solo informa).
+      # Vacio = enforce fuera de development.
+      CSP_MODE: ${CSP_MODE:-}
+      # Importador de YouTube: con la clave basta para playlists publicas; OAuth
+      # solo para privadas. YOUTUBE_REDIRECT_URI = https://<dominio>/api/youtube/callback
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+      YOUTUBE_REDIRECT_URI: ${YOUTUBE_REDIRECT_URI:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
       APP_NAME: ${APP_NAME:-DocentOS}
       APP_TAGLINE: ${APP_TAGLINE:-Plataforma e-Learning Open Source}
