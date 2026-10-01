@@ -724,8 +724,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
                   className="h-full w-full border-0"
                   referrerPolicy="strict-origin-when-cross-origin"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen"
-                  allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen; picture-in-picture; web-share"
                 />
               ) : hasAccess ? (
                 /* Con acceso concedido y sin clase que reproducir, el curso

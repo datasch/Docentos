@@ -191,8 +191,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                     title={selectedVideo.name}
                     className="w-full h-full border-0"
                     referrerPolicy="strict-origin-when-cross-origin"
-                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
                   />
                 </div>
 
