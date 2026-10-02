@@ -133,9 +133,9 @@ export async function getCourseAccessDecisions(
     }),
     user.role === 'MENTOR'
       ? prisma.menteeAssignment.findMany({
-          where: { mentorId: user.id, courseId: { in: pendingIds }, status: { in: ['ACTIVE', 'GRADUATED'] } },
-          select: { courseId: true },
-        })
+        where: { mentorId: user.id, courseId: { in: pendingIds }, status: { in: ['ACTIVE', 'GRADUATED'] } },
+        select: { courseId: true },
+      })
       : Promise.resolve([] as { courseId: string }[]),
   ]);
 
@@ -192,9 +192,9 @@ export async function getCourseAccessDecision(
     }),
     user.role === 'MENTOR'
       ? prisma.menteeAssignment.findFirst({
-          where: { mentorId: user.id, courseId, status: { in: ['ACTIVE', 'GRADUATED'] } },
-          select: { id: true },
-        })
+        where: { mentorId: user.id, courseId, status: { in: ['ACTIVE', 'GRADUATED'] } },
+        select: { id: true },
+      })
       : Promise.resolve(null),
   ]);
 

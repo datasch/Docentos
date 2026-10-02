@@ -1136,6 +1136,90 @@ app.post(
   }),
 );
 
+/**
+ * Revocación de acceso por vencimiento de vigencia — llamado desde n8n.
+ * Protegido con el mismo INTEGRATION_API_TOKEN que el endpoint de matrícula.
+ * Sin token configurado responde 404 como si la ruta no existiera.
+ *
+ * Body: { userEmail: string, reason?: string, degradeVip?: boolean }
+ * Responde: { success, userId, userEmail, enrollmentsExpired, vipDegraded, newRole }
+ */
+app.post(
+  '/api/integrations/access/revoke',
+  asyncRoute(async (req, res) => {
+    if (!config.INTEGRATION_API_TOKEN) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    if (!isIntegrationAuthorized(req.get('authorization'))) {
+      return res.status(401).json({ error: 'No autorizado.' });
+    }
+
+    const { userEmail, reason = 'CONTRACT_EXPIRED', degradeVip = false } = req.body || {};
+    if (!userEmail || typeof userEmail !== 'string') {
+      return res.status(400).json({ error: 'El campo userEmail es obligatorio.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail.toLowerCase().trim() },
+      select: { id: true, email: true, name: true, role: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: `Usuario no encontrado: ${userEmail}` });
+    }
+
+    const now = new Date();
+
+    // Marcar todas las matrículas ACTIVE del usuario como EXPIRED
+    const expiredResult = await prisma.courseEnrollment.updateMany({
+      where: {
+        userId: user.id,
+        status: 'ACTIVE',
+      },
+      data: {
+        status: 'EXPIRED',
+        accessExpiresAt: now,
+      },
+    });
+
+    // Si el usuario tiene rol VIP y se solicita degradar, bajar a PUBLIC_USER
+    let vipDegraded = false;
+    let newRole: string = user.role;
+    if (degradeVip && user.role === 'VIP') {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'PUBLIC_USER' },
+      });
+      vipDegraded = true;
+      newRole = 'PUBLIC_USER';
+    }
+
+    // Registro en auditoría
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: null,
+        action: 'integration.access_revoked',
+        targetType: 'User',
+        targetId: user.id,
+        metadataJson: JSON.stringify({
+          reason,
+          enrollmentsExpired: expiredResult.count,
+          vipDegraded,
+          revokedAt: now.toISOString(),
+        }),
+      },
+    });
+
+    return res.json({
+      success: true,
+      userId: user.id,
+      userEmail: user.email,
+      enrollmentsExpired: expiredResult.count,
+      vipDegraded,
+      newRole,
+    });
+  }),
+);
+
+
 app.post(
   '/api/vip/activate',
   requireAuthenticated,

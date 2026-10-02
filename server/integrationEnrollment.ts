@@ -154,19 +154,19 @@ async function enrollInTransaction(input: IntegrationEnrollmentInput) {
     });
     const enrollment = existingEnrollment
       ? await tx.courseEnrollment.update({
-          where: { id: existingEnrollment.id },
-          // Una matricula terminada se queda terminada; una revocada o vencida vuelve a estar activa.
-          data: existingEnrollment.status === 'COMPLETED' ? { accessExpiresAt: null } : { status: 'ACTIVE', accessExpiresAt: null },
-        })
+        where: { id: existingEnrollment.id },
+        // Una matricula terminada se queda terminada; una revocada o vencida vuelve a estar activa.
+        data: existingEnrollment.status === 'COMPLETED' ? { accessExpiresAt: null } : { status: 'ACTIVE', accessExpiresAt: null },
+      })
       : await tx.courseEnrollment.create({
-          data: {
-            id: `enr_${randomBytes(12).toString('hex')}`,
-            userId: user.id,
-            courseId: course.id,
-            status: 'ACTIVE',
-            source: 'PAYMENT',
-          },
-        });
+        data: {
+          id: `enr_${randomBytes(12).toString('hex')}`,
+          userId: user.id,
+          courseId: course.id,
+          status: 'ACTIVE',
+          source: 'PAYMENT',
+        },
+      });
 
     // Quien paga queda en la mentoria del curso: sin asignacion no aparece en
     // "Mentees asignados" del panel. No se cambia el mentor de una asignacion

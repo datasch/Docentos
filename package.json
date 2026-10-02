@@ -24,6 +24,8 @@
     "test:auth": "tsx --test tests/auth-lifecycle.test.ts",
     "test": "DOCENTOS_SKIP_LISTEN=1 tsx --test tests/*.test.ts tests/*.test.tsx",
     "test:security": "tsx --test tests/security-regressions.test.ts",
+    "test:revoke": "DOCENTOS_SKIP_LISTEN=1 tsx --test tests/integration-revoke.test.ts",
+    "test:revoke:security": "DOCENTOS_SKIP_LISTEN=1 tsx --test tests/integration-revoke-security.test.ts",
     "test:import": "tsx --test tests/course-import.test.ts tests/course-import-ui.test.tsx tests/module-quiz.test.tsx tests/course-navigation.test.tsx"
   },
   "dependencies": {
