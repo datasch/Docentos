@@ -381,12 +381,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Type Filter Pills */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           <button
             onClick={() => setFilterType('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'ALL'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterType === 'ALL'
                 ? 'bg-brand-cyan text-black shadow-md'
                 : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
@@ -395,7 +395,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           </button>
           <button
             onClick={() => setFilterType('LIVE')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${filterType === 'LIVE'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${filterType === 'LIVE'
                 ? 'bg-danger text-ink shadow-md'
                 : 'bg-raised text-ink-muted hover:text-danger-light border border-line'
               }`}
@@ -405,7 +405,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           </button>
           <button
             onClick={() => setFilterType('SYNC')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'SYNC'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterType === 'SYNC'
                 ? 'bg-brand-purple text-ink shadow-md'
                 : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
@@ -414,7 +414,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           </button>
           <button
             onClick={() => setFilterType('ASYNC')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterType === 'ASYNC'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterType === 'ASYNC'
                 ? 'bg-success text-black shadow-md'
                 : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
@@ -424,11 +424,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         </div>
 
         {/* Course Filter Dropdown & Search */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <select
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
-            className="bg-raised border border-line text-ink-soft text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-cyan"
+            className="bg-raised border border-line text-ink-soft text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-cyan max-w-full sm:max-w-xs truncate"
           >
             <option value="ALL">Todos los Cursos</option>
             {courses.map((c) => (
@@ -438,7 +438,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             ))}
           </select>
 
-          <div className="relative flex-1 sm:w-60">
+          <div className="relative w-full sm:w-60">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
               type="text"

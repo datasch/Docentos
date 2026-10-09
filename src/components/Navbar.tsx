@@ -33,6 +33,7 @@ import {
   LogOut,
   KeyRound,
   Award,
+  HeartHandshake,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +51,7 @@ interface NavbarProps {
   onChangePassword?: () => void;
   onLogout?: () => void;
   onOpenVerifyModal?: () => void;
+  onOpenCustomerVoice?: () => void;
   /** Catálogo al que puede saltar el buscador de la barra. */
   courses?: Course[];
   onSelectCourse?: (course: Course) => void;
@@ -89,6 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onChangePassword,
   onLogout,
   onOpenVerifyModal,
+  onOpenCustomerVoice,
   courses = [],
   onSelectCourse,
 }) => {
@@ -304,6 +307,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Escucha Activa & Voz del Alumno */}
+            {onOpenCustomerVoice && (
+              <button
+                type="button"
+                onClick={onOpenCustomerVoice}
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all cursor-pointer shadow-sm"
+                title="Buzón de Escucha Activa: ¿Cómo te sientes hoy?"
+              >
+                <HeartHandshake aria-hidden className="h-3.5 w-3.5" />
+                <span>Te escuchamos</span>
+              </button>
+            )}
+
             {/* Idioma */}
             <div className="lp-menu-anchor lp-nav-lang" ref={langRef}>
               <button
@@ -384,6 +400,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                       Ir a la portada
                     </span>
                   </button>
+
+                  {onOpenCustomerVoice && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onOpenCustomerVoice();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <HeartHandshake aria-hidden className="h-4 w-4 text-cyan-400" />
+                        Buzón de Escucha Activa
+                      </span>
+                    </button>
+                  )}
 
                   {onRestartTour && (
                     <button
@@ -512,6 +545,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Award aria-hidden className="lp-tone-gold h-4 w-4" />
                 <span>Verificar diploma</span>
+              </button>
+            </li>
+          )}
+
+          {onOpenCustomerVoice && (
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  onOpenCustomerVoice();
+                }}
+              >
+                <HeartHandshake aria-hidden className="text-cyan-400 h-4 w-4" />
+                <span>Buzón de Escucha Activa</span>
               </button>
             </li>
           )}

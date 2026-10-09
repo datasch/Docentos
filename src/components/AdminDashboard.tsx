@@ -17,6 +17,8 @@ import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
 import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
+import { CustomerVoiceAdminPanel } from './CustomerVoiceAdminPanel';
+import { HeartHandshake } from 'lucide-react';
 
 interface AdminDashboardProps {
   /**
@@ -43,7 +45,7 @@ const CURSO_VACIO: Course = {
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'contracts' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'contracts' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources' | 'voice'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [roleErrorMsg, setRoleErrorMsg] = useState('');
@@ -728,12 +730,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
           >
             <Sliders className="w-3.5 h-3.5 text-[#06b6d4]" /> Portada
           </button>
+          <button
+            onClick={() => setActiveTab('voice')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'voice' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+              }`}
+          >
+            <HeartHandshake className="w-3.5 h-3.5 text-cyan-400" /> Voz del Alumno
+          </button>
         </div>
       </div>
 
 
 
       {activeTab === 'courses' && <CourseManagerView onRefreshData={onRefreshData} />}
+
+      {activeTab === 'voice' && <CustomerVoiceAdminPanel />}
 
       {/* TAB 1: USER & VIP ROLE MANAGEMENT + MODERATION + PRICING */}
       {activeTab === 'users' && (

@@ -17,6 +17,8 @@ import { SetupWizard } from './components/SetupWizard';
 import { AIAssistantTour } from './components/AIAssistantTour';
 import { CertificateVerifyModal } from './components/CertificateVerifyModal';
 import { ContractSignatureModal } from './components/ContractSignatureModal';
+import { CustomerVoiceModal } from './components/CustomerVoiceModal';
+import { CustomerVoiceFloatingButton } from './components/CustomerVoiceFloatingButton';
 import { api } from './lib/api';
 import { User, Course } from './types';
 import { pluginManager } from './plugins/PluginManager';
@@ -99,6 +101,7 @@ export default function App() {
   const [showVerifyModal, setShowVerifyModal] = useState<boolean>(false);
   const [verifyCode, setVerifyCode] = useState<string>('');
   const [pendingContract, setPendingContract] = useState<any | null>(null);
+  const [showCustomerVoiceModal, setShowCustomerVoiceModal] = useState<boolean>(false);
 
   const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
     const path = TAB_PATHS[tab];
@@ -330,6 +333,7 @@ export default function App() {
             setVerifyCode('');
             setShowVerifyModal(true);
           }}
+          onOpenCustomerVoice={() => setShowCustomerVoiceModal(true)}
           courses={courses}
           onSelectCourse={(selected) => {
             selectCourse(selected);
@@ -590,6 +594,22 @@ export default function App() {
             loadData();
           }}
         />
+      )}
+
+      {/* Buzón de Escucha Activa & Voz del Alumno */}
+      {currentUser && (
+        <>
+          <CustomerVoiceFloatingButton
+            onClick={() => setShowCustomerVoiceModal(true)}
+          />
+          <CustomerVoiceModal
+            isOpen={showCustomerVoiceModal}
+            onClose={() => setShowCustomerVoiceModal(false)}
+            currentUser={currentUser}
+            courses={courses}
+            activeCourse={course}
+          />
+        </>
       )}
 
     </div>

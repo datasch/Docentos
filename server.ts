@@ -88,6 +88,14 @@ import {
 } from './server/courseAccess.js';
 import { redactPluginConfig } from './server/pluginConfig.js';
 import { ensurePluginCatalog } from './server/pluginCatalog.js';
+import {
+  createStudentVoice,
+  getMyStudentVoices,
+  getAllStudentVoices,
+  replyToStudentVoice,
+  getStudentVoiceStats,
+  getCustomerVoiceConfig,
+} from './server/customerVoiceService.js';
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import {
@@ -4680,7 +4688,121 @@ app.delete(
   }),
 );
 
-// AI script generation
+// --- PLUGIN DE ESCUCHA ACTIVA & VOZ DEL ALUMNO ---
+const createStudentVoiceSchema = z.object({
+  sentiment: z.enum(['MOTIVATED', 'CONFUSED', 'FRUSTRATED', 'INSPIRED', 'NEUTRAL']),
+  category: z.enum([
+    'COURSE_CONTENT',
+    'PLATFORM_UX',
+    'MENTORSHIP_CARE',
+    'FEATURE_REQUEST',
+    'BUG_REPORT',
+    'OTHER',
+  ]),
+  subject: z.string().trim().min(3, 'El asunto debe tener al menos 3 caracteres').max(150, 'El asunto no puede exceder 150 caracteres'),
+  message: z.string().trim().min(5, 'El mensaje debe tener al menos 5 caracteres').max(3000, 'El mensaje no puede exceder 3000 caracteres'),
+  courseId: z.string().nullish(),
+  isAnonymous: z.boolean().optional(),
+});
+
+const replyStudentVoiceSchema = z.object({
+  mentorReply: z.string().trim().min(2, 'La respuesta debe tener al menos 2 caracteres').max(3000),
+  status: z.enum(['RECEIVED', 'IN_REVIEW', 'ACTION_TAKEN', 'RESOLVED', 'ARCHIVED']).optional(),
+  adminNotes: z.string().max(1000).optional(),
+});
+
+app.get(
+  '/api/customer-voice/config',
+  asyncRoute(async (_req, res) => {
+    const configData = await getCustomerVoiceConfig();
+    res.json({ success: true, ...configData });
+  }),
+);
+
+app.post(
+  '/api/customer-voice',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const parsed = createStudentVoiceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Datos de entrada inválidos',
+        details: parsed.error.issues.map((i) => i.message),
+      });
+    }
+    const voice = await createStudentVoice({
+      userId: req.user!.id,
+      userName: req.user!.name,
+      ...parsed.data,
+      courseId: parsed.data.courseId ?? null,
+    });
+    res.json({
+      success: true,
+      voice,
+      message: 'Tu mensaje ha sido recibido con cariño y atención.',
+    });
+  }),
+);
+
+app.get(
+  '/api/customer-voice/my',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const voices = await getMyStudentVoices(req.user!.id);
+    res.json({ success: true, voices });
+  }),
+);
+
+app.get(
+  '/api/customer-voice/all',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const { status, sentiment, category, courseId, search } = req.query;
+    const voices = await getAllStudentVoices({
+      status: status ? String(status) as any : undefined,
+      sentiment: sentiment ? String(sentiment) as any : undefined,
+      category: category ? String(category) as any : undefined,
+      courseId: courseId ? String(courseId) : undefined,
+      search: search ? String(search) : undefined,
+    });
+    res.json({ success: true, voices });
+  }),
+);
+
+app.post(
+  '/api/customer-voice/:id/reply',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const parsed = replyStudentVoiceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Datos de respuesta inválidos',
+        details: parsed.error.issues.map((i) => i.message),
+      });
+    }
+    const updated = await replyToStudentVoice({
+      voiceId: req.params.id,
+      mentorId: req.user!.id,
+      mentorName: req.user!.name,
+      ...parsed.data,
+    });
+    res.json({
+      success: true,
+      voice: updated,
+      message: 'Respuesta enviada y guardada exitosamente.',
+    });
+  }),
+);
+
+app.get(
+  '/api/customer-voice/stats',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (_req, res) => {
+    const stats = await getStudentVoiceStats();
+    res.json({ success: true, stats });
+  }),
+);
+
 app.post(
   '/api/ai/generate-script',
   requireRole(['ADMIN']),

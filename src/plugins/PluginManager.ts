@@ -9,8 +9,10 @@ import { AcademiaPlugin, User, Course, VideoDriveLink, Module } from '../types';
 import { googleDrivePlugin } from './googleDrivePlugin';
 import { quizzesPlugin, quizzesPluginEngine } from './QuizzesPlugin';
 import { liveMeetingsPlugin } from './LiveMeetingsPlugin';
+import { customerVoicePlugin } from './CustomerVoicePlugin';
 
 export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
+  customerVoicePlugin,
   googleDrivePlugin,
   {
     id: 'pdf-certificates',

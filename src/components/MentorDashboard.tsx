@@ -30,7 +30,9 @@ import {
   Video,
   Radio,
   Youtube,
+  HeartHandshake,
 } from 'lucide-react';
+import { CustomerVoiceAdminPanel } from './CustomerVoiceAdminPanel';
 import { MeetingManager } from './MeetingManager';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
@@ -69,7 +71,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   courses,
   onRefreshCourses,
 }) => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder' | 'customer-voice'>('courses');
   const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
   const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
@@ -563,6 +565,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <Youtube className="w-4 h-4 text-red-500" />
           <span>AI YouTube Course Builder</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('customer-voice')}
+          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'customer-voice'
+              ? 'border-cyan-400 text-cyan-400'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <HeartHandshake className="w-4 h-4 text-cyan-400" />
+          <span>Voz del Alumno & Escucha Activa</span>
+        </button>
       </div>
 
       {/* Tab Content 1: Courses Management */}
@@ -1049,6 +1063,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }}
           onCancel={() => setActiveTab('courses')}
         />
+      )}
+
+      {/* Tab Content: Voz del Alumno & Escucha Activa */}
+      {activeTab === 'customer-voice' && (
+        <CustomerVoiceAdminPanel />
       )}
 
       {/* Modal de Exámenes para Mentores */}

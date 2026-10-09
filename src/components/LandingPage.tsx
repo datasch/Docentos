@@ -614,7 +614,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const appName = siteConfig.appName || 'DocentOS';
   const firstName = (currentUser?.name || '').trim().split(/\s+/)[0] || '';
-  const communityUrl = landingConfig.discordUrl || landingConfig.githubUrl || 'https://github.com/giantucchi/docentos';
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://docentos.org';
   // El titular se guarda en una sola cadena editable; la barra marca dónde
@@ -1345,18 +1344,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
       </footer>
-
-      {/* 11. Acceso rápido a la comunidad */}
-      <a
-        href={communityUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="lp-support"
-        aria-label="Abrir la comunidad de soporte"
-      >
-        <span className="lp-support-tooltip">💬 ¿Tienes dudas? Escríbenos</span>
-        <MessageCircle aria-hidden />
-      </a>
     </div>
   );
 };

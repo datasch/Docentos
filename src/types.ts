@@ -70,7 +70,7 @@ export interface AcademiaPlugin {
   description: string;
   version: string;
   enabled: boolean;
-  category: 'certificates' | 'quizzes' | 'integrations' | 'analytics' | 'meetings' | 'custom';
+  category: 'certificates' | 'quizzes' | 'integrations' | 'analytics' | 'meetings' | 'community' | 'custom';
   icon: string;
   config: Record<string, any>;
 }
@@ -565,5 +565,45 @@ export interface YouTubeAiJob {
   completedAt?: string | null;
 }
 
+// ── Plugin de Escucha Activa & Voz del Alumno (Customer Voice) ─────────────
+export type VoiceSentiment = 'MOTIVATED' | 'CONFUSED' | 'FRUSTRATED' | 'INSPIRED' | 'NEUTRAL';
+export type VoiceCategory =
+  | 'COURSE_CONTENT'
+  | 'PLATFORM_UX'
+  | 'MENTORSHIP_CARE'
+  | 'FEATURE_REQUEST'
+  | 'BUG_REPORT'
+  | 'OTHER';
+export type VoiceStatus = 'RECEIVED' | 'IN_REVIEW' | 'ACTION_TAKEN' | 'RESOLVED' | 'ARCHIVED';
 
+export interface StudentVoiceEntry {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  userAvatar?: string | null;
+  courseId?: string | null;
+  courseTitle?: string | null;
+  sentiment: VoiceSentiment;
+  category: VoiceCategory;
+  subject: string;
+  message: string;
+  isAnonymous: boolean;
+  status: VoiceStatus;
+  aiEmpathyReply?: string | null;
+  mentorReply?: string | null;
+  mentorRepliedAt?: string | null;
+  mentorRepliedBy?: string | null;
+  adminNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
+export interface StudentVoiceStats {
+  total: number;
+  pending: number;
+  inReview: number;
+  resolved: number;
+  sentiments: Record<VoiceSentiment, number>;
+  urgentFrustrations: number;
+}

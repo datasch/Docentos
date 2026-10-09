@@ -116,6 +116,7 @@ model User {
   aiJobs              AIJob[]
   oauthStates         OAuthState[]
   signedContracts     UserContractSignature[]
+  studentVoices       StudentVoice[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -336,6 +337,7 @@ model Course {
   menteeAssignments MenteeAssignment[]
   meetings          Meeting[]
   aiJob             AIJob?
+  studentVoices     StudentVoice[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -769,3 +771,60 @@ model UserContractSignature {
   @@index([userId])
   @@index([contractVersion])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Plugin de Escucha Activa & Voz del Alumno (Customer Voice)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum VoiceSentiment {
+  MOTIVATED
+  CONFUSED
+  FRUSTRATED
+  INSPIRED
+  NEUTRAL
+}
+
+enum VoiceCategory {
+  COURSE_CONTENT
+  PLATFORM_UX
+  MENTORSHIP_CARE
+  FEATURE_REQUEST
+  BUG_REPORT
+  OTHER
+}
+
+enum VoiceStatus {
+  RECEIVED
+  IN_REVIEW
+  ACTION_TAKEN
+  RESOLVED
+  ARCHIVED
+}
+
+model StudentVoice {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String?
+  course          Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  sentiment       VoiceSentiment @default(NEUTRAL)
+  category        VoiceCategory  @default(COURSE_CONTENT)
+  subject         String
+  message         String
+  isAnonymous     Boolean        @default(false)
+  status          VoiceStatus    @default(RECEIVED)
+  aiEmpathyReply  String?
+  mentorReply     String?
+  mentorRepliedAt DateTime?
+  mentorRepliedBy String?
+  adminNotes      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([sentiment])
+  @@index([category])
+  @@index([courseId])
+}
+

@@ -121,7 +121,23 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     config: {
       webhookUrl: '',
       notifyOnQnA: true,
-      notifyOnCompletion: true,    },
+      notifyOnCompletion: true,
+    },
+  },
+  {
+    id: 'customer-voice',
+    name: 'Plugin de Escucha Activa & Voz del Alumno',
+    description: 'Canal empático y directo para que el estudiante exprese cómo se siente, envíe dudas o propuestas, reciba escucha activa con IA y obtenga respuesta y seguimiento de los mentores.',
+    version: '1.0.0',
+    category: 'community',
+    icon: 'HeartHandshake',
+    config: {
+      enableAiEmpathy: true,
+      allowAnonymous: true,
+      notifyDiscordWebhook: false,
+      webhookUrl: '',
+      welcomePrompt: 'Tu experiencia y tu voz son el corazón de nuestra academia. Cuéntanos qué sientes o cómo podemos mejorar.',
+    },
   },
 ];
 

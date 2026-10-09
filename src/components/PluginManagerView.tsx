@@ -28,6 +28,7 @@ import {
   Upload,
   Trash2,
   Video,
+  HeartHandshake,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -56,6 +57,10 @@ const FIELD_LABELS: Record<string, string> = {
   enableAutoRecordingLink: 'Habilitar enlaces de grabación automática',
   requireVipAccess: 'Requerir Pase VIP para ingresar a clases en vivo',
   roomPrefix: 'Prefijo de sala Jitsi Meet',
+  enableAiEmpathy: 'Respuesta empática inmediata con IA',
+  allowAnonymous: 'Permitir aportes anónimos',
+  notifyDiscordWebhook: 'Notificar en Discord / Slack',
+  welcomePrompt: 'Mensaje de bienvenida y aliento',
 };
 
 export const PluginManagerView: React.FC = () => {
@@ -172,6 +177,7 @@ export const PluginManagerView: React.FC = () => {
       case 'MessageSquare': return MessageSquare;
       case 'BarChart3': return BarChart3;
       case 'Video': return Video;
+      case 'HeartHandshake': return HeartHandshake;
       default: return Layers;
     }
   };
@@ -208,7 +214,7 @@ export const PluginManagerView: React.FC = () => {
 
       {/* Category Pills */}
       <div className="flex flex-wrap gap-2">
-        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics', 'meetings'].map((cat) => (
+        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics', 'meetings', 'community'].map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
