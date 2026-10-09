@@ -117,6 +117,7 @@ model User {
   oauthStates         OAuthState[]
   signedContracts     UserContractSignature[]
   studentVoices       StudentVoice[]
+  topicAffinities     StudentTopicAffinity[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -808,6 +809,8 @@ model StudentVoice {
   courseId        String?
   course          Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
   sentiment       VoiceSentiment @default(NEUTRAL)
+  npsScore        Int            @default(3)
+  topicTag        String?
   category        VoiceCategory  @default(COURSE_CONTENT)
   subject         String
   message         String
@@ -824,7 +827,26 @@ model StudentVoice {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([sentiment])
+  @@index([npsScore])
   @@index([category])
   @@index([courseId])
+  @@index([topicTag])
 }
+
+model StudentTopicAffinity {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic       String
+  score       Float    @default(3.0)
+  sampleCount Int      @default(1)
+  lastScore   Int      @default(3)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, topic])
+  @@index([userId])
+  @@index([topic])
+}
+
 

@@ -95,6 +95,8 @@ import {
   replyToStudentVoice,
   getStudentVoiceStats,
   getCustomerVoiceConfig,
+  getNpsAnalytics,
+  getStudentAffinityProfile,
 } from './server/customerVoiceService.js';
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
@@ -4691,6 +4693,8 @@ app.delete(
 // --- PLUGIN DE ESCUCHA ACTIVA & VOZ DEL ALUMNO ---
 const createStudentVoiceSchema = z.object({
   sentiment: z.enum(['MOTIVATED', 'CONFUSED', 'FRUSTRATED', 'INSPIRED', 'NEUTRAL']),
+  npsScore: z.number().int().min(1).max(5).optional(),
+  topicTag: z.string().trim().max(100).optional(),
   category: z.enum([
     'COURSE_CONTENT',
     'PLATFORM_UX',
@@ -4754,6 +4758,15 @@ app.get(
 );
 
 app.get(
+  '/api/customer-voice/my-affinity',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const profile = await getStudentAffinityProfile(req.user!.id);
+    res.json({ success: true, profile });
+  }),
+);
+
+app.get(
   '/api/customer-voice/all',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
@@ -4766,6 +4779,26 @@ app.get(
       search: search ? String(search) : undefined,
     });
     res.json({ success: true, voices });
+  }),
+);
+
+app.get(
+  '/api/customer-voice/nps-analytics',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const courseId = req.query.courseId ? String(req.query.courseId) : undefined;
+    const days = req.query.days ? Number(req.query.days) : undefined;
+    const analytics = await getNpsAnalytics({ courseId, days });
+    res.json({ success: true, analytics });
+  }),
+);
+
+app.get(
+  '/api/customer-voice/student-profile/:userId',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const profile = await getStudentAffinityProfile(req.params.userId);
+    res.json({ success: true, profile });
   }),
 );
 
