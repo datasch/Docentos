@@ -22,7 +22,9 @@ import { User, Course } from './types';
 import { pluginManager } from './plugins/PluginManager';
 import { siteConfig } from './config/theme';
 import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
-import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink, BookOpen } from 'lucide-react';
+import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink, BookOpen, HeartHandshake } from 'lucide-react';
+import { ListeningBoxModal } from './components/ListeningBoxModal';
+import { ListeningFloatingButton } from './components/ListeningFloatingButton';
 
 /**
  * Destinos de la barra de navegacion.
@@ -99,6 +101,8 @@ export default function App() {
   const [showVerifyModal, setShowVerifyModal] = useState<boolean>(false);
   const [verifyCode, setVerifyCode] = useState<string>('');
   const [pendingContract, setPendingContract] = useState<any | null>(null);
+  const [showListening, setShowListening] = useState<boolean>(false);
+  const [unreadListening, setUnreadListening] = useState<number>(0);
 
   const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
     const path = TAB_PATHS[tab];
@@ -210,8 +214,15 @@ export default function App() {
         } catch (e) {
           console.warn('No se pudo verificar el contrato legal:', e);
         }
+
+        try {
+          setUnreadListening((await api.getMyListening()).unreadReplies);
+        } catch {
+          /* sin buzón disponible no hay aviso; no es motivo para fallar la carga */
+        }
       } else {
         setPendingContract(null);
+        setUnreadListening(0);
       }
 
       // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
@@ -242,6 +253,34 @@ export default function App() {
     if (loading || canOpenTab(currentUser, activeTab)) return;
     navigateTo(currentUser ? 'courses' : 'landing', { replace: true });
   }, [activeTab, currentUser, loading]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const checkUnread = async () => {
+      try {
+        const res = await api.getMyListening();
+        setUnreadListening(res.unreadReplies);
+      } catch {
+        /* sin buzón disponible no hay aviso */
+      }
+    };
+    const interval = setInterval(checkUnread, 45000);
+    window.addEventListener('focus', checkUnread);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkUnread);
+    };
+  }, [currentUser]);
+
+  const handleOpenListening = () => {
+    if (!currentUser) {
+      setAuthMode('login');
+      setAuthNotice('Inicia sesión para compartir tu experiencia o revisar tus respuestas en el Buzón de Escucha.');
+      setShowAuthModal(true);
+      return;
+    }
+    setShowListening(true);
+  };
 
   const handleSetupComplete = async (adminUser: User, updatedAppName?: string) => {
     if (updatedAppName) {
@@ -330,6 +369,8 @@ export default function App() {
             setVerifyCode('');
             setShowVerifyModal(true);
           }}
+          onOpenListening={() => setShowListening(true)}
+          unreadListening={unreadListening}
           courses={courses}
           onSelectCourse={(selected) => {
             selectCourse(selected);
@@ -547,6 +588,18 @@ export default function App() {
             </a>
           )}
 
+          <button
+            type="button"
+            onClick={handleOpenListening}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
+          >
+            <HeartHandshake aria-hidden className="h-3.5 w-3.5 text-brand-cyan" />
+            Buzón de escucha
+            {unreadListening > 0 && (
+              <span className="rounded-full bg-brand-cyan px-1.5 text-micro font-bold text-black">{unreadListening}</span>
+            )}
+          </button>
+
           {/* White-Label Credit */}
           <a
             href={siteConfig.poweredByLink}
@@ -581,6 +634,16 @@ export default function App() {
         initialCode={verifyCode}
       />
 
+      {/* Buzón de Escucha: recomendaciones, quejas, caritas y NPS */}
+      {currentUser && (
+        <ListeningBoxModal
+          isOpen={showListening}
+          onClose={() => setShowListening(false)}
+          courses={courses}
+          onUnreadChange={setUnreadListening}
+        />
+      )}
+
       {/* Modal Obligatorio de Firma de Contrato Virtual */}
       {pendingContract && currentUser && (
         <ContractSignatureModal
@@ -589,6 +652,14 @@ export default function App() {
             setPendingContract(null);
             loadData();
           }}
+        />
+      )}
+
+      {/* Botón flotante accesible de Buzón de Escucha (sustituye al antiguo botón verde) */}
+      {!showListening && (
+        <ListeningFloatingButton
+          unreadCount={unreadListening}
+          onClick={handleOpenListening}
         />
       )}
 

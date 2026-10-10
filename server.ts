@@ -76,6 +76,17 @@ import { prisma } from './server/prisma.js';
 import { config } from './server/config.js';
 import { allowSeoJsonLd, cspDirectives } from './server/csp.js';
 import { safeExternalUrl, safeLandingLink } from './src/lib/safeUrl.js';
+import { LISTENING_LIMITS } from './src/lib/listening.js';
+import {
+  createListeningSchema,
+  listeningFilterSchema,
+  listeningToCsv,
+  summarizeListening,
+  toOwnEntry,
+  toStaffEntry,
+  updateListeningSchema,
+  type ListeningFilter,
+} from './server/listeningService.js';
 import {
   getCourseAccessDecision,
   getCourseAccessDecisions,
@@ -4677,6 +4688,217 @@ app.delete(
     }
     await prisma.feedback.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Testimonio eliminado' });
+  }),
+);
+
+// --- Buzon de Escucha ------------------------------------------------------
+//
+// Cualquier persona con sesion deja una recomendacion, queja, felicitacion o
+// duda, con una carita (1-5) y, si quiere, un NPS (0-10). Administracion lo lee
+// con cifras (resumen, CSV) y responde; la respuesta vuelve a la persona.
+
+const LISTENING_INCLUDE = {
+  user: { select: { name: true, email: true } },
+  course: { select: { title: true } },
+  repliedBy: { select: { name: true } },
+} as const;
+
+function validationError(res: Response, error: z.ZodError) {
+  return res.status(400).json({
+    error: error.issues[0]?.message || 'Error de validación de entrada',
+    details: error.issues.map((issue) => issue.message),
+  });
+}
+
+/** Filtros del panel. `days=0` significa todo el historial. */
+function listeningWhere(filter: ListeningFilter, options: { forSummary: boolean }) {
+  return {
+    ...(filter.days > 0 ? { createdAt: { gte: new Date(Date.now() - filter.days * 86_400_000) } } : {}),
+    ...(filter.courseId ? { courseId: filter.courseId } : {}),
+    // El resumen ignora estos tres: si no, filtrar la lista a "pendientes"
+    // vaciaria los indicadores de arriba, que describen el periodo entero.
+    ...(!options.forSummary && filter.status ? { status: filter.status } : {}),
+    ...(!options.forSummary && filter.type ? { type: filter.type } : {}),
+    ...(!options.forSummary && filter.topic ? { topic: filter.topic } : {}),
+    ...(!options.forSummary && filter.mood ? { mood: filter.mood } : {}),
+  };
+}
+
+app.post(
+  '/api/listening',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const parsed = createListeningSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const data = parsed.data;
+
+    const recientes = await prisma.listeningEntry.count({
+      where: { userId: req.user!.id, createdAt: { gte: new Date(Date.now() - 86_400_000) } },
+    });
+    if (recientes >= LISTENING_LIMITS.perDay) {
+      return res.status(429).json({
+        error: 'Ya nos dejaste varios mensajes hoy. Los estamos leyendo; escríbenos de nuevo mañana.',
+      });
+    }
+
+    if (data.courseId) {
+      const course = await prisma.course.findUnique({ where: { id: data.courseId }, select: { id: true } });
+      if (!course) return res.status(400).json({ error: 'El curso indicado no existe' });
+    }
+
+    const entry = await prisma.listeningEntry.create({
+      data: {
+        userId: req.user!.id,
+        courseId: data.courseId || null,
+        type: data.type,
+        topic: data.topic,
+        mood: data.mood,
+        npsScore: data.npsScore ?? null,
+        subject: data.subject,
+        message: data.message,
+        anonymous: data.anonymous,
+      },
+      include: LISTENING_INCLUDE,
+    });
+
+    res.status(201).json({
+      success: true,
+      entry: toOwnEntry(entry),
+      message: 'Recibimos tu mensaje. Una persona del equipo lo va a leer y te responderemos aquí.',
+    });
+  }),
+);
+
+app.get(
+  '/api/listening/mine',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const entries = await prisma.listeningEntry.findMany({
+      where: { userId: req.user!.id },
+      include: LISTENING_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    res.json({
+      entries: entries.map(toOwnEntry),
+      unreadReplies: entries.filter((entry) => entry.reply && !entry.replySeenAt).length,
+    });
+  }),
+);
+
+/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido. */
+app.post(
+  '/api/listening/mine/seen',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    await prisma.listeningEntry.updateMany({
+      where: { userId: req.user!.id, reply: { not: null }, replySeenAt: null },
+      data: { replySeenAt: new Date() },
+    });
+    res.json({ success: true });
+  }),
+);
+
+app.get(
+  '/api/admin/listening',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const parsed = listeningFilterSchema.safeParse(req.query);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const filter = parsed.data;
+
+    const [summaryRows, entries, courses] = await Promise.all([
+      prisma.listeningEntry.findMany({
+        where: listeningWhere(filter, { forSummary: true }),
+        select: {
+          userId: true,
+          type: true,
+          topic: true,
+          mood: true,
+          npsScore: true,
+          status: true,
+          courseId: true,
+          course: { select: { title: true } },
+          createdAt: true,
+          repliedAt: true,
+        },
+        take: 50_000,
+      }),
+      prisma.listeningEntry.findMany({
+        where: listeningWhere(filter, { forSummary: false }),
+        include: LISTENING_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        take: 300,
+      }),
+      prisma.course.findMany({ select: { id: true, title: true }, orderBy: { title: 'asc' } }),
+    ]);
+
+    res.json({
+      summary: summarizeListening(summaryRows.map((row) => ({ ...row, courseTitle: row.course?.title ?? null }))),
+      entries: entries.map(toStaffEntry),
+      courses,
+    });
+  }),
+);
+
+/** CSV con los mismos filtros que la lista, para abrirlo en Excel, Sheets o un BI. */
+app.get(
+  '/api/admin/listening/export',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const parsed = listeningFilterSchema.safeParse(req.query);
+    if (!parsed.success) return validationError(res, parsed.error);
+
+    const entries = await prisma.listeningEntry.findMany({
+      where: listeningWhere(parsed.data, { forSummary: false }),
+      include: LISTENING_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+      take: 20_000,
+    });
+    await recordAuditEvent(req, {
+      action: 'listening.export',
+      targetType: 'ListeningEntry',
+      metadata: { rows: entries.length, days: parsed.data.days },
+    });
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="buzon-escucha-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(listeningToCsv(entries.map(toStaffEntry)));
+  }),
+);
+
+/**
+ * Responder o cambiar el estado. Responder pasa el mensaje a ANSWERED salvo que
+ * se indique otro estado, y deja la respuesta como «sin leer» para su autor.
+ */
+app.patch(
+  '/api/admin/listening/:id',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const parsed = updateListeningSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+
+    const existing = await prisma.listeningEntry.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Mensaje no encontrado' });
+
+    const { status, reply } = parsed.data;
+    const updated = await prisma.listeningEntry.update({
+      where: { id: existing.id },
+      data: {
+        ...(reply !== undefined
+          ? { reply, repliedAt: new Date(), repliedById: req.user!.id, replySeenAt: null }
+          : {}),
+        status: status ?? (reply !== undefined ? 'ANSWERED' : existing.status),
+      },
+      include: LISTENING_INCLUDE,
+    });
+    await recordAuditEvent(req, {
+      action: reply !== undefined ? 'listening.reply' : 'listening.status',
+      targetType: 'ListeningEntry',
+      targetId: existing.id,
+      metadata: { status: updated.status },
+    });
+    res.json({ success: true, entry: toStaffEntry(updated) });
   }),
 );
 

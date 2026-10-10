@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -8,7 +9,7 @@ import { parseVideoSource } from '../src/lib/videoParser.js';
 import { allowSeoJsonLd } from '../server/csp.js';
 import { renderSeoLandingHtml } from '../server/seo.js';
 
-const databaseUrl = process.env.DATABASE_URL!;
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://docentos:password@localhost:5432/docentos_db?schema=public';
 const encryptionKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=';
 const childEnv = { ...process.env, DATABASE_URL: databaseUrl, DOTENV_CONFIG_PATH: '.codex-tmp/noenv', DOCENTOS_ENCRYPTION_KEY: encryptionKey, DOCENTOS_SKIP_LISTEN: '1', SEED_DEMO_DATA: 'false' };
 

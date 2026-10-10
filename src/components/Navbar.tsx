@@ -33,6 +33,7 @@ import {
   LogOut,
   KeyRound,
   Award,
+  HeartHandshake,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +51,10 @@ interface NavbarProps {
   onChangePassword?: () => void;
   onLogout?: () => void;
   onOpenVerifyModal?: () => void;
+  /** Abre el Buzón de Escucha. */
+  onOpenListening?: () => void;
+  /** Respuestas del equipo que la persona aún no ha leído. */
+  unreadListening?: number;
   /** Catálogo al que puede saltar el buscador de la barra. */
   courses?: Course[];
   onSelectCourse?: (course: Course) => void;
@@ -89,6 +94,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onChangePassword,
   onLogout,
   onOpenVerifyModal,
+  onOpenListening,
+  unreadListening = 0,
   courses = [],
   onSelectCourse,
 }) => {
@@ -419,6 +426,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
+                  {onOpenListening && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="lp-menu-item"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onOpenListening();
+                      }}
+                    >
+                      <span className="lp-menu-item-left">
+                        <HeartHandshake aria-hidden className="h-4 w-4" />
+                        Buzón de escucha
+                      </span>
+                      {unreadListening > 0 && (
+                        <span className="lp-badge-premium" title="Tienes respuestas nuevas">
+                          {unreadListening}
+                        </span>
+                      )}
+                    </button>
+                  )}
+
                   {onChangePassword && (
                     <button
                       type="button"
@@ -512,6 +541,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Award aria-hidden className="lp-tone-gold h-4 w-4" />
                 <span>Verificar diploma</span>
+              </button>
+            </li>
+          )}
+
+          {onOpenListening && (
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  onOpenListening();
+                }}
+              >
+                <HeartHandshake aria-hidden className="lp-tone-cyan h-4 w-4" />
+                <span>Buzón de escucha</span>
+                {unreadListening > 0 && <span className="lp-badge-premium">{unreadListening}</span>}
               </button>
             </li>
           )}

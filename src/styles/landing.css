@@ -15,7 +15,8 @@
    `lp-` llegan al header de la app sin ninguna variable resuelta y la barra
    queda transparente y sin tinta. */
 .lp-root,
-.lp-header {
+.lp-header,
+.lp-listening-floating-btn {
   /* Superficies. Rampa neutra de tono unico (240 grados, saturacion baja) del
      sistema de color de DocentOS: los pasos son de luminosidad, no de tinte. */
   --lp-bg-main: #07070b;
@@ -2165,53 +2166,103 @@ html:has(.lp-root) {
 }
 
 /* ==========================================================================
-   13. BOTON FLOTANTE DE SOPORTE
+   13. BOTON FLOTANTE DE BUZON DE ESCUCHA (TU VOZ CUENTA)
    ========================================================================== */
-.lp-support {
+.lp-listening-floating-btn {
   position: fixed;
   bottom: 28px;
   right: 28px;
   z-index: 999;
-  width: 58px;
-  height: 58px;
-  background: var(--lp-green);
-  border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: var(--lp-text-on-fill);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35), var(--lp-glow-green);
-  transition: transform var(--lp-fast), box-shadow var(--lp-fast);
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(13, 17, 28, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: var(--lp-r-full);
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.18);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--lp-fast), box-shadow var(--lp-fast), border-color var(--lp-fast), background var(--lp-fast);
+  user-select: none;
 }
 
-.lp-support:hover {
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6), 0 0 35px rgba(16, 185, 129, 0.5);
+.lp-listening-floating-btn:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: rgba(6, 182, 212, 0.75);
+  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.65), 0 0 28px rgba(6, 182, 212, 0.35);
+  background: rgba(18, 24, 38, 0.98);
 }
 
-.lp-support::after {
+.lp-listening-floating-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.lp-listening-floating-btn--has-unread {
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.3);
+}
+
+.lp-listening-floating-btn--has-unread::after {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid var(--lp-green);
+  inset: -3px;
+  border-radius: var(--lp-r-full);
+  border: 2px solid rgba(245, 158, 11, 0.7);
   animation: lpPulseRadar 2s infinite cubic-bezier(0.25, 0.8, 0.25, 1);
   pointer-events: none;
 }
 
-@keyframes lpPulseRadar {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.6); opacity: 0; }
+.lp-listening-floating-btn .lp-listening-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--lp-cyan);
+  flex-shrink: 0;
+  transition: transform var(--lp-fast);
 }
 
-.lp-support svg {
-  width: 28px;
-  height: 28px;
+.lp-listening-floating-btn:hover .lp-listening-icon {
+  transform: scale(1.15);
 }
 
-.lp-support-tooltip {
+.lp-listening-floating-btn .lp-listening-text {
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.lp-listening-floating-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #0b0c10;
+  background: var(--lp-gold-gradient, linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%));
+  border-radius: var(--lp-r-full, 9999px);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
+  margin-left: 2px;
+  animation: lpBadgeBounce 2s infinite ease-in-out;
+}
+
+@keyframes lpBadgeBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
+.lp-listening-floating-tooltip {
   position: absolute;
-  right: 70px;
+  bottom: calc(100% + 12px);
+  right: 0;
   background: var(--lp-bg-elevated);
   color: var(--lp-text-strong);
   padding: 8px 14px;
@@ -2223,13 +2274,13 @@ html:has(.lp-root) {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   pointer-events: none;
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateY(6px);
   transition: opacity var(--lp-fast), transform var(--lp-fast);
 }
 
-.lp-support:hover .lp-support-tooltip {
+.lp-listening-floating-btn:hover .lp-listening-floating-tooltip {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
 }
 
 /* ==========================================================================
@@ -2309,11 +2360,11 @@ html:has(.lp-root) {
   .lp-search-box {
     display: none;
   }
-  .lp-support {
+  .lp-listening-floating-btn {
     bottom: 20px;
     right: 20px;
-    width: 52px;
-    height: 52px;
+    padding: 10px 16px;
+    font-size: 0.84rem;
   }
   .lp-courses-grid,
   .lp-benefits-grid,
@@ -2364,7 +2415,8 @@ html:has(.lp-root) {
 @media (prefers-reduced-motion: reduce) {
   .lp-streak-flame,
   .lp-promo-badge,
-  .lp-support::after {
+  .lp-listening-floating-btn--has-unread::after,
+  .lp-listening-floating-badge {
     animation: none;
   }
 }

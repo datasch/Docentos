@@ -35,9 +35,25 @@ import {
   YouTubeAiJob,
   GeneratedCourseDraft,
 } from '../types';
+import type {
+  ListeningAdminFilter,
+  ListeningAdminResponse,
+  ListeningStatus,
+  ListeningSubmission,
+  OwnListeningEntry,
+  StaffListeningEntry,
+} from './listeningTypes';
 
 const fetch: typeof globalThis.fetch = (input, init) =>
   globalThis.fetch(input, { ...init, credentials: 'include' });
+
+function listeningQuery(filter: ListeningAdminFilter): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filter)) {
+    if (value !== undefined && value !== '' && value !== null) params.set(key, String(value));
+  }
+  return params.toString();
+}
 
 export type LoginResponse = {
   success: boolean;
@@ -541,6 +557,66 @@ export const api = {
   async deleteTestimonial(id: string): Promise<{ success: boolean }> {
     const res = await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Error al eliminar el testimonio');
+    return res.json();
+  },
+
+  // Buzón de Escucha
+  async submitListening(data: ListeningSubmission): Promise<{ success: boolean; entry: OwnListeningEntry; message: string }> {
+    const res = await fetch('/api/listening', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo enviar tu mensaje');
+    }
+    return res.json();
+  },
+
+  async getMyListening(): Promise<{ entries: OwnListeningEntry[]; unreadReplies: number }> {
+    const res = await fetch('/api/listening/mine');
+    if (!res.ok) throw new Error('No se pudieron cargar tus mensajes');
+    return res.json();
+  },
+
+  async markListeningRepliesSeen(): Promise<{ success: boolean }> {
+    const res = await fetch('/api/listening/mine/seen', { method: 'POST' });
+    if (!res.ok) throw new Error('No se pudo actualizar');
+    return res.json();
+  },
+
+  async getListeningAdmin(filter: ListeningAdminFilter): Promise<ListeningAdminResponse> {
+    const res = await fetch(`/api/admin/listening?${listeningQuery(filter)}`);
+    if (!res.ok) throw new Error('No se pudo cargar el buzón de escucha');
+    return res.json();
+  },
+
+  /** Descarga el CSV con los filtros activos. */
+  async downloadListeningCsv(filter: ListeningAdminFilter): Promise<void> {
+    const res = await fetch(`/api/admin/listening/export?${listeningQuery(filter)}`);
+    if (!res.ok) throw new Error('No se pudo exportar el buzón');
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `buzon-escucha-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  },
+
+  async updateListening(
+    id: string,
+    data: { status?: ListeningStatus; reply?: string },
+  ): Promise<{ success: boolean; entry: StaffListeningEntry }> {
+    const res = await fetch(`/api/admin/listening/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo guardar el cambio');
+    }
     return res.json();
   },
 

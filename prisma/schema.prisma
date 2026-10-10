@@ -78,6 +78,33 @@ enum TestimonialStatus {
   REJECTED
 }
 
+/// Que quiere decirnos la persona en el Buzon de Escucha.
+enum ListeningType {
+  SUGGESTION
+  COMPLAINT
+  PRAISE
+  QUESTION
+}
+
+/// Sobre que parte de la experiencia trata el mensaje.
+enum ListeningTopic {
+  CONTENT
+  PLATFORM
+  TEACHING
+  FEATURE
+  BUG
+  OTHER
+}
+
+/// Ciclo de vida de un mensaje del buzon: lo que ve la persona es que alguien
+/// lo leyo (IN_REVIEW) y que se le respondio (ANSWERED).
+enum ListeningStatus {
+  NEW
+  IN_REVIEW
+  ANSWERED
+  CLOSED
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -116,6 +143,8 @@ model User {
   aiJobs              AIJob[]
   oauthStates         OAuthState[]
   signedContracts     UserContractSignature[]
+  listeningEntries    ListeningEntry[]     @relation("ListeningAuthor")
+  listeningReplies    ListeningEntry[]     @relation("ListeningReplier")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -336,6 +365,7 @@ model Course {
   menteeAssignments MenteeAssignment[]
   meetings          Meeting[]
   aiJob             AIJob?
+  listeningEntries  ListeningEntry[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -591,6 +621,43 @@ model Feedback {
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Mensaje del Buzon de Escucha: una recomendacion, queja, felicitacion o duda,
+/// con dos medidas pensadas para analizarse despues:
+///  - `mood`: la carita que eligio la persona, de 1 (muy mal) a 5 (me encanta).
+///  - `npsScore`: NPS clasico, 0 a 10, opcional. 0-6 detractor, 7-8 pasivo,
+///    9-10 promotor (server/listeningService.ts).
+/// `anonymous` oculta la identidad al equipo, no a la base: la persona sigue
+/// viendo sus aportes y la respuesta, y el autor se resuelve solo en su propia
+/// consulta.
+model ListeningEntry {
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation("ListeningAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  courseId     String?
+  course       Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  type         ListeningType
+  topic        ListeningTopic
+  mood         Int
+  npsScore     Int?
+  subject      String
+  message      String
+  anonymous    Boolean         @default(false)
+  status       ListeningStatus @default(NEW)
+  reply        String?
+  repliedAt    DateTime?
+  repliedById  String?
+  repliedBy    User?           @relation("ListeningReplier", fields: [repliedById], references: [id], onDelete: SetNull)
+  /// Cuando la persona vio la respuesta. Nulo con respuesta = hay algo nuevo.
+  replySeenAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([courseId, createdAt])
 }
 
 model Meeting {

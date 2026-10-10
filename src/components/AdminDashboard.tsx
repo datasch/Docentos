@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
@@ -17,6 +17,7 @@ import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
 import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
+import { ListeningAdminPanel } from './ListeningAdminPanel';
 
 interface AdminDashboardProps {
   /**
@@ -43,7 +44,7 @@ const CURSO_VACIO: Course = {
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'contracts' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'contracts' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources' | 'listening'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [roleErrorMsg, setRoleErrorMsg] = useState('');
@@ -727,6 +728,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               }`}
           >
             <Sliders className="w-3.5 h-3.5 text-[#06b6d4]" /> Portada
+          </button>
+          <button
+            onClick={() => setActiveTab('listening')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'listening' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+          >
+            <HeartHandshake className="w-3.5 h-3.5 text-[#06b6d4]" /> Escucha
           </button>
         </div>
       </div>
@@ -1432,6 +1440,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
       {activeTab === 'landing' && (
         <LandingPageEditor onSaved={onRefreshData} />
       )}
+
+      {/* TAB: BUZÓN DE ESCUCHA (NPS, caritas y mensajes del estudiantado) */}
+      {activeTab === 'listening' && <ListeningAdminPanel />}
 
       {/* TAB: MATRÍCULAS (ENROLLMENTS) */}
       {activeTab === 'enrollments' && (
