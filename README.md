@@ -2,7 +2,7 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 0.5.0-beta.12](https://img.shields.io/badge/Version-0.5.0--beta.12-a855f7.svg)
+![Version: 0.5.0-beta.13](https://img.shields.io/badge/Version-0.5.0--beta.13-a855f7.svg)
 ![Status: Beta](https://img.shields.io/badge/Status-Beta-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
@@ -131,7 +131,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v0.5.0-beta.12.
+* **Versión actual:** v0.5.0-beta.13.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -167,7 +167,7 @@ export DOCENTOS_ENV=development SEED_DEMO_DATA=true
 
 npx prisma migrate deploy
 npx tsx prisma/seed.ts   # obligatorio: las pruebas usan los datos de demostración
-npm test                 # 190 pruebas: negocio, sesiones, seguridad, importación desde Drive,
+npm test                 # negocio, sesiones, seguridad, importación desde Drive,
                          # exámenes por módulo y navegación del alumno
 
 docker stop docentos_test_db
@@ -182,8 +182,8 @@ Container Registry); no hace falta compilar en el servidor.
 
 | Workflow | Cuándo se dispara | Qué hace |
 |---|---|---|
-| `.github/workflows/ci.yml` | `push` y `pull_request` a `main` | Tipado, migraciones sobre PostgreSQL real, las 190 pruebas, auditoría de dependencias, compilación de la imagen y escaneo Trivy. Al integrar en `main` publica además `:edge`. |
-| `.github/workflows/release.yml` | `push` de una etiqueta `v*` | Imagen multi-arquitectura (amd64 y arm64) con SBOM y procedencia, firmada con Cosign, más el GitHub Release. |
+| `.github/workflows/ci.yml` | `push` y `pull_request` a `main` | Tipado, migraciones sobre PostgreSQL real, suite de pruebas, auditoría de dependencias, compilación de la imagen y escaneo Trivy. Al integrar en `main` publica además `:edge`. |
+| `.github/workflows/release.yml` | `push` de una etiqueta `v*` | Imágenes de aplicación y respaldo para amd64 con SBOM y procedencia, firmadas con Cosign, más el GitHub Release. |
 
 Dos etiquetas móviles con significados distintos: **`edge`** es el último `main`
 verificado y **`latest`** solo aparece en versiones estables, nunca en `alpha`,
@@ -191,11 +191,11 @@ verificado y **`latest`** solo aparece en versiones estables, nunca en `alpha`,
 en lugar de un nombre móvil.
 
 ```bash
-# Última versión publicada
-docker pull ghcr.io/datasch/docentos:0.5.0-beta.12
+# Después de publicar la etiqueta y de que Release termine en verde
+docker pull ghcr.io/datasch/docentos:0.5.0-beta.13
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/datasch/docentos:0.5.0-beta.12 \
+cosign verify ghcr.io/datasch/docentos:0.5.0-beta.13 \
   --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -203,7 +203,8 @@ cosign verify ghcr.io/datasch/docentos:0.5.0-beta.12 \
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.12 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.13 \
+DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:0.5.0-beta.13 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -228,19 +229,34 @@ DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.12 \
 
 ### Publicar una versión
 
+Confirma el número con el equipo antes de crear la etiqueta. Las etiquetas
+publicadas no se mueven ni se reutilizan: se publica una versión nueva.
+La imagen con número de versión se crea al publicar la etiqueta `v*`; un push
+a `main` ejecuta CI y puede publicar `edge`. Ambos flujos pueden avisar a
+Coolify si está configurado `COOLIFY_WEBHOOK_URL`.
+
 ```bash
 npm run verify                       # versión consistente, tipado y compilación
-git tag -a v0.5.0-beta.12 -m "DocentOS 0.5.0-beta.12"
-git push datasch v0.5.0-beta.12    # el remoto de este repositorio
+npm test
+./scripts/verificar-diseno.sh HEAD    # verificador local, si está instalado
+git commit -m "chore(release): 0.5.0-beta.13"
+git push datasch main
+git tag -a v0.5.0-beta.13 -m "DocentOS 0.5.0-beta.13"
+git push datasch v0.5.0-beta.13    # el remoto de este repositorio
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,
 así que una etiqueta nunca publica una imagen que se anuncia con otra versión.
 
-> **Pendiente antes de volver a etiquetar.** `release.yml` construye hoy amd64 y
-> arm64 en la misma máquina Intel, emulando ARM con QEMU. La emulación es tan
-> lenta con las dependencias nativas de este proyecto que el trabajo agota su
-> límite de tiempo sin llegar a publicar nada. Ver
+Espera a que **Release termine en verde** antes de configurar las imágenes de
+aplicación y respaldo. En Coolify se actualizan `DOCENTOS_IMAGE` y
+`DOCENTOS_BACKUP_IMAGE` y se pulsa **Restart (pull latest)**.
+
+> **0.5.0-beta.13 migra el esquema:** añade el buzón de escucha y las firmas de
+> contratos. Haz backup antes de desplegar. Las migraciones se aplican al arrancar.
+>
+> La publicación usa actualmente `linux/amd64`. Recuperar `arm64` sobre runners
+> ARM nativos sigue pendiente; véase
 > [Publicación multi-arquitectura](docs/DEPLOYMENT.md#publicación-multi-arquitectura-pendiente).
 
 ## 📄 Licencia & Atribución

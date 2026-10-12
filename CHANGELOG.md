@@ -14,6 +14,39 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.13 - 2026-10-12
+
+**Esta versión migra el esquema de la base de datos (2 migraciones aditivas).**
+Añade el buzón de escucha y el registro de firmas de contratos. El contenedor
+aplica las migraciones al arrancar; haz backup antes de desplegar. No elimina
+registros existentes ni añade variables obligatorias.
+
+### Added
+
+- Buzón de escucha para enviar sugerencias, quejas, felicitaciones y dudas,
+  con valoración de la experiencia, NPS opcional y envío anónimo al equipo.
+  Cada persona puede consultar sus aportes y las respuestas recibidas.
+- Panel de escucha para administración con respuestas, filtros, indicadores
+  de satisfacción y exportación a CSV.
+- Aceptación del contrato y las políticas al ingresar, con registro de la
+  firma, fechas de vigencia y consulta de evidencias en administración.
+- Revocación de acceso desde la integración de pagos al vencer una
+  suscripción, con registro de auditoría y opción de retirar el rol VIP.
+
+### Changed
+
+- El botón flotante abre el buzón de escucha y avisa de respuestas nuevas.
+- El icono de la pestaña usa el isotipo con trazos más finos.
+- Se actualizan dependencias transitivas para corregir avisos de seguridad.
+
+### Fixed
+
+- Se completan las migraciones para que la firma de contratos funcione al
+  actualizar una instalación existente o instalar desde cero.
+- Se corrigen los permisos de los reproductores de Drive y la referencia al
+  favicon para evitar errores de consola.
+- Las pantallas nuevas respetan los colores y la tipografía del proyecto.
+
 ## 0.5.0-beta.12 - 2026-09-29
 
 Correccion urgente de la 0.5.0-beta.11. Sin migraciones ni variables nuevas.
