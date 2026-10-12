@@ -2177,13 +2177,13 @@ html:has(.lp-root) {
   align-items: center;
   gap: 10px;
   padding: 12px 20px;
-  background: rgba(13, 17, 28, 0.94);
+  background: color-mix(in srgb, var(--color-card) 94%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: #ffffff;
-  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: var(--color-ink);
+  border: 1px solid color-mix(in srgb, var(--color-brand-cyan) 40%, transparent);
   border-radius: var(--lp-r-full);
-  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.18);
+  box-shadow: 0 10px 25px -4px color-mix(in srgb, var(--color-canvas) 50%, transparent), 0 0 20px color-mix(in srgb, var(--color-brand-cyan) 18%, transparent);
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
@@ -2195,9 +2195,9 @@ html:has(.lp-root) {
 
 .lp-listening-floating-btn:hover {
   transform: translateY(-2px) scale(1.03);
-  border-color: rgba(6, 182, 212, 0.75);
-  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.65), 0 0 28px rgba(6, 182, 212, 0.35);
-  background: rgba(18, 24, 38, 0.98);
+  border-color: color-mix(in srgb, var(--color-brand-cyan) 75%, transparent);
+  box-shadow: 0 14px 32px -4px color-mix(in srgb, var(--color-canvas) 65%, transparent), 0 0 28px color-mix(in srgb, var(--color-brand-cyan) 35%, transparent);
+  background: color-mix(in srgb, var(--color-raised) 98%, transparent);
 }
 
 .lp-listening-floating-btn:active {
@@ -2205,8 +2205,8 @@ html:has(.lp-root) {
 }
 
 .lp-listening-floating-btn--has-unread {
-  border-color: rgba(245, 158, 11, 0.6);
-  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.3);
+  border-color: color-mix(in srgb, var(--color-warning) 60%, transparent);
+  box-shadow: 0 10px 25px -4px color-mix(in srgb, var(--color-canvas) 50%, transparent), 0 0 24px color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 
 .lp-listening-floating-btn--has-unread::after {
@@ -2214,7 +2214,7 @@ html:has(.lp-root) {
   position: absolute;
   inset: -3px;
   border-radius: var(--lp-r-full);
-  border: 2px solid rgba(245, 158, 11, 0.7);
+  border: 2px solid color-mix(in srgb, var(--color-warning) 70%, transparent);
   animation: lpPulseRadar 2s infinite cubic-bezier(0.25, 0.8, 0.25, 1);
   pointer-events: none;
 }
@@ -2246,10 +2246,10 @@ html:has(.lp-root) {
   font-size: 0.75rem;
   font-weight: 800;
   line-height: 1;
-  color: #0b0c10;
-  background: var(--lp-gold-gradient, linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%));
+  color: var(--color-canvas);
+  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-light) 100%);
   border-radius: var(--lp-r-full, 9999px);
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.7);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--color-warning) 70%, transparent);
   margin-left: 2px;
   animation: lpBadgeBounce 2s infinite ease-in-out;
 }

@@ -689,10 +689,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
           </button>
           <button
             onClick={() => setActiveTab('contracts')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'contracts' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'contracts' ? 'btn-brand-primary' : 'text-ink-muted hover:text-ink'
               }`}
           >
-            <FileCheck className="w-3.5 h-3.5 text-blue-400" /> Contratos
+            <FileCheck className="w-3.5 h-3.5 text-brand-blue" /> Contratos
           </button>
           <button
             onClick={() => setActiveTab('resources')}
@@ -731,10 +731,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
           </button>
           <button
             onClick={() => setActiveTab('listening')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'listening' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'listening' ? 'bg-brand-gradient text-ink shadow-md' : 'text-ink-muted hover:text-ink'
               }`}
           >
-            <HeartHandshake className="w-3.5 h-3.5 text-[#06b6d4]" /> Escucha
+            <HeartHandshake className="w-3.5 h-3.5 text-brand-cyan" /> Escucha
           </button>
         </div>
       </div>
@@ -1848,55 +1848,56 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
       {/* Contracts & Legal Compliance Audit Tab */}
       {activeTab === 'contracts' && (
         <div className="space-y-6">
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl">
+          <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <FileCheck className="w-5 h-5 text-blue-400" />
+                <h3 className="text-lg font-bold text-ink flex items-center gap-2">
+                  <FileCheck aria-hidden="true" className="w-5 h-5 text-brand-blue" />
                   Auditoría de Contratos y Consentimientos Legales
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-ink-muted mt-1">
                   Evidencia forense inmutable de términos, fechas de vigencia y custodia de datos por usuario.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <Search aria-hidden="true" className="w-4 h-4 text-ink-muted absolute left-3 top-2.5" />
                   <input
                     type="text"
                     placeholder="Buscar por alumno o IP..."
+                    aria-label="Buscar firmas por alumno o IP"
                     value={contractSearch}
                     onChange={(e) => {
                       setContractSearch(e.target.value);
                       loadContracts(e.target.value);
                     }}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-surface border border-line text-ink text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-brand-blue"
                   />
                 </div>
                 <button
                   onClick={() => loadContracts(contractSearch)}
-                  className="p-2 bg-[#0a0a0f] border border-[#2d2d44] hover:border-slate-500 text-slate-300 rounded-xl transition-colors shrink-0"
+                  className="p-2 bg-surface border border-line hover:border-line-strong text-ink-soft rounded-xl transition-colors shrink-0"
                   title="Recargar firmas"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loadingContracts ? 'animate-spin text-blue-400' : ''}`} />
+                  <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loadingContracts ? 'animate-spin text-brand-blue' : ''}`} />
                 </button>
               </div>
             </div>
 
             {loadingContracts ? (
-              <div className="py-16 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+              <div className="py-16 text-center text-ink-faint flex flex-col items-center justify-center gap-2">
+                <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin text-brand-blue" />
                 <span className="text-xs">Consultando evidencias en base de datos...</span>
               </div>
             ) : contractSignatures.length === 0 ? (
-              <div className="py-16 text-center text-slate-500 text-xs bg-[#0a0a0f]/50 border border-dashed border-[#2d2d44] rounded-xl">
+              <div className="py-16 text-center text-ink-faint text-xs bg-surface/50 border border-dashed border-line rounded-xl">
                 No se encontraron firmas de contratos registradas.
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-[#2d2d44]">
+                <table className="w-full text-left text-xs text-ink-soft">
+                  <thead className="bg-surface text-ink-muted uppercase font-semibold text-micro tracking-wider border-b border-line">
                     <tr>
                       <th className="p-3">Alumno</th>
                       <th className="p-3">Fecha Firma</th>
@@ -1907,23 +1908,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                       <th className="p-3 text-right">Evidencia</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#2d2d44]">
+                  <tbody className="divide-y divide-line">
                     {contractSignatures.map((sig) => (
-                      <tr key={sig.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                      <tr key={sig.id} className="hover:bg-elevated/50 transition-colors">
                         <td className="p-3">
                           <div className="flex items-center gap-2.5">
                             <img
                               src={avatarSrc(sig.userAvatarUrl)}
                               alt=""
-                              className="w-7 h-7 rounded-full bg-slate-800 object-cover shrink-0"
+                              className="w-7 h-7 rounded-full bg-raised object-cover shrink-0"
                             />
                             <div>
-                              <div className="font-semibold text-white">{sig.userName}</div>
-                              <div className="text-[11px] text-slate-500 font-mono">{sig.userEmail}</div>
+                              <div className="font-semibold text-ink">{sig.userName}</div>
+                              <div className="text-[11px] text-ink-faint font-mono">{sig.userEmail}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 font-mono text-slate-400 text-[11px]">
+                        <td className="p-3 font-mono text-ink-muted text-[11px]">
                           {new Date(sig.signedAt).toLocaleDateString('es-ES', {
                             day: '2-digit',
                             month: 'short',
@@ -1931,43 +1932,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
                           })}
                         </td>
                         <td className="p-3 text-[11px]">
-                          <span className="text-slate-200">
+                          <span className="text-ink-soft">
                             {new Date(sig.startDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
                           </span>
                           {' → '}
-                          <span className="text-slate-400 font-medium">
+                          <span className="text-ink-muted font-medium">
                             {new Date(sig.endDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
                           </span>
                         </td>
-                        <td className="p-3 text-[11px] text-purple-300">
+                        <td className="p-3 text-[11px] text-brand-violet-light">
                           {new Date(sig.dataRetentionUntil).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
                         </td>
-                        <td className="p-3 font-mono text-[11px] text-slate-400">
+                        <td className="p-3 font-mono text-[11px] text-ink-muted">
                           {sig.ipAddress}
                         </td>
                         <td className="p-3">
                           {sig.status === 'VIGENTE' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              <CheckCircle2 className="w-3 h-3" /> Vigente
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-success/10 text-success-light border border-success/20">
+                              <CheckCircle2 aria-hidden="true" className="w-3 h-3" /> Vigente
                             </span>
                           )}
                           {sig.status === 'POR_VENCER' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                              <AlertTriangle className="w-3 h-3" /> Por Vencer
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-warning/10 text-warning-light border border-warning/20">
+                              <AlertTriangle aria-hidden="true" className="w-3 h-3" /> Por Vencer
                             </span>
                           )}
                           {sig.status === 'EXPIRADO' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                              <XCircle className="w-3 h-3" /> Expirado
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-danger/10 text-danger-light border border-danger/20">
+                              <XCircle aria-hidden="true" className="w-3 h-3" /> Expirado
                             </span>
                           )}
                         </td>
                         <td className="p-3 text-right">
                           <button
                             onClick={() => setSelectedAuditSignature(sig)}
-                            className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-colors inline-flex items-center gap-1 text-[11px] font-medium"
+                            className="p-1.5 rounded-lg bg-brand-blue/10 hover:bg-brand-blue/20 text-brand-blue border border-brand-blue/20 transition-colors inline-flex items-center gap-1 text-[11px] font-medium"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye aria-hidden="true" className="w-3.5 h-3.5" />
                             <span>Ver Acta</span>
                           </button>
                         </td>
@@ -1983,48 +1984,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
 
       {/* Modal de Detalle y Acta Forense de Firma */}
       {selectedAuditSignature && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 text-xs text-slate-300 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div role="dialog" aria-modal="true" aria-labelledby="contract-audit-title" className="bg-surface border border-line-strong/80 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 text-xs text-ink-soft space-y-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-blue-400" />
-                <h3 className="text-base font-bold text-white">Acta Digital de Firma y Consentimiento</h3>
+                <FileCheck aria-hidden="true" className="w-5 h-5 text-brand-blue" />
+                <h3 id="contract-audit-title" className="text-base font-bold text-ink">Acta Digital de Firma y Consentimiento</h3>
               </div>
               <button
                 onClick={() => setSelectedAuditSignature(null)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                aria-label="Cerrar acta"
+                className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2 bg-[#0a0a0f] p-4 rounded-xl border border-slate-800 font-mono text-[11px]">
-              <div><strong className="text-slate-400">ID Registro:</strong> {selectedAuditSignature.id}</div>
-              <div><strong className="text-slate-400">Titular:</strong> {selectedAuditSignature.userName} ({selectedAuditSignature.userEmail})</div>
-              <div><strong className="text-slate-400">Fecha y Hora UTC:</strong> {new Date(selectedAuditSignature.signedAt).toISOString()}</div>
-              <div><strong className="text-slate-400">IP de Firma:</strong> {selectedAuditSignature.ipAddress}</div>
-              <div><strong className="text-slate-400">SHA-256 Hash:</strong> <span className="text-blue-400 break-all">{selectedAuditSignature.contractHash}</span></div>
-              <div className="pt-2 border-t border-slate-800/60 text-slate-400 break-all text-[10px]">
+            <div className="space-y-2 bg-surface p-4 rounded-xl border border-line font-mono text-[11px]">
+              <div><strong className="text-ink-muted">ID Registro:</strong> {selectedAuditSignature.id}</div>
+              <div><strong className="text-ink-muted">Titular:</strong> {selectedAuditSignature.userName} ({selectedAuditSignature.userEmail})</div>
+              <div><strong className="text-ink-muted">Fecha y Hora UTC:</strong> {new Date(selectedAuditSignature.signedAt).toISOString()}</div>
+              <div><strong className="text-ink-muted">IP de Firma:</strong> {selectedAuditSignature.ipAddress}</div>
+              <div><strong className="text-ink-muted">SHA-256 Hash:</strong> <span className="text-brand-blue break-all">{selectedAuditSignature.contractHash}</span></div>
+              <div className="pt-2 border-t border-line/60 text-ink-muted break-all text-micro">
                 <strong>User-Agent:</strong> {selectedAuditSignature.userAgent}
               </div>
             </div>
 
-            <div className="space-y-1 text-slate-300 text-[11px]">
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <Check className="w-3.5 h-3.5" /> Términos y Condiciones Generales Aceptados
+            <div className="space-y-1 text-ink-soft text-[11px]">
+              <div className="flex items-center gap-1.5 text-success-light">
+                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Términos y Condiciones Generales Aceptados
               </div>
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <Check className="w-3.5 h-3.5" /> Política de Privacidad Aceptada
+              <div className="flex items-center gap-1.5 text-success-light">
+                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Política de Privacidad Aceptada
               </div>
-              <div className="flex items-center gap-1.5 text-emerald-400">
-                <Check className="w-3.5 h-3.5" /> Custodia de Datos Personales y Progreso (24 meses)
+              <div className="flex items-center gap-1.5 text-success-light">
+                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Custodia de Datos Personales y Progreso (24 meses)
               </div>
             </div>
 
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setSelectedAuditSignature(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors"
+                className="px-4 py-2 bg-raised hover:bg-elevated text-ink font-medium rounded-xl transition-colors"
               >
                 Cerrar Acta
               </button>
@@ -2036,5 +2038,4 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     </div>
   );
 };
-
 

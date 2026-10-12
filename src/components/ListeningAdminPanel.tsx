@@ -35,7 +35,7 @@ const PERIODS = [
 ];
 
 const selectClass =
-  'rounded-lg border border-line bg-black/50 px-3 py-2 text-xs text-white outline-none focus:border-brand-cyan';
+  'rounded-lg border border-line bg-canvas/50 px-3 py-2 text-xs text-ink outline-none focus:border-brand-cyan';
 
 function moodFace(avg: number | null) {
   if (avg === null) return null;
@@ -44,24 +44,24 @@ function moodFace(avg: number | null) {
 
 function npsVerdict(score: number | null): { label: string; tone: string } {
   if (score === null) return { label: 'Sin respuestas todavía', tone: 'text-ink-muted' };
-  if (score >= 50) return { label: 'Excelente', tone: 'text-emerald-300' };
-  if (score >= 30) return { label: 'Bueno', tone: 'text-lime-300' };
-  if (score >= 0) return { label: 'Por mejorar', tone: 'text-amber-300' };
-  return { label: 'Crítico', tone: 'text-red-400' };
+  if (score >= 50) return { label: 'Excelente', tone: 'text-success-light' };
+  if (score >= 30) return { label: 'Bueno', tone: 'text-success-light' };
+  if (score >= 0) return { label: 'Por mejorar', tone: 'text-warning-light' };
+  return { label: 'Crítico', tone: 'text-danger-light' };
 }
 
 function moodTone(avg: number | null): string {
   if (avg === null) return 'text-ink-muted';
-  if (avg >= 4) return 'text-emerald-300';
-  if (avg >= 3) return 'text-amber-300';
-  return 'text-red-400';
+  if (avg >= 4) return 'text-success-light';
+  if (avg >= 3) return 'text-warning-light';
+  return 'text-danger-light';
 }
 
 const STATUS_TONE: Record<ListeningStatus, string> = {
   NEW: 'border-brand-cyan/40 bg-brand-cyan/10 text-brand-cyan',
-  IN_REVIEW: 'border-amber-400/40 bg-amber-400/10 text-amber-200',
-  ANSWERED: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300',
-  CLOSED: 'border-slate-500/40 bg-slate-500/10 text-slate-400',
+  IN_REVIEW: 'border-warning-light/40 bg-warning-light/10 text-warning-light',
+  ANSWERED: 'border-success-light/40 bg-success-light/10 text-success-light',
+  CLOSED: 'border-line-strong/40 bg-elevated/10 text-ink-muted',
 };
 
 function formatHours(hours: number | null): string {
@@ -103,7 +103,7 @@ const BarRow: React.FC<{ label: string; count: number; max: number; avgMood: num
         {extra}
       </span>
     </div>
-    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink/10">
       <div className="h-full rounded-full bg-brand-cyan" style={{ width: `${max ? (count / max) * 100 : 0}%` }} />
     </div>
   </li>
@@ -181,7 +181,7 @@ export const ListeningAdminPanel: React.FC = () => {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-extrabold text-white">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
             <HeartHandshake aria-hidden className="h-5 w-5 text-brand-cyan" />
             Buzón de Escucha
           </h2>
@@ -209,7 +209,7 @@ export const ListeningAdminPanel: React.FC = () => {
               aria-pressed={filter.days === period.days}
               onClick={() => setFilter((current) => ({ ...current, days: period.days }))}
               className={`rounded-md px-3 py-1.5 text-xs font-bold ${
-                filter.days === period.days ? 'bg-brand-cyan text-black' : 'text-ink-muted hover:text-white'
+                filter.days === period.days ? 'bg-brand-cyan text-canvas' : 'text-ink-muted hover:text-ink'
               }`}
             >
               {period.label}
@@ -287,7 +287,7 @@ export const ListeningAdminPanel: React.FC = () => {
       </div>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+        <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-3 text-xs text-danger-light">
           {error}
         </div>
       )}
@@ -299,20 +299,20 @@ export const ListeningAdminPanel: React.FC = () => {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <Card title="NPS">
               <p className="flex items-baseline gap-2">
-                <span className={`text-4xl font-black tabular-nums ${verdict.tone}`}>
+                <span className={`text-4xl font-bold tabular-nums ${verdict.tone}`}>
                   {summary.nps.score === null ? '—' : summary.nps.score}
                 </span>
                 <span className={`text-xs font-bold ${verdict.tone}`}>{verdict.label}</span>
               </p>
-              <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10" aria-hidden>
-                <div className="bg-emerald-400" style={{ width: `${pct(summary.nps.promoters, npsTotal)}%` }} />
-                <div className="bg-amber-400" style={{ width: `${pct(summary.nps.passives, npsTotal)}%` }} />
-                <div className="bg-red-500" style={{ width: `${pct(summary.nps.detractors, npsTotal)}%` }} />
+              <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-ink/10" aria-hidden>
+                <div className="bg-success-light" style={{ width: `${pct(summary.nps.promoters, npsTotal)}%` }} />
+                <div className="bg-warning-light" style={{ width: `${pct(summary.nps.passives, npsTotal)}%` }} />
+                <div className="bg-danger" style={{ width: `${pct(summary.nps.detractors, npsTotal)}%` }} />
               </div>
               <p className="mt-2 text-[11px] text-ink-muted">
-                <span className="text-emerald-300">{summary.nps.promoters} promotores</span> ·{' '}
-                <span className="text-amber-300">{summary.nps.passives} pasivos</span> ·{' '}
-                <span className="text-red-400">{summary.nps.detractors} detractores</span>
+                <span className="text-success-light">{summary.nps.promoters} promotores</span> ·{' '}
+                <span className="text-warning-light">{summary.nps.passives} pasivos</span> ·{' '}
+                <span className="text-danger-light">{summary.nps.detractors} detractores</span>
                 <br />
                 {npsTotal} {npsTotal === 1 ? 'persona respondió' : 'personas respondieron'} (escala de −100 a 100)
               </p>
@@ -323,14 +323,14 @@ export const ListeningAdminPanel: React.FC = () => {
                 <span aria-hidden className="text-4xl leading-none">
                   {avgFace?.emoji ?? '—'}
                 </span>
-                <span className={`text-4xl font-black tabular-nums ${moodTone(summary.avgMood)}`}>
+                <span className={`text-4xl font-bold tabular-nums ${moodTone(summary.avgMood)}`}>
                   {summary.avgMood === null ? '—' : summary.avgMood.toFixed(1)}
                 </span>
               </p>
-              <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10" aria-hidden>
-                <div className="bg-emerald-400" style={{ width: `${pct(summary.sentiment.positive, summary.total)}%` }} />
-                <div className="bg-amber-400" style={{ width: `${pct(summary.sentiment.neutral, summary.total)}%` }} />
-                <div className="bg-red-500" style={{ width: `${pct(summary.sentiment.negative, summary.total)}%` }} />
+              <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-ink/10" aria-hidden>
+                <div className="bg-success-light" style={{ width: `${pct(summary.sentiment.positive, summary.total)}%` }} />
+                <div className="bg-warning-light" style={{ width: `${pct(summary.sentiment.neutral, summary.total)}%` }} />
+                <div className="bg-danger" style={{ width: `${pct(summary.sentiment.negative, summary.total)}%` }} />
               </div>
               <p className="mt-2 text-[11px] text-ink-muted">
                 {summary.sentiment.positive} positivos · {summary.sentiment.neutral} neutros · {summary.sentiment.negative} negativos
@@ -338,16 +338,16 @@ export const ListeningAdminPanel: React.FC = () => {
             </Card>
 
             <Card title="Mensajes">
-              <p className="text-4xl font-black tabular-nums text-white">{summary.total}</p>
+              <p className="text-4xl font-bold tabular-nums text-ink">{summary.total}</p>
               <p className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-muted">
                 <Inbox aria-hidden className="h-3.5 w-3.5" />
-                <span className={summary.pending > 0 ? 'font-bold text-amber-300' : ''}>{summary.pending} por responder</span>
+                <span className={summary.pending > 0 ? 'font-bold text-warning-light' : ''}>{summary.pending} por responder</span>
                 · {summary.answered} atendidos
               </p>
             </Card>
 
             <Card title="Tiempo medio de respuesta">
-              <p className="text-4xl font-black tabular-nums text-white">{formatHours(summary.avgResponseHours)}</p>
+              <p className="text-4xl font-bold tabular-nums text-ink">{formatHours(summary.avgResponseHours)}</p>
               <p className="mt-3 text-[11px] text-ink-muted">Desde que llega el mensaje hasta la primera respuesta del equipo.</p>
             </Card>
           </div>
@@ -365,9 +365,9 @@ export const ListeningAdminPanel: React.FC = () => {
                       <span className="w-20 shrink-0 text-ink-soft">
                         {mood.value} · {mood.label}
                       </span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink/10">
                         <div
-                          className={`h-full rounded-full ${mood.value >= 4 ? 'bg-emerald-400' : mood.value === 3 ? 'bg-amber-400' : 'bg-red-500'}`}
+                          className={`h-full rounded-full ${mood.value >= 4 ? 'bg-success-light' : mood.value === 3 ? 'bg-warning-light' : 'bg-danger'}`}
                           style={{ width: `${(count / maxMood) * 100}%` }}
                         />
                       </div>
@@ -436,7 +436,7 @@ export const ListeningAdminPanel: React.FC = () => {
                     >
                       <div
                         className={`w-full rounded-t ${
-                          (week.avgMood ?? 0) >= 4 ? 'bg-emerald-400' : (week.avgMood ?? 0) >= 3 ? 'bg-amber-400' : 'bg-red-500'
+                          (week.avgMood ?? 0) >= 4 ? 'bg-success-light' : (week.avgMood ?? 0) >= 3 ? 'bg-warning-light' : 'bg-danger'
                         }`}
                         style={{ height: `${Math.max(6, (week.count / maxWeek) * 100)}%` }}
                       />
@@ -444,14 +444,14 @@ export const ListeningAdminPanel: React.FC = () => {
                   ))}
                 </div>
               )}
-              <p className="mt-2 text-[10px] text-ink-faint">Altura: mensajes. Color: ánimo medio de la semana.</p>
+              <p className="mt-2 text-micro text-ink-faint">Altura: mensajes. Color: ánimo medio de la semana.</p>
             </Card>
           </div>
         </>
       )}
 
       <section aria-label="Mensajes recibidos" className="space-y-3">
-        <h3 className="text-sm font-bold text-white">Mensajes ({data?.entries.length ?? 0})</h3>
+        <h3 className="text-sm font-bold text-ink">Mensajes ({data?.entries.length ?? 0})</h3>
 
         {data && data.entries.length === 0 && (
           <p className="rounded-2xl border border-dashed border-line p-6 text-center text-xs text-ink-muted">
@@ -468,17 +468,17 @@ export const ListeningAdminPanel: React.FC = () => {
                   {face?.emoji}
                 </span>
                 <span className="font-bold tabular-nums text-ink-soft">{entry.mood}/5</span>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 font-bold text-ink-soft">{LISTENING_TYPE_LABELS[entry.type]}</span>
+                <span className="rounded-full bg-ink/10 px-2 py-0.5 font-bold text-ink-soft">{LISTENING_TYPE_LABELS[entry.type]}</span>
                 <span className="text-ink-muted">{LISTENING_TOPIC_LABELS[entry.topic]}</span>
                 {entry.courseTitle && <span className="text-ink-faint">· {entry.courseTitle}</span>}
                 {entry.npsScore !== null && (
                   <span
                     className={`rounded-full border px-2 py-0.5 font-bold ${
                       entry.npsGroup === 'PROMOTER'
-                        ? 'border-emerald-400/40 text-emerald-300'
+                        ? 'border-success-light/40 text-success-light'
                         : entry.npsGroup === 'PASSIVE'
-                          ? 'border-amber-400/40 text-amber-200'
-                          : 'border-red-500/40 text-red-300'
+                          ? 'border-warning-light/40 text-warning-light'
+                          : 'border-danger/40 text-danger-light'
                     }`}
                   >
                     NPS {entry.npsScore}
@@ -489,9 +489,9 @@ export const ListeningAdminPanel: React.FC = () => {
                 </span>
               </div>
 
-              <h4 className="mt-2 text-sm font-bold text-white">{entry.subject}</h4>
+              <h4 className="mt-2 text-sm font-bold text-ink">{entry.subject}</h4>
               <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{entry.message}</p>
-              <p className="mt-2 flex items-center gap-1.5 text-[10px] text-ink-faint">
+              <p className="mt-2 flex items-center gap-1.5 text-micro text-ink-faint">
                 {entry.anonymous ? (
                   <>
                     <UserX aria-hidden className="h-3 w-3" /> Anónimo
@@ -508,18 +508,19 @@ export const ListeningAdminPanel: React.FC = () => {
                     Respondido{entry.repliedBy ? ` por ${entry.repliedBy}` : ''}
                     {entry.repliedAt && ` · ${new Date(entry.repliedAt).toLocaleString('es')}`}
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-xs text-white">{entry.reply}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{entry.reply}</p>
                 </div>
               )}
 
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
                 <textarea
+                  aria-label={`Respuesta a: ${entry.subject}`}
                   rows={2}
                   maxLength={2000}
                   value={drafts[entry.id] || ''}
                   onChange={(event) => setDrafts((current) => ({ ...current, [entry.id]: event.target.value }))}
                   placeholder={entry.reply ? 'Escribe una nueva respuesta...' : 'Responde a esta persona...'}
-                  className="w-full flex-1 rounded-xl border border-line bg-black/50 px-3 py-2 text-xs text-white outline-none placeholder:text-ink-faint focus:border-brand-cyan"
+                  className="w-full flex-1 rounded-xl border border-line bg-canvas/50 px-3 py-2 text-xs text-ink outline-none placeholder:text-ink-faint focus:border-brand-cyan"
                 />
                 <div className="flex shrink-0 gap-2">
                   <button

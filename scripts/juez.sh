@@ -46,13 +46,17 @@ correr() { # correr <etiqueta> <cmd...> ; deja la salida en $SALIDA y el estado 
 [ -d node_modules ] || { fila "dependencias" "◌ NO CORRIÓ" "no hay node_modules"; HUECOS=$((HUECOS+1)); }
 
 # --- Base desechable ---------------------------------------------------------
-CONTENEDOR=giantucchi-api-pruebas
+CONTENEDOR="${DOCENTOS_TEST_CONTAINER:-giantucchi-api-pruebas}"
+PUERTO="${DOCENTOS_TEST_PORT:-55432}"
 DB="docentos_juez_$(date +%s)_$$"
-URL="postgresql://pruebas:pruebas@127.0.0.1:55432/$DB"
+if ! [[ "$PUERTO" =~ ^[0-9]+$ ]] || [ "$PUERTO" -le 1024 ] || [ "$PUERTO" -gt 65535 ] || [ "$PUERTO" -eq 5432 ]; then
+  echo "Juez: puerto de pruebas inválido o prohibido"; exit 1
+fi
+URL="postgresql://pruebas:pruebas@127.0.0.1:$PUERTO/$DB"
 case "$URL" in *:5432/*|*docentos_db*) echo "Juez: URL de base prohibida"; exit 1 ;; esac
 if docker exec "$CONTENEDOR" psql -U pruebas -d postgres -qc "CREATE DATABASE $DB" >/dev/null 2>&1; then
   trap 'docker exec "$CONTENEDOR" psql -U pruebas -d postgres -qc "DROP DATABASE IF EXISTS $DB WITH (FORCE)" >/dev/null 2>&1' EXIT
-  fila "base desechable" "✓" "$DB en :55432"
+  fila "base desechable" "✓" "$DB en :$PUERTO"
 else
   fila "base desechable" "◌ NO CORRIÓ" "no pude crear $DB en $CONTENEDOR"; HUECOS=$((HUECOS+1)); DB=""
 fi
@@ -71,6 +75,11 @@ if [ -n "$DB" ]; then
   correr "migrate deploy" npx prisma migrate deploy
   [ "$ESTADO" -eq 0 ] && fila "migraciones" "✓" "$(printf '%s' "$SALIDA" | grep -c 'Applying\|applied' ) aplicadas" \
     || { fila "migraciones" "✗ ROJO" "$(printf '%s' "$SALIDA" | tail -3 | tr '\n' ' ')"; ROJOS=$((ROJOS+1)); }
+  # La suite necesita los mismos datos de prueba que CI. Se cargan únicamente
+  # en la base desechable creada arriba, nunca en una instalación existente.
+  correr "datos de pruebas" env SEED_DEMO_DATA=true npx tsx prisma/seed.ts
+  [ "$ESTADO" -eq 0 ] && fila "datos de pruebas" "✓" "" \
+    || { fila "datos de pruebas" "✗ ROJO" "no se pudieron cargar"; ROJOS=$((ROJOS+1)); }
 fi
 
 correr "tsc" npx tsc --noEmit
@@ -79,7 +88,7 @@ correr "tsc" npx tsc --noEmit
 # --- Suite ENTERA, incluidas las de YouTube que npm test no lista ------------
 if [ -n "$DB" ]; then
   mapfile -t PRUEBAS < <(ls tests/*.test.ts tests/*.test.tsx 2>/dev/null)
-  correr "suite" npx tsx --test --test-concurrency=1 --test-force-exit --test-timeout=120000 "${PRUEBAS[@]}"
+  correr "suite" npx tsx --test --test-concurrency=1 --test-timeout=120000 "${PRUEBAS[@]}"
   TOTAL=$(printf '%s' "$SALIDA" | grep -oE '^# tests [0-9]+' | grep -oE '[0-9]+' | tail -1)
   PASAN=$(printf '%s' "$SALIDA" | grep -oE '^# pass [0-9]+' | grep -oE '[0-9]+' | tail -1)
   # Nombres de las pruebas que fallan (líneas "not ok N - nombre" de TAP).
