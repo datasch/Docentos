@@ -138,6 +138,8 @@ import {
   getPlaylistWithVideos,
   listUserPlaylists,
   updateVideosSelection,
+  searchYouTubeVideos,
+  searchYouTubePlaylists,
   YouTubeError,
 } from './server/youtubeService.js';
 import {
@@ -4285,6 +4287,62 @@ app.post(
       const statusCode = err instanceof YouTubeError ? err.statusCode : 400;
       res.status(statusCode).json({
         error: err.message || 'Error al importar la playlist de YouTube.',
+        code: err.code || 'UNKNOWN',
+      });
+    }
+  }),
+);
+
+// Buscar videos en YouTube por término o título + palabras clave
+app.post(
+  '/api/youtube/search/videos',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const rawQuery = String(req.body.query || '').trim();
+    const title = String(req.body.title || '').trim();
+    const keywords = String(req.body.keywords || '').trim();
+    const query = rawQuery || [title, keywords].filter(Boolean).join(' ');
+
+    if (!query) {
+      return res.status(400).json({ error: 'Debes proporcionar un título o palabras clave para buscar videos.' });
+    }
+
+    const maxResults = typeof req.body.maxResults === 'number' ? req.body.maxResults : 15;
+
+    try {
+      const videos = await searchYouTubeVideos(req.user!.id, query, maxResults);
+      res.json({ success: true, videos, count: videos.length });
+    } catch (err: any) {
+      logger.warn('youtube.search.videos.failed', { userId: req.user!.id, error: err.message });
+      const statusCode = err instanceof YouTubeError ? err.statusCode : 400;
+      res.status(statusCode).json({
+        error: err.message || 'Error al buscar videos en YouTube.',
+        code: err.code || 'UNKNOWN',
+      });
+    }
+  }),
+);
+
+// Buscar playlists en YouTube por término de búsqueda
+app.post(
+  '/api/youtube/search/playlists',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const query = String(req.body.query || req.body.title || '').trim();
+    if (!query) {
+      return res.status(400).json({ error: 'Debes proporcionar un término para buscar playlists.' });
+    }
+
+    const maxResults = typeof req.body.maxResults === 'number' ? req.body.maxResults : 10;
+
+    try {
+      const playlists = await searchYouTubePlaylists(req.user!.id, query, maxResults);
+      res.json({ success: true, playlists, count: playlists.length });
+    } catch (err: any) {
+      logger.warn('youtube.search.playlists.failed', { userId: req.user!.id, error: err.message });
+      const statusCode = err instanceof YouTubeError ? err.statusCode : 400;
+      res.status(statusCode).json({
+        error: err.message || 'Error al buscar playlists en YouTube.',
         code: err.code || 'UNKNOWN',
       });
     }

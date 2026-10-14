@@ -43,6 +43,10 @@ import {
   ExternalLink,
   Edit3,
   Save,
+  Search,
+  Tag,
+  Film,
+  ListFilter,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import {
@@ -50,6 +54,7 @@ import {
   YouTubeConnectionStatus,
   YouTubePlaylistData,
   YouTubeVideoItem,
+  YouTubeSearchPlaylistResult,
   GeneratedCourseDraft,
   GeneratedModuleDraft,
   GeneratedLessonDraft,
@@ -67,8 +72,16 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   onCourseCreated,
   onCancel,
 }) => {
-  // Pasos: 1 = Input (Peticion + URL), 2 = Seleccionar videos, 3 = Generando con IA, 4 = Revision y Edicion, 5 = Finalizado
+  // Pasos: 1 = Input (Búsqueda o URL), 2 = Seleccionar/Curar videos, 3 = Generando con IA, 4 = Revision y Edicion, 5 = Finalizado
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+
+  // Modo de Entrada en Paso 1: 'search' (Búsqueda por Título y Keywords) o 'url' (URL de Playlist)
+  const [inputMode, setInputMode] = useState<'search' | 'url'>('search');
+  const [courseTitle, setCourseTitle] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [searchType, setSearchType] = useState<'videos' | 'playlists'>('videos');
+  const [isSearching, setIsSearching] = useState(false);
+  const [foundPlaylists, setFoundPlaylists] = useState<YouTubeSearchPlaylistResult[]>([]);
 
   // Estado OAuth YouTube
   const [ytStatus, setYtStatus] = useState<YouTubeConnectionStatus>({ connected: false });
@@ -82,7 +95,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
-  // Playlist importada
+  // Playlist o Colección importada/buscada
   const [playlist, setPlaylist] = useState<YouTubePlaylistData | null>(null);
 
   // Videos editables (Paso 2)
@@ -145,7 +158,91 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     }
   };
 
-  // Paso 1: Importar Playlist
+  // Paso 1: Búsqueda Inteligente por Título y Palabras Clave
+  const handleSearchContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanTitle = courseTitle.trim();
+    const cleanKeywords = keywords.trim();
+
+    if (!cleanTitle && !cleanKeywords) {
+      setImportError('Ingresa un título o palabras clave para buscar contenido en YouTube.');
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      setImportError(null);
+      const combinedQuery = [cleanTitle, cleanKeywords].filter(Boolean).join(' ');
+
+      if (searchType === 'playlists') {
+        const results = await api.youtube.searchPlaylists(combinedQuery, 10);
+        if (results.length === 0) {
+          setImportError('No se encontraron playlists para esa búsqueda. Intenta con otras palabras clave.');
+        } else {
+          setFoundPlaylists(results);
+        }
+      } else {
+        // Búsqueda de videos directos
+        const foundVideos = await api.youtube.searchVideos({
+          title: cleanTitle,
+          keywords: cleanKeywords,
+          query: combinedQuery,
+          maxResults: 15,
+        });
+
+        if (foundVideos.length === 0) {
+          setImportError('No se encontraron videos para esa búsqueda. Prueba con términos más generales.');
+          return;
+        }
+
+        // Crear contenedor representativo para la curación
+        const displayTitle = cleanTitle || `Curso sobre ${cleanKeywords}`;
+        setPlaylist({
+          id: `search-${Date.now()}`,
+          youtubeId: 'custom-search',
+          title: displayTitle,
+          description: `Videos encontrados para: "${combinedQuery}"`,
+          channelTitle: 'Colección de Videos de YouTube',
+          thumbnailUrl: foundVideos[0]?.thumbnailUrl || '',
+          privacyStatus: 'PUBLIC',
+          itemCount: foundVideos.length,
+          videos: foundVideos,
+        });
+        setVideos(foundVideos);
+        setCurrentStep(2);
+      }
+    } catch (err: any) {
+      if (err.code === 'NOT_CONNECTED') {
+        setImportError(
+          'Debes conectar tu cuenta de YouTube mediante Google OAuth o configurar YOUTUBE_API_KEY en el servidor para realizar búsquedas.',
+        );
+      } else if (err.code === 'API_QUOTA_EXCEEDED') {
+        setImportError('Se ha superado la cuota de la API de YouTube. Conecta tu cuenta o intenta más tarde.');
+      } else {
+        setImportError(err.message || 'Error al buscar en YouTube. Verifica tu conexión o términos de búsqueda.');
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Seleccionar una playlist encontrada para curar
+  const handleSelectFoundPlaylist = async (pl: YouTubeSearchPlaylistResult) => {
+    try {
+      setImporting(true);
+      setImportError(null);
+      const plData = await api.youtube.importPlaylist(pl.youtubeId);
+      setPlaylist(plData);
+      setVideos(plData.videos);
+      setCurrentStep(2);
+    } catch (err: any) {
+      setImportError(err.message || 'Error al importar los videos de la playlist.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Paso 1: Importar Playlist Manual
   const handleImportPlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playlistUrl.trim()) {
@@ -177,7 +274,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     }
   };
 
-  // Manejo de Selección y Orden de Videos (Paso 2)
+  // Manejo de Selección, Orden y Eliminación de Videos (Paso 2)
   const toggleSelectAll = (select: boolean) => {
     setVideos((prev) => prev.map((v) => ({ ...v, excluded: !select })));
   };
@@ -186,6 +283,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     setVideos((prev) =>
       prev.map((v) => (v.id === id ? { ...v, excluded: !v.excluded } : v)),
     );
+  };
+
+  // Eliminar video de la lista (descartar definitivamente)
+  const handleRemoveVideo = (id: string) => {
+    setVideos((prev) => prev.filter((v) => v.id !== id));
   };
 
   const moveVideo = (index: number, direction: 'up' | 'down') => {
@@ -221,7 +323,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setJobStatusText('Enviando videos al motor de IA pedagógico...');
 
       const response = await api.youtube.generateCourse({
-        playlistId: playlist?.id,
+        playlistId: playlist?.youtubeId === 'custom-search' ? undefined : playlist?.id,
         courseRequest: coursePrompt,
         videos: includedVideos.map((v, idx) => ({
           id: v.id,
@@ -369,7 +471,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         <div className="grid grid-cols-4 gap-2 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
           <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 1 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
-            <span>Importar Playlist</span>
+            <span>Buscar / Importar</span>
           </div>
           <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 2 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>2</span>
@@ -387,57 +489,323 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 1: Formulario de Petición e Importación
+          PASO 1: Modalidad de Entrada (Búsqueda Inteligente o URL)
       ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 1 && (
-        <form onSubmit={handleImportPlaylist} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2">
-              1. ¿Qué curso quieres que la IA diseñe a partir de esta playlist?
-            </label>
-            <textarea
-              rows={3}
-              value={coursePrompt}
-              onChange={(e) => setCoursePrompt(e.target.value)}
-              placeholder="Ej: Quiero un curso intensivo de Node.js y Microservicios para desarrolladores con experiencia previa en JavaScript..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-              required
-            />
-            <p className="text-xs text-slate-400 mt-1.5">
-              La IA utilizará esta indicación pedagógica junto con los títulos y descripciones de los videos para estructurar los módulos.
-            </p>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
+          {/* Tabs para seleccionar el método de obtención */}
+          <div className="flex items-center gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800/80 max-w-lg">
+            <button
+              type="button"
+              onClick={() => {
+                setInputMode('search');
+                setImportError(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition ${
+                inputMode === 'search'
+                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Búsqueda Inteligente (Título / Keywords)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setInputMode('url');
+                setImportError(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition ${
+                inputMode === 'url'
+                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Link className="w-3.5 h-3.5" />
+              <span>Pegar URL de Playlist</span>
+            </button>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2">
-              2. URL o ID de la Playlist de YouTube
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={playlistUrl}
-                onChange={(e) => setPlaylistUrl(e.target.value)}
-                placeholder="https://www.youtube.com/playlist?list=PL4cUxeGndae..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition font-mono text-xs sm:text-sm"
-                required
-              />
-              <Link className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
-              <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                <Globe className="w-3.5 h-3.5" /> Públicas
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1 text-sky-400 font-medium">
-                <Eye className="w-3.5 h-3.5" /> No listadas
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1 text-amber-400 font-medium">
-                <Lock className="w-3.5 h-3.5" /> Privadas (requiere OAuth de la cuenta)
-              </span>
-            </div>
-          </div>
+          {/* Formulario 1: Búsqueda Inteligente por Título y Palabras Clave */}
+          {inputMode === 'search' && (
+            <form onSubmit={handleSearchContent} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">
+                    1. Título o Tema del Curso
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={courseTitle}
+                      onChange={(e) => setCourseTitle(e.target.value)}
+                      placeholder="Ej: Curso de Python desde Cero a Avanzado"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+                      required
+                    />
+                    <Film className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Define el tema central para localizar los mejores contenidos.
+                  </p>
+                </div>
 
+                <div>
+                  <label className="block text-sm font-semibold text-white mb-2">
+                    2. Palabras Clave (Keywords / Temario)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={keywords}
+                      onChange={(e) => setKeywords(e.target.value)}
+                      placeholder="Ej: variables, bucles, funciones, POO, fastapi, proyectos"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+                    />
+                    <Tag className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Términos separados por comas que guiarán la selección de lecciones.
+                  </p>
+                </div>
+              </div>
+
+              {/* Selector de tipo de búsqueda */}
+              <div>
+                <label className="block text-sm font-semibold text-white mb-2">
+                  3. ¿Qué deseas buscar en YouTube?
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchType('videos');
+                      setFoundPlaylists([]);
+                    }}
+                    className={`flex items-start gap-3 p-3 rounded-xl border text-left transition ${
+                      searchType === 'videos'
+                        ? 'border-red-500 bg-red-500/10 text-white'
+                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <Film className={`w-5 h-5 mt-0.5 ${searchType === 'videos' ? 'text-red-400' : 'text-slate-500'}`} />
+                    <div>
+                      <p className="text-xs font-semibold text-white">Videos Temáticos</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Busca los mejores videos individuales y los reúne listos para curar.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchType('playlists');
+                    }}
+                    className={`flex items-start gap-3 p-3 rounded-xl border text-left transition ${
+                      searchType === 'playlists'
+                        ? 'border-red-500 bg-red-500/10 text-white'
+                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <ListFilter className={`w-5 h-5 mt-0.5 ${searchType === 'playlists' ? 'text-red-400' : 'text-slate-500'}`} />
+                    <div>
+                      <p className="text-xs font-semibold text-white">Playlists Completas</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Busca listas de reproducción existentes para seleccionar una con 1 clic.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-white mb-2">
+                  4. Instrucción Pedagógica para la IA
+                </label>
+                <textarea
+                  rows={2}
+                  value={coursePrompt}
+                  onChange={(e) => setCoursePrompt(e.target.value)}
+                  placeholder="Ej: Quiero un curso práctico y estructurado de fundamentos a proyectos..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  La IA estructurará las lecciones según este criterio pedagógico.
+                </p>
+              </div>
+
+              {/* Botón de Acción */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                {onCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={isSearching}
+                  className="ml-auto flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Buscando en YouTube...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4" />
+                      <span>
+                        {searchType === 'videos'
+                          ? 'Buscar Videos y Curar'
+                          : 'Buscar Playlists en YouTube'}
+                      </span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Resultados de Playlists encontradas (si eligió buscar playlists) */}
+          {inputMode === 'search' && searchType === 'playlists' && foundPlaylists.length > 0 && (
+            <div className="pt-4 border-t border-slate-800 space-y-3">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <ListFilter className="w-4 h-4 text-red-400" />
+                <span>Playlists encontradas en YouTube ({foundPlaylists.length})</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                {foundPlaylists.map((pl) => (
+                  <div
+                    key={pl.youtubeId}
+                    className="flex flex-col justify-between p-3 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition"
+                  >
+                    <div className="flex gap-3">
+                      {pl.thumbnailUrl && (
+                        <img
+                          src={pl.thumbnailUrl}
+                          alt={pl.title}
+                          className="w-24 h-16 object-cover rounded-lg border border-slate-800 flex-shrink-0"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-white line-clamp-1">{pl.title}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{pl.channelTitle}</p>
+                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{pl.description || 'Sin descripción'}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={importing}
+                      onClick={() => handleSelectFoundPlaylist(pl)}
+                      className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white text-xs font-medium transition"
+                    >
+                      {importing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Importando videos...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Curar videos de esta playlist</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Formulario 2: URL Manual de Playlist */}
+          {inputMode === 'url' && (
+            <form onSubmit={handleImportPlaylist} className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-white mb-2">
+                  1. ¿Qué curso quieres que la IA diseñe a partir de esta playlist?
+                </label>
+                <textarea
+                  rows={3}
+                  value={coursePrompt}
+                  onChange={(e) => setCoursePrompt(e.target.value)}
+                  placeholder="Ej: Quiero un curso intensivo de Node.js y Microservicios para desarrolladores con experiencia previa en JavaScript..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
+                  required
+                />
+                <p className="text-xs text-slate-400 mt-1.5">
+                  La IA utilizará esta indicación pedagógica junto con los títulos y descripciones de los videos para estructurar los módulos.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-white mb-2">
+                  2. URL o ID de la Playlist de YouTube
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={playlistUrl}
+                    onChange={(e) => setPlaylistUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/playlist?list=PL4cUxeGndae..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition font-mono text-xs sm:text-sm"
+                    required
+                  />
+                  <Link className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
+                  <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                    <Globe className="w-3.5 h-3.5" /> Públicas
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-sky-400 font-medium">
+                    <Eye className="w-3.5 h-3.5" /> No listadas
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-amber-400 font-medium">
+                    <Lock className="w-3.5 h-3.5" /> Privadas (requiere OAuth de la cuenta)
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                {onCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={importing}
+                  className="ml-auto flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20"
+                >
+                  {importing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Consultando YouTube API...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Importar Playlist</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Mensaje de Error en Paso 1 */}
           {importError && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
               <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
@@ -455,64 +823,42 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               </div>
             </div>
           )}
-
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
-              >
-                Cancelar
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={importing}
-              className="ml-auto flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20"
-            >
-              {importing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Consultando YouTube API...</span>
-                </>
-              ) : (
-                <>
-                  <span>Importar Playlist</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+        </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 2: Revisión y Selección de Videos
+          PASO 2: Revisión y Curación de Videos (Selección, Orden y Eliminación)
       ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 2 && playlist && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
-          {/* Tarjeta de la Playlist */}
+          {/* Tarjeta de la Playlist o Búsqueda */}
           <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-            {playlist.thumbnailUrl && (
+            {playlist.thumbnailUrl ? (
               <img
                 src={playlist.thumbnailUrl}
                 alt={playlist.title}
                 className="w-full sm:w-48 h-28 object-cover rounded-lg border border-slate-800 flex-shrink-0"
               />
+            ) : (
+              <div className="w-full sm:w-48 h-28 rounded-lg border border-slate-800 bg-slate-900 flex items-center justify-center flex-shrink-0">
+                <Film className="w-8 h-8 text-red-500" />
+              </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-slate-800 text-slate-300 uppercase">
-                  {playlist.privacyStatus}
+                <span className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-red-600/20 text-red-300 uppercase flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  {playlist.youtubeId === 'custom-search' ? 'Búsqueda Inteligente' : playlist.privacyStatus}
                 </span>
                 <span className="text-xs text-slate-400">• {playlist.channelTitle}</span>
               </div>
               <h2 className="text-lg font-bold text-white truncate">{playlist.title}</h2>
               <p className="text-xs text-slate-400 mt-1 line-clamp-2">{playlist.description || 'Sin descripción'}</p>
               <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
-                <span>{videos.length} videos detectados</span>
-                <span>{videos.filter((v) => !v.excluded).length} seleccionados para el curso</span>
+                <span>{videos.length} videos disponibles</span>
+                <span className="text-emerald-400 font-medium">
+                  {videos.filter((v) => !v.excluded).length} seleccionados para el temario
+                </span>
               </div>
             </div>
           </div>
@@ -536,88 +882,113 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              Puedes cambiar el orden usando las flechas o excluir clases que no pertenezcan al curso.
+              Usa las flechas para ordenar, desmarca los no prioritarios o el ícono de papelera para eliminar videos que no desees mostrar.
             </p>
           </div>
 
           {/* Lista de Videos */}
-          <div className="space-y-2 max-h-[460px] overflow-y-auto pr-2 divide-y divide-slate-800/60">
-            {videos.map((vid, idx) => (
-              <div
-                key={vid.id}
-                className={`flex items-center gap-3 p-3 rounded-xl transition ${
-                  vid.excluded
-                    ? 'opacity-40 bg-slate-950/40'
-                    : 'bg-slate-950/80 hover:bg-slate-950 border border-slate-800/60'
-                }`}
-              >
-                {/* Checkbox */}
-                <button
-                  type="button"
-                  onClick={() => toggleVideoExcluded(vid.id)}
-                  className="text-red-500 hover:text-red-400 transition flex-shrink-0"
+          {videos.length === 0 ? (
+            <div className="p-8 text-center bg-slate-950/60 rounded-xl border border-slate-800 text-slate-400 space-y-2">
+              <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+              <p className="font-semibold text-white">No quedan videos en la lista.</p>
+              <p className="text-xs text-slate-400">
+                Has eliminado todos los videos. Haz clic en "Atrás" para realizar una nueva búsqueda.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[460px] overflow-y-auto pr-2 divide-y divide-slate-800/60">
+              {videos.map((vid, idx) => (
+                <div
+                  key={vid.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition ${
+                    vid.excluded
+                      ? 'opacity-40 bg-slate-950/40'
+                      : 'bg-slate-950/80 hover:bg-slate-950 border border-slate-800/60'
+                  }`}
                 >
-                  {vid.excluded ? (
-                    <Square className="w-5 h-5 text-slate-600" />
-                  ) : (
-                    <CheckSquare className="w-5 h-5 text-red-500" />
-                  )}
-                </button>
-
-                {/* Número / Orden */}
-                <span className="w-6 text-center text-xs font-mono font-semibold text-slate-500">
-                  {idx + 1}
-                </span>
-
-                {/* Thumbnail */}
-                {vid.thumbnailUrl && (
-                  <img
-                    src={vid.thumbnailUrl}
-                    alt={vid.title}
-                    className="w-16 h-10 object-cover rounded border border-slate-800 flex-shrink-0"
-                  />
-                )}
-
-                {/* Datos del Video */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{vid.title}</p>
-                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                    <span className="flex items-center gap-1 font-mono text-[11px]">
-                      <Clock className="w-3 h-3 text-slate-500" />
-                      {vid.durationFormatted || '0:00'}
-                    </span>
-                    {vid.privacyStatus === 'PRIVATE' && (
-                      <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Privado
-                      </span>
+                  {/* Checkbox */}
+                  <button
+                    type="button"
+                    onClick={() => toggleVideoExcluded(vid.id)}
+                    className="text-red-500 hover:text-red-400 transition flex-shrink-0"
+                    title={vid.excluded ? 'Incluir en el temario' : 'Excluir del temario'}
+                  >
+                    {vid.excluded ? (
+                      <Square className="w-5 h-5 text-slate-600" />
+                    ) : (
+                      <CheckSquare className="w-5 h-5 text-red-500" />
                     )}
+                  </button>
+
+                  {/* Número / Orden */}
+                  <span className="w-6 text-center text-xs font-mono font-semibold text-slate-500">
+                    {idx + 1}
+                  </span>
+
+                  {/* Thumbnail */}
+                  {vid.thumbnailUrl && (
+                    <img
+                      src={vid.thumbnailUrl}
+                      alt={vid.title}
+                      className="w-16 h-10 object-cover rounded border border-slate-800 flex-shrink-0"
+                    />
+                  )}
+
+                  {/* Datos del Video */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{vid.title}</p>
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                      <span className="flex items-center gap-1 font-mono text-[11px]">
+                        <Clock className="w-3 h-3 text-slate-500" />
+                        {vid.durationFormatted || '0:00'}
+                      </span>
+                      {vid.channelTitle && (
+                        <span className="text-[11px] text-slate-500 truncate max-w-[150px]">
+                          {vid.channelTitle}
+                        </span>
+                      )}
+                      {vid.privacyStatus === 'PRIVATE' && (
+                        <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> Privado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Controles de Orden y Eliminación */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => moveVideo(idx, 'up')}
+                      className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
+                      title="Mover arriba"
+                    >
+                      <MoveUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === videos.length - 1}
+                      onClick={() => moveVideo(idx, 'down')}
+                      className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
+                      title="Mover abajo"
+                    >
+                      <MoveDown className="w-4 h-4" />
+                    </button>
+                    {/* Botón de Eliminación (Descartar Video) */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVideo(vid.id)}
+                      className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition ml-1"
+                      title="Eliminar este video de la lista"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                {/* Controles de Orden */}
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={idx === 0}
-                    onClick={() => moveVideo(idx, 'up')}
-                    className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
-                    title="Mover arriba"
-                  >
-                    <MoveUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={idx === videos.length - 1}
-                    onClick={() => moveVideo(idx, 'down')}
-                    className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
-                    title="Mover abajo"
-                  >
-                    <MoveDown className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Botones de acción */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">

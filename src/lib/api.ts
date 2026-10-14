@@ -34,6 +34,7 @@ import {
   YouTubeVideoItem,
   YouTubeAiJob,
   GeneratedCourseDraft,
+  YouTubeSearchPlaylistResult,
 } from '../types';
 import type {
   ListeningAdminFilter,
@@ -1255,6 +1256,36 @@ export const api = {
         throw err;
       }
       return data.playlist;
+    },
+
+    async searchVideos(params: { query?: string; title?: string; keywords?: string; maxResults?: number }): Promise<YouTubeVideoItem[]> {
+      const res = await fetch('/api/youtube/search/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err: Error & { code?: string } = new Error(data.error || 'Error al buscar videos en YouTube');
+        err.code = data.code;
+        throw err;
+      }
+      return data.videos || [];
+    },
+
+    async searchPlaylists(query: string, maxResults?: number): Promise<YouTubeSearchPlaylistResult[]> {
+      const res = await fetch('/api/youtube/search/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, maxResults }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err: Error & { code?: string } = new Error(data.error || 'Error al buscar playlists en YouTube');
+        err.code = data.code;
+        throw err;
+      }
+      return data.playlists || [];
     },
 
     async listPlaylists(): Promise<any[]> {

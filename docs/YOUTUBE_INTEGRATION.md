@@ -92,3 +92,6 @@ El servicio unifica los errores bajo la clase `YouTubeError` con códigos contro
 | `PLAYLIST_PRIVATE` | Playlist privada no accesible | "La playlist es privada y no pertenece a tu cuenta autorizada." |
 | `API_LIMIT_EXCEEDED`| Cuota de Google Cloud agotada | "Se alcanzó el límite temporal de peticiones a YouTube. Intenta más tarde." |
 | `TOKEN_EXPIRED` | Credenciales expiradas y no renovables | "Tu sesión de YouTube ha expirado. Por favor, vuelve a vincularla." |
+
+---
+

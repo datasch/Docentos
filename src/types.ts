@@ -519,6 +519,15 @@ export interface YouTubePlaylistData {
   videos: YouTubeVideoItem[];
 }
 
+export interface YouTubeSearchPlaylistResult {
+  youtubeId: string;
+  title: string;
+  description: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  publishedAt?: string | null;
+}
+
 export interface GeneratedLessonDraft {
   title: string;
   description: string;

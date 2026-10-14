@@ -726,3 +726,191 @@ export async function updateVideosSelection(
 
   return getPlaylistWithVideos(playlistId, userId);
 }
+
+export interface YouTubeSearchPlaylistResult {
+  youtubeId: string;
+  title: string;
+  description: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  publishedAt?: string | null;
+}
+
+/**
+ * Busca videos en YouTube por término de búsqueda (ej. título + palabras clave).
+ * Utiliza YouTube Data API v3 y consulta los detalles completos (duración, privacidad, etc.).
+ */
+export async function searchYouTubeVideos(
+  userId?: string,
+  query: string = '',
+  maxResults: number = 15,
+): Promise<YouTubeVideoItem[]> {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) {
+    throw new YouTubeError('Ingresa un término o palabras clave para buscar videos.', 'INVALID_URL', 400);
+  }
+
+  let youtube = userId ? await getAuthenticatedYouTubeClient(userId) : null;
+  const apiKey = config.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || null;
+
+  if (!youtube && apiKey) {
+    youtube = google.youtube({ version: 'v3', auth: apiKey });
+  }
+
+  if (!youtube) {
+    throw new YouTubeError(
+      'Para buscar videos en YouTube debes conectar tu cuenta con OAuth o configurar YOUTUBE_API_KEY en el servidor.',
+      'NOT_CONNECTED',
+      401,
+    );
+  }
+
+  const limit = Math.min(Math.max(maxResults, 1), 25);
+
+  let searchRes;
+  try {
+    searchRes = await youtube.search.list({
+      part: ['snippet'],
+      q: cleanQuery,
+      type: ['video'],
+      maxResults: limit,
+      safeSearch: 'moderate',
+    });
+  } catch (err: any) {
+    const msg = err.message || '';
+    if (err.code === 403 && msg.includes('quota')) {
+      throw new YouTubeError('Se ha superado la cuota de la API de YouTube. Intenta más tarde.', 'API_QUOTA_EXCEEDED', 429);
+    }
+    throw new YouTubeError(`Error al buscar videos en YouTube: ${msg}`, 'UNKNOWN', err.code || 500);
+  }
+
+  const items = searchRes.data.items || [];
+  const videoIds = items
+    .map((item) => item.id?.videoId)
+    .filter((id): id is string => Boolean(id));
+
+  if (videoIds.length === 0) {
+    return [];
+  }
+
+  // Obtener metadata detallada de los videos encontrados (duración, privacidad, thumbnails)
+  let videoDetailsRes;
+  try {
+    videoDetailsRes = await youtube.videos.list({
+      part: ['snippet', 'contentDetails', 'status'],
+      id: videoIds,
+    });
+  } catch (err: any) {
+    throw new YouTubeError(`Error al obtener detalles de videos: ${err.message}`, 'UNKNOWN', 500);
+  }
+
+  const detailMap = new Map<string, any>();
+  for (const v of videoDetailsRes.data.items || []) {
+    if (v.id) detailMap.set(v.id, v);
+  }
+
+  const resultVideos: YouTubeVideoItem[] = [];
+  for (let i = 0; i < videoIds.length; i++) {
+    const vidId = videoIds[i];
+    const details = detailMap.get(vidId);
+    const snippet = details?.snippet || items[i]?.snippet;
+    const durationSeconds = parseIsoDuration(details?.contentDetails?.duration || '');
+    const privacy = normalizePrivacy(details?.status?.privacyStatus);
+
+    const thumbnails = snippet?.thumbnails;
+    const thumbUrl =
+      thumbnails?.maxres?.url ||
+      thumbnails?.high?.url ||
+      thumbnails?.medium?.url ||
+      thumbnails?.default?.url ||
+      `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`;
+
+    resultVideos.push({
+      id: `search-${vidId}-${i}`,
+      youtubeId: vidId,
+      title: snippet?.title || 'Video sin título',
+      description: snippet?.description || '',
+      thumbnailUrl: thumbUrl,
+      channelTitle: snippet?.channelTitle || 'YouTube',
+      durationSeconds,
+      durationFormatted: formatDuration(durationSeconds),
+      privacyStatus: privacy,
+      position: i,
+      customOrder: i,
+      excluded: privacy === 'PRIVATE' || (snippet?.title || '').startsWith('[Video'),
+      publishedAt: snippet?.publishedAt || null,
+    });
+  }
+
+  return resultVideos;
+}
+
+/**
+ * Busca playlists en YouTube por término de búsqueda o palabras clave.
+ */
+export async function searchYouTubePlaylists(
+  userId?: string,
+  query: string = '',
+  maxResults: number = 10,
+): Promise<YouTubeSearchPlaylistResult[]> {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) {
+    throw new YouTubeError('Ingresa un término o palabras clave para buscar playlists.', 'INVALID_URL', 400);
+  }
+
+  let youtube = userId ? await getAuthenticatedYouTubeClient(userId) : null;
+  const apiKey = config.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || null;
+
+  if (!youtube && apiKey) {
+    youtube = google.youtube({ version: 'v3', auth: apiKey });
+  }
+
+  if (!youtube) {
+    throw new YouTubeError(
+      'Para buscar playlists en YouTube debes conectar tu cuenta con OAuth o configurar YOUTUBE_API_KEY en el servidor.',
+      'NOT_CONNECTED',
+      401,
+    );
+  }
+
+  const limit = Math.min(Math.max(maxResults, 1), 20);
+
+  let searchRes;
+  try {
+    searchRes = await youtube.search.list({
+      part: ['snippet'],
+      q: cleanQuery,
+      type: ['playlist'],
+      maxResults: limit,
+      safeSearch: 'moderate',
+    });
+  } catch (err: any) {
+    const msg = err.message || '';
+    if (err.code === 403 && msg.includes('quota')) {
+      throw new YouTubeError('Se ha superado la cuota de la API de YouTube. Intenta más tarde.', 'API_QUOTA_EXCEEDED', 429);
+    }
+    throw new YouTubeError(`Error al buscar playlists en YouTube: ${msg}`, 'UNKNOWN', err.code || 500);
+  }
+
+  const items = searchRes.data.items || [];
+  return items
+    .filter((it) => Boolean(it.id?.playlistId))
+    .map((it) => {
+      const thumbnails = it.snippet?.thumbnails;
+      const thumbUrl =
+        thumbnails?.high?.url ||
+        thumbnails?.medium?.url ||
+        thumbnails?.default?.url ||
+        '';
+
+      return {
+        youtubeId: it.id!.playlistId!,
+        title: it.snippet?.title || 'Playlist sin título',
+        description: it.snippet?.description || '',
+        channelTitle: it.snippet?.channelTitle || 'YouTube',
+        thumbnailUrl: thumbUrl,
+        publishedAt: it.snippet?.publishedAt || null,
+      };
+    });
+}
+
