@@ -14,6 +14,41 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.14 - 2026-10-15
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias. `GEMINI_MODEL` es opcional.
+
+### Added
+
+- Modo claro y modo oscuro, con un botón en la barra de navegación y en la
+  página pública. La elección se guarda en cada navegador.
+- Plugin de personalización para administración: color de acento (cian,
+  violeta, esmeralda o ámbar), densidad de la interfaz y elección entre el
+  panel de administración moderno (secciones agrupadas) y el clásico (todas
+  las pestañas a la vista, como en versiones anteriores).
+- El creador de cursos con IA desde YouTube busca videos y playlists por
+  título y palabras clave, además de por enlace. Necesita la cuenta de YouTube
+  vinculada o `YOUTUBE_API_KEY` en el servidor.
+- El creador de cursos desde YouTube también está disponible para
+  administración, en la gestión de cursos.
+
+### Changed
+
+- El panel de administración se reorganiza en secciones: cursos, usuarios e
+  inscripciones, medios, documentos legales, plugins y portal.
+- La generación de cursos y exámenes con IA prueba primero el modelo de
+  `GEMINI_MODEL` y, si falla, los modelos anteriores.
+- Al generar un curso desde YouTube, el mentor vuelve a la lista de cursos.
+- Los filtros de la agenda de reuniones se adaptan mejor a pantallas estrechas.
+
+### Known issues
+
+- En modo claro, los acentos violeta, esmeralda y ámbar tienen poco contraste.
+  El acento cian se ve bien en los dos modos.
+- El verificador de diseño señala colores y tamaños fuera de los tokens del
+  proyecto en las pantallas nuevas. Queda pendiente para una próxima versión.
+
 ## 0.5.0-beta.13 - 2026-10-12
 
 **Esta versión migra el esquema de la base de datos (2 migraciones aditivas).**
