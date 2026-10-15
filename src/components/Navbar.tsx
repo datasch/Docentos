@@ -34,11 +34,14 @@ import {
   KeyRound,
   Award,
   HeartHandshake,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
 import { User, Course } from '../types';
 import { siteConfig } from '../config/theme';
+import { getCurrentColorMode, toggleColorMode, ColorMode } from '../lib/themeApplicator';
 
 type Tab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
@@ -105,6 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [colorMode, setColorMode] = useState<ColorMode>(() => getCurrentColorMode());
 
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -116,6 +120,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const displayAppName = siteConfig.appName || 'DocentOS';
   const currentLangCode = (i18n.language || 'es').substring(0, 2).toUpperCase();
   const roleLabel = ROLE_LABELS[currentUser.role] || currentUser.role;
+
+  useEffect(() => {
+    const handleThemeChange = (e: any) => {
+      if (e.detail?.colorMode) {
+        setColorMode(e.detail.colorMode);
+      }
+    };
+    window.addEventListener('docentos-theme-change', handleThemeChange);
+    return () => window.removeEventListener('docentos-theme-change', handleThemeChange);
+  }, []);
+
+  const handleToggleColorMode = () => {
+    const nextMode = toggleColorMode();
+    setColorMode(nextMode);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -207,7 +226,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     ...(isAdmin
       ? [
           { tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> },
-          { tab: 'plugins' as Tab, label: 'Plugins', icon: <Sparkles aria-hidden className="h-4 w-4" /> },
         ]
       : []),
   ];
@@ -349,6 +367,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Alternador de Modo Claro / Modo Oscuro */}
+            <button
+              type="button"
+              className="lp-icon-btn"
+              onClick={handleToggleColorMode}
+              title={colorMode === 'dark' ? 'Cambiar a Modo Blanco / Claro' : 'Cambiar a Modo Oscuro'}
+              aria-label={colorMode === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
+            >
+              {colorMode === 'dark' ? (
+                <Sun aria-hidden className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon aria-hidden className="h-4 w-4 text-brand-purple" />
+              )}
+            </button>
+
             {/* Cuenta */}
             <div className="lp-menu-anchor" ref={profileRef}>
               <button
@@ -464,6 +497,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="lp-menu-item"
+                    onClick={() => {
+                      handleToggleColorMode();
+                    }}
+                  >
+                    <span className="lp-menu-item-left">
+                      {colorMode === 'dark' ? (
+                        <>
+                          <Sun aria-hidden className="h-4 w-4 text-amber-400" />
+                          <span>Modo Blanco / Claro</span>
+                        </>
+                      ) : (
+                        <>
+                          <Moon aria-hidden className="h-4 w-4 text-brand-purple" />
+                          <span>Modo Oscuro</span>
+                        </>
+                      )}
+                    </span>
+                    <span className="text-micro font-bold px-2 py-0.5 rounded bg-raised border border-line text-ink-muted">
+                      {colorMode === 'dark' ? 'Oscuro' : 'Claro'}
+                    </span>
+                  </button>
 
                   <p className="lp-menu-note">
                     <span>{t('nav.accessStatus')}</span>
@@ -586,6 +645,26 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <div className="lp-mobile-actions is-stacked">
+          <button
+            type="button"
+            className="lp-btn-ghost"
+            onClick={() => {
+              handleToggleColorMode();
+            }}
+          >
+            {colorMode === 'dark' ? (
+              <>
+                <Sun aria-hidden className="h-4 w-4 text-amber-400" />
+                <span>Activar Modo Blanco / Claro</span>
+              </>
+            ) : (
+              <>
+                <Moon aria-hidden className="h-4 w-4 text-brand-purple" />
+                <span>Activar Modo Oscuro</span>
+              </>
+            )}
+          </button>
+
           <button type="button" className="lp-btn-ghost" onClick={() => goTo('landing')}>
             <Home aria-hidden className="h-4 w-4" />
             Ir a la portada

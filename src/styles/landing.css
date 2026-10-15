@@ -86,7 +86,7 @@
    de pegarse; en `body` el navegador lo propaga al viewport, que es lo que
    queremos. */
 body:has(.lp-root) {
-  background-color: #07070b;
+  background-color: var(--lp-bg-main, #07070b);
   overflow-x: hidden;
 }
 
@@ -150,7 +150,7 @@ html:has(.lp-root) {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(7, 7, 11, 0.85);
+  background: var(--lp-header-bg, rgba(7, 7, 11, 0.85));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--lp-border);
@@ -2419,4 +2419,395 @@ html:has(.lp-root) {
   .lp-listening-floating-badge {
     animation: none;
   }
+}
+
+/* ==========================================================================
+   MODO CLARO (LIGHT MODE / MODO BLANCO) - PORTADA Y NAVBAR
+   Activado mediante [data-color-mode="light"] o .mode-light en html / body
+   ========================================================================== */
+
+:root[data-color-mode="light"],
+html[data-color-mode="light"],
+body[data-color-mode="light"],
+[data-color-mode="light"] .lp-root,
+[data-color-mode="light"] .lp-header,
+[data-color-mode="light"] .lp-listening-floating-btn,
+.mode-light .lp-root,
+.mode-light .lp-header {
+  --lp-bg-main: #f8fafc;
+  --lp-bg-surface: #ffffff;
+  --lp-bg-elevated: #f1f5f9;
+  --lp-bg-card: #ffffff;
+  --lp-bg-card-hover: #ffffff;
+
+  --lp-header-bg: rgba(255, 255, 255, 0.88);
+  --lp-search-bg: #f8fafc;
+  --lp-search-focus-bg: #ffffff;
+  --lp-btn-bg: #f8fafc;
+  --lp-profile-bg: #f8fafc;
+  --lp-badge-bg: #ffffff;
+
+  --lp-text-strong: #0f172a;
+  --lp-text-primary: #0f172a;
+  --lp-text-secondary: #334155;
+  --lp-text-muted: #64748b;
+  --lp-text-on-fill: #ffffff;
+
+  --lp-border: rgba(15, 23, 42, 0.08);
+  --lp-glow-accent: 0 0 24px rgba(124, 58, 237, 0.08);
+  --lp-glow-cyan: 0 0 25px rgba(6, 182, 212, 0.12);
+  --lp-glow-gold: 0 0 18px rgba(245, 158, 11, 0.12);
+  --lp-glow-green: 0 0 18px rgba(16, 185, 129, 0.12);
+}
+
+/* Reglas específicas para Modo Claro en la Navbar - Estilo Frosted Glass Premium */
+[data-color-mode="light"] .lp-header {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 6px 16px -4px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] .lp-logo-badge-inner {
+  background: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-color-mode="light"] .lp-logo-text {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-nav-link {
+  color: #475569 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-color-mode="light"] .lp-nav-link:hover {
+  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] .lp-nav-link.is-active {
+  color: #0891b2 !important;
+  font-weight: 600 !important;
+}
+
+[data-color-mode="light"] .lp-search-box {
+  background: #f8fafc !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+[data-color-mode="light"] .lp-search-box:focus-within {
+  background: #ffffff !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15), 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-color-mode="light"] .lp-search-input {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-search-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+[data-color-mode="light"] .lp-icon-btn {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] .lp-icon-btn:hover {
+  background: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-user-profile {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] .lp-user-profile:hover {
+  background: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.18) !important;
+}
+
+[data-color-mode="light"] .lp-menu {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 20px 25px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-color-mode="light"] .lp-menu-head {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-color-mode="light"] .lp-menu-name {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-menu-item {
+  color: #334155 !important;
+  font-weight: 500 !important;
+}
+
+[data-color-mode="light"] .lp-menu-item:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-mobile-panel {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-color-mode="light"] .lp-mobile-links a,
+[data-color-mode="light"] .lp-mobile-links button {
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] .lp-mobile-links a:hover,
+[data-color-mode="light"] .lp-mobile-links button:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-mobile-lang {
+  border-top-color: rgba(15, 23, 42, 0.08) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .lp-mobile-lang-options button {
+  background: #f8fafc !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .lp-mobile-lang-options button:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Reglas específicas para Modo Claro en la Portada / Catálogo */
+html[data-color-mode="light"] body:has(.lp-root),
+body[data-color-mode="light"]:has(.lp-root) {
+  background-color: #f8fafc !important;
+}
+
+[data-color-mode="light"] .lp-root {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .lp-root::before {
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.04) 0%, rgba(248, 250, 252, 0) 70%) !important;
+}
+
+[data-color-mode="light"] .lp-root::after {
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.035) 0%, rgba(248, 250, 252, 0) 70%) !important;
+}
+
+[data-color-mode="light"] .lp-welcome-text h1 {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+[data-color-mode="light"] .lp-welcome-text p {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .lp-streak-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(245, 158, 11, 0.25) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 4px 14px rgba(245, 158, 11, 0.08) !important;
+}
+
+[data-color-mode="light"] .lp-streak-val {
+  color: #0f172a !important;
+}
+
+/* Category Pills - estilo Executive minimalista */
+[data-color-mode="light"] .lp-pill {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #475569 !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-color-mode="light"] .lp-pill:hover {
+  background: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.2) !important;
+  color: #0f172a !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-color-mode="light"] .lp-pill.is-active {
+  color: #0891b2 !important;
+  background: #ecfeff !important;
+  border-color: #a5f3fc !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.12) !important;
+}
+
+[data-color-mode="light"] .lp-section-title {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+}
+
+[data-color-mode="light"] .lp-section-sub {
+  color: #64748b !important;
+}
+
+/* Tarjetas de Cursos - Floating Executive Cards */
+[data-color-mode="light"] .lp-course-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-color-mode="light"] .lp-course-card::before {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(124, 58, 237, 0.06), transparent 70%) !important;
+}
+
+[data-color-mode="light"] .lp-course-card:hover {
+  background: #ffffff !important;
+  transform: translateY(-4px) !important;
+  border-color: rgba(6, 182, 212, 0.35) !important;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.1), 0 0 20px rgba(6, 182, 212, 0.12) !important;
+}
+
+[data-color-mode="light"] .lp-card-cover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+}
+
+/* Badge de categoría de curso - Jewel Tone Soft Pastel */
+[data-color-mode="light"] .lp-cat-badge {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-color-mode="light"] .lp-course-title {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+[data-color-mode="light"] .lp-course-card:hover .lp-course-title {
+  color: #0891b2 !important;
+}
+
+[data-color-mode="light"] .lp-course-desc {
+  color: #475569 !important;
+  line-height: 1.55 !important;
+}
+
+[data-color-mode="light"] .lp-card-meta {
+  border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
+  color: #64748b !important;
+}
+
+/* Banner Promocional Inferior en Modo Claro - Radiant Slate/Indigo Executive Card */
+[data-color-mode="light"] .lp-promo-banner {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #eff6ff 100%) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 0 35px rgba(99, 102, 241, 0.06) !important;
+}
+
+[data-color-mode="light"] .lp-promo-banner::before {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(6, 182, 212, 0.06) 50%, transparent 80%) !important;
+}
+
+[data-color-mode="light"] .lp-promo-banner::after {
+  background-image: linear-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.02) 1px, transparent 1px) !important;
+}
+
+[data-color-mode="light"] .lp-promo-title {
+  background: linear-gradient(135deg, #0f172a 20%, #4338ca 65%, #0891b2 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+}
+
+[data-color-mode="light"] .lp-promo-meta {
+  color: #0e7490 !important;
+  font-weight: 600 !important;
+}
+
+[data-color-mode="light"] .lp-promo-desc {
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] .lp-btn-secondary {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-color-mode="light"] .lp-btn-secondary:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-color-mode="light"] .lp-testimonial-empty {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Pie de página y barra legal */
+[data-color-mode="light"] .lp-footer {
+  background: #ffffff !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] .lp-legal-bar {
+  background: #f8fafc !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
+  color: #64748b !important;
+}
+
+[data-color-mode="light"] .lp-footer-col h4,
+[data-color-mode="light"] .lp-footer-brand-name {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+[data-color-mode="light"] .lp-footer-col a {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .lp-footer-col a:hover {
+  color: #0f172a !important;
 }

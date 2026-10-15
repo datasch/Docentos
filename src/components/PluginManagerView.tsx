@@ -28,6 +28,12 @@ import {
   Upload,
   Trash2,
   Video,
+  Youtube,
+  HardDrive,
+  Palette,
+  Monitor,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -35,6 +41,7 @@ import { AcademiaPlugin } from '../types';
 import { pluginManager } from '../plugins/PluginManager';
 import { SignaturePad } from './SignaturePad';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
+import { applyPlatformTheme, ColorTheme, ColorMode, getCurrentColorMode, setColorMode } from '../lib/themeApplicator';
 
 const FIELD_LABELS: Record<string, string> = {
   institutionName: 'Nombre de la Institución',
@@ -56,6 +63,14 @@ const FIELD_LABELS: Record<string, string> = {
   enableAutoRecordingLink: 'Habilitar enlaces de grabación automática',
   requireVipAccess: 'Requerir Pase VIP para ingresar a clases en vivo',
   roomPrefix: 'Prefijo de sala Jitsi Meet',
+  enableAiStructuring: 'Estructuración temática automática con IA',
+  defaultLanguage: 'Idioma de generación por defecto',
+  allowMentorAccess: 'Permitir a los mentores crear cursos desde YouTube',
+  interfaceVersion: 'Versión de Interfaz DocentOS',
+  colorTheme: 'Paleta de Acento Visual',
+  density: 'Densidad de Interfaz',
+  showQuickVersionSwitcher: 'Mostrar selector rápido de versiones en cabecera',
+  customCampusName: 'Nombre del Campus / Institución',
 };
 
 export const PluginManagerView: React.FC = () => {
@@ -143,6 +158,9 @@ export const PluginManagerView: React.FC = () => {
       if (!initialConfig.defaultProvider) initialConfig.defaultProvider = 'jitsi';
       if (!initialConfig.jitsiDomain) initialConfig.jitsiDomain = 'meet.jit.si';
     }
+    if (plugin.id === 'docentos-customizer') {
+      if (!initialConfig.colorMode) initialConfig.colorMode = getCurrentColorMode();
+    }
     setConfigFormState(initialConfig);
   };
 
@@ -156,6 +174,9 @@ export const PluginManagerView: React.FC = () => {
       if (res.plugins) {
         setPlugins(res.plugins);
         pluginManager.setPlugins(res.plugins);
+      }
+      if (configModalPlugin.id === 'docentos-customizer') {
+        applyPlatformTheme(configFormState.colorTheme, 'comfortable', configFormState.colorMode);
       }
       setConfigModalPlugin(null);
     } catch (error) {
@@ -172,6 +193,9 @@ export const PluginManagerView: React.FC = () => {
       case 'MessageSquare': return MessageSquare;
       case 'BarChart3': return BarChart3;
       case 'Video': return Video;
+      case 'Youtube': return Youtube;
+      case 'HardDrive': return HardDrive;
+      case 'Palette': return Palette;
       default: return Layers;
     }
   };
@@ -193,7 +217,7 @@ export const PluginManagerView: React.FC = () => {
             Gestor de Plugins Institucionales
           </h2>
           <p className="text-xs text-ink-muted max-w-2xl">
-            Amplía la capacidad de la plataforma instalando y activando módulos de certificados PDF, exámenes interactivos, integración con webhooks de Discord/Slack y analíticas.
+            Amplía la capacidad de la plataforma instalando y activando módulos de certificados PDF, exámenes interactivos, integración con webhooks de Discord/Slack, personalización y analíticas.
           </p>
         </div>
 
@@ -208,7 +232,7 @@ export const PluginManagerView: React.FC = () => {
 
       {/* Category Pills */}
       <div className="flex flex-wrap gap-2">
-        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics', 'meetings'].map((cat) => (
+        {['ALL', 'certificates', 'quizzes', 'integrations', 'analytics', 'meetings', 'custom'].map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
@@ -217,7 +241,7 @@ export const PluginManagerView: React.FC = () => {
               : 'bg-canvas text-ink-muted hover:text-ink border border-line'
               }`}
           >
-            {cat === 'ALL' ? 'Todos los Plugins' : cat.toUpperCase()}
+            {cat === 'ALL' ? 'Todos los Plugins' : cat === 'custom' ? 'PERSONALIZACIÓN' : cat.toUpperCase()}
           </button>
         ))}
       </div>
@@ -318,7 +342,9 @@ export const PluginManagerView: React.FC = () => {
       {/* Configuration Modal */}
       {configModalPlugin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-raised border border-line rounded-xl p-6 w-full max-w-xl space-y-4 my-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className={`bg-raised border border-line rounded-2xl p-6 md:p-8 w-full ${
+            configModalPlugin.id === 'docentos-customizer' ? 'max-w-3xl' : 'max-w-xl'
+          } space-y-5 my-8 max-h-[90vh] overflow-y-auto shadow-2xl`}>
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div>
                 <h3 className="font-bold text-sm text-ink flex items-center gap-2">
@@ -765,10 +791,248 @@ export const PluginManagerView: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Special: docentos-customizer visual suite */}
+                  {configModalPlugin.id === 'docentos-customizer' && (
+                    <div className="space-y-6 p-5 sm:p-6 bg-canvas border border-line rounded-2xl">
+                      {/* Arquitectura y Versión de Navegación */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                            Arquitectura y Versión de Navegación
+                          </label>
+                          <span className="text-micro font-bold text-brand-cyan">
+                            {configFormState.interfaceVersion === 'v0.4-classic' ? '🏛️ v0.4 Clásica Activa' : '🌟 v0.5 Moderna Activa'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Tarjeta 1: v0.5 Moderna */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfigFormState((prev) => ({ ...prev, interfaceVersion: 'v0.5-modern' }));
+                              pluginManager.updateConfig('docentos-customizer', { interfaceVersion: 'v0.5-modern' });
+                            }}
+                            className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
+                              configFormState.interfaceVersion !== 'v0.4-classic'
+                                ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
+                                : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold text-ink flex items-center gap-2">
+                                <span>🌟</span> DocentOS 0.5 (Moderna)
+                              </span>
+                              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-brand-cyan/20 text-brand-cyan font-bold border border-brand-cyan/30">
+                                Unificada
+                              </span>
+                            </div>
+                            <p className="text-xs text-ink-muted leading-relaxed">
+                              4 Macro-secciones con sub-navegación simétrica (2 botones por sección) y estudios integrados de Medios y Portal.
+                            </p>
+                          </button>
+
+                          {/* Tarjeta 2: v0.4 Clásica */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfigFormState((prev) => ({ ...prev, interfaceVersion: 'v0.4-classic' }));
+                              pluginManager.updateConfig('docentos-customizer', { interfaceVersion: 'v0.4-classic' });
+                            }}
+                            className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
+                              configFormState.interfaceVersion === 'v0.4-classic'
+                                ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
+                                : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold text-ink flex items-center gap-2">
+                                <span>🏛️</span> DocentOS 0.4 (Clásica)
+                              </span>
+                              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
+                                Apartado Anterior
+                              </span>
+                            </div>
+                            <p className="text-xs text-ink-muted leading-relaxed">
+                              La vista original con la barra completa de 11 pestañas directas desplegadas en horizontal tal como estaba antes.
+                            </p>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Paleta de Color de Acento con cambio global en caliente */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                            Color de Acento del Campus (Cambio Global en Vivo)
+                          </label>
+                          <span className="text-micro font-bold text-brand-cyan">
+                            Activo: {
+                              configFormState.colorTheme === 'violet' ? 'Violeta Neón (#a855f7)' :
+                              configFormState.colorTheme === 'emerald' ? 'Esmeralda (#10b981)' :
+                              configFormState.colorTheme === 'amber' ? 'Ámbar Gold (#f59e0b)' :
+                              'Cian DocentOS (#06b6d4)'
+                            }
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {[
+                            { key: 'cyan', label: 'Cian DocentOS', bg: '#06b6d4' },
+                            { key: 'violet', label: 'Violeta Neón', bg: '#8b5cf6' },
+                            { key: 'emerald', label: 'Esmeralda', bg: '#10b981' },
+                            { key: 'amber', label: 'Ámbar Gold', bg: '#f59e0b' },
+                          ].map((c) => {
+                            const isSelected = (configFormState.colorTheme || 'cyan') === c.key;
+                            return (
+                              <button
+                                key={c.key}
+                                type="button"
+                                onClick={() => {
+                                  const chosenColor = c.key as ColorTheme;
+                                  setConfigFormState((prev) => ({ ...prev, colorTheme: chosenColor, density: 'comfortable' }));
+                                  applyPlatformTheme(chosenColor, 'comfortable');
+                                  pluginManager.updateConfig('docentos-customizer', { colorTheme: chosenColor, density: 'comfortable' });
+                                }}
+                                className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'border-brand-cyan bg-elevated text-ink ring-2 ring-brand-cyan shadow-md'
+                                    : 'border-line bg-raised text-ink-muted hover:text-ink hover:border-line-strong'
+                                }`}
+                              >
+                                <span className="theme-dot w-4 h-4 rounded-full shadow-sm ring-1 ring-white/20 shrink-0" style={{ backgroundColor: c.bg }} />
+                                <span className="font-semibold">{c.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Modo de Iluminación: Claro vs Oscuro */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                            Modo de Iluminación (Tema Claro / Oscuro)
+                          </label>
+                          <span className="text-micro font-bold text-brand-cyan">
+                            Activo: {configFormState.colorMode === 'light' ? '☀️ Modo Claro (Blanco)' : '🌙 Modo Oscuro'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Opción Modo Oscuro */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfigFormState((prev) => ({ ...prev, colorMode: 'dark' }));
+                              setColorMode('dark');
+                              pluginManager.updateConfig('docentos-customizer', { colorMode: 'dark' });
+                            }}
+                            className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                              configFormState.colorMode !== 'light'
+                                ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
+                                : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-[#0e0e17] border border-[#2d2d44] flex items-center justify-center text-indigo-400 shrink-0">
+                                <Moon className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-ink">Modo Oscuro</div>
+                                <div className="text-micro text-ink-muted">Contraste nocturno descansado</div>
+                              </div>
+                            </div>
+                            {configFormState.colorMode !== 'light' && (
+                              <Check className="w-5 h-5 text-brand-cyan shrink-0" />
+                            )}
+                          </button>
+
+                          {/* Opción Modo Claro */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfigFormState((prev) => ({ ...prev, colorMode: 'light' }));
+                              setColorMode('light');
+                              pluginManager.updateConfig('docentos-customizer', { colorMode: 'light' });
+                            }}
+                            className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                              configFormState.colorMode === 'light'
+                                ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
+                                : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-amber-500 shadow-sm shrink-0">
+                                <Sun className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-ink">Modo Claro (Blanco)</div>
+                                <div className="text-micro text-ink-muted">Fondos claros de alta legibilidad</div>
+                              </div>
+                            </div>
+                            {configFormState.colorMode === 'light' && (
+                              <Check className="w-5 h-5 text-brand-cyan shrink-0" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Selector Rápido en Cabecera */}
+                      <div
+                        onClick={() => {
+                          const show = configFormState.showQuickVersionSwitcher === false ? true : false;
+                          setConfigFormState((prev) => ({ ...prev, showQuickVersionSwitcher: show }));
+                          pluginManager.updateConfig('docentos-customizer', { showQuickVersionSwitcher: show });
+                        }}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                          configFormState.showQuickVersionSwitcher !== false
+                            ? 'bg-brand-cyan/10 border-brand-cyan ring-1 ring-brand-cyan/30 text-ink'
+                            : 'bg-raised border-line text-ink-muted hover:border-line-strong hover:text-ink'
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-bold text-ink flex items-center gap-2">
+                            <Monitor className="w-4 h-4 text-brand-cyan" />
+                            <span>Selector Rápido de Versión en Cabecera</span>
+                          </div>
+                          <div className="text-[11px] text-ink-muted">
+                            {configFormState.showQuickVersionSwitcher !== false
+                              ? 'Muestra el conmutador [ 🌟 v0.5 ] [ 🏛️ v0.4 ] en la barra superior para cambiar con 1 clic'
+                              : 'Oculta el conmutador en la cabecera para dejar la barra superior más limpia'}
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={configFormState.showQuickVersionSwitcher !== false}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded text-brand-cyan focus:ring-0 cursor-pointer pointer-events-none"
+                        />
+                      </div>
+
+                      {/* Campus Name */}
+                      <div className="space-y-1.5">
+                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                          Nombre de la Institución o Campus
+                        </label>
+                        <input
+                          type="text"
+                          value={configFormState.customCampusName ?? 'Academia Giantucchi'}
+                          onChange={(e) => {
+                            const newName = e.target.value;
+                            setConfigFormState((prev) => ({ ...prev, customCampusName: newName }));
+                            pluginManager.updateConfig('docentos-customizer', { customCampusName: newName });
+                          }}
+                          className="w-full py-2.5 px-3.5 bg-raised border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
+                          placeholder="ej. Academia Giantucchi"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {Object.keys(configModalPlugin.config || {})
                     .filter((k) => {
                       if (k === 'signatureImage' || k === 'signature' || k === 'institutionLogo' || k === 'backgroundColor') return false;
                       if (configModalPlugin.id === 'live-meetings' && (k === 'defaultProvider' || k === 'jitsiDomain')) return false;
+                      if (configModalPlugin.id === 'docentos-customizer') return false;
                       return true;
                     })
                     .map((key) => {

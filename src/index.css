@@ -275,6 +275,19 @@
   animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* En DocentOS 0.4 Clásica, las subpáginas cambian instantáneamente sin animación fade-in */
+[data-ui-version="v0.4-classic"] .animate-fade-in,
+[data-ui-version="v0.4-classic"].animate-fade-in,
+html[data-ui-version="v0.4-classic"] .animate-fade-in,
+body[data-ui-version="v0.4-classic"] .animate-fade-in,
+.version-classic .animate-fade-in,
+.version-classic.animate-fade-in {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
 .animate-pulse-slow {
   animation: pulseSlow 2.8s ease-in-out infinite;
 }
@@ -306,3 +319,745 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   TEMAS DINÁMICOS GLOBALES (Plugin docentos-customizer)
+   ========================================================================== */
+
+/* --- TEMA VIOLETA NEÓN --- */
+:root.theme-violet,
+html.theme-violet,
+body.theme-violet {
+  --color-brand-cyan: #a855f7 !important;
+  --color-brand-blue: #8b5cf6 !important;
+  --color-brand-purple: #ec4899 !important;
+  --brand-cyan: #a855f7 !important;
+  --brand-blue: #8b5cf6 !important;
+  --brand-purple: #ec4899 !important;
+  --lp-cyan: #a855f7 !important;
+  --lp-accent: #a855f7 !important;
+  --lp-accent-soft: #c4b5fd !important;
+  --lp-gradient: linear-gradient(135deg, #a855f7 0%, #8b5cf6 50%, #ec4899 100%) !important;
+}
+.theme-violet [class*="text-brand-cyan"],
+.theme-violet .lp-tone-cyan {
+  color: #c084fc !important;
+}
+.theme-violet [class*="border-brand-cyan"] {
+  border-color: rgba(168, 85, 247, 0.45) !important;
+}
+.theme-violet .bg-brand-cyan {
+  background-color: #a855f7 !important;
+  color: #ffffff !important;
+}
+.theme-violet [class*="bg-brand-cyan/"]:not(.theme-dot) {
+  background-color: rgba(168, 85, 247, 0.16) !important;
+}
+.theme-violet [class*="ring-brand-cyan"] {
+  --tw-ring-color: #a855f7 !important;
+}
+.theme-violet .btn-brand-primary {
+  background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 50%, #ec4899 100%) !important;
+  box-shadow: 0 4px 15px -3px rgba(168, 85, 247, 0.5) !important;
+}
+.theme-violet .text-brand-gradient {
+  background: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #f472b6 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.theme-violet .bg-brand-gradient {
+  background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 50%, #ec4899 100%) !important;
+}
+
+/* --- TEMA ESMERALDA ACADEMIA --- */
+:root.theme-emerald,
+html.theme-emerald,
+body.theme-emerald {
+  --color-brand-cyan: #10b981 !important;
+  --color-brand-blue: #059669 !important;
+  --color-brand-purple: #047857 !important;
+  --brand-cyan: #10b981 !important;
+  --brand-blue: #059669 !important;
+  --brand-purple: #047857 !important;
+  --lp-cyan: #10b981 !important;
+  --lp-accent: #10b981 !important;
+  --lp-accent-soft: #6ee7b7 !important;
+  --lp-gradient: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%) !important;
+}
+.theme-emerald [class*="text-brand-cyan"],
+.theme-emerald .lp-tone-cyan {
+  color: #34d399 !important;
+}
+.theme-emerald [class*="border-brand-cyan"] {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+.theme-emerald .bg-brand-cyan {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+}
+.theme-emerald [class*="bg-brand-cyan/"]:not(.theme-dot) {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+}
+.theme-emerald [class*="ring-brand-cyan"] {
+  --tw-ring-color: #10b981 !important;
+}
+.theme-emerald .btn-brand-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%) !important;
+  box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.5) !important;
+}
+.theme-emerald .text-brand-gradient {
+  background: linear-gradient(135deg, #6ee7b7 0%, #10b981 50%, #059669 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.theme-emerald .bg-brand-gradient {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%) !important;
+}
+
+/* --- TEMA ÁMBAR GOLD --- */
+:root.theme-amber,
+html.theme-amber,
+body.theme-amber {
+  --color-brand-cyan: #f59e0b !important;
+  --color-brand-blue: #d97706 !important;
+  --color-brand-purple: #b45309 !important;
+  --brand-cyan: #f59e0b !important;
+  --brand-blue: #d97706 !important;
+  --brand-purple: #b45309 !important;
+  --lp-cyan: #f59e0b !important;
+  --lp-accent: #f59e0b !important;
+  --lp-accent-soft: #fde68a !important;
+  --lp-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #fbbf24 100%) !important;
+}
+.theme-amber [class*="text-brand-cyan"],
+.theme-amber .lp-tone-cyan {
+  color: #fbbf24 !important;
+}
+.theme-amber [class*="border-brand-cyan"] {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+}
+.theme-amber .bg-brand-cyan {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+}
+.theme-amber [class*="bg-brand-cyan/"]:not(.theme-dot) {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+}
+.theme-amber [class*="ring-brand-cyan"] {
+  --tw-ring-color: #f59e0b !important;
+}
+.theme-amber .btn-brand-primary {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #fbbf24 100%) !important;
+  box-shadow: 0 4px 15px -3px rgba(245, 158, 11, 0.5) !important;
+}
+.theme-amber .text-brand-gradient {
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 50%, #d97706 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+.theme-amber .bg-brand-gradient {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #fbbf24 100%) !important;
+}
+
+/* --- TEMA CIAN DOCENTOS (POR DEFECTO) --- */
+:root.theme-cyan,
+html.theme-cyan,
+body.theme-cyan {
+  --color-brand-cyan: #06b6d4 !important;
+  --color-brand-blue: #3b82f6 !important;
+  --color-brand-purple: #a855f7 !important;
+  --brand-cyan: #06b6d4 !important;
+  --brand-blue: #3b82f6 !important;
+  --brand-purple: #a855f7 !important;
+}
+.theme-cyan [class*="text-brand-cyan"] {
+  color: #06b6d4 !important;
+}
+.theme-cyan [class*="border-brand-cyan"] {
+  border-color: rgba(6, 182, 212, 0.45) !important;
+}
+.theme-cyan .bg-brand-cyan {
+  background-color: #06b6d4 !important;
+  color: #000000 !important;
+}
+.theme-cyan [class*="bg-brand-cyan/"]:not(.theme-dot) {
+  background-color: rgba(6, 182, 212, 0.16) !important;
+}
+.theme-cyan [class*="ring-brand-cyan"] {
+  --tw-ring-color: #06b6d4 !important;
+}
+.theme-cyan .btn-brand-primary {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%) !important;
+  box-shadow: 0 4px 15px -3px rgba(6, 182, 212, 0.35) !important;
+}
+
+/* ==========================================================================
+   MODO DENSIDAD COMPACTA (Plugin docentos-customizer)
+   ========================================================================== */
+.density-compact {
+  font-size: 13px !important;
+}
+.density-compact .p-6,
+.density-compact .p-8 {
+  padding: 0.875rem !important;
+}
+.density-compact .p-4 {
+  padding: 0.5rem !important;
+}
+.density-compact .p-3,
+.density-compact .p-3\.5 {
+  padding: 0.375rem !important;
+}
+.density-compact .py-3,
+.density-compact .py-4,
+.density-compact .py-2\.5 {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+.density-compact .gap-6 {
+  gap: 0.75rem !important;
+}
+.density-compact .gap-4,
+.density-compact .gap-3 {
+  gap: 0.5rem !important;
+}
+.density-compact .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.625rem !important;
+}
+.density-compact .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.5rem !important;
+}
+.density-compact table td,
+.density-compact table th {
+  padding: 0.3rem 0.5rem !important;
+  font-size: 12px !important;
+}
+.density-compact .h-12 {
+  height: 2.25rem !important;
+}
+.density-compact .h-10 {
+  height: 2rem !important;
+}
+.density-compact .text-sm {
+  font-size: 0.8125rem !important;
+}
+.density-compact .text-base {
+  font-size: 0.875rem !important;
+}
+
+/* ==========================================================================
+   MODO CLARO EJECUTIVO (EXECUTIVE SAAS LIGHT THEME - LINEAR / STRIPE STYLE)
+   Activado mediante [data-color-mode="light"] o .mode-light en <html> / <body>
+   ========================================================================== */
+
+:root[data-color-mode="light"],
+html[data-color-mode="light"],
+body[data-color-mode="light"],
+.mode-light {
+  /* Tokens de Superficie Orgánica (Calibración Off-white y Tarjetas Flotantes) */
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-raised: #f1f5f9;
+  --color-elevated: #ffffff;
+  --color-card: #ffffff;
+
+  /* Líneas finas y de luz natural, nunca trazos negros toscos */
+  --color-line: rgba(15, 23, 42, 0.08);
+  --color-line-strong: rgba(15, 23, 42, 0.16);
+
+  /* Tipografía Grafito & Tinta Natural de Alto Contraste AAA */
+  --color-ink: #0f172a;
+  --color-ink-soft: #1e293b;
+  --color-ink-muted: #475569;
+  --color-ink-faint: #64748b;
+
+  /* Colores de Marca y Estados adaptados para contraste nítido en modo claro */
+  --color-brand-cyan: #0e7490;
+  --color-brand-blue: #1d4ed8;
+  --color-brand-violet: #7c3aed;
+  --color-brand-violet-light: #6d28d9;
+  --color-brand-purple: #7e22ce;
+  --color-brand-magenta: #be185d;
+  --color-brand-orange: #c2410c;
+  --color-brand-yellow: #b45309;
+
+  --color-danger: #dc2626;
+  --color-danger-light: #b91c1c;
+  --color-success: #16a34a;
+  --color-success-light: #15803d;
+  --color-warning: #d97706;
+  --color-warning-light: #b45309;
+
+  --color-dark-bg: #f8fafc;
+  --color-dark-surface: #ffffff;
+  --color-dark-elevated: #f1f5f9;
+  --color-dark-border: rgba(15, 23, 42, 0.08);
+
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --border-giantucchi: rgba(15, 23, 42, 0.08);
+  --text-primary: #0f172a;
+
+  /* Variables Landing Page / Navbar */
+  --lp-bg-main: #f8fafc;
+  --lp-bg-surface: #ffffff;
+  --lp-bg-elevated: #f1f5f9;
+  --lp-bg-card: #ffffff;
+  --lp-bg-card-hover: #ffffff;
+  --lp-text-strong: #0f172a;
+  --lp-text-primary: #0f172a;
+  --lp-text-secondary: #334155;
+  --lp-text-muted: #64748b;
+  --lp-border: rgba(15, 23, 42, 0.08);
+}
+
+/* Lienzo Global en Modo Claro */
+[data-color-mode="light"] {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Superficie de Canvas de Fondo */
+[data-color-mode="light"] .bg-\[\#0a0a0f\],
+[data-color-mode="light"] .bg-\[\#050505\],
+[data-color-mode="light"] .bg-\[\#000000\],
+[data-color-mode="light"] .bg-\[\#07070b\],
+[data-color-mode="light"] .bg-\[\#08080c\] {
+  background-color: #f8fafc !important;
+}
+
+/* Tarjetas y Contenedores Principales: Blanco Puro con Sombra Multicapa Suave */
+[data-color-mode="light"] .bg-\[\#141420\],
+[data-color-mode="light"] .bg-\[\#0e0e17\],
+[data-color-mode="light"] .bg-\[\#0d0d14\],
+[data-color-mode="light"] .bg-\[\#0f0f17\],
+[data-color-mode="light"] .bg-\[\#0f0f18\],
+[data-color-mode="light"] .bg-\[\#12131f\],
+[data-color-mode="light"] .bg-\[\#13141f\],
+[data-color-mode="light"] .bg-slate-900:not(.badge-dark *):not([class*="bg-brand-"] *),
+[data-color-mode="light"] .bg-slate-950:not(.badge-dark *),
+[data-color-mode="light"] [class*="bg-slate-900"]:not(.btn-brand-primary *):not([class*="bg-brand-"] *):not([class*="bg-gradient-"]),
+[data-color-mode="light"] [class*="bg-slate-950"]:not(.btn-brand-primary *) {
+  background-color: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Superficies Interiores Elevadas, Cajones y Pestañas */
+[data-color-mode="light"] [class*="bg-slate-950\/"],
+[data-color-mode="light"] [class*="bg-slate-900\/"] {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-color-mode="light"] .bg-\[\#1a1a2e\],
+[data-color-mode="light"] .bg-\[\#171721\],
+[data-color-mode="light"] .bg-\[\#20202c\],
+[data-color-mode="light"] .bg-\[\#232338\],
+[data-color-mode="light"] .bg-\[\#2d2d44\] {
+  background-color: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Paneles del Reproductor y Contenedores con Pestañas */
+[data-color-mode="light"] section:has([role="tablist"]),
+[data-color-mode="light"] .bg-surface {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 18px -4px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Bordes Sutiles Hairline */
+[data-color-mode="light"] .border-\[\#2d2d44\],
+[data-color-mode="light"] .border-\[\#262626\],
+[data-color-mode="light"] .border-\[\#232438\],
+[data-color-mode="light"] .border-\[\#27273a\],
+[data-color-mode="light"] .border-\[\#3b3b5c\],
+[data-color-mode="light"] [class*="border-slate-800"],
+[data-color-mode="light"] [class*="border-slate-700"],
+[data-color-mode="light"] .border-white\/5,
+[data-color-mode="light"] .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ==========================================================================
+   TIPOGRAFÍA GRAFITO Y CLARIDAD TOTAL (LEGIBILIDAD MÁXIMA EN MODO CLARO)
+   ========================================================================== */
+
+/* Textos Generales */
+[data-color-mode="light"] .text-ink {
+  color: #0f172a !important;
+}
+[data-color-mode="light"] .text-ink-soft {
+  color: #1e293b !important;
+}
+[data-color-mode="light"] .text-ink-muted {
+  color: #475569 !important;
+}
+[data-color-mode="light"] .text-ink-faint {
+  color: #64748b !important;
+}
+
+/* Textos de Marca y Estados: Tonos Joya Profundos (Jewel-Tone High Contrast) */
+[data-color-mode="light"] .text-brand-violet-light {
+  color: #6d28d9 !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-success-light {
+  color: #15803d !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-warning-light {
+  color: #b45309 !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-danger-light {
+  color: #b91c1c !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-brand-yellow,
+[data-color-mode="light"] .text-\[\#eab308\] {
+  color: #b45309 !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-brand-cyan,
+[data-color-mode="light"] .text-\[\#06b6d4\] {
+  color: #0e7490 !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-brand-purple,
+[data-color-mode="light"] .text-\[\#a855f7\] {
+  color: #7e22ce !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] .text-\[\#3b82f6\] {
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+}
+
+/* Textos de Utilidad Slate */
+[data-color-mode="light"] .text-slate-400,
+[data-color-mode="light"] .text-slate-300,
+[data-color-mode="light"] .text-white\/80,
+[data-color-mode="light"] .text-white\/70 {
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Text-white contextual: sólo permanece blanco dentro de botones con fondo sólido o gradientes de acción */
+[data-color-mode="light"] .text-white:not(.btn-brand-primary *):not([class*="bg-brand-"] *):not([class*="bg-cyan-"] *):not([class*="bg-emerald-"] *):not([class*="bg-amber-"] *):not([class*="bg-red-"] *) {
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   BANNERS ESPECIALES Y NOTIFICACIONES EN EL REPRODUCTOR
+   ========================================================================== */
+
+/* Banner de Evaluación / Examen del Módulo en CourseViewer */
+[data-color-mode="light"] [class*="from-purple-950"] {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%) !important;
+  border-color: #d8b4fe !important;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.08) !important;
+}
+[data-color-mode="light"] [class*="from-purple-950"] h4 {
+  color: #581c87 !important;
+}
+[data-color-mode="light"] [class*="from-purple-950"] p {
+  color: #475569 !important;
+}
+[data-color-mode="light"] [class*="from-purple-950"] strong {
+  color: #0f172a !important;
+}
+[data-color-mode="light"] [class*="from-purple-950"] .bg-purple-500\/30 {
+  background-color: #ede9fe !important;
+  border-color: #c4b5fd !important;
+  color: #6b21a8 !important;
+}
+
+/* Banner de Grabación Asincrónica en CourseViewer */
+[data-color-mode="light"] .bg-\[\#0a1210\] {
+  background-color: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08) !important;
+}
+
+/* Banner de Advertencia en MentorDashboard */
+[data-color-mode="light"] [class*="from-red-950"] {
+  background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%) !important;
+  border-color: #fecaca !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.06) !important;
+}
+[data-color-mode="light"] [class*="from-red-950"] h4 {
+  color: #991b1b !important;
+}
+[data-color-mode="light"] [class*="from-red-950"] p {
+  color: #475569 !important;
+}
+
+/* ==========================================================================
+   INSIGNIAS Y ROLES ESTILO EXECUTIVE SAAS (FONDOS PASTEL TINT + TINTA JOYA)
+   ========================================================================== */
+
+/* Rol Administrador: Fondo Lavanda Pastel + Púrpura Real */
+[data-color-mode="light"] .bg-\[\#a855f7\]\/20,
+[data-color-mode="light"] .bg-purple-500\/10,
+[data-color-mode="light"] .bg-purple-500\/20 {
+  background-color: #faf5ff !important;
+  border: 1px solid #e9d5ff !important;
+}
+[data-color-mode="light"] .text-\[\#a855f7\],
+[data-color-mode="light"] .text-purple-400 {
+  color: #6b21a8 !important;
+  font-weight: 700 !important;
+}
+
+/* Rol Mentor: Fondo Cian Hielo + Azul Petróleo Ejecutivo */
+[data-color-mode="light"] .bg-brand-cyan\/20,
+[data-color-mode="light"] .bg-cyan-500\/10,
+[data-color-mode="light"] .bg-cyan-500\/20 {
+  background-color: #ecfeff !important;
+  border: 1px solid #a5f3fc !important;
+}
+
+/* Rol Mentee / Estados Activo / Graduado: Fondo Menta Suave + Verde Bosque */
+[data-color-mode="light"] .bg-success\/20,
+[data-color-mode="light"] .bg-emerald-500\/10,
+[data-color-mode="light"] .bg-emerald-500\/20 {
+  background-color: #f0fdf4 !important;
+  border: 1px solid #bbf7d0 !important;
+}
+[data-color-mode="light"] .text-success,
+[data-color-mode="light"] .text-emerald-400,
+[data-color-mode="light"] .text-emerald-500 {
+  color: #15803d !important;
+  font-weight: 700 !important;
+}
+
+/* VIP / Alertas / Strikes: Fondo Ámbar Cálido + Oro Viejo */
+[data-color-mode="light"] .bg-warning\/20,
+[data-color-mode="light"] .bg-amber-500\/10,
+[data-color-mode="light"] .bg-amber-500\/20 {
+  background-color: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+}
+[data-color-mode="light"] .text-warning,
+[data-color-mode="light"] .text-amber-300,
+[data-color-mode="light"] .text-amber-400 {
+  color: #b45309 !important;
+  font-weight: 700 !important;
+}
+
+/* Suspensión / Error: Fondo Rosa Pálido + Carmesí */
+[data-color-mode="light"] .bg-red-500\/10,
+[data-color-mode="light"] .bg-red-500\/20 {
+  background-color: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+}
+[data-color-mode="light"] .text-red-400,
+[data-color-mode="light"] .text-red-500 {
+  color: #b91c1c !important;
+  font-weight: 700 !important;
+}
+
+/* Insignias Neutras (Cursos en 0, Estado Inicial, Externos) */
+[data-color-mode="light"] .bg-slate-800,
+[data-color-mode="light"] [class*="bg-slate-800"] {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+/* ==========================================================================
+   TABLAS EJECUTIVAS: CONTENEDOR CON RELIEVE Y FILAS PULIDAS
+   ========================================================================== */
+[data-color-mode="light"] .overflow-x-auto.rounded-xl {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] thead,
+[data-color-mode="light"] thead.bg-\[\#0a0a0f\] {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-color-mode="light"] thead th,
+[data-color-mode="light"] thead .text-slate-400 {
+  color: #64748b !important;
+  font-weight: 700 !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+[data-color-mode="light"] tbody tr {
+  background-color: #ffffff !important;
+  transition: background-color 0.15s ease !important;
+}
+
+[data-color-mode="light"] tbody tr:hover,
+[data-color-mode="light"] tr.hover\:bg-\[\#1a1a2e\]:hover {
+  background-color: #f8fafc !important;
+}
+
+[data-color-mode="light"] .divide-\[\#2d2d44\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-color-mode="light"] td {
+  color: #1e293b !important;
+  font-size: 0.82rem !important;
+}
+
+[data-color-mode="light"] td .text-white {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+[data-color-mode="light"] td .font-mono.text-slate-400 {
+  color: #475569 !important;
+}
+
+/* ==========================================================================
+   BOTONES Y CONTROLES TÁCTILES
+   ========================================================================== */
+
+/* Botón Lección Completada en LessonMetaBar */
+[data-color-mode="light"] button[aria-pressed="true"] {
+  background-color: #faf5ff !important;
+  border: 1px solid #e9d5ff !important;
+  color: #6d28d9 !important;
+  font-weight: 600 !important;
+}
+[data-color-mode="light"] button[aria-pressed="false"] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* Botones de Acción de Tabla */
+[data-color-mode="light"] button[title*="Matricular"],
+[data-color-mode="light"] button.text-brand-cyan {
+  background-color: #ecfeff !important;
+  border: 1px solid #a5f3fc !important;
+  color: #0e7490 !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(14, 116, 144, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+[data-color-mode="light"] button[title*="Matricular"]:hover,
+[data-color-mode="light"] button.text-brand-cyan:hover {
+  background-color: #cffafe !important;
+  border-color: #67e8f9 !important;
+  color: #0891b2 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(14, 116, 144, 0.1) !important;
+}
+
+[data-color-mode="light"] button[title*="Strike"] {
+  background-color: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  color: #b45309 !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(180, 83, 9, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+[data-color-mode="light"] button[title*="Strike"]:hover {
+  background-color: #fef3c7 !important;
+  border-color: #fcd34d !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(180, 83, 9, 0.1) !important;
+}
+
+[data-color-mode="light"] button[title*="Suspender"] {
+  background-color: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+  color: #b91c1c !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 2px rgba(185, 28, 28, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+[data-color-mode="light"] button[title*="Suspender"]:hover {
+  background-color: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(185, 28, 28, 0.1) !important;
+}
+
+/* ==========================================================================
+   FORMULARIOS, INPUTS Y SELECTORES
+   ========================================================================== */
+[data-color-mode="light"] select,
+[data-color-mode="light"] input[type="text"],
+[data-color-mode="light"] input[type="search"],
+[data-color-mode="light"] input[type="email"],
+[data-color-mode="light"] input[type="password"],
+[data-color-mode="light"] textarea,
+[data-color-mode="light"] input.bg-\[\#0a0a0f\],
+[data-color-mode="light"] select.bg-\[\#0a0a0f\],
+[data-color-mode="light"] input[class*="bg-slate-"],
+[data-color-mode="light"] textarea[class*="bg-slate-"],
+[data-color-mode="light"] input[class*="bg-canvas"],
+[data-color-mode="light"] textarea[class*="bg-canvas"] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+[data-color-mode="light"] select:focus,
+[data-color-mode="light"] input:focus,
+[data-color-mode="light"] textarea:focus {
+  border-color: #0891b2 !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  outline: none !important;
+}
+
+[data-color-mode="light"] select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] input::placeholder,
+[data-color-mode="light"] textarea::placeholder,
+[data-color-mode="light"] input[class*="bg-slate-"]::placeholder,
+[data-color-mode="light"] textarea[class*="bg-slate-"]::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Modales y Overlays en Modo Claro */
+[data-color-mode="light"] .fixed.inset-0.bg-\[\#0a0a0f\]\/85,
+[data-color-mode="light"] .fixed.inset-0.bg-black\/70,
+[data-color-mode="light"] .fixed.inset-0.bg-black\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Interacciones hover en Modo Claro */
+[data-color-mode="light"] .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .hover\:bg-slate-900:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Mantener botones primarios vivos con texto blanco */
+[data-color-mode="light"] .btn-brand-primary,
+[data-color-mode="light"] .btn-brand-primary * {
+  color: #ffffff !important;
+}
+
+

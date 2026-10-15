@@ -27,3 +27,4 @@ AGENTS.md
 .codex-tmp/
 .agy-arms/
 scripts/verificar-diseno.sh
+.vscode/

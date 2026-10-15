@@ -25,6 +25,10 @@ import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
 import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink, BookOpen, HeartHandshake } from 'lucide-react';
 import { ListeningBoxModal } from './components/ListeningBoxModal';
 import { ListeningFloatingButton } from './components/ListeningFloatingButton';
+import { initSavedTheme, applyPlatformTheme } from './lib/themeApplicator';
+
+// Inicializar tema y densidad inmediatamente para evitar parpadeos
+initSavedTheme();
 
 /**
  * Destinos de la barra de navegacion.
@@ -199,6 +203,10 @@ export default function App() {
           const pluginsRes = await api.getPlugins();
           if (pluginsRes.plugins) {
             pluginManager.setPlugins(pluginsRes.plugins);
+            const customizer = pluginsRes.plugins.find((p: any) => p.id === 'docentos-customizer');
+            if (customizer?.enabled && customizer.config) {
+              applyPlatformTheme(customizer.config.colorTheme, customizer.config.density);
+            }
           }
         } catch {
           // Si no hay acceso o falla la red, se mantienen los defaults
@@ -474,6 +482,7 @@ export default function App() {
 
         {activeTab === 'admin' && currentUser?.role === 'ADMIN' && (
           <AdminDashboard
+            currentUser={currentUser}
             course={course}
             onRefreshData={loadData}
           />

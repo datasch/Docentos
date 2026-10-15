@@ -121,7 +121,37 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     config: {
       webhookUrl: '',
       notifyOnQnA: true,
-      notifyOnCompletion: true,    },
+      notifyOnCompletion: true,
+    },
+  },
+  {
+    id: 'youtube-ai-builder',
+    name: 'Plugin AI YouTube Course Builder',
+    description: 'Generador y estructurador automático de cursos temáticos a partir de playlists y búsquedas de YouTube usando Gemini IA.',
+    version: '1.0.0',
+    category: 'integrations',
+    icon: 'Youtube',
+    config: {
+      enableAiStructuring: true,
+      defaultLanguage: 'es',
+      allowMentorAccess: true,
+    },
+  },
+  {
+    id: 'docentos-customizer',
+    name: 'Plugin de Personalización y Versiones de DocentOS',
+    description: 'Permite alternar entre la versión DocentOS Moderna v0.5 (Unificada y Simétrica) y DocentOS Clásica v0.4 (Desplegada en 11 pestañas como en la versión anterior), además de personalizar temas de color y densidad.',
+    version: '1.0.0',
+    category: 'custom',
+    icon: 'Palette',
+    config: {
+      interfaceVersion: 'v0.4-classic',
+      colorTheme: 'cyan',
+      colorMode: 'dark',
+      density: 'comfortable',
+      showQuickVersionSwitcher: true,
+      customCampusName: 'Academia Giantucchi',
+    },
   },
 ];
 

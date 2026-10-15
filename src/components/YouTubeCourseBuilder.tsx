@@ -62,7 +62,7 @@ import {
 } from '../types';
 
 interface YouTubeCourseBuilderProps {
-  currentUser: User;
+  currentUser?: User;
   onCourseCreated?: (courseId: string) => void;
   onCancel?: () => void;
 }

@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
@@ -18,8 +18,10 @@ import { PluginManagerView } from './PluginManagerView';
 import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
 import { ListeningAdminPanel } from './ListeningAdminPanel';
+import { pluginManager } from '../plugins/PluginManager';
 
 interface AdminDashboardProps {
+  currentUser?: User;
   /**
    * Nulo en una instancia recien instalada: el catalogo esta vacio hasta que
    * el administrador cree el primer curso, y es justo aqui donde lo crea.
@@ -43,8 +45,105 @@ const CURSO_VACIO: Course = {
   modules: [],
 };
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefreshData }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'courses' | 'contracts' | 'drive' | 'tts' | 'plugins' | 'landing' | 'enrollments' | 'certificates' | 'resources' | 'listening'>('users');
+export type MasterSection = 'courses' | 'users' | 'legal' | 'system';
+export type SubTab =
+  | 'users'
+  | 'courses'
+  | 'contracts'
+  | 'drive'
+  | 'tts'
+  | 'plugins'
+  | 'landing'
+  | 'enrollments'
+  | 'certificates'
+  | 'resources'
+  | 'listening';
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, course, onRefreshData }) => {
+  const [masterSection, setMasterSection] = useState<MasterSection>('courses');
+  const [activeTab, setActiveTab] = useState<SubTab>('courses');
+
+  // Estado interno para la vista unificada de Usuarios y Matrículas
+  const [userSectionView, setUserSectionView] = useState<'directory' | 'enrollments'>('directory');
+  const [showQuickEnroll, setShowQuickEnroll] = useState(false);
+  const [userSearchText, setUserSearchText] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('ALL');
+  const [enrollmentSearchText, setEnrollmentSearchText] = useState('');
+  const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState<string>('ALL');
+
+  // Estado unificado de Medios y Recursos (Descargables, Drive, TTS)
+  const [mediaView, setMediaView] = useState<'resources' | 'drive' | 'tts'>('resources');
+
+  // Estado unificado de Certificación y Legal (Certificados, Contratos)
+  const [legalView, setLegalView] = useState<'certificates' | 'contracts'>('certificates');
+
+  // Estado unificado de Portal y Feedback (Portada, Buzón NPS)
+  const [portalView, setPortalView] = useState<'landing' | 'listening'>('landing');
+
+  // Integración con el Plugin de Personalización y Versiones de DocentOS
+  const isCustomizerEnabled = pluginManager.isEnabled('docentos-customizer');
+  const [customizerConfig, setCustomizerConfig] = useState(() => pluginManager.getCustomizerConfig());
+  const [uiVersion, setUiVersion] = useState<'v0.5-modern' | 'v0.4-classic'>(() => {
+    return isCustomizerEnabled ? customizerConfig.interfaceVersion : 'v0.5-modern';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-ui-version', uiVersion);
+    const handleCustomizerUpdate = () => {
+      const cfg = pluginManager.getCustomizerConfig();
+      setCustomizerConfig(cfg);
+      setUiVersion(cfg.interfaceVersion);
+    };
+    window.addEventListener('docentos-customizer-change', handleCustomizerUpdate);
+    return () => {
+      window.removeEventListener('docentos-customizer-change', handleCustomizerUpdate);
+    };
+  }, [uiVersion]);
+
+  const handleSwitchUiVersion = async (targetVer: 'v0.5-modern' | 'v0.4-classic') => {
+    setUiVersion(targetVer);
+    setCustomizerConfig((prev) => ({ ...prev, interfaceVersion: targetVer }));
+    pluginManager.updateConfig('docentos-customizer', { interfaceVersion: targetVer });
+    try {
+      const currentCfg = pluginManager.getPlugin('docentos-customizer')?.config || {};
+      await api.updatePluginConfig('docentos-customizer', { ...currentCfg, interfaceVersion: targetVer });
+    } catch (err) {
+      console.error('Error al guardar versión de interfaz de DocentOS:', err);
+    }
+  };
+
+  const selectTab = (tab: SubTab) => {
+    setActiveTab(tab);
+
+    if (tab === 'enrollments') {
+      setUserSectionView('enrollments');
+      setMasterSection('users');
+      return;
+    }
+    if (tab === 'users') {
+      setUserSectionView('directory');
+      setMasterSection('users');
+      return;
+    }
+    if (['resources', 'drive', 'tts'].includes(tab)) {
+      setMediaView(tab as 'resources' | 'drive' | 'tts');
+      setMasterSection('courses');
+      return;
+    }
+    if (['certificates', 'contracts'].includes(tab)) {
+      setLegalView(tab as 'certificates' | 'contracts');
+      setMasterSection('legal');
+      return;
+    }
+    if (['landing', 'listening'].includes(tab)) {
+      setPortalView(tab as 'landing' | 'listening');
+      setMasterSection('system');
+      return;
+    }
+    if (tab === 'courses') setMasterSection('courses');
+    else if (tab === 'plugins') setMasterSection('system');
+  };
+
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [roleErrorMsg, setRoleErrorMsg] = useState('');
@@ -128,6 +227,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     loadCertificates();
     loadContracts();
     loadCatalog();
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab') as SubTab;
+    if (tabParam) {
+      selectTab(tabParam);
+    }
   }, []);
 
   const loadContracts = async (query?: string) => {
@@ -642,311 +746,1121 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
     </div>
   );
 
+  const animClass = uiVersion === 'v0.4-classic' ? '' : 'animate-fade-in';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
+    <div data-ui-version={uiVersion} className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 ${animClass}`}>
 
-      {/* Admin Header */}
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[#06b6d4] text-xs font-bold uppercase tracking-wider mb-1">
-            <Shield className="w-4 h-4 text-[#06b6d4]" /> Panel de Mentoría & Administración RBAC
+      {/* NAVEGACIÓN Y CABECERA: MODO CLÁSICO v0.4 (Idéntico a captura del usuario) vs MODO MODERNO v0.5 */}
+      {uiVersion === 'v0.4-classic' ? (
+        <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl text-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider">
+              <Shield className="w-3.5 h-3.5" />
+              <span>PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {customizerConfig.customCampusName ? `${customizerConfig.customCampusName} Control Center` : 'Academia Giantucchi Control Center'}
+            </h1>
+            <p className="text-slate-400 text-xs mt-1 max-w-md leading-relaxed">
+              Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
+            </p>
           </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">Academia Giantucchi Control Center</h2>
-          <p className="text-slate-400 text-sm mt-1">
-            Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
-          </p>
-        </div>
 
-        {/* Tab Switcher */}
-        <div className="flex flex-wrap bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 w-full">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'users' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <Users className="w-3.5 h-3.5" /> Usuarios
-          </button>
-          <button
-            onClick={() => setActiveTab('courses')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Cursos
-          </button>
-          <button
-            onClick={() => setActiveTab('enrollments')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'enrollments' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5 text-emerald-400" /> Matrículas
-          </button>
-          <button
-            onClick={() => setActiveTab('certificates')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'certificates' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <Award className="w-3.5 h-3.5 text-amber-400" /> Certificados
-          </button>
-          <button
-            onClick={() => setActiveTab('contracts')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'contracts' ? 'btn-brand-primary' : 'text-ink-muted hover:text-ink'
-              }`}
-          >
-            <FileCheck className="w-3.5 h-3.5 text-brand-blue" /> Contratos
-          </button>
-          <button
-            onClick={() => setActiveTab('resources')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'resources' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Recursos
-          </button>
-          <button
-            onClick={() => setActiveTab('drive')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'drive' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <HardDrive className="w-3.5 h-3.5" /> Videos Drive
-          </button>
-          <button
-            onClick={() => setActiveTab('tts')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'tts' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#eab308]" /> Guías TTS
-          </button>
-          <button
-            onClick={() => setActiveTab('plugins')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'plugins' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-[#06b6d4]" /> Plugins
-          </button>
-          <button
-            onClick={() => setActiveTab('landing')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'landing' ? 'bg-brand-gradient text-white shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-          >
-            <Sliders className="w-3.5 h-3.5 text-[#06b6d4]" /> Portada
-          </button>
-          <button
-            onClick={() => setActiveTab('listening')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTab === 'listening' ? 'bg-brand-gradient text-ink shadow-md' : 'text-ink-muted hover:text-ink'
-              }`}
-          >
-            <HeartHandshake className="w-3.5 h-3.5 text-brand-cyan" /> Escucha
-          </button>
+          {/* Cápsula de 11 pestañas al lado derecho de la cabecera (Exactamente como en la captura del usuario) */}
+          <div className="bg-[#0e0e17] border border-white/5 rounded-2xl px-5 py-3.5 flex flex-col gap-2.5 shadow-2xl shrink-0">
+            {/* Fila 1 */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {[
+                { id: 'users' as SubTab, label: 'Usuarios', icon: Users, iconColor: 'text-white/70' },
+                { id: 'courses' as SubTab, label: 'Cursos', icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'enrollments' as SubTab, label: 'Matrículas', icon: GraduationCap, iconColor: 'text-emerald-400' },
+                { id: 'certificates' as SubTab, label: 'Certificados', icon: Award, iconColor: 'text-amber-400' },
+                { id: 'contracts' as SubTab, label: 'Contratos', icon: FileCheck, iconColor: 'text-blue-400' },
+                { id: 'resources' as SubTab, label: 'Recursos', icon: BookOpen, iconColor: 'text-cyan-400' },
+              ].map((t) => {
+                const Icon = t.icon;
+                const isSelected = activeTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => selectTab(t.id)}
+                    className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl cursor-pointer ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-orange-500 text-white font-bold'
+                        : 'text-white/80 hover:text-white font-medium hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : t.iconColor}`} />
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Fila 2 */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {[
+                { id: 'drive' as SubTab, label: 'Videos Drive', icon: HardDrive, iconColor: 'text-white/70' },
+                { id: 'tts' as SubTab, label: 'Guías TTS', icon: Sparkles, iconColor: 'text-amber-300' },
+                { id: 'plugins' as SubTab, label: 'Plugins', icon: Layers, iconColor: 'text-cyan-400' },
+                { id: 'landing' as SubTab, label: 'Portada', icon: Sliders, iconColor: 'text-cyan-400' },
+                { id: 'listening' as SubTab, label: 'Escucha', icon: HeartHandshake, iconColor: 'text-cyan-400' },
+              ].map((t) => {
+                const Icon = t.icon;
+                const isSelected = activeTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => selectTab(t.id)}
+                    className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl cursor-pointer ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-orange-500 text-white font-bold'
+                        : 'text-white/80 hover:text-white font-medium hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : t.iconColor}`} />
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
+      ) : (
+        <>
+          {/* Admin Header v0.5 Moderna */}
+          <div className="bg-canvas border border-line rounded-2xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold mb-2">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Panel de Control & Administración Global RBAC</span>
+              </div>
+              <h2 className="text-2xl font-extrabold text-ink tracking-tight">
+                {customizerConfig.customCampusName || 'DocentOS Command Center'}
+              </h2>
+              <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
+                Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 self-stretch md:self-auto shrink-0 flex-wrap">
+              {/* Quick Version Switcher (Activado por el plugin docentos-customizer) */}
+              {isCustomizerEnabled && customizerConfig.showQuickVersionSwitcher && (
+                <div className="flex items-center bg-raised p-1 rounded-xl border border-line shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchUiVersion('v0.5-modern')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      uiVersion === 'v0.5-modern'
+                        ? 'bg-brand-cyan text-black shadow-sm'
+                        : 'text-ink-muted hover:text-ink'
+                    }`}
+                    title="DocentOS 0.5 (Moderna Unificada): 4 Secciones Maestras simétricas"
+                  >
+                    <span>🌟 v0.5 Moderna</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchUiVersion('v0.4-classic')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      (uiVersion as string) === 'v0.4-classic'
+                        ? 'bg-amber-400 text-black shadow-sm'
+                        : 'text-ink-muted hover:text-ink'
+                    }`}
+                    title="DocentOS 0.4 (Clásica Desplegada): 11 pestañas directas del apartado anterior"
+                  >
+                    <span>🏛️ v0.4 Clásica</span>
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={refreshEverything}
+                className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
+                title="Recargar todos los datos"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-brand-cyan" />
+                <span>Sincronizar Panel</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Nivel 1: Las 4 Secciones Maestras */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setMasterSection('courses');
+            if (!['courses', 'resources', 'tts', 'drive'].includes(activeTab)) {
+              setActiveTab('courses');
+            }
+          }}
+          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+            masterSection === 'courses'
+              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`p-2.5 rounded-xl border ${
+              masterSection === 'courses'
+                ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan'
+                : 'bg-canvas border-line text-ink-muted'
+            }`}>
+              <BookOpen className="w-4 h-4" />
+            </span>
+            <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
+              {allCourses.length} cursos
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-ink">Cursos & Contenidos</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">Temarios, recursos y videos</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMasterSection('users');
+            setActiveTab('users');
+          }}
+          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+            masterSection === 'users'
+              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`p-2.5 rounded-xl border ${
+              masterSection === 'users'
+                ? 'bg-brand-blue/20 border-brand-blue/40 text-brand-blue'
+                : 'bg-canvas border-line text-ink-muted'
+            }`}>
+              <Users className="w-4 h-4" />
+            </span>
+            <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
+              {users.length} usuarios • {enrollments.length} matrículas
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-ink">Usuarios & Matrículas</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">Directorio RBAC, pases y admisiones</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMasterSection('legal');
+            if (!['certificates', 'contracts'].includes(activeTab)) {
+              setActiveTab('certificates');
+            }
+          }}
+          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+            masterSection === 'legal'
+              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`p-2.5 rounded-xl border ${
+              masterSection === 'legal'
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                : 'bg-canvas border-line text-ink-muted'
+            }`}>
+              <Award className="w-4 h-4" />
+            </span>
+            <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
+              {certificates.length} diplomas
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-ink">Certificación & Legal</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">Diplomas y auditoría forense</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMasterSection('system');
+            if (!['plugins', 'landing', 'listening'].includes(activeTab)) {
+              setActiveTab('plugins');
+            }
+          }}
+          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+            masterSection === 'system'
+              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`p-2.5 rounded-xl border ${
+              masterSection === 'system'
+                ? 'bg-brand-purple/20 border-brand-purple/40 text-brand-purple'
+                : 'bg-canvas border-line text-ink-muted'
+            }`}>
+              <Sliders className="w-4 h-4" />
+            </span>
+            <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
+              Configuración
+            </span>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-ink">Configuración & Portal</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">Plugins, portada y escucha</div>
+          </div>
+        </button>
       </div>
 
+      {/* Nivel 2: Barra de sub-navegación contextual */}
+      <div className="bg-raised border border-line rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {masterSection === 'courses' && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('courses')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  activeTab === 'courses'
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Catálogo y Temarios ({allCourses.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab(mediaView || 'resources');
+                }}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  ['resources', 'drive', 'tts'].includes(activeTab)
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Estudio de Medios y Recursos</span>
+              </button>
+            </div>
+          )}
+
+          {masterSection === 'users' && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('users');
+                  setUserSectionView('directory');
+                }}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  userSectionView === 'directory'
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Directorio & Roles RBAC ({users.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('users');
+                  setUserSectionView('enrollments');
+                }}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  userSectionView === 'enrollments'
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Registro de Matrículas ({enrollments.length})</span>
+              </button>
+            </div>
+          )}
+
+          {masterSection === 'legal' && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('certificates');
+                  setLegalView('certificates');
+                }}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  activeTab === 'certificates'
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <span>Certificados Oficiales ({certificates.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('contracts');
+                  setLegalView('contracts');
+                }}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  activeTab === 'contracts'
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <FileCheck className="w-3.5 h-3.5 text-brand-blue" />
+                <span>Auditoría Forense de Contratos ({contractSignatures.length})</span>
+              </button>
+            </div>
+          )}
+
+          {masterSection === 'system' && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('plugins')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  activeTab === 'plugins'
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-brand-cyan" />
+                <span>Plugins y Extensiones</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab(portalView || 'landing');
+                }}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  ['landing', 'listening'].includes(activeTab)
+                    ? 'btn-brand-primary shadow-sm'
+                    : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5 text-brand-purple" />
+                <span>Portal Web y Feedback Alumnos</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      </>
+      )}
 
 
-      {activeTab === 'courses' && <CourseManagerView onRefreshData={onRefreshData} />}
 
-      {/* TAB 1: USER & VIP ROLE MANAGEMENT + MODERATION + PRICING */}
-      {activeTab === 'users' && (
-        <div className="space-y-6">
-          {/* Course Pricing Configuration Card */}
-          {course && (
-            <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+      {activeTab === 'courses' && (
+        <CourseManagerView
+          currentUser={currentUser}
+          onRefreshData={onRefreshData}
+          disableAnimation={uiVersion === 'v0.4-classic'}
+        />
+      )}
+
+      {/* TAB 1: GESTIÓN INTEGRAL DE USUARIOS, ROLES RBAC Y MATRÍCULAS */}
+      {(activeTab === 'users' || activeTab === 'enrollments') && (
+        <div className={`space-y-6 ${animClass}`}>
+          {/* Header Unificado Dinámico & Barra de Acciones Principales */}
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2.5">
+                <Users className="w-5 h-5 text-brand-cyan" />
+                <span>
+                  {userSectionView === 'directory'
+                    ? 'Directorio de Usuarios y Roles RBAC'
+                    : 'Registro Histórico de Matrículas'}
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                {userSectionView === 'directory'
+                  ? 'Control de acceso RBAC, moderación disciplinaria y asignación de permisos.'
+                  : 'Auditoría, control de estados de admisión y activación o revocación de matrículas.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowQuickEnroll(!showQuickEnroll)}
+                className="btn-brand-primary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-md"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{showQuickEnroll ? 'Ocultar Formulario' : 'Nueva Matrícula'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  loadUsers();
+                  loadEnrollments();
+                }}
+                disabled={loadingUsers || loadingEnrollments}
+                className="p-2 rounded-xl bg-[#0a0a0f] hover:bg-[#1a1a2e] border border-[#2d2d44] text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5"
+                title="Actualizar directorio y matrículas"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers || loadingEnrollments ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Actualizar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Formulario de Alta de Matrícula (Desplegable con botón o visible en Matrículas) */}
+          {(showQuickEnroll || userSectionView === 'enrollments') && (
+            <div className="bg-[#141420] border border-brand-cyan/40 rounded-2xl p-6 shadow-2xl space-y-4 animate-fade-in ring-1 ring-brand-cyan/20">
               <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-                <div>
-                  <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-                    <Crown className="w-5 h-5 text-[#eab308]" />
-                    Monetización y Precio del Programa de Mentoría
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-sm font-extrabold text-white">
+                    Matricular Usuario en Curso
                   </h3>
-                  {/* Esta tarjeta edita el curso que abre el panel, no el que se
-                    elige en las demás pestañas: nombrarlo evita cambiarle el
-                    precio al curso equivocado. El precio por curso también se
-                    edita, uno a uno, en la pestaña Cursos. */}
-                  <p className="text-xs text-slate-400">
-                    Precio público de <span className="font-bold text-slate-200">«{course?.title}»</span>.
-                    Deja en 0 para que sea completamente público y gratuito.
-                  </p>
                 </div>
-                {priceSuccessMsg && (
-                  <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl animate-fade-in">
-                    {priceSuccessMsg}
-                  </span>
+                {userSectionView !== 'enrollments' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickEnroll(false)}
+                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-[#1a1a2e] transition-colors"
+                  >
+                    ✕ Cerrar
+                  </button>
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 w-full sm:w-64">
-                  <span className="text-slate-400 font-extrabold text-sm">$</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={coursePrice}
-                    onChange={(e) => setCoursePrice(Number(e.target.value))}
-                    placeholder="Ej. 49"
-                    className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
-                  />
-                  <span className="text-slate-500 text-xs uppercase font-bold">USD</span>
+              <p className="text-xs text-slate-400">
+                Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).
+              </p>
+
+              {enrollSuccessMsg && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> {enrollSuccessMsg}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Usuario</label>
+                  <select
+                    value={newEnrollUserId}
+                    onChange={(e) => setNewEnrollUserId(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                    required
+                  >
+                    <option value="">Selecciona usuario...</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email}) [{u.role}]
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <button
-                  onClick={handleSaveCoursePrice}
-                  disabled={updatingPrice}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
-                >
-                  {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span>Guardar Precio del Curso</span>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Curso</label>
+                  <select
+                    value={newEnrollCourseId}
+                    onChange={(e) => setNewEnrollCourseId(e.target.value)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                    required
+                  >
+                    <option value="">Selecciona curso...</option>
+                    {allCourses.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}{item.published === false ? ' (borrador)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Estado</label>
+                  <select
+                    value={newEnrollStatus}
+                    onChange={(e) => setNewEnrollStatus(e.target.value as any)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                  >
+                    <option value="ACTIVE">ACTIVE (Activa)</option>
+                    <option value="COMPLETED">COMPLETED (Graduado)</option>
+                    <option value="REVOKED">REVOKED (Revocada)</option>
+                    <option value="EXPIRED">EXPIRED (Expirada)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Origen</label>
+                  <select
+                    value={newEnrollSource}
+                    onChange={(e) => setNewEnrollSource(e.target.value as any)}
+                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                  >
+                    <option value="ADMIN">ADMIN (Asignación Directa)</option>
+                    <option value="PAYMENT">PAYMENT (Pago)</option>
+                    <option value="MENTORSHIP">MENTORSHIP (Mentoría)</option>
+                  </select>
+                </div>
+
+                <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
+                  <Plus className="w-4 h-4" /> Matricular
                 </button>
+              </form>
+            </div>
+          )}
+
+          {/* VISTA 1: DIRECTORIO DE USUARIOS & ROLES RBAC */}
+          {userSectionView === 'directory' && (
+            <div className="space-y-6">
+              {/* Course Pricing Configuration Card */}
+              {course && (
+                <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+                    <div>
+                      <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                        <Crown className="w-5 h-5 text-[#eab308]" />
+                        Monetización y Precio del Programa de Mentoría
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Precio público de <span className="font-bold text-slate-200">«{course?.title}»</span>.
+                        Deja en 0 para que sea completamente público y gratuito.
+                      </p>
+                    </div>
+                    {priceSuccessMsg && (
+                      <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl animate-fade-in">
+                        {priceSuccessMsg}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 w-full sm:w-64">
+                      <span className="text-slate-400 font-extrabold text-sm">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={coursePrice}
+                        onChange={(e) => setCoursePrice(Number(e.target.value))}
+                        placeholder="Ej. 49"
+                        className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
+                      />
+                      <span className="text-slate-500 text-xs uppercase font-bold">USD</span>
+                    </div>
+
+                    <button
+                      onClick={handleSaveCoursePrice}
+                      disabled={updatingPrice}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
+                    >
+                      {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>Guardar Precio del Curso</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2d2d44] pb-3">
+                  <h3 className="font-bold text-base text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-[#06b6d4]" />
+                    <span>Directorio de Usuarios y Moderación</span>
+                  </h3>
+
+                  {/* Filtro por Rol y Búsqueda */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:w-56">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Buscar por nombre o email..."
+                        value={userSearchText}
+                        onChange={(e) => setUserSearchText(e.target.value)}
+                        className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
+                      />
+                    </div>
+                    <select
+                      value={userRoleFilter}
+                      onChange={(e) => setUserRoleFilter(e.target.value)}
+                      className="bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
+                    >
+                      <option value="ALL">Todos los roles</option>
+                      <option value="ADMIN">Administradores</option>
+                      <option value="MENTOR">Mentores</option>
+                      <option value="MENTEE">Mentees</option>
+                      <option value="PUBLIC_USER">Estudiantes</option>
+                      <option value="VIP">Estudiantes (VIP)</option>
+                      <option value="EXTERNAL">Externos</option>
+                    </select>
+                  </div>
+                </div>
+
+                {roleErrorMsg && (
+                  <div
+                    role="alert"
+                    className="p-3 bg-elevated border border-line-strong rounded-xl text-ink text-xs font-bold flex items-start gap-2"
+                  >
+                    <AlertTriangle aria-hidden className="w-4 h-4 shrink-0 mt-px text-brand-orange" />
+                    <span>{roleErrorMsg}</span>
+                  </div>
+                )}
+
+                <div className="overflow-x-auto rounded-xl border border-[#2d2d44]">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[11px] border-b border-[#2d2d44]">
+                      <tr>
+                        <th className="p-3.5">Usuario</th>
+                        <th className="p-3.5">Email</th>
+                        <th className="p-3.5">Rol Actual</th>
+                        <th className="p-3.5">Matrículas</th>
+                        <th className="p-3.5">Strikes & Estado</th>
+                        <th className="p-3.5 text-right">Moderación & Roles</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2d2d44]">
+                      {users
+                        .filter((u) => {
+                          const matchesSearch =
+                            !userSearchText ||
+                            u.name.toLowerCase().includes(userSearchText.toLowerCase()) ||
+                            u.email.toLowerCase().includes(userSearchText.toLowerCase());
+                          const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
+                          return matchesSearch && matchesRole;
+                        })
+                        .map((u) => {
+                          const strikes = u.strikes || 0;
+                          const isActive = u.isActive !== false;
+                          const userEnrs = enrollments.filter(
+                            (e) => (e.userId === u.id || e.userEmail === u.email) && e.status === 'ACTIVE',
+                          );
+
+                          return (
+                            <tr key={u.id} className="hover:bg-[#1a1a2e] transition-colors">
+                              <td className="p-3.5 flex items-center gap-3">
+                                <img
+                                  src={avatarSrc(u.avatarUrl)}
+                                  alt={u.name}
+                                  className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
+                                />
+                                <div>
+                                  <span className="font-semibold text-white block">{u.name}</span>
+                                  {!isActive && (
+                                    <span className="text-[10px] text-red-400 font-bold uppercase">Cuenta Suspendida</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3.5 font-mono text-slate-400">{u.email}</td>
+                              <td className="p-3.5">
+                                {u.role === 'ADMIN' && (
+                                  <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                                    <Shield aria-hidden className="w-3 h-3" /> ADMINISTRADOR
+                                  </span>
+                                )}
+                                {u.role === 'MENTOR' && (
+                                  <span className="bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                                    <UserCheck aria-hidden className="w-3 h-3" /> MENTOR
+                                  </span>
+                                )}
+                                {u.role === 'MENTEE' && (
+                                  <span className="bg-success/20 text-success border border-success/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                                    <GraduationCap aria-hidden className="w-3 h-3" /> MENTEE
+                                  </span>
+                                )}
+                                {u.role === 'PUBLIC_USER' && (
+                                  <span className="bg-elevated text-ink-soft border border-line font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
+                                    <BookOpen aria-hidden className="w-3 h-3" /> ESTUDIANTE
+                                  </span>
+                                )}
+                                {u.role === 'VIP' && (
+                                  <span className="bg-warning/20 text-warning border border-warning/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
+                                    <Crown aria-hidden className="w-3 h-3" /> ESTUDIANTE (VIP)
+                                  </span>
+                                )}
+                                {u.role === 'EXTERNAL' && (
+                                  <span className="bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 font-medium px-2.5 py-1 rounded-lg text-[10px]">
+                                    EXTERNO
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Columna de Matrículas con botón directo */}
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${
+                                      userEnrs.length > 0
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                                    }`}
+                                  >
+                                    {userEnrs.length} {userEnrs.length === 1 ? 'curso' : 'cursos'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNewEnrollUserId(u.id);
+                                      setShowQuickEnroll(true);
+                                    }}
+                                    className="px-2 py-0.5 rounded bg-[#0a0a0f] hover:bg-[#1a1a2e] border border-[#2d2d44] hover:border-brand-cyan text-brand-cyan text-[10px] font-bold transition-all"
+                                    title={`Matricular a ${u.name}`}
+                                  >
+                                    + Matricular
+                                  </button>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'
+                                    }`}>
+                                    ⚠️ {strikes} Strikes
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
+                                    }`}>
+                                    {isActive ? 'Activo' : 'Suspendido'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3.5 text-right space-x-1.5">
+                                {/* Moderation actions */}
+                                <button
+                                  onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'add_strike')}
+                                  title="Dar Strike de Moderación"
+                                  className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
+                                >
+                                  +1 Strike
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
+                                  title={isActive ? 'Suspender Usuario' : 'Activar Usuario'}
+                                  className={`px-2 py-1 border font-bold rounded-lg text-[10px] transition-all ${isActive
+                                      ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400'
+                                      : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400'
+                                    }`}
+                                >
+                                  {isActive ? 'Suspender' : 'Activar'}
+                                </button>
+
+                                {/* Selector de Rol Dinámico */}
+                                <select
+                                  value={u.role}
+                                  onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
+                                  aria-label="Asignar rol al usuario"
+                                  className="bg-canvas border border-line hover:border-brand-cyan/50 text-white rounded-lg px-2.5 py-1 text-micro font-bold focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-canvas transition-all cursor-pointer inline-block align-middle"
+                                  title="Asignar Rol al Usuario"
+                                >
+                                  <option value="ADMIN">Administrador</option>
+                                  <option value="MENTOR">Mentor</option>
+                                  <option value="MENTEE">Mentee</option>
+                                  <option value="PUBLIC_USER">Estudiante</option>
+                                  <option value="VIP">Estudiante (Pase VIP)</option>
+                                  <option value="EXTERNAL">Externo</option>
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
 
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#06b6d4]" />
-                Gestión de Usuarios, Pases Mentee y Moderación
-              </h3>
-              <button
-                onClick={loadUsers}
-                className="p-1.5 rounded-lg bg-[#1a1a2e] border border-[#2d2d44] text-slate-300 hover:text-white"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
+          {/* VISTA 2: REGISTRO HISTÓRICO DE MATRÍCULAS */}
+          {userSectionView === 'enrollments' && (
+            <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2d2d44] pb-3">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-emerald-400" />
+                  <span>Matrículas Registradas ({enrollments.length})</span>
+                </h3>
 
-            {roleErrorMsg && (
-              <div
-                role="alert"
-                className="p-3 bg-elevated border border-line-strong rounded-xl text-ink text-xs font-bold flex items-start gap-2"
-              >
-                <AlertTriangle aria-hidden className="w-4 h-4 shrink-0 mt-px text-brand-orange" />
-                <span>{roleErrorMsg}</span>
+                {/* Filtros de Matrículas */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-56">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Buscar estudiante o curso..."
+                      value={enrollmentSearchText}
+                      onChange={(e) => setEnrollmentSearchText(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
+                    />
+                  </div>
+                  <select
+                    value={enrollmentStatusFilter}
+                    onChange={(e) => setEnrollmentStatusFilter(e.target.value)}
+                    className="bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
+                  >
+                    <option value="ALL">Todos los estados</option>
+                    <option value="ACTIVE">ACTIVE (Activas)</option>
+                    <option value="COMPLETED">COMPLETED (Graduados)</option>
+                    <option value="REVOKED">REVOKED (Revocadas)</option>
+                    <option value="EXPIRED">EXPIRED (Expiradas)</option>
+                  </select>
+                </div>
               </div>
-            )}
 
-            <div className="overflow-x-auto rounded-xl border border-[#2d2d44]">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[11px] border-b border-[#2d2d44]">
-                  <tr>
-                    <th className="p-3.5">Usuario</th>
-                    <th className="p-3.5">Email</th>
-                    <th className="p-3.5">Rol Actual</th>
-                    <th className="p-3.5">Strikes & Estado</th>
-                    <th className="p-3.5 text-right">Moderación & Roles</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#2d2d44]">
-                  {users.map((u) => {
-                    const strikes = u.strikes || 0;
-                    const isActive = u.isActive !== false;
-                    return (
-                      <tr key={u.id} className="hover:bg-[#1a1a2e] transition-colors">
-                        <td className="p-3.5 flex items-center gap-3">
-                          <img
-                            src={avatarSrc(u.avatarUrl)}
-                            alt={u.name}
-                            className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
-                          />
-                          <div>
-                            <span className="font-semibold text-white block">{u.name}</span>
-                            {!isActive && (
-                              <span className="text-[10px] text-red-400 font-bold uppercase">Cuenta Suspendida</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3.5 font-mono text-slate-400">{u.email}</td>
-                        <td className="p-3.5">
-                          {u.role === 'ADMIN' && (
-                            <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                              <Shield aria-hidden className="w-3 h-3" /> ADMINISTRADOR
-                            </span>
-                          )}
-                          {u.role === 'MENTOR' && (
-                            <span className="bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                              <UserCheck aria-hidden className="w-3 h-3" /> MENTOR
-                            </span>
-                          )}
-                          {u.role === 'MENTEE' && (
-                            <span className="bg-success/20 text-success border border-success/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                              <GraduationCap aria-hidden className="w-3 h-3" /> MENTEE
-                            </span>
-                          )}
-                          {u.role === 'PUBLIC_USER' && (
-                            <span className="bg-elevated text-ink-soft border border-line font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
-                              <BookOpen aria-hidden className="w-3 h-3" /> ESTUDIANTE
-                            </span>
-                          )}
-                          {u.role === 'VIP' && (
-                            <span className="bg-warning/20 text-warning border border-warning/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                              <Crown aria-hidden className="w-3 h-3" /> ESTUDIANTE (VIP)
-                            </span>
-                          )}
-                          {u.role === 'EXTERNAL' && (
-                            <span className="bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 font-medium px-2.5 py-1 rounded-lg text-[10px]">
-                              EXTERNO
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'
-                              }`}>
-                              ⚠️ {strikes} Strikes
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
-                              }`}>
-                              {isActive ? 'Activo' : 'Suspendido'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-3.5 text-right space-x-1.5">
-                          {/* Moderation actions */}
-                          <button
-                            onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'add_strike')}
-                            title="Dar Strike de Moderación"
-                            className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
-                          >
-                            +1 Strike
-                          </button>
-                          <button
-                            onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
-                            title={isActive ? 'Suspender Usuario' : 'Activar Usuario'}
-                            className={`px-2 py-1 border font-bold rounded-lg text-[10px] transition-all ${isActive
-                                ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400'
-                                : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400'
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
+                    <tr>
+                      <th className="py-3 px-4">Estudiante</th>
+                      <th className="py-3 px-4">Curso</th>
+                      <th className="py-3 px-4">Estado</th>
+                      <th className="py-3 px-4">Origen</th>
+                      <th className="py-3 px-4">Fecha</th>
+                      <th className="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2d2d44]/50">
+                    {enrollments
+                      .filter((enr) => {
+                        const matchesSearch =
+                          !enrollmentSearchText ||
+                          (enr.userName || '').toLowerCase().includes(enrollmentSearchText.toLowerCase()) ||
+                          (enr.userEmail || '').toLowerCase().includes(enrollmentSearchText.toLowerCase()) ||
+                          (enr.courseTitle || '').toLowerCase().includes(enrollmentSearchText.toLowerCase());
+                        const matchesStatus =
+                          enrollmentStatusFilter === 'ALL' || enr.status === enrollmentStatusFilter;
+                        return matchesSearch && matchesStatus;
+                      })
+                      .map((enr) => (
+                        <tr key={enr.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                          <td className="py-3 px-4 font-semibold text-white">
+                            {enr.userName || enr.userId}
+                            <span className="block text-[10px] text-slate-500 font-normal">{enr.userEmail}</span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-300">{enr.courseTitle || enr.courseId}</td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                enr.status === 'ACTIVE'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                  : enr.status === 'COMPLETED'
+                                    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                                    : enr.status === 'REVOKED'
+                                      ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                               }`}
-                          >
-                            {isActive ? 'Suspender' : 'Activar'}
-                          </button>
-
-                          {/* Selector de Rol Dinámico */}
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
-                            aria-label="Asignar rol al usuario"
-                            className="bg-canvas border border-line hover:border-brand-cyan/50 text-white rounded-lg px-2.5 py-1 text-micro font-bold focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-canvas transition-all cursor-pointer inline-block align-middle"
-                            title="Asignar Rol al Usuario"
-                          >
-                            <option value="ADMIN">Administrador</option>
-                            <option value="MENTOR">Mentor</option>
-                            <option value="MENTEE">Mentee</option>
-                            <option value="PUBLIC_USER">Estudiante</option>
-                            <option value="VIP">Estudiante (Pase VIP)</option>
-                            <option value="EXTERNAL">Externo</option>
-                          </select>
+                            >
+                              {enr.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[10px] text-slate-400">{enr.source}</td>
+                          <td className="py-3 px-4 text-slate-400">
+                            {new Date(enr.createdAt).toLocaleDateString('es-ES')}
+                          </td>
+                          <td className="py-3 px-4 text-right space-x-1">
+                            {enr.status !== 'ACTIVE' && (
+                              <button
+                                onClick={() => handleUpdateEnrollmentStatus(enr.id, 'ACTIVE')}
+                                className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-bold"
+                              >
+                                Activar
+                              </button>
+                            )}
+                            {enr.status !== 'REVOKED' && (
+                              <button
+                                onClick={() => handleUpdateEnrollmentStatus(enr.id, 'REVOKED')}
+                                className="px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-[10px] font-bold"
+                              >
+                                Revocar
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    {enrollments.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-500">
+                          No hay matrículas registradas aún.
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* TAB 2: LINK GOOGLE DRIVE VIDEOS TO COURSE MODULES */}
-      {activeTab === 'drive' && (
-        <div className="space-y-6">
+      {/* TAB: ESTUDIO DE MEDIOS Y RECURSOS DEL CURSO (RECURSOS + DRIVE + TTS) */}
+      {['resources', 'drive', 'tts'].includes(activeTab) && (
+        <div className={`space-y-6 ${animClass}`}>
+          {/* El contenido se asocia a un curso concreto; el selector va primero */}
           {courseScopeBar}
+
+          {/* Selector de Herramienta Multimedia (solo en modo moderno unificado) */}
+          {uiVersion === 'v0.5-modern' && (
+            <div className="flex items-center gap-2 border-b border-[#2d2d44] pb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('resources');
+                  setMediaView('resources');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  mediaView === 'resources' || activeTab === 'resources'
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-sm'
+                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Materiales y Archivos Descargables ({workResources.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('drive');
+                  setMediaView('drive');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  mediaView === 'drive' || activeTab === 'drive'
+                    ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/40 shadow-sm'
+                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                }`}
+              >
+                <HardDrive className="w-4 h-4" />
+                <span>Videos de Google Drive</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('tts');
+                  setMediaView('tts');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  mediaView === 'tts' || activeTab === 'tts'
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Guías de Audio TTS con IA</span>
+              </button>
+            </div>
+          )}
+
+          {/* 1. SECCIÓN RECURSOS DESCARGABLES */}
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'resources' : (mediaView === 'resources' || activeTab === 'resources')) && (
+            <div className={`space-y-6 ${animClass}`}>
+              <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-cyan-400" />
+                  <span>Agregar Recurso Descargable Protegido</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Material complementario (guías, PDF, repositorios o archivos ZIP) para
+                  «{workCourse.title}». La URL privada queda protegida y sólo será accesible mediante
+                  token de sesión autorizado.
+                </p>
+
+                {resSuccessMsg && (
+                  <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> {resSuccessMsg}
+                  </div>
+                )}
+
+                {resErrorMsg && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{resErrorMsg}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleAddResource} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Recurso</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Guía de Arquitectura.pdf"
+                      value={resTitle}
+                      onChange={(e) => setResTitle(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">URL Privada / Archivo</label>
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/..."
+                      value={resPrivateUrl}
+                      onChange={(e) => setResPrivateUrl(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Asignar a Módulo</label>
+                    <select
+                      value={resModuleId}
+                      onChange={(e) => setResModuleId(e.target.value)}
+                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    >
+                      <option value="">General del Curso</option>
+                      {workModules.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
+                    <Plus className="w-4 h-4" /> Agregar Recurso
+                  </button>
+                </form>
+              </div>
+
+              {/* Lista de Recursos Existentes */}
+              <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#06b6d4]" />
+                  <span>Recursos de «{workCourse.title}» ({workResources.length})</span>
+                </h3>
+
+                <div className="space-y-2 max-h-[32rem] overflow-y-auto">
+                  {workResources.length > 0 ? (
+                    workResources.map(({ resource, moduleTitle }) => (
+                      <div key={resource.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Download className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{resource.title}</p>
+                            <span className="text-[10px] text-slate-500 font-mono truncate block">
+                              {moduleTitle || 'General del Curso'} • {resource.kind} • {resource.downloadUrl}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteResource(resource.id)}
+                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene recursos.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2. SECCIÓN VIDEOS GOOGLE DRIVE */}
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'drive' : (mediaView === 'drive' || activeTab === 'drive')) && (
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
               <div>
@@ -1152,17 +2066,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               ))}
             </div>
           </div>
-        </div>
-      )}
+          )}
 
-      {/* TAB 3: GESTIÓN DE GUÍAS DE MENTORÍA (TTS GAMIFICADO) */}
-      {activeTab === 'tts' && (
-        <div className="space-y-6">
-
-          {/* La guía se guarda contra una clase concreta, así que el curso se
-              elige antes que nada: sin esto el desplegable de lecciones sólo
-              ofrecía las del primer curso del catálogo. */}
-          {courseScopeBar}
+          {/* 3. SECCIÓN GUÍAS DE AUDIO TTS */}
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'tts' : (mediaView === 'tts' || activeTab === 'tts')) && (
+            <div className="space-y-6">
 
           {/* Form Box */}
           <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
@@ -1425,8 +2333,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
               </div>
             )}
           </div>
-
         </div>
+      )}
+      </div>
       )}
 
       {/* TAB 4: GESTIÓN DE PLUGINS & EXTENSIONES */}
@@ -1434,195 +2343,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         <PluginManagerView />
       )}
 
-      {/* TAB: EDITOR DE PORTADA. La pestaña existia y el editor estaba
-          importado, pero nadie lo pintaba: pulsar "Portada" dejaba la pagina en
-          blanco por debajo de las pestañas. */}
-      {activeTab === 'landing' && (
-        <LandingPageEditor onSaved={onRefreshData} />
-      )}
-
-      {/* TAB: BUZÓN DE ESCUCHA (NPS, caritas y mensajes del estudiantado) */}
-      {activeTab === 'listening' && <ListeningAdminPanel />}
-
-      {/* TAB: MATRÍCULAS (ENROLLMENTS) */}
-      {activeTab === 'enrollments' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Matricular Usuario Manualmente */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-emerald-400" />
-              <span>Matricular Usuario en Curso</span>
-            </h3>
-            <p className="text-xs text-slate-400">
-              Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).
-            </p>
-
-            {enrollSuccessMsg && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> {enrollSuccessMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Usuario</label>
-                <select
-                  value={newEnrollUserId}
-                  onChange={(e) => setNewEnrollUserId(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  required
-                >
-                  <option value="">Selecciona usuario...</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email}) [{u.role}]
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Curso</label>
-                <select
-                  value={newEnrollCourseId}
-                  onChange={(e) => setNewEnrollCourseId(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  required
-                >
-                  <option value="">Selecciona curso...</option>
-                  {allCourses.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title}{item.published === false ? ' (borrador)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Estado</label>
-                <select
-                  value={newEnrollStatus}
-                  onChange={(e) => setNewEnrollStatus(e.target.value as any)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                >
-                  <option value="ACTIVE">ACTIVE (Activa)</option>
-                  <option value="COMPLETED">COMPLETED (Graduado)</option>
-                  <option value="REVOKED">REVOKED (Revocada)</option>
-                  <option value="EXPIRED">EXPIRED (Expirada)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Origen</label>
-                <select
-                  value={newEnrollSource}
-                  onChange={(e) => setNewEnrollSource(e.target.value as any)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                >
-                  <option value="ADMIN">ADMIN (Asignación Directa)</option>
-                  <option value="PAYMENT">PAYMENT (Pago)</option>
-                  <option value="MENTORSHIP">MENTORSHIP (Mentoría)</option>
-                </select>
-              </div>
-
-              <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
-                <Plus className="w-4 h-4" /> Matricular
-              </button>
-            </form>
-          </div>
-
-          {/* Tabla de Matrículas */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#06b6d4]" />
-                <span>Matrículas Registradas ({enrollments.length})</span>
-              </h3>
+      {/* TAB: PORTAL WEB Y FEEDBACK ALUMNOS (PORTADA + BUZÓN NPS) */}
+      {['landing', 'listening'].includes(activeTab) && (
+        <div className={`space-y-6 ${animClass}`}>
+          {/* Selector de Portada / Feedback (solo en modo moderno unificado) */}
+          {uiVersion === 'v0.5-modern' && (
+            <div className="flex items-center gap-2 border-b border-[#2d2d44] pb-3">
               <button
-                onClick={loadEnrollments}
-                disabled={loadingEnrollments}
-                className="p-2 bg-[#0a0a0f] hover:bg-[#1a1a2e] text-slate-300 rounded-xl border border-[#2d2d44] transition-all text-xs flex items-center gap-1"
+                type="button"
+                onClick={() => {
+                  setActiveTab('landing');
+                  setPortalView('landing');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeTab === 'landing' || portalView === 'landing'
+                    ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/40 shadow-sm'
+                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                }`}
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingEnrollments ? 'animate-spin' : ''}`} />
-                <span>Actualizar</span>
+                <Sliders className="w-4 h-4" />
+                <span>Editor Visual de Portada</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('listening');
+                  setPortalView('listening');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                  activeTab === 'listening' || portalView === 'listening'
+                    ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40 shadow-sm'
+                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                }`}
+              >
+                <HeartHandshake className="w-4 h-4" />
+                <span>Buzón de Escucha y NPS del Alumnado</span>
               </button>
             </div>
+          )}
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
-                  <tr>
-                    <th className="py-3 px-4">Estudiante</th>
-                    <th className="py-3 px-4">Curso</th>
-                    <th className="py-3 px-4">Estado</th>
-                    <th className="py-3 px-4">Origen</th>
-                    <th className="py-3 px-4">Fecha</th>
-                    <th className="py-3 px-4 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#2d2d44]/50">
-                  {enrollments.map((enr) => (
-                    <tr key={enr.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-white">
-                        {enr.userName || enr.userId}
-                        <span className="block text-[10px] text-slate-500 font-normal">{enr.userEmail}</span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-300">{enr.courseTitle || enr.courseId}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${enr.status === 'ACTIVE'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                              : enr.status === 'COMPLETED'
-                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                                : enr.status === 'REVOKED'
-                                  ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            }`}
-                        >
-                          {enr.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[10px] text-slate-400">{enr.source}</td>
-                      <td className="py-3 px-4 text-slate-400">
-                        {new Date(enr.createdAt).toLocaleDateString('es-ES')}
-                      </td>
-                      <td className="py-3 px-4 text-right space-x-1">
-                        {enr.status !== 'ACTIVE' && (
-                          <button
-                            onClick={() => handleUpdateEnrollmentStatus(enr.id, 'ACTIVE')}
-                            className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-bold"
-                          >
-                            Activar
-                          </button>
-                        )}
-                        {enr.status !== 'REVOKED' && (
-                          <button
-                            onClick={() => handleUpdateEnrollmentStatus(enr.id, 'REVOKED')}
-                            className="px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-[10px] font-bold"
-                          >
-                            Revocar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {enrollments.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500">
-                        No hay matrículas registradas aún.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'landing' : (activeTab === 'landing' || portalView === 'landing')) && (
+            <LandingPageEditor onSaved={onRefreshData} disableAnimation={uiVersion === 'v0.4-classic'} />
+          )}
+
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'listening' : (activeTab === 'listening' || portalView === 'listening')) && (
+            <ListeningAdminPanel />
+          )}
         </div>
       )}
 
+
+
       {/* TAB: CERTIFICADOS (CERTIFICATES) */}
       {activeTab === 'certificates' && (
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4 animate-fade-in">
+        <div className={`bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4 ${animClass}`}>
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -1732,118 +2507,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ course, onRefres
         </div>
       )}
 
-      {/* TAB: RECURSOS DESCARGABLES (RESOURCES) */}
-      {activeTab === 'resources' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* El recurso se cuelga de un curso concreto; elegirlo va primero. */}
-          {courseScopeBar}
 
-          {/* Agregar Recurso */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-cyan-400" />
-              <span>Agregar Recurso Descargable Protegido</span>
-            </h3>
-            <p className="text-xs text-slate-400">
-              Material complementario (guías, PDF, repositorios o archivos ZIP) para
-              «{workCourse.title}». La URL privada queda protegida y sólo será accesible mediante
-              token de sesión autorizado.
-            </p>
-
-            {resSuccessMsg && (
-              <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> {resSuccessMsg}
-              </div>
-            )}
-
-            {resErrorMsg && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{resErrorMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAddResource} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Recurso</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Guía de Arquitectura.pdf"
-                  value={resTitle}
-                  onChange={(e) => setResTitle(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">URL Privada / Archivo</label>
-                <input
-                  type="url"
-                  placeholder="https://drive.google.com/..."
-                  value={resPrivateUrl}
-                  onChange={(e) => setResPrivateUrl(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">Asignar a Módulo</label>
-                <select
-                  value={resModuleId}
-                  onChange={(e) => setResModuleId(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                >
-                  <option value="">General del Curso</option>
-                  {workModules.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
-                <Plus className="w-4 h-4" /> Agregar Recurso
-              </button>
-            </form>
-          </div>
-
-          {/* Lista de Recursos Existentes */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-[#06b6d4]" />
-              <span>Recursos de «{workCourse.title}» ({workResources.length})</span>
-            </h3>
-
-            <div className="space-y-2 max-h-[32rem] overflow-y-auto">
-              {workResources.length > 0 ? (
-                workResources.map(({ resource, moduleTitle }) => (
-                  <div key={resource.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Download className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{resource.title}</p>
-                        <span className="text-[10px] text-slate-500 font-mono truncate block">
-                          {moduleTitle || 'General del Curso'} • {resource.kind} • {resource.downloadUrl}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteResource(resource.id)}
-                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene recursos.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Contracts & Legal Compliance Audit Tab */}
       {activeTab === 'contracts' && (

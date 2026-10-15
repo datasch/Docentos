@@ -1046,6 +1046,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onCourseCreated={(_courseId) => {
             onRefreshCourses();
             announce('¡Curso generado y guardado exitosamente desde YouTube!');
+            setActiveTab('courses');
           }}
           onCancel={() => setActiveTab('courses')}
         />

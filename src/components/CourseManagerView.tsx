@@ -31,16 +31,20 @@ import {
   Lock,
   Unlock,
   Globe,
+  Youtube,
+  Sparkles,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
-import { Course, Module, VideoDriveLink, DriveVideoFile, QuizQuestion } from '../types';
+import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
+import { Course, Module, VideoDriveLink, DriveVideoFile, QuizQuestion, User } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
 import { syncModuleQuizzes, getModuleQuestions } from '../plugins/QuizzesPlugin';
-import { Sparkles } from 'lucide-react';
 
 interface CourseManagerViewProps {
+  currentUser?: User;
   onRefreshData: () => void;
+  disableAnimation?: boolean;
 }
 
 const emptyForm = {
@@ -57,11 +61,18 @@ const emptyForm = {
 
 type CourseForm = typeof emptyForm;
 
-export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshData }) => {
+export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
+  currentUser,
+  onRefreshData,
+  disableAnimation = false,
+}) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Modo de creación activo: 'manual' | 'youtube' | 'drive'
+  const [creationTab, setCreationTab] = useState<'manual' | 'youtube' | 'drive'>('manual');
 
   // Formulario de alta / edición de curso
   const [form, setForm] = useState<CourseForm>(emptyForm);
@@ -346,17 +357,117 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
     course.modules.reduce((total, m) => total + m.videos.length, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className={`space-y-6 ${disableAnimation ? '' : 'animate-fade-in'}`}>
       {successMsg && (
         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" /> {successMsg}
         </div>
       )}
 
-      {/* Importación desde Drive: crea el curso entero de una pasada */}
-      {!editingCourseId && <DriveCourseImport onImported={refreshAll} />}
+      {/* Selector de Modos de Creación e Importación */}
+      {!editingCourseId && (
+        <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+          <div className="space-y-1">
+            <span className="text-micro font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> Métodos de Creación de Cursos
+            </span>
+            <h3 className="text-sm font-bold text-ink">
+              ¿Cómo deseas estructurar tu próximo curso?
+            </h3>
+            <p className="text-xs text-ink-muted">
+              Diseña temarios desde cero, genera cursos completos con IA desde YouTube o importa carpetas desde Google Drive.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setCreationTab('manual')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                creationTab === 'manual'
+                  ? 'btn-brand-primary shadow-md'
+                  : 'bg-raised hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Manual</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreationTab('youtube')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                creationTab === 'youtube'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                  : 'bg-raised hover:bg-elevated text-red-400 hover:text-red-300 border border-red-500/30'
+              }`}
+            >
+              <Youtube className="w-3.5 h-3.5" />
+              <span>IA YouTube Builder</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreationTab('drive')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                creationTab === 'drive'
+                  ? 'bg-brand-purple text-ink shadow-md shadow-brand-purple/30'
+                  : 'bg-raised hover:bg-elevated text-ink-muted hover:text-ink border border-line'
+              }`}
+            >
+              <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Google Drive</span>
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Alta / edición de curso */}
+      {/* Asistente 1: AI YouTube Course Builder */}
+      {!editingCourseId && creationTab === 'youtube' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold text-red-400 flex items-center gap-2">
+              <Youtube className="w-4 h-4" /> Asistente de Creación de Cursos desde YouTube con IA
+            </span>
+            <button
+              type="button"
+              onClick={() => setCreationTab('manual')}
+              className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> Volver a Creación Manual
+            </button>
+          </div>
+          <YouTubeCourseBuilder
+            currentUser={currentUser}
+            onCourseCreated={(newId) => {
+              flash('¡Curso creado exitosamente con IA desde YouTube!');
+              refreshAll();
+              setCreationTab('manual');
+              setExpandedCourseId(newId);
+            }}
+            onCancel={() => setCreationTab('manual')}
+          />
+        </div>
+      )}
+
+      {/* Asistente 2: Google Drive Video Engine */}
+      {!editingCourseId && creationTab === 'drive' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold text-cyan-400 flex items-center gap-2">
+              <HardDrive className="w-4 h-4" /> Importación desde Google Drive Video Engine
+            </span>
+            <button
+              type="button"
+              onClick={() => setCreationTab('manual')}
+              className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> Volver a Creación Manual
+            </button>
+          </div>
+          <DriveCourseImport onImported={refreshAll} />
+        </div>
+      )}
+
+      {/* Asistente 3 / Edición: Formulario Manual */}
+      {(editingCourseId || creationTab === 'manual') && (
       <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
           <div>
@@ -536,6 +647,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({ onRefreshD
           </div>
         </form>
       </div>
+      )}
 
       {/* Catálogo de cursos */}
       <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">

@@ -62,6 +62,37 @@ export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
       trackSessionDuration: true,
     },
   },
+  {
+    id: 'youtube-ai-builder',
+    name: 'Plugin AI YouTube Course Builder',
+    description: 'Generador y estructurador automático de cursos temáticos a partir de playlists y búsquedas de YouTube usando Gemini IA.',
+    version: '1.0.0',
+    enabled: true,
+    category: 'integrations',
+    icon: 'Youtube',
+    config: {
+      enableAiStructuring: true,
+      defaultLanguage: 'es',
+      allowMentorAccess: true,
+    },
+  },
+  {
+    id: 'docentos-customizer',
+    name: 'Plugin de Personalización y Versiones de DocentOS',
+    description: 'Permite alternar entre la versión DocentOS Moderna v0.5 (Unificada y Simétrica) y DocentOS Clásica v0.4 (Desplegada en 11 pestañas como en la versión anterior), además de personalizar temas de color y densidad.',
+    version: '1.0.0',
+    enabled: true,
+    category: 'custom',
+    icon: 'Palette',
+    config: {
+      interfaceVersion: 'v0.4-classic',
+      colorTheme: 'cyan',
+      colorMode: 'dark',
+      density: 'comfortable',
+      showQuickVersionSwitcher: true,
+      customCampusName: 'Academia Giantucchi',
+    },
+  },
 ];
 
 export interface AnalyticsEvent {
@@ -113,12 +144,21 @@ class PluginManagerEngine {
       }
       return p;
     });
+    if (typeof window !== 'undefined' && id === 'docentos-customizer') {
+      window.dispatchEvent(new CustomEvent('docentos-customizer-change', { detail: newConfig }));
+    }
     return this.plugins;
   }
 
   public setPlugins(pluginsList: AcademiaPlugin[]): void {
     if (Array.isArray(pluginsList) && pluginsList.length > 0) {
       this.plugins = pluginsList;
+      if (typeof window !== 'undefined') {
+        const customizer = pluginsList.find((p) => p.id === 'docentos-customizer');
+        if (customizer?.config) {
+          window.dispatchEvent(new CustomEvent('docentos-customizer-change', { detail: customizer.config }));
+        }
+      }
     }
   }
 
@@ -275,6 +315,39 @@ class PluginManagerEngine {
 
   public getAnalyticsEvents(): AnalyticsEvent[] {
     return this.analyticsLog;
+  }
+
+  /**
+   * Obtiene la versión activa de interfaz de DocentOS ('v0.5-modern' o 'v0.4-classic').
+   * Si el plugin está desactivado, siempre devuelve el estándar oficial 'v0.5-modern'.
+   */
+  public getInterfaceVersion(): 'v0.5-modern' | 'v0.4-classic' {
+    if (!this.isEnabled('docentos-customizer')) return 'v0.4-classic';
+    const plugin = this.getPlugin('docentos-customizer');
+    const version = plugin?.config?.interfaceVersion;
+    return version === 'v0.5-modern' ? 'v0.5-modern' : 'v0.4-classic';
+  }
+
+  /**
+   * Obtiene la configuración completa del personalizador de DocentOS.
+   */
+  public getCustomizerConfig(): {
+    interfaceVersion: 'v0.5-modern' | 'v0.4-classic';
+    colorTheme: 'cyan' | 'violet' | 'emerald' | 'amber';
+    colorMode: 'light' | 'dark';
+    density: 'comfortable' | 'compact';
+    showQuickVersionSwitcher: boolean;
+    customCampusName: string;
+  } {
+    const plugin = this.getPlugin('docentos-customizer');
+    return {
+      interfaceVersion: plugin?.config?.interfaceVersion === 'v0.5-modern' ? 'v0.5-modern' : 'v0.4-classic',
+      colorTheme: plugin?.config?.colorTheme || 'cyan',
+      colorMode: plugin?.config?.colorMode === 'light' ? 'light' : 'dark',
+      density: plugin?.config?.density || 'comfortable',
+      showQuickVersionSwitcher: plugin?.config?.showQuickVersionSwitcher !== false,
+      customCampusName: plugin?.config?.customCampusName || 'Academia Giantucchi',
+    };
   }
 }
 

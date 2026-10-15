@@ -18,10 +18,13 @@ import {
   Menu,
   Search,
   X,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../config/theme';
+import { getCurrentColorMode, toggleColorMode, ColorMode } from '../lib/themeApplicator';
 
 export interface PublicNavLink {
   id: string;
@@ -88,11 +91,25 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
   const [langOpen, setLangOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [colorMode, setColorMode] = useState<ColorMode>(() => getCurrentColorMode());
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const displayAppName = appName || siteConfig.appName || 'DocentOS';
+
+  useEffect(() => {
+    const handleThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ colorMode?: ColorMode }>;
+      if (customEvent.detail?.colorMode) {
+        setColorMode(customEvent.detail.colorMode);
+      } else {
+        setColorMode(getCurrentColorMode());
+      }
+    };
+    window.addEventListener('docentos-theme-change', handleThemeChange);
+    return () => window.removeEventListener('docentos-theme-change', handleThemeChange);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -181,6 +198,24 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                 onChange={(event) => onSearchChange(event.target.value)}
               />
             </div>
+
+            {/* Toggle Modo Claro / Oscuro */}
+            <button
+              type="button"
+              className="lp-icon-btn"
+              onClick={() => {
+                const newMode = toggleColorMode();
+                setColorMode(newMode);
+              }}
+              title={colorMode === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              aria-label={colorMode === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              {colorMode === 'dark' ? (
+                <Sun aria-hidden className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon aria-hidden className="h-4 w-4 text-indigo-600" />
+              )}
+            </button>
 
             {/* Idioma */}
             <div className="lp-menu-anchor lp-nav-lang" ref={langRef}>
@@ -281,6 +316,30 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                         role="menuitem"
                         className="lp-menu-item"
                         onClick={() => {
+                          const newMode = toggleColorMode();
+                          setColorMode(newMode);
+                        }}
+                      >
+                        <span className="lp-menu-item-left">
+                          {colorMode === 'dark' ? (
+                            <>
+                              <Sun aria-hidden className="h-4 w-4 text-amber-400" />
+                              Modo Claro
+                            </>
+                          ) : (
+                            <>
+                              <Moon aria-hidden className="h-4 w-4 text-indigo-600" />
+                              Modo Oscuro
+                            </>
+                          )}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="lp-menu-item"
+                        onClick={() => {
                           setProfileOpen(false);
                           onLogout?.();
                         }}
@@ -368,6 +427,44 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                 {lang.code.toUpperCase()}
               </button>
             ))}
+          </span>
+        </div>
+
+        {/* Selector de modo claro / oscuro en móvil */}
+        <div className="lp-mobile-lang">
+          <span className="inline-flex items-center gap-2">
+            {colorMode === 'dark' ? (
+              <Moon aria-hidden className="h-4 w-4 text-indigo-400" />
+            ) : (
+              <Sun aria-hidden className="h-4 w-4 text-amber-500" />
+            )}
+            Tema
+          </span>
+          <span className="lp-mobile-lang-options">
+            <button
+              type="button"
+              onClick={() => {
+                if (colorMode !== 'light') {
+                  const newMode = toggleColorMode();
+                  setColorMode(newMode);
+                }
+              }}
+              className={colorMode === 'light' ? 'is-active' : undefined}
+            >
+              ☀️ Claro
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (colorMode !== 'dark') {
+                  const newMode = toggleColorMode();
+                  setColorMode(newMode);
+                }
+              }}
+              className={colorMode === 'dark' ? 'is-active' : undefined}
+            >
+              🌙 Oscuro
+            </button>
           </span>
         </div>
 

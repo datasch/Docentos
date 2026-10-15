@@ -230,16 +230,33 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
   try {
     const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `${systemPrompt}\n\n${userPrompt}`,
-      config: {
-        responseMimeType: 'application/json',
-        abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS),
-      },
-    });
+    const candidateModels = [
+      process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ];
 
-    const text = response.text || '';
+    let text = '';
+    for (const model of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: `${systemPrompt}\n\n${userPrompt}`,
+          config: {
+            responseMimeType: 'application/json',
+            abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS),
+          },
+        });
+        if (response.text) {
+          text = response.text;
+          break;
+        }
+      } catch (mErr) {
+        // Seguir con el siguiente modelo de la lista
+      }
+    }
+
     const parsed = extractJsonObject(text) as GeneratedCourseStructure;
     if (parsed?.course && Array.isArray(parsed?.modules)) {
       return parsed;
