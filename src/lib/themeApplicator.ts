@@ -115,10 +115,21 @@ export function applyPlatformTheme(
   root.setAttribute('data-color-mode', colorMode);
   root.classList.remove('mode-dark', 'mode-light');
   root.classList.add(`mode-${colorMode}`);
+  if (colorMode === 'dark') {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
+
   if (document.body) {
     document.body.setAttribute('data-color-mode', colorMode);
     document.body.classList.remove('mode-dark', 'mode-light');
     document.body.classList.add(`mode-${colorMode}`);
+    if (colorMode === 'dark') {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
   }
 
   try {

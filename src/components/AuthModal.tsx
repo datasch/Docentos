@@ -14,6 +14,8 @@ import { createPortal } from 'react-dom';
 import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { User } from '../types';
+import { usePlatformBrand } from '../lib/logoConfig';
+import { FestiveHatOverlay } from './FestiveHatOverlay';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const { logoUrl, brandName } = usePlatformBrand();
   
   // Form State
   const [name, setName] = useState('');
@@ -178,9 +181,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Modal Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs font-bold mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>DocentOS Engine</span>
+          <div className="flex flex-col items-center justify-center gap-2 mb-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#06b6d4] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible shadow-lg shadow-purple-500/10">
+              <img
+                src={logoUrl}
+                alt={brandName}
+                className="w-full h-full object-contain rounded-[10px] bg-[#050505] p-1"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/logo.avif';
+                }}
+              />
+              <FestiveHatOverlay size="md" />
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-[11px] font-bold">
+              <Sparkles className="w-3 h-3" />
+              <span>{brandName}</span>
+            </div>
           </div>
           <h2 id="auth-modal-title" className="text-2xl font-extrabold text-white tracking-tight">
             {twoFactorChallenge

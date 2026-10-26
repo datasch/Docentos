@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Award,
   CheckSquare,
@@ -27,6 +28,8 @@ import {
   Play,
   PlaySquare,
   AlertCircle,
+  Compass,
+  X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import {
@@ -37,6 +40,7 @@ import {
   isModuleOpen,
   moduleLockStates,
   stepLesson,
+  LessonPosition,
 } from '../lib/courseNavigation';
 import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord, Meeting } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
@@ -62,6 +66,21 @@ interface CourseViewerProps {
   courses?: Course[];
   onSelectCourse?: (course: Course) => void;
   onGoHome?: () => void;
+  initialModuleIndex?: number;
+  initialVideoIndex?: number;
+  onBackToPath?: () => void;
+  isModal?: boolean;
+  onCloseModal?: () => void;
+  /** Ocultar pestaña de Temario cuando ya existe la ruta de aprendizaje */
+  hideSyllabus?: boolean;
+  /** Ocultar bloque de certificado inferior para mostrarlo al final de la ruta */
+  hideCertificate?: boolean;
+  /** Callback cuando cambia la lección activa en reproducción */
+  onActiveLessonChange?: (moduleIndex: number, videoIndex: number) => void;
+  /** Callback para sincronizar cambios de progreso en tiempo real con vistas contenedoras (como la ruta de Constellation) */
+  onProgressChange?: (completedMap: Record<string, boolean>) => void;
+  /** Callback cuando se completa una lección y se avanza hacia la siguiente (para animar en ruta cósmica) */
+  onLessonCompletedAndAdvance?: (nextTarget: LessonPosition | null) => void;
 }
 
 /**
@@ -126,13 +145,56 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   courses = [],
   onSelectCourse,
   onGoHome,
+  initialModuleIndex,
+  initialVideoIndex,
+  onBackToPath,
+  isModal = false,
+  onCloseModal,
+  hideSyllabus = false,
+  hideCertificate = false,
+  onActiveLessonChange,
+  onProgressChange,
+  onLessonCompletedAndAdvance,
 }) => {
-  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
-  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [activeModuleIndex, setActiveModuleIndex] = useState(initialModuleIndex ?? 0);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(initialVideoIndex ?? 0);
   // Mientras nadie elija lección a mano, el curso se abre por donde se dejó.
-  const [pickedByUser, setPickedByUser] = useState(false);
-  const [activePanel, setActivePanel] = useState<PanelTabId>('syllabus');
+  const [pickedByUser, setPickedByUser] = useState(
+    initialModuleIndex !== undefined || initialVideoIndex !== undefined,
+  );
+  const [activePanel, setActivePanel] = useState<PanelTabId>(hideSyllabus ? 'sessions' : 'syllabus');
   const [theaterMode, setTheaterMode] = useState(false);
+
+  useEffect(() => {
+    if (hideSyllabus && activePanel === 'syllabus') {
+      setActivePanel('sessions');
+    }
+  }, [hideSyllabus, activePanel]);
+
+  useEffect(() => {
+    if (!isModal) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onCloseModal) {
+        onCloseModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModal, onCloseModal]);
+
+  useEffect(() => {
+    if (initialModuleIndex !== undefined && initialVideoIndex !== undefined) {
+      setActiveModuleIndex(initialModuleIndex);
+      setActiveVideoIndex(initialVideoIndex);
+      setPickedByUser(true);
+    }
+  }, [initialModuleIndex, initialVideoIndex]);
 
   // Mentorship Q&A State
   const [comments, setComments] = useState<MentorshipComment[]>([]);
@@ -149,6 +211,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   // Progress state
   const [completedVideos, setCompletedVideos] = useState<Record<string, boolean>>({});
+  const [watchedVideos, setWatchedVideos] = useState<Record<string, boolean>>({});
   const [quizPassKey, setQuizPassKey] = useState<number>(0);
   /**
    * Módulo cuyo examen ocupa ahora el escenario, o null mientras se ve clase.
@@ -176,16 +239,22 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   // Load saved user progress on mount
   useEffect(() => {
-    setPickedByUser(false);
-    setActiveModuleIndex(0);
-    setActiveVideoIndex(0);
+    if (initialModuleIndex !== undefined || initialVideoIndex !== undefined) {
+      setPickedByUser(true);
+      setActiveModuleIndex(initialModuleIndex ?? 0);
+      setActiveVideoIndex(initialVideoIndex ?? 0);
+    } else {
+      setPickedByUser(false);
+      setActiveModuleIndex(0);
+      setActiveVideoIndex(0);
+    }
     setSelectedMeetingPlayback(null);
     setExamenModuleIndex(null);
     // El diploma es de un curso concreto. Arrastrar el del curso anterior
     // mientras carga el progreso anuncia «Curso completado» nada más entrar.
     setCertificate(null);
     loadUserProgress();
-  }, [course.id]);
+  }, [course.id, initialModuleIndex, initialVideoIndex]);
 
   /**
    * Cuántas preguntas tiene el examen de cada módulo del curso.
@@ -220,7 +289,41 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         api.getPlugins().catch(() => null),
       ]);
       if (res.completedVideos) {
-        setCompletedVideos(res.completedVideos);
+        // Consistencia secuencial estricta: si existen lecciones avanzadas completadas,
+        // todas las lecciones previas deben permanecer completadas (evita huecos huérfanos).
+        const flatList = flattenLessons(course);
+        let highestCompletedIdx = -1;
+        flatList.forEach((l, idx) => {
+          if (res.completedVideos[l.videoId]) {
+            highestCompletedIdx = Math.max(highestCompletedIdx, idx);
+          }
+        });
+
+        const healedCompleted: Record<string, boolean> = { ...res.completedVideos };
+        const watchedMap: Record<string, boolean> = {};
+
+        if (highestCompletedIdx >= 0) {
+          for (let i = 0; i <= highestCompletedIdx; i++) {
+            const vid = flatList[i].videoId;
+            healedCompleted[vid] = true;
+            watchedMap[vid] = true;
+            if (currentUser?.id) {
+              localStorage.setItem(getVideoWatchedKey(currentUser.id, vid), 'true');
+            }
+          }
+        }
+        Object.entries(res.completedVideos).forEach(([vid, done]) => {
+          if (done) {
+            healedCompleted[vid] = true;
+            watchedMap[vid] = true;
+            if (currentUser?.id) {
+              localStorage.setItem(getVideoWatchedKey(currentUser.id, vid), 'true');
+            }
+          }
+        });
+
+        setCompletedVideos(healedCompleted);
+        setWatchedVideos((prev) => ({ ...watchedMap, ...prev }));
       }
       // Siempre se asigna, también cuando no hay: `if (found)` dejaba en pie
       // el diploma del curso anterior, y la tarjeta lo anunciaba bajo el
@@ -250,12 +353,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // a mano por dónde iba uno, y en un curso de cincuenta lecciones eso es una
   // tarea. Solo actúa hasta que el alumno elige otra lección.
   useEffect(() => {
-    if (pickedByUser) return;
+    if (pickedByUser || initialModuleIndex !== undefined || initialVideoIndex !== undefined) return;
     const resume = findResumePosition(course, completedVideos);
     if (!resume) return;
     setActiveModuleIndex(resume.moduleIndex);
     setActiveVideoIndex(resume.videoIndex);
-  }, [course.id, completedVideos, pickedByUser]);
+  }, [course.id, completedVideos, pickedByUser, initialModuleIndex, initialVideoIndex]);
 
   /** El filtro del plugin de exámenes, que es independiente del curso. */
   const isQuizGateOpen = (moduleIndex: number) =>
@@ -280,6 +383,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setPickedByUser(true);
     setActiveModuleIndex(moduleIndex);
     setActiveVideoIndex(videoIndex);
+    onActiveLessonChange?.(moduleIndex, videoIndex);
   };
 
   const goToLesson = (moduleIndex: number, videoIndex: number) => {
@@ -448,13 +552,88 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
-  const toggleVideoCompletion = async (videoId: string) => {
+  // Persistencia de progreso de video por usuario y lección
+  const getVideoTimeKey = (userId: string, videoId: string) => `docentos_video_time_${userId}_${videoId}`;
+  const getVideoWatchedKey = (userId: string, videoId: string) => `docentos_video_watched_${userId}_${videoId}`;
+
+  // Restaurar estado de video visto desde persistencia
+  useEffect(() => {
+    if (!currentVideo?.id || !currentUser?.id) return;
+    const isSavedWatched = localStorage.getItem(getVideoWatchedKey(currentUser.id, currentVideo.id)) === 'true';
+    if (isSavedWatched && !watchedVideos[currentVideo.id]) {
+      setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+    }
+  }, [currentVideo?.id, currentUser?.id]);
+
+  // Segundo exacto donde el alumno dejó el video para no perder su progreso
+  const savedVideoTime = useMemo(() => {
+    if (!currentVideo?.id || !currentUser?.id) return 0;
+    const val = Number(localStorage.getItem(getVideoTimeKey(currentUser.id, currentVideo.id)));
+    return val > 3 ? Math.floor(val) : 0;
+  }, [currentVideo?.id, currentUser?.id]);
+
+  const toggleVideoCompletion = async (videoId: string, forceWatchBypass = false) => {
+    // Al interactuar con el progreso, asegurar que la selección del usuario
+    // quede fija y no sea sobrescrita por el useEffect de auto-resumen.
+    setPickedByUser(true);
     const isCompleted = !completedVideos[videoId];
+
+    // Validación estricta: para marcar una misión como completada el usuario DEBE
+    // haber visto el video hasta el final y completado el examen si lo exige
+    if (isCompleted && !forceWatchBypass) {
+      const targetLessonIndex = lessons.findIndex((l) => l.videoId === videoId);
+      const hasCompletedAfter =
+        targetLessonIndex !== -1 &&
+        lessons.slice(targetLessonIndex + 1).some((l) => Boolean(completedVideos[l.videoId]));
+
+      const isWatched =
+        watchedVideos[videoId] ||
+        completedVideos[videoId] ||
+        hasCompletedAfter ||
+        localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) === 'true';
+
+      if (!isWatched) {
+        setProgressError('Para completar esta misión debes ver el video de la clase hasta el final.');
+        return;
+      }
+
+      if (currentModule && activeVideoIndex >= (currentModule.videos?.length || 1) - 1) {
+        const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(currentModule.id) > 0;
+        if (hasQuiz) {
+          const attempt = quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id);
+          if (!attempt?.passed) {
+            setProgressError('Para completar esta misión debes aprobar el examen interactivo del módulo.');
+            return;
+          }
+        }
+      }
+    }
+
+    // Al desmarcar una misión completada:
+    if (!isCompleted) {
+      // 1. Prohibir desmarcar si existen lecciones posteriores completadas en el curso.
+      // La única forma de retroceder es desmarcando de una en una hacia atrás desde la última lección completada.
+      const targetLessonIndex = lessons.findIndex((l) => l.videoId === videoId);
+      if (targetLessonIndex !== -1) {
+        const subsequentCompleted = lessons.slice(targetLessonIndex + 1).filter((l) => Boolean(completedVideos[l.videoId]));
+        if (subsequentCompleted.length > 0) {
+          setProgressError(
+            'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, debes ir desmarcando de una en una hacia atrás desde la última lección completada.'
+          );
+          return;
+        }
+      }
+
+      // 2. Si el video ya fue visto, se PRESERVA su estado visto para que al retroceder
+      // el botón de marcar como completada esté inmediatamente disponible sin obligar a verlo de nuevo.
+      localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
+      setWatchedVideos((prev) => ({ ...prev, [videoId]: true }));
+    } else {
+      localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
+      setWatchedVideos((prev) => ({ ...prev, [videoId]: true }));
+    }
+
     const newCompletedMap = { ...completedVideos, [videoId]: isCompleted };
-    // Se pinta antes de que conteste el servidor para que la marca sea
-    // inmediata. Por eso hay que guardar el estado anterior: si la llamada
-    // falla, la clase se quedaba marcada en pantalla y sin guardar en la base,
-    // y el alumno creia tener un progreso que no existe.
     const previousCompleted = completedVideos;
     setProgressError(null);
     setCompletedVideos(newCompletedMap);
@@ -463,6 +642,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       const res = await api.toggleProgress(videoId, isCompleted);
       if (res.certificate) {
         setCertificate(res.certificate);
+      }
+
+      if (onProgressChange) {
+        onProgressChange(newCompletedMap);
       }
 
       if (isCompleted && currentVideo) {
@@ -475,14 +658,26 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           pluginManager.onCourseComplete(currentUser, course);
         }
 
-        // Dar una clase por terminada es decir «sigo»: quedarse en el video ya
-        // visto obliga a buscar el siguiente a mano en cada lección. Solo
-        // avanza al marcar la clase que se está viendo, no al marcar otra
-        // cualquiera desde el temario, y nunca al desmarcar.
-        //
-        // El destino se recalcula con el progreso recién guardado: marcar la
-        // última clase de un módulo es justo lo que abre el siguiente, y
-        // `nextLesson` todavía lo ve cerrado.
+        // Si se encuentra en el visor modal (Ruta Cósmica):
+        // Se notifica el avance a la lección siguiente y se cierra el visor
+        // para que el alumno pueda contemplar cómo el orbe celestial viaja
+        // y entra con su estela cósmica en la siguiente misión, desplegándose automáticamente al llegar.
+        if (isModal && onCloseModal) {
+          const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+          const locksAfterMarking = moduleLockStates(course, newCompletedMap, isQuizGateOpen);
+          const nextTarget = target && isModuleOpen(locksAfterMarking, target.moduleIndex) ? target : null;
+
+          if (onLessonCompletedAndAdvance) {
+            onLessonCompletedAndAdvance(nextTarget);
+          } else {
+            setTimeout(() => {
+              onCloseModal();
+            }, 350);
+          }
+          return;
+        }
+
+        // Avanzar a la lección siguiente al completar
         const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
         const locksAfterMarking = moduleLockStates(course, newCompletedMap, isQuizGateOpen);
         if (videoId === currentVideo.id && target && isModuleOpen(locksAfterMarking, target.moduleIndex)) {
@@ -500,17 +695,117 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
+  // Detección automática al terminar el video (YouTube IFrame API / evento ended)
+  useEffect(() => {
+    if (!currentVideo?.id) return;
+
+    const handleWindowMessage = (event: MessageEvent) => {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            return;
+          }
+        }
+        if (!data || typeof data !== 'object') return;
+
+        // Detección exhaustiva para YouTube Player API:
+        // 1. info === 0 (estado ENDED)
+        // 2. info.playerState === 0 (estado ENDED en infoDelivery)
+        // 3. currentTime >= duration - 2 (video completado al 99%+)
+        const playerState = typeof data.info === 'object' ? data.info?.playerState : data.info;
+        const currentTime = typeof data.info === 'object' ? data.info?.currentTime : undefined;
+        const duration = typeof data.info === 'object' ? data.info?.duration : undefined;
+
+        // Persistir el segundo donde el usuario va viendo el video
+        if (typeof currentTime === 'number' && currentTime > 0) {
+          localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(currentTime)));
+        }
+
+        const isEnded =
+          playerState === 0 ||
+          (data?.event === 'onStateChange' && data?.info === 0) ||
+          (typeof currentTime === 'number' && typeof duration === 'number' && duration > 0 && currentTime >= duration - 2);
+
+        if (isEnded) {
+          setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+          localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+        }
+      } catch {
+        // Ignorar mensajes no compatibles
+      }
+    };
+
+    window.addEventListener('message', handleWindowMessage);
+
+    // Handshake periódico hacia iframes para activar la emisión de eventos de YouTube
+    const handshakeInterval = setInterval(() => {
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach((iframe) => {
+        try {
+          iframe.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*');
+        } catch {
+          // Ignorar restricciones cross-origin
+        }
+      });
+    }, 1000);
+
+    const videoEl = document.querySelector('video');
+    const handleNativeEnded = () => {
+      if (currentVideo) {
+        setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+        localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+      }
+    };
+    const handleNativeTimeUpdate = () => {
+      if (!videoEl || !currentVideo) return;
+      if (videoEl.currentTime > 0) {
+        localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(videoEl.currentTime)));
+      }
+      if (videoEl.duration > 0 && videoEl.currentTime >= videoEl.duration - 2) {
+        setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+        localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+      }
+    };
+
+    if (videoEl) {
+      if (savedVideoTime > 3 && videoEl.currentTime === 0) {
+        videoEl.currentTime = savedVideoTime;
+      }
+      videoEl.addEventListener('ended', handleNativeEnded);
+      videoEl.addEventListener('timeupdate', handleNativeTimeUpdate);
+    }
+
+    return () => {
+      window.removeEventListener('message', handleWindowMessage);
+      clearInterval(handshakeInterval);
+      if (videoEl) {
+        videoEl.removeEventListener('ended', handleNativeEnded);
+        videoEl.removeEventListener('timeupdate', handleNativeTimeUpdate);
+      }
+    };
+  }, [currentVideo?.id, currentUser?.id, savedVideoTime]);
+
   const filteredComments = filterMentorOnly
     ? comments.filter((c) => c.isMentorResponse || (c.replies && c.replies.some((r) => r.isMentorResponse)))
     : comments;
 
-  // La fuente que se reproduce: si el alumno seleccionó una grabación asincrónica,
-  // la reproducimos directamente; de lo contrario cargamos la clase del temario.
-  const videoSource = selectedMeetingPlayback
-    ? parseVideoSource(selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl)
-    : currentVideo
-      ? parseVideoSource(currentVideo.playbackUrl || currentVideo.embedUrl || currentVideo.driveFileId)
-      : null;
+  // La fuente que se reproduce: priorizar embedUrl directo con &start=${savedVideoTime} para reanudar donde se quedó
+  const videoSource = useMemo(() => {
+    if (selectedMeetingPlayback) {
+      return parseVideoSource(selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl);
+    }
+    if (!currentVideo) return null;
+    const parsed = parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || currentVideo.playbackUrl);
+    if (parsed && parsed.provider === 'youtube' && savedVideoTime > 3) {
+      if (!parsed.embedUrl.includes('start=')) {
+        parsed.embedUrl += `&start=${savedVideoTime}`;
+      }
+    }
+    return parsed;
+  }, [selectedMeetingPlayback, currentVideo, savedVideoTime]);
 
   const providerLabel = selectedMeetingPlayback
     ? 'Grabación Asincrónica'
@@ -526,6 +821,37 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
   const showsPlayer = hasAccess && (Boolean(currentVideo) || Boolean(selectedMeetingPlayback));
+
+  // Solo se permite desmarcar si NO existen misiones posteriores completadas en el curso.
+  // La ruta exige retroceder de una en una hacia atrás desde la última lección completada.
+  const hasSubsequentCompleted = Boolean(
+    currentLessonIndex !== -1 &&
+    lessons.slice(currentLessonIndex + 1).some((l) => Boolean(completedVideos[l.videoId]))
+  );
+  const canUncompleteLesson = !hasSubsequentCompleted;
+
+  // Validación estricta para desbloquear la misión:
+  // 1. Debe haber visto el video completo (detectado automáticamente o persistido, o si ya tiene misiones posteriores completadas)
+  // 2. Si la lección es la última del módulo y el módulo tiene cuestionario interactivo, debe haberlo aprobado.
+  const isVideoWatched = Boolean(
+    (currentVideo && (watchedVideos[currentVideo.id] || completedVideos[currentVideo.id])) ||
+    (currentVideo && currentUser?.id && localStorage.getItem(getVideoWatchedKey(currentUser.id, currentVideo.id)) === 'true') ||
+    hasSubsequentCompleted
+  );
+  const isLastLessonOfModule = Boolean(
+    currentModule && currentModule.videos && activeVideoIndex >= currentModule.videos.length - 1
+  );
+  const moduleRequiresQuiz = Boolean(
+    pluginManager.isEnabled('interactive-quizzes') &&
+    currentModule &&
+    getModuleQuestionCount(currentModule.id) > 0
+  );
+  const isQuizPassed = Boolean(
+    !moduleRequiresQuiz ||
+    (currentModule && currentUser?.id && quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id)?.passed)
+  );
+  const canCompleteLesson = isVideoWatched && (!isLastLessonOfModule || isQuizPassed);
+  const lessonLockedReason: 'video' | 'quiz' = !isVideoWatched ? 'video' : !isQuizPassed ? 'quiz' : 'video';
   const examenActivo =
     examenModuleIndex !== null &&
     hasAccess &&
@@ -536,7 +862,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     hasAccess && pluginManager.isEnabled('pdf-certificates') && (courseProgressPct === 100 || Boolean(courseCertificate));
   // El examen ya no vive aquí abajo: lo único que queda bajo el video es el
   // diploma, y sin él esta fila no se monta para no dejar una banda vacía.
-  const showsExtras = showsCertificate;
+  const showsExtras = !hideCertificate && showsCertificate;
 
   // Live and synchronous meetings calculation
   const activeLiveMeeting = useMemo(() => {
@@ -562,22 +888,21 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     return courseMeetings.find((m) => !m.isLive && m.meetingType !== 'async_record');
   }, [courseMeetings, activeLiveMeeting]);
 
-  return (
-    <div className="animate-fade-in min-h-screen bg-canvas text-ink">
-      <div className="mx-auto w-full max-w-[1800px] lg:px-6 lg:pt-6">
+  const viewerBody = (
+    <>
+      {progressError && (
+        <div
+          role="alert"
+          className="mx-4 mb-2 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 p-3 text-meta text-danger lg:mx-0"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{progressError}</span>
+        </div>
+      )}
 
-        {progressError && (
-          <div
-            role="alert"
-            className="mx-4 mb-2 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 p-3 text-meta text-danger lg:mx-0"
-          >
-            <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{progressError}</span>
-          </div>
-        )}
-
-        {/* Ruta y cambio de curso. Sin esta fila, entrar en un curso encerraba
-            al alumno dentro de él. */}
+      {/* Ruta y cambio de curso. Sin esta fila, entrar en un curso encerraba
+          al alumno dentro de él. Se oculta en modo modal */}
+      {!isModal && (
         <div className="flex items-center gap-2 px-4 py-3 lg:px-0 lg:pt-0">
           {onGoHome && (
             <button
@@ -589,7 +914,21 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               Inicio
             </button>
           )}
-          <span aria-hidden className="text-ink-faint">/</span>
+          {onGoHome && <span aria-hidden className="text-ink-faint">/</span>}
+
+          {onBackToPath && (
+            <>
+              <button
+                type="button"
+                onClick={onBackToPath}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 px-3 py-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/25 active:scale-95 transition-all shadow-sm"
+              >
+                <Compass aria-hidden className="h-3.5 w-3.5" />
+                <span>Volver a la Ruta</span>
+              </button>
+              <span aria-hidden className="text-ink-faint">/</span>
+            </>
+          )}
 
           {switchable.length > 1 && onSelectCourse ? (
             <select
@@ -611,8 +950,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
             <span className="min-w-0 truncate px-1.5 text-meta font-medium text-ink">{course.title}</span>
           )}
         </div>
+      )}
 
-        <div className={`lg:grid lg:gap-6 ${theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}>
+      <div className={`lg:grid lg:gap-6 ${theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}>
 
           {/* Columna del reproductor */}
           <div className={theaterMode ? '' : 'lg:col-span-8'}>
@@ -715,14 +1055,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               </div>
             )}
 
-            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-canvas lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
+            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
               {showsPlayer && videoSource ? (
                 <iframe
                   /* La clave fuerza un iframe nuevo por lección o reunión grabada. */
                   key={selectedMeetingPlayback ? selectedMeetingPlayback.id : videoSource.embedUrl}
                   src={videoSource.embedUrl}
                   title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
-                  className="h-full w-full border-0"
+                  className="h-full w-full border-0 bg-black"
+                  style={{ backgroundColor: '#000000' }}
                   referrerPolicy="strict-origin-when-cross-origin"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen; picture-in-picture; web-share"
                 />
@@ -858,6 +1199,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     hasPrevious={Boolean(previousLesson)}
                     hasNext={Boolean(nextLesson)}
                     isCompleted={isCurrentCompleted}
+                    canComplete={canCompleteLesson}
+                    canUncomplete={canUncompleteLesson}
+                    lockedReason={lessonLockedReason}
                     onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
                     onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
@@ -873,6 +1217,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     lessonNumber={currentLessonIndex + 1}
                     totalLessons={lessons.length}
                     isCompleted={isCurrentCompleted}
+                    canComplete={canCompleteLesson}
+                    canUncomplete={canUncompleteLesson}
+                    lockedReason={lessonLockedReason}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
                     playbackUrl={showsPlayer ? (currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
@@ -890,20 +1237,20 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
                   if (isLastLesson && hasQuiz) {
                     return (
-                      <div className="mt-3 mx-4 lg:mx-0 p-4 rounded-2xl bg-gradient-to-r from-purple-950/90 via-indigo-950/90 to-[#141420] border border-purple-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl shadow-purple-950/50">
+                      <div className="mt-3 mx-4 lg:mx-0 p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50/80 to-slate-50 dark:from-purple-950/90 dark:via-indigo-950/90 dark:to-[#141420] border border-purple-200 dark:border-purple-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg dark:shadow-xl dark:shadow-purple-950/50">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 bg-purple-500/20 rounded-xl text-amber-300 shrink-0 border border-purple-500/30">
+                          <div className="p-2.5 bg-purple-500/10 dark:bg-purple-500/20 rounded-xl text-amber-500 dark:text-amber-300 shrink-0 border border-purple-400/30 dark:border-purple-500/30">
                             <Award className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs font-extrabold text-white flex flex-wrap items-center gap-2">
+                            <h4 className="text-xs font-extrabold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
                               <span>🎯 ¡Última lección del módulo!</span>
-                              <span className="text-[10px] bg-purple-500/30 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                              <span className="text-[10px] bg-purple-500/15 dark:bg-purple-500/30 text-purple-700 dark:text-purple-300 border border-purple-400/30 dark:border-purple-500/40 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                                 Examen Requerido
                               </span>
                             </h4>
-                            <p className="text-[11px] text-slate-300 mt-0.5">
-                              Has llegado a la última clase de <strong className="text-white">"{currentModule.title}"</strong>. Realiza la evaluación para validar tu progreso.
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                              Has llegado a la última clase de <strong className="text-slate-900 dark:text-white">"{currentModule.title}"</strong>. Realiza la evaluación para validar tu progreso.
                             </p>
                           </div>
                         </div>
@@ -937,31 +1284,35 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 theaterMode={theaterMode}
                 onToggleTheater={() => setTheaterMode(!theaterMode)}
                 tabs={[
-                  {
-                    id: 'syllabus',
-                    label: 'Temario',
-                    icon: ListTree,
-                    content: (
-                      <div className="min-h-0 flex-1 overflow-y-auto">
-                        <SyllabusTree
-                          course={course}
-                          hasAccess={hasAccess}
-                          completedVideos={completedVideos}
-                          activeModuleIndex={activeModuleIndex}
-                          activeVideoIndex={activeVideoIndex}
-                          moduleLocks={moduleLocks}
-                          courseProgressPct={courseProgressPct}
-                          completedCourseVideos={completedCourseVideos}
-                          totalCourseVideos={totalCourseVideos}
-                          onSelectLesson={goToLesson}
-                          onOpenQuiz={abrirExamen}
-                          quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
-                          onToggleComplete={toggleVideoCompletion}
-                          onOpenPaywall={onOpenPaywall}
-                        />
-                      </div>
-                    ),
-                  },
+                  ...(!hideSyllabus
+                    ? [
+                        {
+                          id: 'syllabus' as const,
+                          label: 'Temario',
+                          icon: ListTree,
+                          content: (
+                            <div className="min-h-0 flex-1 overflow-y-auto">
+                              <SyllabusTree
+                                course={course}
+                                hasAccess={hasAccess}
+                                completedVideos={completedVideos}
+                                activeModuleIndex={activeModuleIndex}
+                                activeVideoIndex={activeVideoIndex}
+                                moduleLocks={moduleLocks}
+                                courseProgressPct={courseProgressPct}
+                                completedCourseVideos={completedCourseVideos}
+                                totalCourseVideos={totalCourseVideos}
+                                onSelectLesson={goToLesson}
+                                onOpenQuiz={abrirExamen}
+                                quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
+                                onToggleComplete={toggleVideoCompletion}
+                                onOpenPaywall={onOpenPaywall}
+                              />
+                            </div>
+                          ),
+                        },
+                      ]
+                    : []),
                   {
                     id: 'sessions',
                     label: 'Sesiones',
@@ -1278,6 +1629,73 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           )}
 
         </div>
+    </>
+  );
+
+  if (isModal) {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/85 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in"
+        onMouseDown={onCloseModal}
+      >
+        <div
+          className="constellation-mission-modal relative flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-purple-500/30 bg-white dark:bg-[#0d0a1a] shadow-2xl text-slate-900 dark:text-white transition-colors"
+          onMouseDown={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Cabecera del Modal de Misión */}
+          <header className="flex shrink-0 items-center justify-between border-b border-slate-200/80 dark:border-white/10 px-5 py-4 bg-slate-50/90 dark:bg-[#140e26] transition-colors">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 dark:bg-purple-600/30 border border-purple-400/30 dark:border-purple-400/40 text-purple-600 dark:text-purple-300">
+                <Play className="h-4 w-4 fill-current" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                    {currentModule?.title || 'Misión'}
+                  </span>
+                  <span className="text-[10px] text-purple-600/80 dark:text-purple-300/70 font-semibold">
+                    Lección {activeVideoIndex + 1} de {currentModule?.videos.length || 1}
+                  </span>
+                </div>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate max-w-xl">
+                  {currentVideo?.title}
+                </h2>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onCloseModal}
+              className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Cerrar visor de misión"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </header>
+
+          {/* Contenido scrolleable del modal */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent">
+            {viewerBody}
+          </div>
+        </div>
+
+        {/* Certificate Public Verification Modal */}
+        <CertificateVerifyModal
+          isOpen={showVerifyModal}
+          onClose={() => setShowVerifyModal(false)}
+          initialCode={courseCertificate?.verificationCode}
+        />
+      </div>,
+      document.body
+    );
+  }
+
+  return (
+    <div className="animate-fade-in min-h-screen bg-canvas text-ink">
+      <div className="mx-auto w-full max-w-[1800px] lg:px-6 lg:pt-6">
+        {viewerBody}
       </div>
 
       {/* Certificate Public Verification Modal */}

@@ -46,9 +46,10 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   const shortsMatch = str.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/i);
   if (shortsMatch) {
     const videoId = shortsMatch[1];
+    const originParam = typeof window !== 'undefined' && window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
     return {
       provider: 'youtube',
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1${originParam}`,
       originalUrl: str,
       videoId,
     };
@@ -59,9 +60,10 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   const ytMatch = str.match(/(?:youtube\.com\/(?:watch\?.*v=|v\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/i);
   if (ytMatch) {
     const videoId = ytMatch[1];
+    const originParam = typeof window !== 'undefined' && window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
     return {
       provider: 'youtube',
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1${originParam}`,
       originalUrl: str,
       videoId,
     };

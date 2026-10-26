@@ -25,6 +25,7 @@ import { avatarSrc } from '../lib/avatar.js';
 import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../config/theme';
 import { getCurrentColorMode, toggleColorMode, ColorMode } from '../lib/themeApplicator';
+import { getActiveFrontendBrand } from '../lib/courseCoverGenerator';
 
 export interface PublicNavLink {
   id: string;
@@ -92,11 +93,13 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>(() => getCurrentColorMode());
+  const [brandState, setBrandState] = useState(() => getActiveFrontendBrand());
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const displayAppName = appName || siteConfig.appName || 'DocentOS';
+  const displayAppName = brandState.brandName || appName || siteConfig.appName || 'DocentOS';
+  const activeLogoUrl = brandState.logoUrl || siteConfig.logoUrl;
 
   useEffect(() => {
     const handleThemeChange = (e: Event) => {
@@ -106,9 +109,21 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
       } else {
         setColorMode(getCurrentColorMode());
       }
+      setBrandState(getActiveFrontendBrand());
+    };
+    const handleCustomizerChange = () => {
+      setBrandState(getActiveFrontendBrand());
     };
     window.addEventListener('docentos-theme-change', handleThemeChange);
-    return () => window.removeEventListener('docentos-theme-change', handleThemeChange);
+    window.addEventListener('docentos-customizer-change', handleCustomizerChange);
+    window.addEventListener('docentos-brand-change', handleCustomizerChange);
+    window.addEventListener('docentos-logo-change', handleCustomizerChange);
+    return () => {
+      window.removeEventListener('docentos-theme-change', handleThemeChange);
+      window.removeEventListener('docentos-customizer-change', handleCustomizerChange);
+      window.removeEventListener('docentos-brand-change', handleCustomizerChange);
+      window.removeEventListener('docentos-logo-change', handleCustomizerChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -153,14 +168,14 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
       <div className="lp-container">
         <nav className="lp-navbar">
           <div className="lp-nav-left">
-            {/* Logo DocentOS: la unica pieza de la identidad anterior que se conserva. */}
+            {/* Logo DocentOS: sincronizado con el plugin de personalización. */}
             <a href="#inicio" className="lp-logo" aria-label={displayAppName}>
-              {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} alt="" className="lp-logo-img" />
+              {activeLogoUrl ? (
+                <img src={activeLogoUrl} alt="" className="lp-logo-img" />
               ) : (
                 <span className="lp-logo-badge">
                   <span className="lp-logo-badge-inner">
-                    <span>{siteConfig.logoInitial || displayAppName.charAt(0)}</span>
+                    <span>{brandState.logoInitial || siteConfig.logoInitial || displayAppName.charAt(0)}</span>
                   </span>
                 </span>
               )}

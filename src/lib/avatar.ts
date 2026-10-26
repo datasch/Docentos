@@ -27,3 +27,16 @@ export function avatarSrc(url?: string | null): string {
   if (value.includes(BANCO_DE_IMAGENES)) return DEFAULT_AVATAR;
   return value;
 }
+
+/**
+ * Limpia anotaciones de rol en paréntesis (ej. "(Director General)", "(Mentor Senior)")
+ * para mostrar únicamente el nombre real de la persona.
+ */
+export function formatDisplayName(rawName?: string | null): string {
+  if (!rawName) return '';
+  return rawName
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/Prof\.(?=[A-Za-z])/g, 'Prof. ')
+    .trim();
+}
+

@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "./experiences/constellation/caminoIslas.css";
+
+@custom-variant dark (&:where([data-color-mode="dark"], [data-color-mode="dark"] *, .dark, .dark *));
 
 /**
  * Capa de tokens Giantucchi.
@@ -85,6 +88,19 @@
 
 @layer base {
   :root {
+    /* Superficies y Tokens Canónicos (Modo Oscuro por defecto) */
+    --color-canvas: #07070b;
+    --color-surface: #0f0f17;
+    --color-raised: #141420;
+    --color-elevated: #1a1a2e;
+    --color-card: #0d0d14;
+    --color-line: rgb(255 255 255 / 0.08);
+    --color-line-strong: rgb(255 255 255 / 0.22);
+    --color-ink: #ffffff;
+    --color-ink-soft: rgb(255 255 255 / 0.70);
+    --color-ink-muted: rgb(255 255 255 / 0.55);
+    --color-ink-faint: rgb(255 255 255 / 0.40);
+
     /* Official Giantucchi Design System Tokens */
     --color-brand-cyan: #06b6d4;
     --color-brand-blue: #3b82f6;
@@ -112,9 +128,22 @@
     --brand-yellow: #eab308;
   }
 
+  html, body, #root {
+    background-color: #07070b;
+    color-scheme: dark;
+    min-height: 100vh;
+  }
+
+  html[data-color-mode="light"],
+  html[data-color-mode="light"] body,
+  html[data-color-mode="light"] #root {
+    background-color: #f8fafc;
+    color: #0f172a;
+    color-scheme: light;
+  }
+
   body {
-    background-color: var(--color-canvas);
-    color: var(--color-ink);
+    color: var(--color-ink, #ffffff);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   }
 
@@ -623,11 +652,172 @@ body[data-color-mode="light"],
 
 /* Superficie de Canvas de Fondo */
 [data-color-mode="light"] .bg-\[\#0a0a0f\],
+[data-color-mode="light"] [class*="bg-\[\#0a0a0f"],
+[data-color-mode="light"] .bg-\[\#07080f\],
+[data-color-mode="light"] [class*="bg-\[\#07080f"],
+[data-color-mode="light"] .bg-\[\#06060a\],
+[data-color-mode="light"] [class*="bg-\[\#06060a"],
+[data-color-mode="light"] .bg-\[\#020504\],
+[data-color-mode="light"] [class*="bg-\[\#020504"],
 [data-color-mode="light"] .bg-\[\#050505\],
 [data-color-mode="light"] .bg-\[\#000000\],
-[data-color-mode="light"] .bg-\[\#07070b\],
-[data-color-mode="light"] .bg-\[\#08080c\] {
+[data-color-mode="light"] [class*="bg-\[\#000000"],
+[data-color-mode="light"] .bg-\[\#08080c\],
+[data-color-mode="light"] [class*="bg-\[\#08080c"],
+[data-color-mode="light"] [class*="bg-\[\#07080c"],
+[data-color-mode="light"] [class*="bg-\[\#090a14"],
+[data-color-mode="light"] [class*="bg-\[\#090912"],
+[data-color-mode="light"] [class*="bg-\[\#0a0b14"],
+[data-color-mode="light"] [class*="bg-\[\#05060a"],
+[data-color-mode="light"] [class*="bg-\[\#0a0b12"],
+[data-color-mode="light"] [class*="bg-\[\#0d0d16"],
+[data-color-mode="light"] .bg-\[\#0a0a12\],
+[data-color-mode="light"] [class*="bg-\[\#0a0a12"],
+[data-color-mode="light"] [class*="bg-\[\#0c121e"],
+[data-color-mode="light"] [class*="bg-\[\#0d131f"] {
   background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   DOCENTOS UI LAB MODAL (SELECTOR DE INTERFACES MULTI-EXPERIENCIA)
+   ========================================================================== */
+[data-color-mode="light"] .ui-lab-modal {
+  background-color: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
+[data-color-mode="light"] .ui-lab-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-color-mode="light"] .ui-lab-header h2 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .ui-lab-header p {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .ui-lab-card {
+  background-color: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] .ui-lab-card:hover {
+  background-color: #f8fafc !important;
+  border-color: rgba(15, 23, 42, 0.2) !important;
+}
+
+[data-color-mode="light"] .ui-lab-card--active {
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%) !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 4px 14px -2px rgba(34, 197, 94, 0.15) !important;
+}
+
+[data-color-mode="light"] .ui-lab-card h3 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .ui-lab-card p {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .ui-lab-footer {
+  background-color: #f8fafc !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+  color: #64748b !important;
+}
+
+/* Barra de Navegación Kinetic / Experiencias en Modo Claro */
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"],
+[data-color-mode="light"] header.sticky[class*="bg-\[\#06060a"],
+[data-color-mode="light"] header.sticky[class*="bg-\[\#020504"] {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-[#07080f]"],
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-\[\#07080f"] {
+  background-color: #ffffff !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-white,
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-slate-100,
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-slate-300 {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-white\/[0.02]"],
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-white\/[0.03]"],
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] button[class*="bg-white\/[0.04]"],
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] button[class*="bg-white\/[0.08]"] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  color: #334155 !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] nav button {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] nav button:hover {
+  color: #0f172a !important;
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] nav button[class*="bg-white/10"] {
+  background-color: #ffffff !important;
+  color: #0e7490 !important;
+  border-color: rgba(14, 116, 144, 0.3) !important;
+  box-shadow: 0 1px 3px rgba(14, 116, 144, 0.08) !important;
+}
+
+/* Tarjetas de Secciones Maestras en AdminDashboard */
+[data-color-mode="light"] .admin-master-card {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 14px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-color-mode="light"] .admin-master-card:hover {
+  background-color: #ffffff !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  box-shadow: 0 6px 20px -2px rgba(15, 23, 42, 0.08), 0 0 18px rgba(6, 182, 212, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+[data-color-mode="light"] .admin-master-card.admin-master-card--active,
+[data-color-mode="light"] .admin-master-card[class*="border-cyan-400"] {
+  background-color: #ffffff !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.2), 0 0 0 1px #06b6d4 !important;
+}
+
+[data-color-mode="light"] .admin-master-card .text-white {
+  color: #0f172a !important;
+}
+
+[data-color-mode="light"] .admin-master-card .text-slate-400 {
+  color: #475569 !important;
+}
+
+[data-color-mode="light"] .admin-master-card span[class*="bg-black"] {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #334155 !important;
 }
 
 /* Tarjetas y Contenedores Principales: Blanco Puro con Sombra Multicapa Suave */
@@ -638,6 +828,10 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .bg-\[\#0f0f18\],
 [data-color-mode="light"] .bg-\[\#12131f\],
 [data-color-mode="light"] .bg-\[\#13141f\],
+[data-color-mode="light"] [class*="bg-\[\#0c0d16"],
+[data-color-mode="light"] [class*="bg-\[\#0b0c13"],
+[data-color-mode="light"] [class*="bg-\[\#0c0d14"],
+[data-color-mode="light"] [class*="bg-\[\#08090e"],
 [data-color-mode="light"] .bg-slate-900:not(.badge-dark *):not([class*="bg-brand-"] *),
 [data-color-mode="light"] .bg-slate-950:not(.badge-dark *),
 [data-color-mode="light"] [class*="bg-slate-900"]:not(.btn-brand-primary *):not([class*="bg-brand-"] *):not([class*="bg-gradient-"]),
@@ -645,6 +839,10 @@ body[data-color-mode="light"],
   background-color: #ffffff !important;
   border-color: rgba(15, 23, 42, 0.08) !important;
   box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-color-mode="light"] [class*="border-white\/"] {
+  border-color: rgba(15, 23, 42, 0.08) !important;
 }
 
 /* Superficies Interiores Elevadas, Cajones y Pestañas */
@@ -737,12 +935,28 @@ body[data-color-mode="light"],
   font-weight: 600 !important;
 }
 
-/* Textos de Utilidad Slate */
-[data-color-mode="light"] .text-slate-400,
+/* Textos de Utilidad Slate y Grises */
+[data-color-mode="light"] .text-slate-100,
+[data-color-mode="light"] .text-slate-200,
 [data-color-mode="light"] .text-slate-300,
+[data-color-mode="light"] .text-gray-100,
+[data-color-mode="light"] .text-gray-200,
+[data-color-mode="light"] .text-gray-300,
+[data-color-mode="light"] .text-zinc-100,
+[data-color-mode="light"] .text-zinc-200,
+[data-color-mode="light"] .text-zinc-300,
+[data-color-mode="light"] .text-white\/90,
 [data-color-mode="light"] .text-white\/80,
 [data-color-mode="light"] .text-white\/70 {
-  color: #334155 !important;
+  color: #1e293b !important;
+}
+
+[data-color-mode="light"] .text-slate-400,
+[data-color-mode="light"] .text-gray-400,
+[data-color-mode="light"] .text-zinc-400,
+[data-color-mode="light"] .text-white\/60,
+[data-color-mode="light"] .text-white\/50 {
+  color: #475569 !important;
 }
 
 [data-color-mode="light"] .text-slate-500 {
@@ -1057,6 +1271,310 @@ body[data-color-mode="light"],
 /* Mantener botones primarios vivos con texto blanco */
 [data-color-mode="light"] .btn-brand-primary,
 [data-color-mode="light"] .btn-brand-primary * {
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   LINEAR DESIGN SYSTEM UTILITIES (Inspired by linear.app)
+   ========================================================================== */
+
+.linear-glass {
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.linear-panel {
+  background: linear-gradient(180deg, rgba(20, 20, 30, 0.6) 0%, rgba(10, 10, 16, 0.8) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.linear-panel-interactive {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.linear-panel-interactive:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.linear-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.linear-status-dot-active {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: linear-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.linear-status-dot-warning {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.linear-status-dot-neutral {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: #64748b;
+}
+
+@keyframes linear-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+
+.linear-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.linear-pill-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.linear-pill-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+.linear-pill-tab.is-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   DocentOS Constellation (Neural Void) Design Utilities
+   Void canvas #050505, monolithic scale-based typography, weight 400 headlines,
+   ultra-light weight 200 body copy, Giantucchi color spectrum.
+   ========================================================================== */
+
+.constellation-void-bg {
+  background-color: #050505;
+}
+
+.font-constellation-display {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  font-feature-settings: "ss01" on;
+}
+
+.font-constellation-body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 200;
+  line-height: 1.5;
+}
+
+.font-constellation-label {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.btn-constellation-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--color-brand-cyan, #06b6d4);
+  color: #050505;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border-radius: 9999px;
+  padding: 13px 24px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.btn-constellation-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.35);
+}
+
+.btn-constellation-pill:active {
+  transform: translateY(0);
+}
+
+.btn-constellation-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: #ffffff;
+  font-weight: 400;
+  font-size: 14px;
+  transition: color 0.15s ease;
+  cursor: pointer;
+  border: none;
+}
+
+[data-color-mode="light"] .btn-constellation-ghost,
+.mode-light .btn-constellation-ghost {
+  color: #0f172a;
+}
+
+.btn-constellation-ghost:hover {
+  color: var(--color-brand-cyan, #06b6d4) !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Scrollbar horizontal estético para pestañas y barras navegables */
+.custom-horizontal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.custom-horizontal-scrollbar::-webkit-scrollbar {
+  height: 5px;
+}
+
+.custom-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 9999px;
+}
+
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-cyan, #06b6d4);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+/* Scrollbar vertical para paneles laterales y temarios */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-cyan, #06b6d4);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+/* ==========================================================================
+   AMBIENTACIÓN FESTIVA GLOBAL DE DOCENTOS (Halloween & Navidad)
+   ========================================================================== */
+
+/* 1. HALLOWEEN GLOBAL: Tonos Calabaza & Púrpura Místico */
+html[data-festividad="halloween"] {
+  --festivo-acento: #f97316;
+  --festivo-acento-glow: rgba(249, 115, 22, 0.45);
+  --festivo-secundario: #a855f7;
+}
+
+html[data-festividad="halloween"] .btn-brand-primary {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c026d3 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.35) !important;
+  border-color: rgba(249, 115, 22, 0.5) !important;
+}
+
+html[data-festividad="halloween"] .btn-brand-primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 6px 26px rgba(249, 115, 22, 0.5) !important;
+}
+
+html[data-festividad="halloween"] .selection\:bg-\[\#06b6d4\]::selection {
+  background-color: #f97316 !important;
+  color: #ffffff !important;
+}
+
+/* 2. NAVIDAD GLOBAL: Esmeralda, Dorado & Rojo Festivo */
+html[data-festividad="navidad"] {
+  --festivo-acento: #10b981;
+  --festivo-acento-glow: rgba(16, 185, 129, 0.45);
+  --festivo-secundario: #ef4444;
+}
+
+html[data-festividad="navidad"] .btn-brand-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 40%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+}
+
+html[data-festividad="navidad"] .btn-brand-primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 6px 26px rgba(16, 185, 129, 0.5) !important;
+}
+
+html[data-festividad="navidad"] .selection\:bg-\[\#06b6d4\]::selection {
+  background-color: #10b981 !important;
   color: #ffffff !important;
 }
 

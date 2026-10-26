@@ -42,6 +42,7 @@ import { useTranslation } from 'react-i18next';
 import { User, Course } from '../types';
 import { siteConfig } from '../config/theme';
 import { getCurrentColorMode, toggleColorMode, ColorMode } from '../lib/themeApplicator';
+import { getActiveFrontendBrand } from '../lib/courseCoverGenerator';
 
 type Tab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
@@ -109,6 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>(() => getCurrentColorMode());
+  const [brandState, setBrandState] = useState(() => getActiveFrontendBrand());
 
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -117,7 +119,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const isStaff = currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR';
   const isAdmin = currentUser.role === 'ADMIN';
-  const displayAppName = siteConfig.appName || 'DocentOS';
+  const displayAppName = brandState.brandName || siteConfig.appName || 'DocentOS';
+  const activeLogoUrl = brandState.logoUrl || siteConfig.logoUrl;
   const currentLangCode = (i18n.language || 'es').substring(0, 2).toUpperCase();
   const roleLabel = ROLE_LABELS[currentUser.role] || currentUser.role;
 
@@ -126,9 +129,21 @@ export const Navbar: React.FC<NavbarProps> = ({
       if (e.detail?.colorMode) {
         setColorMode(e.detail.colorMode);
       }
+      setBrandState(getActiveFrontendBrand());
+    };
+    const handleCustomizerChange = () => {
+      setBrandState(getActiveFrontendBrand());
     };
     window.addEventListener('docentos-theme-change', handleThemeChange);
-    return () => window.removeEventListener('docentos-theme-change', handleThemeChange);
+    window.addEventListener('docentos-customizer-change', handleCustomizerChange);
+    window.addEventListener('docentos-brand-change', handleCustomizerChange);
+    window.addEventListener('docentos-logo-change', handleCustomizerChange);
+    return () => {
+      window.removeEventListener('docentos-theme-change', handleThemeChange);
+      window.removeEventListener('docentos-customizer-change', handleCustomizerChange);
+      window.removeEventListener('docentos-brand-change', handleCustomizerChange);
+      window.removeEventListener('docentos-logo-change', handleCustomizerChange);
+    };
   }, []);
 
   const handleToggleColorMode = () => {
@@ -242,12 +257,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="lp-logo"
               aria-label={`${displayAppName} — ir a la portada`}
             >
-              {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} alt="" className="lp-logo-img" />
+              {activeLogoUrl ? (
+                <img src={activeLogoUrl} alt="" className="lp-logo-img" />
               ) : (
                 <span className="lp-logo-badge">
                   <span className="lp-logo-badge-inner">
-                    <span>{siteConfig.logoInitial || displayAppName.charAt(0)}</span>
+                    <span>{brandState.logoInitial || siteConfig.logoInitial || displayAppName.charAt(0)}</span>
                   </span>
                 </span>
               )}

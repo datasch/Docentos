@@ -15,6 +15,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { requestAiJson, extractJsonObject, isAiEnabled } from './aiProvider.js';
 import { formatDuration, IMPORT_LIMITS } from './courseImportPlan.js';
+import { generateCourseCoverWithAi, isGenericCoverImage } from './courseCoverAi.js';
 
 /** Trabajos de IA en curso por usuario: cada uno llama a un modelo en segundo plano. */
 const MAX_TRABAJOS_EN_CURSO = 3;
@@ -63,6 +64,7 @@ export interface GeneratedCourseStructure {
     targetAudience: string[];
     generalObjectives: string[];
     category?: string;
+    coverImage?: string;
   };
   modules: GeneratedModule[];
 }
@@ -232,27 +234,22 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
     const ai = new GoogleGenAI({ apiKey });
     const candidateModels = [
       process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite',
     ];
 
     let text = '';
     for (const model of candidateModels) {
       try {
-        const response = await ai.models.generateContent({
+        const interaction = await ai.interactions.create({
           model,
-          contents: `${systemPrompt}\n\n${userPrompt}`,
-          config: {
-            responseMimeType: 'application/json',
-            abortSignal: AbortSignal.timeout(config.AI_REQUEST_TIMEOUT_MS),
-          },
+          input: `${systemPrompt}\n\n${userPrompt}`,
         });
-        if (response.text) {
-          text = response.text;
+        if (interaction.output_text) {
+          text = interaction.output_text;
           break;
         }
-      } catch (mErr) {
+      } catch {
         // Seguir con el siguiente modelo de la lista
       }
     }
@@ -474,6 +471,13 @@ export async function applyJobToDraftCourse(
 
   validarEstructura(structure);
   const cInfo = structure.course;
+  const resolvedCoverImage = !isGenericCoverImage(cInfo.coverImage)
+    ? cInfo.coverImage!
+    : await generateCourseCoverWithAi({
+        title: cInfo.title,
+        category: cInfo.category || 'YouTube Masterclass',
+        description: cInfo.description,
+      });
 
   // Transacción atómica en PostgreSQL: crea Course borrador + Modules + VideoDriveLinks
   const course = await prisma.$transaction(async (tx) => {
@@ -495,7 +499,7 @@ export async function applyJobToDraftCourse(
         currency: 'USD',
         published: false, // Borrador explícito según requerimiento
         category: cInfo.category || 'YouTube Masterclass',
-        coverImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
+        coverImage: resolvedCoverImage,
       },
     });
 

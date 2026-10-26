@@ -1,45 +1,28 @@
 /**
- * Academia Giantucchi - Aplicación Principal
+ * DocentOS - Aplicación Principal con Interfaz Constellation
  * Plataforma Web de Educación y Mentoría de Alto Nivel
  */
 
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
-import { CourseViewer } from './components/CourseViewer';
+import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { PaywallModal } from './components/PaywallModal';
-import { AdminDashboard } from './components/AdminDashboard';
-import { MentorDashboard } from './components/MentorDashboard';
-import { PluginManagerView } from './components/PluginManagerView';
-import { LandingPage } from './components/LandingPage';
 import { AuthModal } from './components/AuthModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { SetupWizard } from './components/SetupWizard';
 import { AIAssistantTour } from './components/AIAssistantTour';
 import { CertificateVerifyModal } from './components/CertificateVerifyModal';
 import { ContractSignatureModal } from './components/ContractSignatureModal';
+import { ListeningBoxModal } from './components/ListeningBoxModal';
 import { api } from './lib/api';
 import { User, Course } from './types';
-import { pluginManager } from './plugins/PluginManager';
-import { siteConfig } from './config/theme';
-import { DOCENTOS_VERSION, DOCENTOS_RELEASE_CHANNEL } from './version';
-import { RefreshCw, Crown, Shield, Sparkles, CheckCircle2, ExternalLink, BookOpen, HeartHandshake } from 'lucide-react';
-import { ListeningBoxModal } from './components/ListeningBoxModal';
-import { ListeningFloatingButton } from './components/ListeningFloatingButton';
-import { initSavedTheme, applyPlatformTheme } from './lib/themeApplicator';
+import { RefreshCw } from 'lucide-react';
+import { initSavedTheme } from './lib/themeApplicator';
+import { applySeasonalTheme } from './lib/seasonalTheme';
 
-// Inicializar tema y densidad inmediatamente para evitar parpadeos
+// Inicializar tema y festividad inmediatamente para evitar parpadeos
 initSavedTheme();
+applySeasonalTheme();
 
-/**
- * Destinos de la barra de navegacion.
- *
- * `drive` sale de aqui el 18 sep 2026. Aquel buscador solo devolvia un catalogo
- * de siete videos de muestra cuyos identificadores no reproducen nada mientras
- * no haya credenciales de Google Drive; el propio panel lo avisaba en pantalla.
- * Lo que si funciona —importar una carpeta de Drive, o pegar el enlace al crear
- * el video— vive en el gestor de cursos. `DriveExplorerModal` se conserva en el
- * repositorio por si algun dia se configuran esas credenciales.
- */
 type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
 const TAB_PATHS: Record<ActiveTab, string> = {
@@ -60,31 +43,14 @@ function tabFromPath(pathname: string): ActiveTab {
   return 'landing';
 }
 
-/** Dónde estaba estudiando el alumno en este navegador. */
 const LAST_COURSE_KEY = 'docentos_last_course_id';
 
 function readLastCourseId(): string | null {
   try {
     return localStorage.getItem(LAST_COURSE_KEY);
   } catch {
-    // Navegación privada o almacenamiento bloqueado: se recurre al progreso.
     return null;
   }
-}
-
-const releaseChannelLabel =
-  DOCENTOS_RELEASE_CHANNEL.charAt(0).toUpperCase() + DOCENTOS_RELEASE_CHANNEL.slice(1);
-
-function canOpenTab(user: User | null, tab: ActiveTab) {
-  if (tab === 'landing') return true;
-  if (!user) return false;
-  if (['admin', 'plugins'].includes(tab)) {
-    return user.role === 'ADMIN';
-  }
-  if (tab === 'mentor') {
-    return user.role === 'ADMIN' || user.role === 'MENTOR';
-  }
-  return true;
 }
 
 export default function App() {
@@ -109,7 +75,7 @@ export default function App() {
   const [unreadListening, setUnreadListening] = useState<number>(0);
 
   const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
-    const path = TAB_PATHS[tab];
+    const path = TAB_PATHS[tab] || '/';
     if (window.location.pathname !== path) {
       if (options?.replace) window.history.replaceState({}, '', path);
       else window.history.pushState({}, '', path);
@@ -128,127 +94,66 @@ export default function App() {
         return setupRequired;
       }
     } catch (e) {
-      console.log('Setup check note:', e);
+      console.warn('No se pudo verificar el estado del setup:', e);
     }
     return false;
   };
 
-  /**
-   * Abrir un curso lo deja apuntado como el último en el que se estudió, para
-   * volver a él en la siguiente visita en vez de al primero del catálogo.
-   */
-  const selectCourse = (selected: Course) => {
-    setCourse(selected);
+  const loadData = async (silent = false) => {
     try {
-      localStorage.setItem(LAST_COURSE_KEY, selected.id);
-    } catch {
-      /* sin almacenamiento el curso sigue abierto, solo no se recuerda */
-    }
-  };
+      if (!silent) setLoading(true);
 
-  /**
-   * El acceso es de CADA curso, no de la cuenta. Antes esto guardaba el
-   * `hasAccess` global de /api/courses, que responde «¿tiene acceso a alguno?»:
-   * bastaba un curso abierto a todos los registrados para que la vista previa
-   * se diera por activada en TODOS los demas y desapareciera el aviso de que
-   * hacia falta activar el acceso.
-   */
-  const hasAccess = course?.hasAccess === true;
-
-  const loadData = async () => {
-    try {
-      const setupRequired = await checkSetupStatus();
-      if (setupRequired) return;
-
-      const userRes = await api.getCurrentUser();
-      setCurrentUser(userRes.user);
-
-      // El curso de la última lección marcada. Sirve cuando el navegador no
-      // recuerda nada (otro equipo, datos borrados): es la huella de estudio
-      // que sí viaja con la cuenta.
-      let lastStudiedId: string | null = null;
-      if (userRes.user) {
-        try {
-          lastStudiedId = (await api.getProgress()).lastCourseId ?? null;
-        } catch {
-          /* sin progreso todavía; se abrirá el primero del catálogo */
-        }
+      const setupNeeded = await checkSetupStatus();
+      if (setupNeeded) {
+        setShowSetupWizard(true);
+        if (!silent) setLoading(false);
+        return;
       }
 
-      const courseRes = await api.getCourses();
-      if (courseRes.courses && courseRes.courses.length === 0) {
-        // Se borró el último curso: sin esto seguía en pantalla hasta recargar.
-        setCourses([]);
-        setCourse(null);
-      } else if (courseRes.courses && courseRes.courses.length > 0) {
-        const list = courseRes.courses;
-        setCourses(list);
-
-        setCourse((current) => {
-          // Al recargar datos se conserva el curso abierto —antes se volvía
-          // siempre al primero, perdiendo el que el alumno estaba viendo—,
-          // pero apuntando a la instancia recién traída del servidor.
-          const stillOpen = current && list.find((item) => item.id === current.id);
-          if (stillOpen) return stillOpen;
-
-          const remembered = list.find((item) => item.id === readLastCourseId());
-          const lastStudied = list.find((item) => item.id === lastStudiedId);
-          return remembered || lastStudied || list[0];
-        });
+      let authUser: User | null = null;
+      try {
+        const authRes = await api.getCurrentUser();
+        authUser = authRes.user ?? null;
+        setCurrentUser(authUser);
+      } catch (authErr) {
+        console.warn("No hay sesión activa:", authErr);
+        setCurrentUser(null);
       }
 
-      // Sincronizar plugins instalados y sus configuraciones activas (certificados, firmas, logos)
-      if (userRes.user) {
-        try {
-          const pluginsRes = await api.getPlugins();
-          if (pluginsRes.plugins) {
-            pluginManager.setPlugins(pluginsRes.plugins);
-            const customizer = pluginsRes.plugins.find((p: any) => p.id === 'docentos-customizer');
-            if (customizer?.enabled && customizer.config) {
-              applyPlatformTheme(customizer.config.colorTheme, customizer.config.density);
-            }
-          }
-        } catch {
-          // Si no hay acceso o falla la red, se mantienen los defaults
+      try {
+        let lastStudiedId: string | null = null;
+        if (authUser) {
+          try {
+            const prog = await api.getProgress();
+            lastStudiedId = prog.lastCourseId ?? null;
+          } catch {}
         }
 
-        try {
-          const contractRes = await api.contracts.getPending();
-          if (contractRes.requiresSignature && contractRes.contract) {
-            setPendingContract(contractRes.contract);
-          } else {
-            setPendingContract(null);
-          }
-        } catch (e) {
-          console.warn('No se pudo verificar el contrato legal:', e);
-        }
+        const coursesRes = await api.getCourses();
+        if (coursesRes.courses && coursesRes.courses.length > 0) {
+          setCourses(coursesRes.courses);
 
-        try {
-          setUnreadListening((await api.getMyListening()).unreadReplies);
-        } catch {
-          /* sin buzón disponible no hay aviso; no es motivo para fallar la carga */
+          const preferredId = lastStudiedId || readLastCourseId();
+          const preferred = preferredId
+            ? coursesRes.courses.find((c) => c.id === preferredId)
+            : null;
+          setCourse(preferred ?? coursesRes.courses[0]);
+        } else {
+          setCourses([]);
+          setCourse(null);
         }
-      } else {
-        setPendingContract(null);
-        setUnreadListening(0);
+      } catch (courseErr) {
+        console.error("Error al cargar cursos:", courseErr);
       }
-
-      // El tour NO se lanza al restaurar la sesion: navega entre pestañas y
-      // expulsaria al usuario de la ruta que acaba de recargar. Solo arranca
-      // tras un inicio de sesion explicito (ver AuthModal onSuccess).
-    } catch (error) {
-      console.error('Error al cargar datos iniciales de Academia Giantucchi:', error);
+    } catch (err) {
+      console.error("Error al inicializar datos:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-    if (new URLSearchParams(window.location.search).has('resetToken')) {
-      setAuthMode('login');
-      setShowAuthModal(true);
-    }
   }, []);
 
   useEffect(() => {
@@ -257,378 +162,165 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  useEffect(() => {
-    if (loading || canOpenTab(currentUser, activeTab)) return;
-    navigateTo(currentUser ? 'courses' : 'landing', { replace: true });
-  }, [activeTab, currentUser, loading]);
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch (err) {
+      console.error('Error en logout:', err);
+    } finally {
+      setCurrentUser(null);
+      setCourse(null);
+      navigateTo('landing');
+      loadData();
+    }
+  };
 
-  useEffect(() => {
-    if (!currentUser) return;
-    const checkUnread = async () => {
-      try {
-        const res = await api.getMyListening();
-        setUnreadListening(res.unreadReplies);
-      } catch {
-        /* sin buzón disponible no hay aviso */
-      }
-    };
-    const interval = setInterval(checkUnread, 45000);
-    window.addEventListener('focus', checkUnread);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', checkUnread);
-    };
-  }, [currentUser]);
+  const selectCourse = (c: Course) => {
+    setCourse(c);
+    try {
+      localStorage.setItem(LAST_COURSE_KEY, c.id);
+    } catch {}
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaywallModal(false);
+    loadData();
+  };
+
+  const handleVipActivated = () => {
+    setShowPaywallModal(false);
+    loadData();
+  };
 
   const handleOpenListening = () => {
     if (!currentUser) {
       setAuthMode('login');
-      setAuthNotice('Inicia sesión para compartir tu experiencia o revisar tus respuestas en el Buzón de Escucha.');
+      setAuthNotice('Inicia sesión para dejarnos tu aporte o sugerencia en el buzón.');
       setShowAuthModal(true);
       return;
     }
     setShowListening(true);
   };
 
-  const handleSetupComplete = async (adminUser: User, updatedAppName?: string) => {
-    if (updatedAppName) {
-      siteConfig.appName = updatedAppName;
-    }
-    setIsSetupRequired(false);
-    setShowSetupWizard(false);
-    setCurrentUser(adminUser);
-    navigateTo('admin', { replace: true });
-    await loadData();
-  };
+  const hasAccess = Boolean(
+    currentUser?.role === 'ADMIN' ||
+    currentUser?.role === 'MENTOR' ||
+    currentUser?.role === 'VIP'
+  );
 
-  if (isSetupRequired || showSetupWizard) {
-    return <SetupWizard onSetupComplete={handleSetupComplete} />;
+  if (showSetupWizard) {
+    return (
+      <SetupWizard
+        onSetupComplete={() => {
+          setShowSetupWizard(false);
+          setIsSetupRequired(false);
+          loadData();
+        }}
+      />
+    );
   }
 
-  const handlePaymentSuccess = async () => {
-    setShowPaywallModal(false);
-    await loadData();
-  };
-
-  const handleVipActivated = async () => {
-    setShowPaywallModal(false);
-    navigateTo('courses');
-    await loadData();
-  };
-
-  const handleLogout = async () => {
-    try {
-      await api.logout();
-    } catch (e) {
-      console.error('Logout error:', e);
-    }
-    setCurrentUser(null);
-    setCourse(null);
-    setShowTour(false);
-    // El catálogo en memoria era el de la sesión: el de un admin incluye
-    // borradores que la landing pública mostraría. Se vuelve a pedir ya como
-    // visitante, y se olvida qué estudiaba quien cerró la sesión.
-    setCourses([]);
-    try {
-      localStorage.removeItem(LAST_COURSE_KEY);
-    } catch {
-      /* almacenamiento bloqueado: no había nada que olvidar */
-    }
-    navigateTo('landing');
-    try {
-      const publicCourses = await api.getCourses();
-      setCourses(publicCourses.courses ?? []);
-    } catch {
-      /* sin red el catálogo queda vacío hasta la próxima carga */
-    }
-  };
-
-  const isAuthenticated = Boolean(currentUser && activeTab !== 'landing');
-
-  // Solo la carga inicial tapa la aplicacion. Antes tambien lo hacia un
-  // catalogo vacio (`!course`), asi que una instancia recien instalada —sin
-  // ningun curso creado todavia— se quedaba clavada en esta pantalla para
-  // siempre, sin portada y sin manera de entrar a crear el primer curso.
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#141420] border border-[#2d2d44] text-[#06b6d4] flex items-center justify-center animate-pulse">
+      <div className="min-h-screen bg-[#07070b] text-white flex flex-col items-center justify-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-[#0f0f17] border border-white/10 text-[#06b6d4] flex items-center justify-center animate-pulse">
           <RefreshCw className="w-6 h-6 animate-spin" />
         </div>
-        <p className="text-sm font-semibold text-slate-400">Iniciando Academia Giantucchi...</p>
+        <p className="text-sm font-semibold text-slate-400">Iniciando DocentOS Constellation...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col selection:bg-[#a855f7] selection:text-white font-sans">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[#06b6d4] selection:text-[#050505] font-sans">
       
-      {/* App Private Navbar (ONLY rendered when user is authenticated and inside app views) */}
-      {isAuthenticated && (
-        <Navbar
-          currentUser={currentUser!}
-          activeTab={activeTab}
-          setActiveTab={navigateTo}
-          hasAccess={hasAccess}
-          onRestartTour={() => setShowTour(true)}
-          onChangePassword={() => setShowChangePasswordModal(true)}
-          onLogout={handleLogout}
-          onOpenVerifyModal={() => {
-            setVerifyCode('');
-            setShowVerifyModal(true);
-          }}
-          onOpenListening={() => setShowListening(true)}
-          unreadListening={unreadListening}
-          courses={courses}
-          onSelectCourse={(selected) => {
-            selectCourse(selected);
-            navigateTo('courses');
-          }}
-        />
-      )}
+      {/* Experiencia Principal Oficial: DocentOS Constellation */}
+      <ConstellationAppShell
+        currentUser={currentUser}
+        courses={courses}
+        activeCourse={course}
+        activeTab={activeTab === 'landing' ? 'explore' : activeTab}
+        hasAccess={hasAccess}
+        onNavigate={(tab) => navigateTo(tab)}
+        onSelectCourse={(selected) => {
+          selectCourse(selected);
+          window.scrollTo({ top: 0 });
+        }}
+        onOpenAuth={() => {
+          setAuthMode('login');
+          setAuthNotice(null);
+          setShowAuthModal(true);
+        }}
+        onLogout={handleLogout}
+        onOpenPaywall={() => setShowPaywallModal(true)}
+        onRefreshData={() => loadData(true)}
+        onPaymentSuccess={handlePaymentSuccess}
+        onVipActivated={handleVipActivated}
+        onRestartTour={() => setShowTour(true)}
+        onOpenVerifyModal={() => {
+          setVerifyCode('');
+          setShowVerifyModal(true);
+        }}
+        onOpenListening={handleOpenListening}
+        onChangePassword={() => setShowChangePasswordModal(true)}
+        unreadListening={unreadListening}
+      />
 
-      {/* Main Content Area based on Active Tab */}
-      <main className="flex-1 animate-fade-in">
-        
-        {activeTab === 'landing' && (
-          <LandingPage
-            courses={courses}
-            currentUser={currentUser}
-            onGoToApp={() => navigateTo(currentUser?.role === 'ADMIN' ? 'admin' : 'courses')}
-            onLogout={handleLogout}
-            onOpenAuth={(mode) => {
-              setAuthMode(mode);
-              setAuthNotice(null);
-              setShowAuthModal(true);
-            }}
-            onExploreCourse={(selectedCourse) => {
-              selectCourse(selectedCourse);
-              if (currentUser) navigateTo('courses');
-              else {
-                setAuthMode('login');
-                setAuthNotice(null);
-                setShowAuthModal(true);
-              }
-            }}
-          />
-        )}
+      {/* Modal Auth Overlay */}
+      <AuthModal
+        isOpen={showAuthModal}
+        initialMode={authMode}
+        initialMessage={authNotice}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={(user, redirectPath) => {
+          setCurrentUser(user);
+          setAuthNotice(null);
+          loadData();
+          navigateTo(tabFromPath(redirectPath));
+          if (!localStorage.getItem('giantucchi_tour_completed')) {
+            setShowTour(true);
+          }
+        }}
+      />
 
-        {activeTab === 'courses' && currentUser && (
-          <div>
-            {!hasAccess && (
-              <div className="mx-auto w-full max-w-[1800px] px-4 pt-6 lg:px-6">
-                <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-3">
-                    <Sparkles aria-hidden className="h-5 w-5 shrink-0 text-brand-cyan" />
-                    <div>
-                      <h2 className="text-section font-semibold text-ink">Estás viendo una vista previa</h2>
-                      <p className="mt-0.5 text-meta text-ink-muted">
-                        Las clases y la mentoría se abren al activar tu acceso.
-                      </p>
-                    </div>
-                  </div>
+      {/* Modal Cambio de Contraseña */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        onChanged={(message) => {
+          setShowChangePasswordModal(false);
+          setCurrentUser(null);
+          setCourse(null);
+          setAuthMode('login');
+          setAuthNotice(message);
+          navigateTo('landing');
+          setShowAuthModal(true);
+        }}
+      />
 
-                  <button
-                    onClick={() => setShowPaywallModal(true)}
-                    className="btn-brand-primary shrink-0 px-4 py-2.5 text-meta"
-                  >
-                    Activar acceso
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {course ? (
-              <CourseViewer
-                course={course}
-                currentUser={currentUser}
-                hasAccess={hasAccess}
-                onOpenPaywall={() => setShowPaywallModal(true)}
-                courses={courses}
-                onSelectCourse={(selected) => {
-                  selectCourse(selected);
-                  window.scrollTo({ top: 0 });
-                }}
-                onGoHome={() => navigateTo('landing')}
-              />
-            ) : (
-              <div className="mx-auto w-full max-w-3xl px-4 py-20 text-center">
-                <h2 className="text-section font-semibold text-ink">Todavía no hay cursos publicados</h2>
-                <p className="mt-2 text-meta text-ink-muted">
-                  {currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR'
-                    ? 'Crea el primero desde el panel y aparecerá aquí.'
-                    : 'En cuanto se publique el primero lo verás en esta pantalla.'}
-                </p>
-                {(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-                  <button
-                    onClick={() => navigateTo(currentUser.role === 'ADMIN' ? 'admin' : 'mentor')}
-                    className="btn-brand-primary mt-6 px-5 py-2.5 text-meta"
-                  >
-                    Ir al panel
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'mentor' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-          <MentorDashboard
-            currentUser={currentUser}
-            courses={courses}
-            onRefreshCourses={loadData}
-          />
-        )}
-
-        {activeTab === 'admin' && currentUser?.role === 'ADMIN' && (
-          <AdminDashboard
-            currentUser={currentUser}
-            course={course}
-            onRefreshData={loadData}
-          />
-        )}
-
-        {activeTab === 'plugins' && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') && (
-          <div className="max-w-7xl mx-auto p-4 sm:p-8">
-            <PluginManagerView />
-          </div>
-        )}
-
-        {activeTab === 'vip' && currentUser && course && (
-          <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
+      {/* Modal Paywall Overlay */}
+      {showPaywallModal && currentUser && course && (
+        <div className="fixed inset-0 z-50 bg-[#07070b]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="relative max-w-4xl w-full">
+            <button
+              onClick={() => setShowPaywallModal(false)}
+              className="absolute top-4 right-4 z-20 text-slate-400 hover:text-white bg-[#141420] border border-white/10 p-2 rounded-xl transition-all"
+            >
+              ✕
+            </button>
             <PaywallModal
               userRole={currentUser.role}
               courseTitle={course.title}
+              courseId={course.id}
               price={course.price}
               onPaymentSuccess={handlePaymentSuccess}
               onVipActivated={handleVipActivated}
             />
           </div>
-        )}
-
-        {/* Modal Auth Overlay */}
-        <AuthModal
-          isOpen={showAuthModal}
-          initialMode={authMode}
-          initialMessage={authNotice}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={(user, redirectPath) => {
-            setCurrentUser(user);
-            setAuthNotice(null);
-            loadData();
-            navigateTo(tabFromPath(redirectPath));
-            if (!localStorage.getItem('giantucchi_tour_completed')) {
-              setShowTour(true);
-            }
-          }}
-        />
-
-        <ChangePasswordModal
-          isOpen={showChangePasswordModal}
-          onClose={() => setShowChangePasswordModal(false)}
-          onChanged={(message) => {
-            setShowChangePasswordModal(false);
-            setCurrentUser(null);
-            setCourse(null);
-            setAuthMode('login');
-            setAuthNotice(message);
-            navigateTo('landing');
-            setShowAuthModal(true);
-          }}
-        />
-
-        {/* Modal overlay if triggered from CourseViewer */}
-        {showPaywallModal && currentUser && course && (
-          <div className="fixed inset-0 z-50 bg-[#0a0a0f]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-            <div className="relative max-w-4xl w-full">
-              <button
-                onClick={() => setShowPaywallModal(false)}
-                className="absolute top-4 right-4 z-20 text-slate-400 hover:text-white bg-[#1a1a2e] border border-[#2d2d44] p-2 rounded-xl transition-all"
-              >
-                ✕
-              </button>
-              <PaywallModal
-                userRole={currentUser.role}
-                courseTitle={course.title}
-                courseId={course.id}
-                price={course.price}
-                onPaymentSuccess={handlePaymentSuccess}
-                onVipActivated={handleVipActivated}
-              />
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* Footer */}
-      {/* El pie cierra la pagina, asi que comparte su fondo. Pintarlo de
-          #0a0a0f lo dejaba mas claro que el suelo #050505 y se leia como una
-          banda encendida al final en vez de como un remate.
-          La portada trae el suyo propio, en su propio sistema visual: sin este
-          filtro salian dos pies seguidos al final de `/`. */}
-      {activeTab !== 'landing' && (
-      <footer className="border-t border-line px-4 py-6 sm:px-6">
-        <div className="mx-auto flex w-full max-w-[1800px] flex-col items-center gap-3 text-meta text-ink-muted md:flex-row md:justify-between">
-          <div className="flex flex-col items-center gap-2 md:flex-row">
-            <span className="flex items-center gap-2">
-              <span className="bg-brand-gradient flex h-5 w-5 shrink-0 items-center justify-center rounded-md p-px">
-                <span className="flex h-full w-full items-center justify-center rounded-[5px] bg-canvas">
-                  <span className="bg-gradient-to-r from-brand-cyan to-brand-purple bg-clip-text text-micro font-black text-transparent">
-                    {siteConfig.logoInitial}
-                  </span>
-                </span>
-              </span>
-              <span className="text-ink">{siteConfig.appName}</span>
-              <span>© {new Date().getFullYear()}</span>
-            </span>
-            <span className="hidden md:inline">· {siteConfig.authorCredit}</span>
-          </div>
-
-          {siteConfig.complaintsBookUrl && (
-            <a
-              href={siteConfig.complaintsBookUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
-            >
-              <BookOpen aria-hidden className="h-3.5 w-3.5" />
-              Libro de Reclamaciones
-            </a>
-          )}
-
-          <button
-            type="button"
-            onClick={handleOpenListening}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
-          >
-            <HeartHandshake aria-hidden className="h-3.5 w-3.5 text-brand-cyan" />
-            Buzón de escucha
-            {unreadListening > 0 && (
-              <span className="rounded-full bg-brand-cyan px-1.5 text-micro font-bold text-black">{unreadListening}</span>
-            )}
-          </button>
-
-          {/* White-Label Credit */}
-          <a
-            href={siteConfig.poweredByLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
-          >
-            {siteConfig.poweredByText}
-            <ExternalLink aria-hidden className="h-3 w-3" />
-          </a>
-
-          <span className="flex items-center gap-1.5 tabular-nums">
-            <CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-brand-violet" />
-            v{DOCENTOS_VERSION} · {releaseChannelLabel}
-          </span>
         </div>
-      </footer>
       )}
 
-      {/* Onboarding Assistant Ian Tour */}
+      {/* Tour Asistente */}
       {showTour && currentUser && activeTab !== 'landing' && (
         <AIAssistantTour
           onHighlightTab={(tab) => navigateTo(tab)}
@@ -636,14 +328,14 @@ export default function App() {
         />
       )}
 
-      {/* Certificate Public Verification Modal */}
+      {/* Modal Verificación Pública de Certificados */}
       <CertificateVerifyModal
         isOpen={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}
         initialCode={verifyCode}
       />
 
-      {/* Buzón de Escucha: recomendaciones, quejas, caritas y NPS */}
+      {/* Buzón de Escucha Modal */}
       {currentUser && (
         <ListeningBoxModal
           isOpen={showListening}
@@ -653,7 +345,7 @@ export default function App() {
         />
       )}
 
-      {/* Modal Obligatorio de Firma de Contrato Virtual */}
+      {/* Modal Obligatorio Firma de Contrato */}
       {pendingContract && currentUser && (
         <ContractSignatureModal
           contractData={pendingContract}
@@ -661,14 +353,6 @@ export default function App() {
             setPendingContract(null);
             loadData();
           }}
-        />
-      )}
-
-      {/* Botón flotante accesible de Buzón de Escucha (sustituye al antiguo botón verde) */}
-      {!showListening && (
-        <ListeningFloatingButton
-          unreadCount={unreadListening}
-          onClick={handleOpenListening}
         />
       )}
 

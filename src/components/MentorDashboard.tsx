@@ -416,16 +416,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       : 0;
 
   return (
-    <div className="min-h-screen bg-[#000000] text-slate-100 p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#000000] text-slate-100 p-3 sm:p-8 space-y-6 sm:space-y-8 w-full max-w-7xl mx-auto overflow-x-hidden">
 
       {/* Header Banner */}
-      <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+      <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-4 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="space-y-2 z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#a855f7] text-xs font-bold">
             <UserCheck className="w-3.5 h-3.5" />
             <span>Panel Especializado para Mentores</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
             Bienvenido, {currentUser.name}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
@@ -454,7 +454,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { title: 'Programas Creados', value: courses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
           { title: 'Mentees Asignados', value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
@@ -473,17 +473,17 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         ].map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="bg-[#0a0a0f] border border-[#262626] p-5 rounded-2xl flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            <div key={idx} className="bg-[#0a0a0f] border border-[#262626] p-3 sm:p-5 rounded-2xl flex items-center justify-between min-w-0">
+              <div className="min-w-0 pr-1">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                   {card.title}
                 </span>
-                <span className="text-2xl font-black text-white mt-1 block">
+                <span className="text-xl sm:text-2xl font-black text-white mt-1 block">
                   {card.value}
                 </span>
               </div>
-              <div className={`p-3 rounded-xl bg-[#141420] border border-[#262626] ${card.color}`}>
-                <Icon className="w-5 h-5" />
+              <div className={`p-2.5 sm:p-3 rounded-xl bg-[#141420] border border-[#262626] ${card.color} shrink-0`}>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
           );
@@ -491,76 +491,76 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <div className="flex border-b border-[#262626] gap-2">
+      <div className="flex border-b border-[#262626] gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1">
         <button
           onClick={() => setActiveTab('courses')}
-          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'courses'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-4 h-4 shrink-0" />
           <span>Gestión de Cursos ({courses.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('mentees')}
-          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'mentees'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-4 h-4 shrink-0" />
           <span>Mentees Asignados ({mentees.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('qna')}
-          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'qna'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <MessageSquare className="w-4 h-4" />
+          <MessageSquare className="w-4 h-4 shrink-0" />
           <span>Centro de Consultas Q&A ({pendingQuestions.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('meetings')}
-          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'meetings'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Video className="w-4 h-4" />
+          <Video className="w-4 h-4 shrink-0" />
           <span>Clases en Vivo & Sincrónicas</span>
         </button>
 
         <button
           onClick={() => setActiveTab('quizzes')}
-          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'quizzes'
               ? 'border-purple-500 text-purple-400'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-amber-300" />
+          <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
           <span>Evaluaciones & Quizzes IA</span>
         </button>
 
         <button
           onClick={() => setActiveTab('youtube-builder')}
-          className={`pb-3 px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all ${
+          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'youtube-builder'
               ? 'border-red-500 text-red-400'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
-          <Youtube className="w-4 h-4 text-red-500" />
+          <Youtube className="w-4 h-4 text-red-500 shrink-0" />
           <span>AI YouTube Course Builder</span>
         </button>
       </div>

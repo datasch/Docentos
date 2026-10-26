@@ -195,6 +195,15 @@ export const api = {
     return res.json();
   },
 
+  async getMe(): Promise<{
+    authenticated: boolean;
+    user: User | null;
+    hasAccess: boolean;
+    sessionExpiresAt?: string;
+  }> {
+    return this.getCurrentUser();
+  },
+
   async getCurrentUser(): Promise<{
     authenticated: boolean;
     user: User | null;
@@ -252,6 +261,12 @@ export const api = {
   async getCourses(): Promise<{ courses: Course[]; userRole: UserRole; hasAccess: boolean }> {
     const res = await fetch('/api/courses');
     if (!res.ok) throw new Error('Error al obtener cursos');
+    return res.json();
+  },
+
+  async getCourse(courseId: string): Promise<{ course: Course }> {
+    const res = await fetch(`/api/courses/${courseId}`);
+    if (!res.ok) throw new Error('Error al obtener el curso');
     return res.json();
   },
 
@@ -1004,6 +1019,26 @@ export const api = {
   },
 
   // Course Admin CRUD
+  async generateCourseCover(data: { title: string; category?: string; description?: string }): Promise<{
+    success: boolean;
+    coverImage: string;
+    headline: string;
+    subline: string;
+    badgeText: string;
+    usedAi: boolean;
+  }> {
+    const res = await fetch('/api/admin/courses/generate-cover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al generar portada con IA');
+    }
+    return res.json();
+  },
+
   async createCourse(data: { title: string; description?: string; price?: number; currency?: string; published?: boolean; coverImage?: string; category?: string; isDemo?: boolean; sequentialUnlock?: boolean; openToAllRegistered?: boolean }): Promise<{ success: boolean; course: Course }> {
     const res = await fetch('/api/admin/courses', {
       method: 'POST',

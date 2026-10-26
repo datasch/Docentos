@@ -99,6 +99,12 @@ import {
 } from './server/courseAccess.js';
 import { redactPluginConfig } from './server/pluginConfig.js';
 import { ensurePluginCatalog } from './server/pluginCatalog.js';
+import {
+  generateCourseCoverWithAi,
+  getActiveCustomizerBrand,
+  isGenericCoverImage,
+  syncCoursesCoversWithBrand,
+} from './server/courseCoverAi.js';
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import {
@@ -387,13 +393,16 @@ async function isSetupComplete() {
 }
 
 async function getPublicRuntimeConfig() {
-  const instance = await prisma.instanceConfig.findUnique({ where: { id: 'singleton' } });
+  const [instance, brand] = await Promise.all([
+    prisma.instanceConfig.findUnique({ where: { id: 'singleton' } }),
+    getActiveCustomizerBrand().catch(() => null),
+  ]);
   const defaults = instanceConfigDefaults();
   return {
-    appName: instance?.institutionName || defaults.institutionName,
+    appName: instance?.institutionName || brand?.brandName || defaults.institutionName,
     appTagline: instance?.appTagline || defaults.appTagline,
     logoInitial: instance?.logoInitial || defaults.logoInitial,
-    logoUrl: instance?.logoUrl || defaults.logoUrl,
+    logoUrl: brand?.logoUrl || instance?.logoUrl || defaults.logoUrl,
     poweredByText: instance?.poweredByText || defaults.poweredByText,
     poweredByLink: instance?.poweredByLink || defaults.poweredByLink,
     authorCredit: instance?.authorCredit || defaults.authorCredit,
@@ -1502,6 +1511,18 @@ app.post(
     const created = { modules: 0, lessons: 0, resources: 0 };
     const skipped = { lessons: 0, resources: 0 };
 
+    const resolvedTitle = String(req.body.title || plan.title).trim().slice(0, 200);
+    const resolvedDescription = String(req.body.description || plan.description).trim().slice(0, 2_000);
+    const resolvedCategory = String(req.body.category || plan.category).trim().slice(0, 80);
+    let resolvedDriveCoverImage = String(req.body.coverImage || '').trim();
+    if (!target && isGenericCoverImage(resolvedDriveCoverImage)) {
+      resolvedDriveCoverImage = await generateCourseCoverWithAi({
+        title: resolvedTitle,
+        category: resolvedCategory,
+        description: resolvedDescription,
+      });
+    }
+
     const courseId = await prisma.$transaction(
       async (tx) => {
         let id: string;
@@ -1531,17 +1552,14 @@ app.post(
         } else {
           const course = await tx.course.create({
             data: {
-              title: String(req.body.title || plan.title).trim().slice(0, 200),
-              description: String(req.body.description || plan.description).trim().slice(0, 2_000),
+              title: resolvedTitle,
+              description: resolvedDescription,
               price: Math.max(0, Number(req.body.price) || 0),
               currency: String(req.body.currency || 'USD').toUpperCase().slice(0, 8),
               published,
               publishedAt: published ? new Date() : null,
-              coverImage: String(
-                req.body.coverImage ||
-                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
-              ).trim(),
-              category: String(req.body.category || plan.category).trim().slice(0, 80),
+              coverImage: resolvedDriveCoverImage,
+              category: resolvedCategory,
               isDemo: false,
               driveFolderId: plan.sourceFolderId,
             },
@@ -2678,6 +2696,15 @@ app.post(
       // claves de API que `server/pluginConfig.ts` ya oculta al leerlas.
       data: { configJson: cifrar(JSON.stringify(mergedConfig)) },
     });
+    if (plugin.id === 'docentos-customizer') {
+      try {
+        await syncCoursesCoversWithBrand({ forceAllAiCovers: true });
+      } catch (err) {
+        logger.warn('No se pudieron sincronizar las portadas de cursos tras actualizar docentos-customizer', {
+          error: String(err),
+        });
+      }
+    }
     // Lo que se devuelve, en cambio, se recorta segun quien pregunta.
     const isAdmin = req.user?.role === 'ADMIN';
     const plugins = await prisma.plugin.findMany({ orderBy: { createdAt: 'asc' } });
@@ -3605,22 +3632,55 @@ app.post(
 
 // --- LMS Course Admin Management ---
 app.post(
+  '/api/admin/courses/generate-cover',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const title = String(req.body?.title || '').trim();
+    if (!title) {
+      return res.status(400).json({ error: 'El título del curso es necesario para generar la portada con IA.' });
+    }
+    const category = String(req.body?.category || 'Mentoría Elite').trim();
+    const description = String(req.body?.description || '').trim();
+    const coverImage = await generateCourseCoverWithAi({
+      title,
+      category,
+      description,
+    });
+    res.json({
+      success: true,
+      coverImage,
+    });
+  }),
+);
+
+app.post(
   '/api/admin/courses',
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const title = String(req.body.title || '').trim();
     if (!title) return res.status(400).json({ error: 'El título del curso es obligatorio.' });
 
+    const description = String(req.body.description || '').trim();
+    const category = String(req.body.category || 'Mentoría Elite').trim();
+    let coverImage = String(req.body.coverImage || '').trim();
+    if (isGenericCoverImage(coverImage)) {
+      coverImage = await generateCourseCoverWithAi({
+        title,
+        category,
+        description,
+      });
+    }
+
     const course = await prisma.course.create({
       data: {
         title,
-        description: String(req.body.description || '').trim(),
+        description,
         price: Math.max(0, Number(req.body.price) || 0),
         currency: String(req.body.currency || 'USD').toUpperCase(),
         published: Boolean(req.body.published),
         publishedAt: req.body.published ? new Date() : null,
-        coverImage: String(req.body.coverImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'),
-        category: String(req.body.category || 'Mentoría Elite').trim(),
+        coverImage,
+        category,
         isDemo: Boolean(req.body.isDemo),
         sequentialUnlock: Boolean(req.body.sequentialUnlock),
         openToAllRegistered: Boolean(req.body.openToAllRegistered),
@@ -5317,6 +5377,10 @@ async function startServer() {
   try {
     const total = await ensurePluginCatalog();
     console.log(`🔌 Catalogo de plugins verificado (${total})`);
+    const syncedCovers = await syncCoursesCoversWithBrand({ forceAllAiCovers: false });
+    if (syncedCovers > 0) {
+      console.log(`🎨 Portadas de cursos generadas con IA y logo (${syncedCovers})`);
+    }
   } catch (error) {
     logger.error('No se pudo asegurar el catalogo de plugins', { error: String(error) });
   }

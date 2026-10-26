@@ -11,6 +11,7 @@
  */
 
 import { pluginManager } from './PluginManager';
+import { getCustomBrandName, getCustomLogoUrl } from '../lib/logoConfig';
 
 export interface CertificateData {
   studentName: string;
@@ -83,7 +84,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
   const certPluginConfig = pluginManager.getPlugin('pdf-certificates')?.config || {};
 
   const primaryColor = data.primaryColor || certPluginConfig.primaryColor || '#06b6d4';
-  const institution = data.institutionName || certPluginConfig.institutionName || 'Academia Giantucchi';
+  const institution = data.institutionName || certPluginConfig.institutionName || getCustomBrandName() || 'DocentOS';
   const giantucchiSignatory = data.signatoryTitle || certPluginConfig.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador';
   const giantucchiSignatureSrc = data.signatureImage || certPluginConfig.signatureImage || certPluginConfig.signature;
 
@@ -96,7 +97,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
 
   const univSignatory = data.universitySignatoryTitle || certPluginConfig.universitySignatoryTitle || 'Dirección Académica - Universidad / Instituto';
   const univSignatureSrc = data.universitySignatureImage || certPluginConfig.universitySignatureImage;
-  const logoSrc = data.institutionLogo || certPluginConfig.institutionLogo || '/logo.avif';
+  const logoSrc = data.institutionLogo || certPluginConfig.institutionLogo || getCustomLogoUrl() || '/logo.avif';
   const badge = data.badgeText || certPluginConfig.badgeText || 'CERTIFICADO DE EXCELENCIA TÉCNICA';
   const bgMode = data.backgroundColor || certPluginConfig.backgroundColor || 'dark';
   const dateStr = data.dateStr || new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });

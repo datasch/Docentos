@@ -89,8 +89,10 @@ export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
       colorTheme: 'cyan',
       colorMode: 'dark',
       density: 'comfortable',
-      showQuickVersionSwitcher: true,
-      customCampusName: 'Academia Giantucchi',
+      showQuickVersionSwitcher: false,
+      customCampusName: 'DocentOS',
+      customBrandName: 'DocentOS',
+      customLogoUrl: '',
     },
   },
 ];
@@ -338,15 +340,20 @@ class PluginManagerEngine {
     density: 'comfortable' | 'compact';
     showQuickVersionSwitcher: boolean;
     customCampusName: string;
+    customBrandName?: string;
+    customLogoUrl?: string;
   } {
     const plugin = this.getPlugin('docentos-customizer');
+    const brand = plugin?.config?.customCampusName || plugin?.config?.customBrandName || 'DocentOS';
     return {
       interfaceVersion: plugin?.config?.interfaceVersion === 'v0.5-modern' ? 'v0.5-modern' : 'v0.4-classic',
       colorTheme: plugin?.config?.colorTheme || 'cyan',
       colorMode: plugin?.config?.colorMode === 'light' ? 'light' : 'dark',
       density: plugin?.config?.density || 'comfortable',
-      showQuickVersionSwitcher: plugin?.config?.showQuickVersionSwitcher !== false,
-      customCampusName: plugin?.config?.customCampusName || 'Academia Giantucchi',
+      showQuickVersionSwitcher: false,
+      customCampusName: brand,
+      customBrandName: brand,
+      customLogoUrl: plugin?.config?.customLogoUrl || '',
     };
   }
 }

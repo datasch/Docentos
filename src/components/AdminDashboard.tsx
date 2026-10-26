@@ -19,6 +19,8 @@ import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
 import { ListeningAdminPanel } from './ListeningAdminPanel';
 import { pluginManager } from '../plugins/PluginManager';
+import { DEFAULT_LOGO_URL } from '../lib/logoConfig';
+import { FestiveHatOverlay } from './FestiveHatOverlay';
 
 interface AdminDashboardProps {
   currentUser?: User;
@@ -95,8 +97,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       setUiVersion(cfg.interfaceVersion);
     };
     window.addEventListener('docentos-customizer-change', handleCustomizerUpdate);
+    window.addEventListener('docentos-brand-change', handleCustomizerUpdate);
+    window.addEventListener('docentos-logo-change', handleCustomizerUpdate);
     return () => {
       window.removeEventListener('docentos-customizer-change', handleCustomizerUpdate);
+      window.removeEventListener('docentos-brand-change', handleCustomizerUpdate);
+      window.removeEventListener('docentos-logo-change', handleCustomizerUpdate);
     };
   }, [uiVersion]);
 
@@ -754,17 +760,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       {/* NAVEGACIÓN Y CABECERA: MODO CLÁSICO v0.4 (Idéntico a captura del usuario) vs MODO MODERNO v0.5 */}
       {uiVersion === 'v0.4-classic' ? (
         <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl text-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider">
-              <Shield className="w-3.5 h-3.5" />
-              <span>PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC</span>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-black/40 border border-[#2d2d44] flex items-center justify-center p-1.5 shrink-0 relative overflow-visible shadow-inner">
+              <img
+                src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
+                alt="Logo"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
+                }}
+              />
+              <FestiveHatOverlay size="md" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              {customizerConfig.customCampusName ? `${customizerConfig.customCampusName} Control Center` : 'Academia Giantucchi Control Center'}
-            </h1>
-            <p className="text-slate-400 text-xs mt-1 max-w-md leading-relaxed">
-              Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
-            </p>
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider">
+                <Shield className="w-3.5 h-3.5" />
+                <span>PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {customizerConfig.customCampusName ? `${customizerConfig.customCampusName} Control Center` : 'DocentOS Control Center'}
+              </h1>
+              <p className="text-slate-400 text-xs mt-1 max-w-md leading-relaxed">
+                Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
+              </p>
+            </div>
           </div>
 
           {/* Cápsula de 11 pestañas al lado derecho de la cabecera (Exactamente como en la captura del usuario) */}
@@ -833,50 +852,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         <>
           {/* Admin Header v0.5 Moderna */}
           <div className="bg-canvas border border-line rounded-2xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold mb-2">
-                <Shield className="w-3.5 h-3.5" />
-                <span>Panel de Control & Administración Global RBAC</span>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-raised border border-line flex items-center justify-center p-2 shrink-0 relative overflow-visible shadow-inner">
+                <img
+                  src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
+                  alt={customizerConfig.customCampusName || 'Logo'}
+                  className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
+                  }}
+                />
+                <FestiveHatOverlay size="md" />
               </div>
-              <h2 className="text-2xl font-extrabold text-ink tracking-tight">
-                {customizerConfig.customCampusName || 'DocentOS Command Center'}
-              </h2>
-              <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
-                Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.
-              </p>
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold mb-2">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Panel de Control & Administración Global RBAC</span>
+                </div>
+                <h2 className="text-2xl font-extrabold text-ink tracking-tight">
+                  {customizerConfig.customCampusName || 'DocentOS Command Center'}
+                </h2>
+                <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
+                  Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2 self-stretch md:self-auto shrink-0 flex-wrap">
-              {/* Quick Version Switcher (Activado por el plugin docentos-customizer) */}
-              {isCustomizerEnabled && customizerConfig.showQuickVersionSwitcher && (
-                <div className="flex items-center bg-raised p-1 rounded-xl border border-line shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchUiVersion('v0.5-modern')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                      uiVersion === 'v0.5-modern'
-                        ? 'bg-brand-cyan text-black shadow-sm'
-                        : 'text-ink-muted hover:text-ink'
-                    }`}
-                    title="DocentOS 0.5 (Moderna Unificada): 4 Secciones Maestras simétricas"
-                  >
-                    <span>🌟 v0.5 Moderna</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchUiVersion('v0.4-classic')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                      (uiVersion as string) === 'v0.4-classic'
-                        ? 'bg-amber-400 text-black shadow-sm'
-                        : 'text-ink-muted hover:text-ink'
-                    }`}
-                    title="DocentOS 0.4 (Clásica Desplegada): 11 pestañas directas del apartado anterior"
-                  >
-                    <span>🏛️ v0.4 Clásica</span>
-                  </button>
-                </div>
-              )}
-
               <button
                 onClick={refreshEverything}
                 className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"

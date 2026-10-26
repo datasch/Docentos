@@ -78,6 +78,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [savingCourse, setSavingCourse] = useState(false);
+  const [generatingCover, setGeneratingCover] = useState(false);
 
   // Temario
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
@@ -160,6 +161,29 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       sequentialUnlock: Boolean(course.sequentialUnlock),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGenerateCover = async () => {
+    if (!form.title.trim()) {
+      alert('Escribe primero el título del curso para generar una portada temática con IA.');
+      return;
+    }
+    setGeneratingCover(true);
+    try {
+      const res = await api.generateCourseCover({
+        title: form.title.trim(),
+        category: form.category.trim() || 'Mentoría Elite',
+        description: form.description.trim(),
+      });
+      if (res.success && res.coverImage) {
+        setForm((prev) => ({ ...prev, coverImage: res.coverImage }));
+        flash('Portada generada con IA + logo del plugin de personalización.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'No se pudo generar la portada con IA');
+    } finally {
+      setGeneratingCover(false);
+    }
   };
 
   const handleSubmitCourse = async (e: React.FormEvent) => {
@@ -552,15 +576,57 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 <option value="ARS">ARS</option>
               </select>
             </div>
-            <div className="md:col-span-2">
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Imagen de Portada (URL)</label>
-              <input
-                type="url"
-                placeholder="https://images.unsplash.com/..."
-                value={form.coverImage}
-                onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              />
+            <div className="md:col-span-2 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] font-bold text-slate-400 block">
+                  Imagen de Portada (Automática con IA + Logo si se deja vacía)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateCover}
+                  disabled={generatingCover}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+                >
+                  {generatingCover ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{generatingCover ? 'Generando con IA...' : 'Generar con IA + Logo'}</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Dejar vacío para autogenerar portada IA temática con logo del plugin..."
+                  value={form.coverImage}
+                  onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                />
+                {form.coverImage && (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, coverImage: '' })}
+                    title="Limpiar portada"
+                    className="p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-rose-400"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {form.coverImage && (
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
+                  <img
+                    src={form.coverImage}
+                    alt="Vista previa de portada"
+                    className="w-28 h-16 rounded-lg object-cover border border-cyan-500/30 shrink-0"
+                  />
+                  <div className="text-[11px] text-slate-400 leading-relaxed">
+                    <span className="text-cyan-400 font-bold block">Vista previa de portada activa</span>
+                    Incluye diseño temático adaptado al curso y el emblema configurado en el plugin de personalización.
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

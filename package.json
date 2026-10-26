@@ -69,6 +69,7 @@
     "vite": "^6.2.3"
   },
   "overrides": {
-    "proxy-addr": "^2.0.8"
+    "proxy-addr": "^2.0.8",
+    "qs": "^6.16.1"
   }
 }

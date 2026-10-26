@@ -42,6 +42,7 @@ import { DOCENTOS_VERSION } from '../version';
 import { PublicNavbar, PublicNavLink } from './PublicNavbar';
 import { siteConfig } from '../config/theme';
 import { safeExternalUrl, safeLandingLink } from '../lib/safeUrl';
+import { getActiveFrontendBrand, isAiSvgCover } from '../lib/courseCoverGenerator';
 
 interface LandingPageProps {
   courses: Course[];
@@ -275,12 +276,18 @@ const FALLBACK_COVER = 'https://images.unsplash.com/photo-1516321318423-f06f85e5
 const CATALOG_FALLBACK_SIZE = 3;
 
 /** Tarjeta de curso. La comparten el catalogo y la seccion de estrenos. */
-const CourseCard: React.FC<{ course: Course; onExplore: (course: Course) => void }> = ({
+const CourseCard: React.FC<{
+  course: Course;
+  onExplore: (course: Course) => void;
+  brand: ReturnType<typeof getActiveFrontendBrand>;
+}> = ({
   course,
   onExplore,
+  brand,
 }) => {
   const modules = course.modules?.length || 0;
   const lessons = lessonCount(course);
+  const hasEmbeddedSvgLogo = isAiSvgCover(course.coverImage);
 
   return (
     <article className="lp-course-card">
@@ -296,6 +303,21 @@ const CourseCard: React.FC<{ course: Course; onExplore: (course: Course) => void
             {course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : 'Gratis'}
           </span>
         </div>
+        {!hasEmbeddedSvgLogo && (
+          <div className="lp-card-corner-logo" aria-hidden>
+            {brand.logoUrl ? (
+              <img src={brand.logoUrl} alt="" className="lp-card-corner-logo-img" />
+            ) : (
+              <span className="lp-card-corner-logo-badge">
+                <span>{brand.logoInitial || 'D'}</span>
+              </span>
+            )}
+            <span className="lp-card-corner-logo-text">
+              {brand.brandName || 'DocentOS'}
+              <b>.</b>
+            </span>
+          </div>
+        )}
         <span className="lp-play-btn">
           <Play aria-hidden className="h-5 w-5" fill="currentColor" />
         </span>
@@ -337,6 +359,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [landingConfig, setLandingConfig] = useState<LandingConfig>(DEFAULT_LANDING_CONFIG);
   const [activeSection, setActiveSection] = useState<string>('');
+  const [brandState, setBrandState] = useState(() => getActiveFrontendBrand());
   /** Estudio ya hecho por quien tiene la sesión abierta; null mientras no se sepa. */
   const [studyStats, setStudyStats] = useState<{ lessons: number; certificates: number } | null>(null);
 
@@ -353,6 +376,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   useEffect(() => {
     loadLandingConfig();
     loadTestimonials();
+    const handleCustomizerChange = () => setBrandState(getActiveFrontendBrand());
+    window.addEventListener('docentos-customizer-change', handleCustomizerChange);
+    return () => window.removeEventListener('docentos-customizer-change', handleCustomizerChange);
   }, []);
 
   // Solo quien tiene sesión puede haber dejado una opinión.
@@ -868,7 +894,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           ) : (
             <div className="lp-courses-grid">
               {displayCourses.map((course) => (
-                <CourseCard key={course.id} course={course} onExplore={onExploreCourse} />
+                <CourseCard key={course.id} course={course} onExplore={onExploreCourse} brand={brandState} />
               ))}
             </div>
           )}
@@ -894,7 +920,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <div className="lp-courses-grid">
               {newestCourses.map((course) => (
-                <CourseCard key={course.id} course={course} onExplore={onExploreCourse} />
+                <CourseCard key={course.id} course={course} onExplore={onExploreCourse} brand={brandState} />
               ))}
             </div>
           </section>
@@ -1268,13 +1294,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="lp-footer-grid">
             <div className="lp-footer-left">
               <span className="lp-logo" style={{ fontSize: '1.1rem' }}>
-                <span className="lp-logo-badge" style={{ width: 30, height: 30 }}>
-                  <span className="lp-logo-badge-inner" style={{ fontSize: '0.85rem' }}>
-                    <span>{siteConfig.logoInitial || appName.charAt(0)}</span>
+                {brandState.logoUrl || siteConfig.logoUrl ? (
+                  <img
+                    src={brandState.logoUrl || siteConfig.logoUrl}
+                    alt=""
+                    className="lp-logo-img"
+                    style={{ width: 30, height: 30 }}
+                  />
+                ) : (
+                  <span className="lp-logo-badge" style={{ width: 30, height: 30 }}>
+                    <span className="lp-logo-badge-inner" style={{ fontSize: '0.85rem' }}>
+                      <span>{brandState.logoInitial || siteConfig.logoInitial || appName.charAt(0)}</span>
+                    </span>
                   </span>
-                </span>
+                )}
                 <span className="lp-logo-text">
-                  {appName}
+                  {brandState.brandName || appName}
                   <span>.</span>
                 </span>
               </span>

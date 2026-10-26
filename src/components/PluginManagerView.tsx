@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Layers,
   Award,
@@ -42,6 +43,9 @@ import { pluginManager } from '../plugins/PluginManager';
 import { SignaturePad } from './SignaturePad';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { applyPlatformTheme, ColorTheme, ColorMode, getCurrentColorMode, setColorMode } from '../lib/themeApplicator';
+import { setCustomLogoUrl, setCustomBrandName, DEFAULT_LOGO_URL } from '../lib/logoConfig';
+import { Image as ImageIcon, RotateCcw } from 'lucide-react';
+import { FestiveHatOverlay } from './FestiveHatOverlay';
 
 const FIELD_LABELS: Record<string, string> = {
   institutionName: 'Nombre de la Institución',
@@ -160,6 +164,11 @@ export const PluginManagerView: React.FC = () => {
     }
     if (plugin.id === 'docentos-customizer') {
       if (!initialConfig.colorMode) initialConfig.colorMode = getCurrentColorMode();
+      const currentBrand = initialConfig.customCampusName || initialConfig.customBrandName;
+      if (currentBrand) {
+        initialConfig.customCampusName = currentBrand;
+        initialConfig.customBrandName = currentBrand;
+      }
     }
     setConfigFormState(initialConfig);
   };
@@ -170,13 +179,28 @@ export const PluginManagerView: React.FC = () => {
 
     try {
       setSavingConfig(true);
-      const res = await api.updatePluginConfig(configModalPlugin.id, configFormState);
+      const unifiedState = { ...configFormState };
+      if (configModalPlugin.id === 'docentos-customizer') {
+        const brand = unifiedState.customCampusName || unifiedState.customBrandName;
+        if (brand) {
+          unifiedState.customCampusName = brand;
+          unifiedState.customBrandName = brand;
+        }
+      }
+      const res = await api.updatePluginConfig(configModalPlugin.id, unifiedState);
       if (res.plugins) {
         setPlugins(res.plugins);
         pluginManager.setPlugins(res.plugins);
       }
       if (configModalPlugin.id === 'docentos-customizer') {
-        applyPlatformTheme(configFormState.colorTheme, 'comfortable', configFormState.colorMode);
+        applyPlatformTheme(unifiedState.colorTheme, 'comfortable', unifiedState.colorMode);
+        if (unifiedState.customLogoUrl !== undefined) {
+          setCustomLogoUrl(unifiedState.customLogoUrl);
+        }
+        const brand = unifiedState.customCampusName || unifiedState.customBrandName;
+        if (brand) {
+          setCustomBrandName(brand);
+        }
       }
       setConfigModalPlugin(null);
     } catch (error) {
@@ -340,16 +364,26 @@ export const PluginManagerView: React.FC = () => {
       </div>
 
       {/* Configuration Modal */}
-      {configModalPlugin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className={`bg-raised border border-line rounded-2xl p-6 md:p-8 w-full ${
-            configModalPlugin.id === 'docentos-customizer' ? 'max-w-3xl' : 'max-w-xl'
-          } space-y-5 my-8 max-h-[90vh] overflow-y-auto shadow-2xl`}>
-            <div className="flex items-center justify-between border-b border-line pb-3">
+      {configModalPlugin && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+          onMouseDown={() => setConfigModalPlugin(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`bg-raised border border-line rounded-2xl w-full ${
+              configModalPlugin.id === 'docentos-customizer' ? 'max-w-3xl' : 'max-w-xl'
+            } max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            
+            {/* Header del Modal (Fijo arriba) */}
+            <div className="flex items-center justify-between border-b border-line px-6 py-4 shrink-0 bg-raised/95 backdrop-blur-md">
               <div>
                 <h3 className="font-bold text-sm text-ink flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-brand-cyan" />
-                  Configurar {configModalPlugin.name}
+                  <span>Configurar {configModalPlugin.name}</span>
                 </h3>
                 <p className="text-micro text-ink-muted mt-0.5">
                   {(configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates')
@@ -358,16 +392,20 @@ export const PluginManagerView: React.FC = () => {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setConfigModalPlugin(null)}
-                className="text-ink-muted hover:text-ink p-1 rounded-lg hover:bg-raised"
+                className="text-ink-muted hover:text-ink p-1.5 rounded-lg hover:bg-canvas transition-colors"
+                title="Cerrar modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveConfig} className="space-y-4">
-              {/* Specialized Form for Certificates Plugin */}
-              {(configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates') && (
+            <form onSubmit={handleSaveConfig} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              {/* Cuerpo del Formulario (Scrollable) */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* Specialized Form for Certificates Plugin */}
+                {(configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates') && (
                 <div className="space-y-4">
                   {/* General Certificate Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -501,7 +539,7 @@ export const PluginManagerView: React.FC = () => {
 
                     <div className="flex items-center justify-between p-3 bg-canvas border border-line rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-12 rounded-lg bg-raised border border-line flex items-center justify-center p-1 overflow-hidden">
+                        <div className="w-14 h-12 rounded-lg bg-raised border border-line flex items-center justify-center p-1 overflow-visible relative">
                           <img
                             src={configFormState.institutionLogo || '/logo.avif'}
                             alt="Logo Institucional"
@@ -510,6 +548,7 @@ export const PluginManagerView: React.FC = () => {
                               (e.target as HTMLElement).style.display = 'none';
                             }}
                           />
+                          <FestiveHatOverlay size="md" />
                         </div>
                         <div>
                           <span className="text-xs font-bold text-ink block">
@@ -976,54 +1015,168 @@ export const PluginManagerView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Selector Rápido en Cabecera */}
-                      <div
-                        onClick={() => {
-                          const show = configFormState.showQuickVersionSwitcher === false ? true : false;
-                          setConfigFormState((prev) => ({ ...prev, showQuickVersionSwitcher: show }));
-                          pluginManager.updateConfig('docentos-customizer', { showQuickVersionSwitcher: show });
-                        }}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                          configFormState.showQuickVersionSwitcher !== false
-                            ? 'bg-brand-cyan/10 border-brand-cyan ring-1 ring-brand-cyan/30 text-ink'
-                            : 'bg-raised border-line text-ink-muted hover:border-line-strong hover:text-ink'
-                        }`}
-                      >
-                        <div className="space-y-0.5">
-                          <div className="text-xs font-bold text-ink flex items-center gap-2">
-                            <Monitor className="w-4 h-4 text-brand-cyan" />
-                            <span>Selector Rápido de Versión en Cabecera</span>
-                          </div>
-                          <div className="text-[11px] text-ink-muted">
-                            {configFormState.showQuickVersionSwitcher !== false
-                              ? 'Muestra el conmutador [ 🌟 v0.5 ] [ 🏛️ v0.4 ] en la barra superior para cambiar con 1 clic'
-                              : 'Oculta el conmutador en la cabecera para dejar la barra superior más limpia'}
-                          </div>
+                      {/* Nombre de la Institución o Campus (Global) */}
+                      <div className="space-y-2 p-4 rounded-xl bg-raised border border-line">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                            <Sliders className="w-3.5 h-3.5 text-brand-cyan" />
+                            <span>Nombre de la Institución o Campus (Global)</span>
+                          </label>
+                          <span className="text-micro font-bold text-brand-cyan">
+                            Cambio Global en Vivo
+                          </span>
                         </div>
-                        <input
-                          type="checkbox"
-                          checked={configFormState.showQuickVersionSwitcher !== false}
-                          onChange={() => {}}
-                          className="w-4 h-4 rounded text-brand-cyan focus:ring-0 cursor-pointer pointer-events-none"
-                        />
-                      </div>
-
-                      {/* Campus Name */}
-                      <div className="space-y-1.5">
-                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
-                          Nombre de la Institución o Campus
-                        </label>
+                        <p className="text-[11px] text-ink-muted leading-relaxed">
+                          Define el nombre oficial de tu plataforma. Se actualiza en tiempo real en la barra de navegación, panel administrativo, diplomas y portal.
+                        </p>
                         <input
                           type="text"
-                          value={configFormState.customCampusName ?? 'Academia Giantucchi'}
+                          value={configFormState.customCampusName ?? configFormState.customBrandName ?? ''}
                           onChange={(e) => {
                             const newName = e.target.value;
-                            setConfigFormState((prev) => ({ ...prev, customCampusName: newName }));
-                            pluginManager.updateConfig('docentos-customizer', { customCampusName: newName });
+                            setConfigFormState((prev) => ({
+                              ...prev,
+                              customCampusName: newName,
+                              customBrandName: newName,
+                            }));
+                            setCustomBrandName(newName);
                           }}
-                          className="w-full py-2.5 px-3.5 bg-raised border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
-                          placeholder="ej. Academia Giantucchi"
+                          className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
+                          placeholder="ej. DocentOS, Academia Giantucchi o Nombre de tu Institución"
                         />
+                        <div className="flex items-center gap-2 pt-1 flex-wrap">
+                          <span className="text-[10px] text-ink-muted">Sugerencias:</span>
+                          {['DocentOS', 'Academia Giantucchi', 'Instituto Tecnológico'].map((name) => (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => {
+                                setConfigFormState((prev) => ({
+                                  ...prev,
+                                  customCampusName: name,
+                                  customBrandName: name,
+                                }));
+                                setCustomBrandName(name);
+                              }}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-canvas border border-line text-ink-soft hover:text-ink hover:border-brand-cyan transition-colors cursor-pointer"
+                            >
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Logo Institucional y Sincronización con Scroll Animation */}
+                      <div className="space-y-3 pt-2 border-t border-line">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-brand-cyan" />
+                            <span>Logo de la Institución & Animación de Scroll</span>
+                          </label>
+                          <span className="text-micro font-bold text-brand-cyan">
+                            Sincroniza Canvas 3D + Navbar
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-ink-muted leading-relaxed">
+                          Al cambiar el logo aquí, se actualiza automáticamente el Navbar, el branding del campus y el 
+                          <span className="text-brand-cyan font-bold"> efecto de Scroll Animation en la portada</span>, 
+                          ensamblando las partículas 3D con la silueta de tu nuevo logo.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-raised border border-line">
+                          {/* Previsualización del Logo */}
+                          <div className="w-16 h-16 rounded-xl bg-black/40 border border-line flex items-center justify-center p-2 shrink-0 overflow-visible shadow-inner relative group">
+                            <img
+                              src={configFormState.customLogoUrl || DEFAULT_LOGO_URL}
+                              alt="Logo Institución"
+                              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
+                              }}
+                            />
+                            {/* Gorro festivo adaptado al logo personalizado */}
+                            <FestiveHatOverlay size="lg" />
+                          </div>
+
+                          {/* Opciones de carga */}
+                          <div className="flex-1 w-full space-y-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={configFormState.customLogoUrl ?? ''}
+                                onChange={(e) => {
+                                  const newLogo = e.target.value;
+                                  setConfigFormState((prev) => ({ ...prev, customLogoUrl: newLogo }));
+                                  setCustomLogoUrl(newLogo);
+                                }}
+                                className="flex-1 py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-lg text-xs text-ink focus:outline-none transition-colors"
+                                placeholder="URL de la imagen (ej: /logo.avif o https://...)"
+                              />
+
+                              {/* Botón para subir archivo local y convertir a Base64 */}
+                              <label className="px-3 py-2 rounded-lg bg-elevated hover:bg-canvas border border-line hover:border-brand-cyan text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0">
+                                <Upload className="w-3.5 h-3.5 text-brand-cyan" />
+                                <span className="hidden md:inline">Subir</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onload = (evt) => {
+                                        const base64 = evt.target?.result as string;
+                                        if (base64) {
+                                          setConfigFormState((prev) => ({ ...prev, customLogoUrl: base64 }));
+                                          setCustomLogoUrl(base64);
+                                        }
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                />
+                              </label>
+
+                              {/* Botón Restablecer */}
+                              {configFormState.customLogoUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setConfigFormState((prev) => ({ ...prev, customLogoUrl: '' }));
+                                    setCustomLogoUrl('');
+                                  }}
+                                  className="p-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-muted hover:text-ink transition-all cursor-pointer"
+                                  title="Restablecer logo por defecto"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Presets rápidos */}
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              <span className="text-[10px] text-ink-muted font-bold mr-1">Presets:</span>
+                              {[
+                                { label: '🌌 Giantucchi Hex', url: '/logo.avif' },
+                                { label: '⚛️ React Core', url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg' },
+                                { label: '🌐 Web Globe', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80' },
+                              ].map((preset) => (
+                                <button
+                                  key={preset.label}
+                                  type="button"
+                                  onClick={() => {
+                                    setConfigFormState((prev) => ({ ...prev, customLogoUrl: preset.url }));
+                                    setCustomLogoUrl(preset.url);
+                                  }}
+                                  className="text-[10px] px-2 py-0.5 rounded-md bg-canvas hover:bg-elevated border border-line text-ink-soft hover:text-ink transition-colors cursor-pointer"
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1081,19 +1234,21 @@ export const PluginManagerView: React.FC = () => {
                     })}
                 </div>
               )}
+              </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
+              {/* Footer Fijo del Modal (Siempre visible en pantalla) */}
+              <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3.5 border-t border-line shrink-0 bg-raised/95 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={() => setConfigModalPlugin(null)}
-                  className="px-4 py-2 bg-elevated hover:bg-elevated text-ink-soft hover:text-ink text-xs font-bold rounded-lg border border-line transition-colors"
+                  className="px-4 py-2 bg-elevated hover:bg-canvas text-ink-soft hover:text-ink text-xs font-bold rounded-lg border border-line transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={savingConfig}
-                  className="px-5 py-2 btn-brand-primary text-black font-bold text-xs rounded-lg shadow-lg flex items-center gap-1.5"
+                  className="px-5 py-2 btn-brand-primary text-black font-bold text-xs rounded-lg shadow-lg flex items-center gap-1.5 transition-opacity"
                 >
                   {savingConfig ? (
                     <>
@@ -1107,7 +1262,8 @@ export const PluginManagerView: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

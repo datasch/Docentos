@@ -74,11 +74,12 @@ export function stepLesson(
 export function findResumePosition(
   course: Pick<Course, 'modules'> | null | undefined,
   completedVideos: Record<string, boolean>,
+  keepAtEnd = false,
 ): LessonPosition | null {
   const lessons = flattenLessons(course);
   if (lessons.length === 0) return null;
   const pending = lessons.find((lesson) => !completedVideos[lesson.videoId]);
-  const target = pending ?? lessons[0];
+  const target = pending ?? (keepAtEnd ? lessons[lessons.length - 1] : lessons[0]);
   return { moduleIndex: target.moduleIndex, videoIndex: target.videoIndex };
 }
 

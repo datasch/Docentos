@@ -1,4 +1,5 @@
-import { Check, ChevronLeft, ChevronRight, ExternalLink, Radio, Video, PlaySquare } from 'lucide-react';
+import React from 'react';
+import { Check, ChevronLeft, ChevronRight, ExternalLink, PlaySquare, Lock } from 'lucide-react';
 
 interface LessonMetaBarProps {
   lessonTitle: string;
@@ -8,6 +9,9 @@ interface LessonMetaBarProps {
   lessonNumber: number;
   totalLessons: number;
   isCompleted: boolean;
+  canComplete?: boolean;
+  canUncomplete?: boolean;
+  lockedReason?: 'video' | 'quiz';
   onToggleComplete: () => void;
   playbackUrl?: string;
   isLive?: boolean;
@@ -16,11 +20,11 @@ interface LessonMetaBarProps {
 }
 
 /**
- * Identidad de la leccion bajo el reproductor.
+ * Identidad de la lección bajo el reproductor.
  *
- * Reune lo que antes estaba repartido entre la cabecera del curso y la barra de
- * informacion del video: donde estas, que estas viendo y la unica accion que
- * cierra la clase.
+ * Reúne ubicación, título y la acción de completar o desmarcar la misión.
+ * Bloquea estrictamente la opción de marcar completada hasta ver el video
+ * completo y haber aprobado el examen (quiz) si la lección lo exige.
  */
 export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   lessonTitle,
@@ -30,6 +34,9 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   lessonNumber,
   totalLessons,
   isCompleted,
+  canComplete = true,
+  canUncomplete = true,
+  lockedReason = 'video',
   onToggleComplete,
   playbackUrl,
   isLive,
@@ -58,31 +65,18 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
       <h1 className="mt-1 text-title font-semibold text-ink">{lessonTitle}</h1>
       <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-ink-muted">
         <span className="tabular-nums">
-          Lección {lessonNumber} de {totalLessons} · {providerLabel}
+          Lección {lessonNumber} de {totalLessons}
         </span>
-        {meetingUrl && (
-          <>
-            <span aria-hidden>·</span>
-            <a
-              href={meetingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded font-bold text-[var(--color-brand-cyan)] transition-colors hover:text-ink"
-            >
-              <Video className="h-3 w-3" />
-              {isLive ? 'Unirse a la llamada en vivo' : 'Abrir enlace de reunión'}
-              <ExternalLink aria-hidden className="h-3 w-3" />
-            </a>
-          </>
-        )}
-        {!meetingUrl && playbackUrl && (
+        <span aria-hidden>·</span>
+        <span>{providerLabel}</span>
+        {playbackUrl && (
           <>
             <span aria-hidden>·</span>
             <a
               href={playbackUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded text-[var(--color-brand-cyan)] transition-colors hover:text-ink"
+              className="inline-flex items-center gap-1 text-brand-cyan hover:underline"
             >
               Abrir el video aparte
               <ExternalLink aria-hidden className="h-3 w-3" />
@@ -92,21 +86,48 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
       </p>
     </div>
 
-    {/* Debajo de lg la misma acción ya vive en MobileLessonBar, pegada al
-        reproductor; repetirla aquí la pedía dos veces en la misma pantalla. */}
-    <button
-      type="button"
-      onClick={onToggleComplete}
-      aria-pressed={isCompleted}
-      className={`hidden shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-meta font-semibold transition-colors lg:flex ${
-        isCompleted
-          ? 'bg-raised text-brand-violet-light hover:bg-line'
-          : 'bg-raised text-ink hover:bg-line'
-      }`}
-    >
-      <Check aria-hidden className="h-4 w-4" strokeWidth={isCompleted ? 3 : 2} />
-      {isCompleted ? 'Clase completada' : 'Marcar completada'}
-    </button>
+    {/* Botón estricto de completar o desmarcar misión */}
+    <div className="hidden shrink-0 items-center lg:flex">
+      <button
+        type="button"
+        onClick={onToggleComplete}
+        disabled={(!isCompleted && !canComplete) || (isCompleted && !canUncomplete)}
+        aria-pressed={isCompleted}
+        title={
+          !isCompleted && !canComplete
+            ? lockedReason === 'quiz'
+              ? 'Debes aprobar el examen del módulo para poder completar esta misión'
+              : 'Debes ver el video completo para poder marcar la misión como completada'
+            : isCompleted
+              ? !canUncomplete
+                ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.'
+                : 'Desmarcar misión completada'
+              : 'Marcar misión como completada'
+        }
+        className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-bold transition-all ${
+          isCompleted
+            ? !canUncomplete
+              ? 'bg-purple-100/70 dark:bg-purple-950/30 text-purple-700/60 dark:text-purple-300/50 border border-purple-200 dark:border-purple-500/20 cursor-not-allowed'
+              : 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 cursor-pointer shadow-sm'
+            : !canComplete
+              ? 'bg-slate-100 dark:bg-raised/40 text-slate-500 dark:text-ink-muted border border-slate-200 dark:border-line/60 cursor-not-allowed opacity-75'
+              : 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-200 dark:border-line hover:bg-slate-200/80 dark:hover:bg-line cursor-pointer shadow-sm'
+        }`}
+      >
+        {!isCompleted && !canComplete ? (
+          <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
+        ) : (
+          <Check aria-hidden className="h-4 w-4 shrink-0 text-cyan-400" strokeWidth={isCompleted ? 3 : 2} />
+        )}
+        {isCompleted
+          ? 'Misión completada'
+          : !canComplete
+            ? lockedReason === 'quiz'
+              ? 'Aprobar examen para completar'
+              : 'Ver video para completar'
+            : 'Marcar completada'}
+      </button>
+    </div>
   </div>
 );
 
@@ -116,16 +137,16 @@ interface MobileLessonBarProps {
   hasPrevious: boolean;
   hasNext: boolean;
   isCompleted: boolean;
+  canComplete?: boolean;
+  canUncomplete?: boolean;
+  lockedReason?: 'video' | 'quiz';
   onPrevious: () => void;
   onNext: () => void;
   onToggleComplete: () => void;
 }
 
 /**
- * Controles de avance en movil.
- *
- * En escritorio viven flotando sobre el video; a 390px esa zona la ocupa el
- * pulgar sobre los controles del reproductor, asi que bajan a una fila propia.
+ * Controles de avance en móvil.
  */
 export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
   lessonNumber,
@@ -133,14 +154,14 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
   hasPrevious,
   hasNext,
   isCompleted,
+  canComplete = true,
+  canUncomplete = true,
+  lockedReason = 'video',
   onPrevious,
   onNext,
   onToggleComplete,
 }) => (
-  /* Las cuatro piezas comparten una fila de 360px o menos, asi que las
-     etiquetas se recortan antes de desbordar y los iconos nunca lo hacen: en un
-     telefono estrecho «Marcar» se salia por el borde derecho. */
-  <div className="flex items-center justify-between gap-0.5 border-b border-line bg-surface px-1.5 py-1.5 lg:hidden">
+  <div className="flex border-b border-line bg-surface lg:hidden px-1.5 py-1.5 items-center justify-between gap-0.5">
     <button
       type="button"
       onClick={onPrevious}
@@ -168,13 +189,35 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
     <button
       type="button"
       onClick={onToggleComplete}
+      disabled={(!isCompleted && !canComplete) || (isCompleted && !canUncomplete)}
       aria-pressed={isCompleted}
+      title={
+        isCompleted && !canUncomplete
+          ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas'
+          : undefined
+      }
       className={`flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold transition-colors ${
-        isCompleted ? 'text-brand-violet-light' : 'text-ink-soft'
+        isCompleted
+          ? !canUncomplete
+            ? 'text-purple-600/50 dark:text-purple-300/50 cursor-not-allowed'
+            : 'text-purple-700 dark:text-purple-300'
+          : !canComplete
+            ? 'text-slate-400 dark:text-ink-muted opacity-60 cursor-not-allowed'
+            : 'text-slate-800 dark:text-ink-soft'
       }`}
     >
-      <Check aria-hidden className="h-4 w-4 shrink-0" strokeWidth={isCompleted ? 3 : 2} />
-      <span className="truncate">{isCompleted ? 'Hecha' : 'Marcar'}</span>
+      {!isCompleted && !canComplete ? (
+        <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+      ) : (
+        <Check aria-hidden className="h-4 w-4 shrink-0" strokeWidth={isCompleted ? 3 : 2} />
+      )}
+      <span className="truncate">
+        {isCompleted
+          ? 'Hecha'
+          : !canComplete
+            ? lockedReason === 'quiz' ? 'Examen' : 'Bloqueada'
+            : 'Marcar'}
+      </span>
     </button>
   </div>
 );

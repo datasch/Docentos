@@ -149,8 +149,10 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
       colorTheme: 'cyan',
       colorMode: 'dark',
       density: 'comfortable',
-      showQuickVersionSwitcher: true,
-      customCampusName: 'Academia Giantucchi',
+      showQuickVersionSwitcher: false,
+      customCampusName: 'DocentOS',
+      customBrandName: 'DocentOS',
+      customLogoUrl: '',
     },
   },
 ];
