@@ -14,6 +14,31 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.15 - 2026-10-26
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias.
+
+### Added
+
+- Experiencia interactiva Constellation: portada inmersiva con animación de
+  partículas estelares y navegación dinámica.
+- Generador de portadas de curso con IA: creación de portadas vectoriales SVG
+  temáticas (frontend, ingeniería, arquitectura, etc.) con personalización y
+  descarga directa.
+- Sistema de ambientación estacional: soporte para temas automáticos de temporada
+  (Noche de Brujas / Halloween, Navidad, San Valentín, etc.) adaptables al logo
+  y estilo visual de la escuela.
+
+### Fixed
+
+- Desbloqueo automático del botón de lección completada: integración completa
+  con YouTube IFrame API mediante inyección de `enablejsapi=1`, `widgetid=1` y
+  `origin` en el backend y el visor de cursos, detectando de forma fiable el
+  final de la reproducción para habilitar el avance pedagógico.
+- Persistencia y reanudación de reproducción por lección en el almacenamiento
+  local del alumno.
+
 ## 0.5.0-beta.14 - 2026-10-15
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros
