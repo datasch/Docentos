@@ -35,6 +35,9 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (str.toLowerCase().includes('<iframe') && str.toLowerCase().includes('src=')) {
     const match = str.match(/src=["']([^"']+)["']/i);
     const extractedUrl = match ? match[1] : '';
+    if (extractedUrl.includes('youtube.com') || extractedUrl.includes('youtube-nocookie.com') || extractedUrl.includes('youtu.be')) {
+      return parseVideoSource(extractedUrl, preferredProvider);
+    }
     return {
       provider: 'embed',
       embedUrl: safeVideoUrl(extractedUrl),
@@ -43,27 +46,27 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   }
 
   // 2. YouTube Shorts: https://www.youtube.com/shorts/VIDEO_ID or youtube.com/shorts/VIDEO_ID?feature=share
-  const shortsMatch = str.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/i);
+  const shortsMatch = str.match(/(?:(?:www\.)?youtube(?:-nocookie)?\.com\/shorts\/)([a-zA-Z0-9_-]+)/i);
   if (shortsMatch) {
     const videoId = shortsMatch[1];
     const originParam = typeof window !== 'undefined' && window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
     return {
       provider: 'youtube',
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1${originParam}`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1&widgetid=1${originParam}`,
       originalUrl: str,
       videoId,
     };
   }
 
-  // 3. YouTube Standard / Shortened URLs
-  // Matches: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/v/ID, youtube.com/embed/ID
-  const ytMatch = str.match(/(?:youtube\.com\/(?:watch\?.*v=|v\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/i);
+  // 3. YouTube Standard / Shortened / Embed / NoCookie URLs
+  // Matches: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/v/ID, youtube.com/embed/ID, youtube-nocookie.com/embed/ID
+  const ytMatch = str.match(/(?:(?:www\.)?youtube(?:-nocookie)?\.com\/(?:watch\?.*v=|v\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/i);
   if (ytMatch) {
     const videoId = ytMatch[1];
     const originParam = typeof window !== 'undefined' && window.location.origin ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
     return {
       provider: 'youtube',
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1${originParam}`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1&widgetid=1${originParam}`,
       originalUrl: str,
       videoId,
     };

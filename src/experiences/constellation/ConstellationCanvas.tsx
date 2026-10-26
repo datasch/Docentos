@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { getCustomLogoUrl, DEFAULT_LOGO_URL, LOGO_CHANGE_EVENT } from '../../lib/logoConfig';
+import { getSeasonalTheme, SeasonalTheme, SEASONAL_EVENT_NAME } from '../../lib/seasonalTheme';
 
 // Espectro oficial de 6 colores Giantucchi (Dala Style) - Modo Oscuro
 const GIANTUCCHI_SPECTRUM = [
@@ -25,7 +26,7 @@ interface Particle3D {
   baseX: number;
   baseY: number;
   baseZ: number;
-  // Objetivos de la forma del Logo Giantucchi
+  // Objetivos de la forma del Logo Giantucchi + Gorro Festivo (formado con triángulos)
   logoX: number;
   logoY: number;
   logoZ: number;
@@ -68,6 +69,206 @@ interface SynapsePulse {
   color: string;
 }
 
+interface ConstellationPoint {
+  x: number;
+  y: number;
+  z: number;
+  color: string;
+}
+
+// ============================================================================
+// GENERADORES GEOMÉTRICOS: GORROS FESTIVOS FORMADOS CON TRIÁNGULOS 3D
+// ============================================================================
+
+/**
+ * Genera la matriz de coordenadas y colores para formar el Sombrero de Brujas 🧙‍♀️
+ * PURAMENTE con los micro-triángulos del scroll animation (sin siluetas 2D sólidas).
+ */
+function generateWitchHatTrianglePoints(hatX: number, hatY: number, size: number): ConstellationPoint[] {
+  const points: ConstellationPoint[] = [];
+  const s = size;
+  const cosT = Math.cos(-0.24); // ~ -14 deg de inclinación orgánica
+  const sinT = Math.sin(-0.24);
+
+  const rotate = (px: number, py: number) => ({
+    x: hatX + (px * cosT - py * sinT),
+    y: hatY + (px * sinT + py * cosT),
+  });
+
+  // 1. Ala ancha (Brim): elipse densa de triángulos violeta eléctrico y púrpura luminoso
+  const brimSteps = 55;
+  const brimColors = ['#a855f7', '#9333ea', '#c084fc', '#7c3aed', '#8b5cf6', '#d8b4fe'];
+  for (let i = 0; i < brimSteps; i++) {
+    const angle = (i / brimSteps) * Math.PI * 2;
+    const r = 0.45 + Math.random() * 0.55;
+    const px = Math.cos(angle) * s * 0.68 * r;
+    const py = Math.sin(angle) * s * 0.18 * r;
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.08,
+      color: brimColors[Math.floor(Math.random() * brimColors.length)],
+    });
+  }
+
+  // 2. Cinta naranja de calabaza (Band): franja densa en tonos calabaza neón muy visibles
+  const bandSteps = 35;
+  const orangeColors = ['#ff7800', '#f97316', '#fb923c', '#ea580c', '#fdba74'];
+  for (let i = 0; i < bandSteps; i++) {
+    const t = (i / bandSteps) * 2 - 1; // -1 a 1
+    const px = t * s * 0.30;
+    const py = -s * 0.05 - Math.random() * (s * 0.07);
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.06,
+      color: orangeColors[Math.floor(Math.random() * orangeColors.length)],
+    });
+  }
+
+  // 3. Hebilla dorada (Gold Buckle): micro-triángulos en oro brillante en el centro
+  const goldColors = ['#fde047', '#facc15', '#fbbf24', '#ffffff', '#eab308'];
+  for (let i = 0; i < 16; i++) {
+    const px = (Math.random() - 0.5) * s * 0.14;
+    const py = -s * 0.08 + (Math.random() - 0.5) * s * 0.08;
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.05,
+      color: goldColors[Math.floor(Math.random() * goldColors.length)],
+    });
+  }
+
+  // 4. Cono curvado de hechicera (Cone): triángulos violeta vibrante que ascienden y doblan a la derecha
+  const coneSteps = 80;
+  for (let i = 0; i < coneSteps; i++) {
+    const h = i / coneSteps; // 0 (base) a 1 (punta)
+    const curWidth = s * 0.28 * (1 - Math.pow(h, 0.85));
+    const offsetX = (Math.random() - 0.5) * 2 * curWidth;
+    // Curvatura progresiva hacia la derecha
+    const bendX = Math.pow(h, 1.9) * s * 0.32;
+    const px = bendX + offsetX;
+    const py = -s * 0.12 - h * s * 0.72;
+    const p = rotate(px, py);
+
+    let coneColor = '#7c3aed';
+    if (h < 0.25) coneColor = '#7c3aed';
+    else if (h < 0.55) coneColor = '#9333ea';
+    else if (h < 0.8) coneColor = '#a855f7';
+    else coneColor = '#c084fc';
+
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.1,
+      color: coneColor,
+    });
+  }
+
+  // 5. Destello de estrella mágica en la punta (Sparkle tip)
+  const tipColors = ['#fef08a', '#fef9c3', '#ffffff', '#38bdf8', '#f472b6'];
+  for (let i = 0; i < 15; i++) {
+    const px = s * 0.32 + (Math.random() - 0.5) * s * 0.10;
+    const py = -s * 0.84 + (Math.random() - 0.5) * s * 0.10;
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.04,
+      color: tipColors[Math.floor(Math.random() * tipColors.length)],
+    });
+  }
+
+  return points;
+}
+
+/**
+ * Genera la matriz de coordenadas y colores para formar el Gorro de Navidad 🎅
+ * PURAMENTE con los micro-triángulos del scroll animation (sin siluetas 2D sólidas).
+ */
+function generateSantaHatTrianglePoints(hatX: number, hatY: number, size: number): ConstellationPoint[] {
+  const points: ConstellationPoint[] = [];
+  const s = size;
+  const cosT = Math.cos(-0.16); // ~ -9 deg de inclinación
+  const sinT = Math.sin(-0.16);
+
+  const rotate = (px: number, py: number) => ({
+    x: hatX + (px * cosT - py * sinT),
+    y: hatY + (px * sinT + py * cosT),
+  });
+
+  // 1. Felpa blanca de la base (White Fur Rim): fila densa de triángulos blancos/nieve
+  const rimSteps = 55;
+  const whiteColors = ['#ffffff', '#f8fafc', '#f1f5f9', '#e2e8f0'];
+  for (let i = 0; i < rimSteps; i++) {
+    const t = (i / rimSteps) * 2 - 1; // -1 a 1
+    const px = t * s * 0.42;
+    const py = (Math.random() - 0.5) * s * 0.14;
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.08,
+      color: whiteColors[Math.floor(Math.random() * whiteColors.length)],
+    });
+  }
+
+  // 2. Cono rojo de terciopelo (Red Velvet Cone): triángulos que suben y caen a la derecha
+  const coneSteps = 85;
+  const redColors = ['#ef4444', '#dc2626', '#f87171', '#ff2a4b', '#e11d48', '#b91c1c'];
+  for (let i = 0; i < coneSteps; i++) {
+    const h = i / coneSteps; // 0 a 1
+    const curWidth = s * 0.35 * (1 - Math.pow(h, 0.88));
+    const offsetX = (Math.random() - 0.5) * 2 * curWidth;
+
+    let px = 0;
+    let py = 0;
+    if (h < 0.58) {
+      // Ascenso hacia la cumbre
+      px = offsetX + (h / 0.58) * s * 0.15;
+      py = -s * 0.08 - (h / 0.58) * s * 0.55;
+    } else {
+      // Caída plegada hacia la derecha
+      const dropProgress = (h - 0.58) / 0.42;
+      px = offsetX + s * 0.15 + dropProgress * s * 0.35;
+      py = -s * 0.63 + Math.pow(dropProgress, 1.35) * s * 0.40;
+    }
+
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.1,
+      color: redColors[Math.floor(Math.random() * redColors.length)],
+    });
+  }
+
+  // 3. Borla / Pom-pom blanco en la punta caída (Pom-pom)
+  const pomSteps = 30;
+  for (let i = 0; i < pomSteps; i++) {
+    const angle = (i / pomSteps) * Math.PI * 2;
+    const r = Math.random() * s * 0.13;
+    const px = s * 0.50 + Math.cos(angle) * r;
+    const py = -s * 0.23 + Math.sin(angle) * r;
+    const p = rotate(px, py);
+    points.push({
+      x: p.x,
+      y: p.y,
+      z: (Math.random() - 0.5) * 0.08,
+      color: Math.random() > 0.2 ? '#ffffff' : '#fef08a',
+    });
+  }
+
+  return points;
+}
+
+// ============================================================================
+// COMPONENTE PRINCIPAL CONSTELLATION CANVAS
+// ============================================================================
+
 export const ConstellationCanvas: React.FC<{
   className?: string;
   particleCount?: number;
@@ -87,6 +288,9 @@ export const ConstellationCanvas: React.FC<{
     let isTabVisible = !document.hidden;
     let isCanvasPaused = false;
 
+    // Estado reactivo de festividad estacional
+    let currentSeasonalTheme: SeasonalTheme = getSeasonalTheme();
+
     // Mouse / Cursor Parallax
     let targetRotY = 0;
     let targetRotX = 0;
@@ -105,10 +309,13 @@ export const ConstellationCanvas: React.FC<{
     const handleScroll = () => {
       targetScrollY = window.scrollY;
       const isMobileNow = window.innerWidth < 768;
-      const cutoffY = isMobileNow ? 650 : 1000;
-      // Si el lienzo estaba pausado por scroll profundo en el catálogo y el usuario regresa arriba, reactivar animación
+      const cutoffY = isMobileNow ? 900 : 1400;
+
+      // Si el lienzo estaba pausado por scroll profundo y el usuario regresa arriba, reactivar de inmediato
       if (targetScrollY < cutoffY && isCanvasPaused && isTabVisible) {
         isCanvasPaused = false;
+        currentScrollY = Math.min(currentScrollY, cutoffY - 10);
+        cancelAnimationFrame(animationFrameId);
         animationFrameId = requestAnimationFrame(render);
       }
     };
@@ -124,7 +331,6 @@ export const ConstellationCanvas: React.FC<{
 
     const resize = () => {
       const isMobile = window.innerWidth < 768;
-      // En teléfonos limitar DPR a 1.0 para ahorrar hasta un 300% de rasterización y memoria GPU
       const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25);
       width = window.innerWidth;
       height = window.innerHeight;
@@ -158,11 +364,21 @@ export const ConstellationCanvas: React.FC<{
       attributeFilter: ['data-color-mode', 'class'],
     });
 
-    // 1. Inicialización de partículas con geometría base cerebral y fallback geométrico del Logo Giantucchi
+    // 1. Inicialización de partículas con geometría base cerebral y fallback del Logo Giantucchi + Gorro de triángulos
     const particles: Particle3D[] = [];
     const isMobileInitial = width < 768;
-    const actualParticleCount = particleCount ?? (isMobileInitial ? 140 : 380);
+    const actualParticleCount = particleCount ?? (isMobileInitial ? 180 : 420);
     const brainScale = Math.min(width, height) * (isMobileInitial ? 0.32 : 0.38);
+
+    // Generar puntos iniciales del gorro sobre el fallback si hay festividad
+    const fallbackHatPoints =
+      currentSeasonalTheme === 'halloween'
+        ? generateWitchHatTrianglePoints(-0.28, -0.72, 0.52)
+        : currentSeasonalTheme === 'christmas'
+        ? generateSantaHatTrianglePoints(-0.28, -0.72, 0.52)
+        : [];
+
+    const fallbackHatCount = fallbackHatPoints.length > 0 ? Math.floor(actualParticleCount * 0.34) : 0;
 
     for (let i = 0; i < actualParticleCount; i++) {
       const hemisphere = Math.random() > 0.5 ? 1 : -1;
@@ -194,24 +410,39 @@ export const ConstellationCanvas: React.FC<{
       const disperseDist = (0.8 + Math.random() * 2.6) * Math.max(width, height) * 0.45;
 
       const color = GIANTUCCHI_SPECTRUM[Math.floor(Math.random() * GIANTUCCHI_SPECTRUM.length)];
-      const baseSize = 1.1 + Math.random() * 2.4;
+      const baseSize = (i < fallbackHatCount && fallbackHatPoints.length > 0)
+        ? 1.9 + Math.random() * 2.2
+        : 1.1 + Math.random() * 2.4;
 
-      // Fallback inicial del logo geométrico "G"
-      const t = i / actualParticleCount;
       let initLogoX = 0;
       let initLogoY = 0;
+      let initLogoZ = (Math.random() - 0.5) * 0.15;
       let initLogoColor = '#06b6d4';
 
-      if (t < 0.7) {
-        const angle = t * Math.PI * 2 * 0.85 - Math.PI * 0.75;
-        initLogoX = Math.cos(angle) * 0.85;
-        initLogoY = Math.sin(angle) * 0.85;
-        initLogoColor = GIANTUCCHI_SPECTRUM[Math.floor(t * 6)];
+      if (i < fallbackHatCount && fallbackHatPoints.length > 0) {
+        // Asignar al gorro festivo formado con triángulos
+        const hp = fallbackHatPoints[i % fallbackHatPoints.length];
+        initLogoX = hp.x;
+        initLogoY = hp.y;
+        initLogoZ = hp.z;
+        initLogoColor = hp.color;
       } else {
-        const at = (t - 0.7) / 0.3;
-        initLogoX = 0.15 + at * 0.35;
-        initLogoY = 0.15 - at * 0.35;
-        initLogoColor = '#f97316';
+        // Asignar al logotipo "G" base
+        const logoIdx = i - fallbackHatCount;
+        const totalLogo = actualParticleCount - fallbackHatCount;
+        const t = logoIdx / totalLogo;
+
+        if (t < 0.7) {
+          const angle = t * Math.PI * 2 * 0.85 - Math.PI * 0.75;
+          initLogoX = Math.cos(angle) * 0.85;
+          initLogoY = Math.sin(angle) * 0.85;
+          initLogoColor = GIANTUCCHI_SPECTRUM[Math.floor(t * 6)];
+        } else {
+          const at = (t - 0.7) / 0.3;
+          initLogoX = 0.15 + at * 0.35;
+          initLogoY = 0.15 - at * 0.35;
+          initLogoColor = '#f97316';
+        }
       }
 
       particles.push({
@@ -220,7 +451,7 @@ export const ConstellationCanvas: React.FC<{
         baseZ,
         logoX: initLogoX,
         logoY: initLogoY,
-        logoZ: (Math.random() - 0.5) * 0.15,
+        logoZ: initLogoZ,
         logoColor: initLogoColor,
         x: initLogoX * brainScale,
         y: initLogoY * brainScale,
@@ -240,10 +471,9 @@ export const ConstellationCanvas: React.FC<{
       });
     }
 
-    // Cargar y muestrear con precisión milimétrica los píxeles reales del logo (soporta logo oficial o personalizado desde el Plugin de Personalización)
+    // Cargar y muestrear con precisión los píxeles del logo y generar el gorro con triángulos
     const loadAndSampleLogo = (logoUrl: string) => {
       const logoImg = new Image();
-      // Si es URL externa permitir CORS cuando sea posible
       if (!logoUrl.startsWith('data:') && !logoUrl.startsWith('/')) {
         logoImg.crossOrigin = 'anonymous';
       }
@@ -256,10 +486,11 @@ export const ConstellationCanvas: React.FC<{
           offCanvas.height = 256;
           const offCtx = offCanvas.getContext('2d');
           if (!offCtx) return;
+
           offCtx.drawImage(logoImg, 0, 0, 256, 256);
           const data = offCtx.getImageData(0, 0, 256, 256).data;
 
-          // Encontrar límites reales de píxeles no transparentes
+          // 1. Encontrar límites de píxeles del logotipo
           let minX = 256, maxX = 0, minY = 256, maxY = 0;
           for (let y = 0; y < 256; y++) {
             for (let x = 0; x < 256; x++) {
@@ -273,39 +504,64 @@ export const ConstellationCanvas: React.FC<{
             }
           }
 
-          // Si la imagen está vacía o hubo error, usar coordenadas por defecto
           if (minX >= maxX || minY >= maxY) {
             minX = 40; maxX = 216; minY = 40; maxY = 216;
           }
 
+          const logoW = maxX - minX;
+          const logoH = maxY - minY;
           const cx = (minX + maxX) / 2;
           const cy = (minY + maxY) / 2;
-          const halfSize = Math.max(maxX - minX, maxY - minY) / 2 || 1;
+          const halfSize = Math.max(logoW, logoH) / 2 || 1;
 
-          const sampledPoints: { x: number; y: number; c: string }[] = [];
+          // 2. Muestrear los puntos reales del logotipo cargado
+          const logoPoints: ConstellationPoint[] = [];
           for (let y = minY; y <= maxY; y += 2) {
             for (let x = minX; x <= maxX; x += 2) {
               const idx = (y * 256 + x) * 4;
               if (data[idx + 3] > 60) {
-                sampledPoints.push({
+                logoPoints.push({
                   x: (x - cx) / halfSize,
                   y: (y - cy) / halfSize,
-                  c: `rgb(${data[idx]},${data[idx + 1]},${data[idx + 2]})`,
+                  z: (Math.random() - 0.5) * 0.18,
+                  color: `rgb(${data[idx]},${data[idx + 1]},${data[idx + 2]})`,
                 });
               }
             }
           }
 
-          if (sampledPoints.length > 0) {
-            for (let i = 0; i < particles.length; i++) {
-              const ptIdx = Math.floor((i / particles.length) * sampledPoints.length);
-              const pt = sampledPoints[ptIdx] || sampledPoints[i % sampledPoints.length];
-              if (pt) {
-                particles[i].logoX = pt.x;
-                particles[i].logoY = pt.y;
-                particles[i].logoZ = (Math.random() - 0.5) * 0.2;
-                particles[i].logoColor = pt.c;
-              }
+          // 3. Generar los puntos del gorro adaptado a la forma del logotipo
+          const isWide = logoW > logoH * 1.35;
+          const hatNormScale = 0.52;
+          const hatNormX = isWide ? -0.36 : -0.28;
+          const hatNormY = ((minY - cy) / halfSize) + 0.12;
+
+          let hatPoints: ConstellationPoint[] = [];
+          if (currentSeasonalTheme === 'halloween') {
+            hatPoints = generateWitchHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
+          } else if (currentSeasonalTheme === 'christmas') {
+            hatPoints = generateSantaHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
+          }
+
+          // 4. Distribuir las partículas: 34% de triángulos dedicados a formar el gorro y 66% al logotipo
+          const hatParticleCount = hatPoints.length > 0 ? Math.floor(particles.length * 0.34) : 0;
+          const logoParticleCount = particles.length - hatParticleCount;
+
+          for (let i = 0; i < particles.length; i++) {
+            if (i < hatParticleCount && hatPoints.length > 0) {
+              const hp = hatPoints[i % hatPoints.length];
+              particles[i].logoX = hp.x;
+              particles[i].logoY = hp.y;
+              particles[i].logoZ = hp.z;
+              particles[i].logoColor = hp.color;
+              particles[i].baseSize = 1.9 + Math.random() * 2.2;
+            } else if (logoPoints.length > 0) {
+              const logoIdx = Math.floor(((i - hatParticleCount) / logoParticleCount) * logoPoints.length);
+              const lp = logoPoints[logoIdx] || logoPoints[i % logoPoints.length];
+              particles[i].logoX = lp.x;
+              particles[i].logoY = lp.y;
+              particles[i].logoZ = lp.z;
+              particles[i].logoColor = lp.color;
             }
           }
         } catch (e) {
@@ -331,7 +587,14 @@ export const ConstellationCanvas: React.FC<{
     window.addEventListener(LOGO_CHANGE_EVENT, handleLogoUpdate);
     window.addEventListener('docentos-customizer-change', handleLogoUpdate);
 
-    // 2. Partículas ambientales flotantes en todo el espacio (optimizadas y adaptativas)
+    // Escuchar cambios de festividad estacional para re-ensamblar los triángulos del gorro
+    const handleSeasonalUpdate = () => {
+      currentSeasonalTheme = getSeasonalTheme();
+      loadAndSampleLogo(getCustomLogoUrl());
+    };
+    window.addEventListener(SEASONAL_EVENT_NAME, handleSeasonalUpdate);
+
+    // 2. Partículas ambientales flotantes en todo el espacio
     const isMobileScreen = width < 768;
     const ambientCount = isMobileScreen ? 12 : 28;
     const ambientParticles: AmbientTriangle[] = [];
@@ -349,7 +612,7 @@ export const ConstellationCanvas: React.FC<{
       });
     }
 
-    // 3. Impulsos sinápticos entre nodos (optimizados)
+    // 3. Impulsos sinápticos entre nodos
     const synapses: SynapsePulse[] = [];
 
     const spawnSynapse = (scrollActivity: number) => {
@@ -376,7 +639,7 @@ export const ConstellationCanvas: React.FC<{
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Dibujo ultrarrápido de micro-triángulo sin context.save() ni context.restore()
+    // Dibujo ultrarrápido de micro-triángulo con faceta cristalina semi-rellena y borde luminoso
     const drawFastTriangle = (
       context: CanvasRenderingContext2D,
       tX: number,
@@ -403,24 +666,40 @@ export const ConstellationCanvas: React.FC<{
       const cxPt = tX - halfW * cosR - yBC * sinR;
       const cyPt = tY - halfW * sinR + yBC * cosR;
 
-      context.strokeStyle = color;
-      const minAlpha = isLight ? 0.32 : 0;
-      context.globalAlpha = Math.max(minAlpha, Math.min(1, alpha));
+      const minAlpha = isLight ? 0.32 : 0.05;
+      const clampedAlpha = Math.max(minAlpha, Math.min(1, alpha));
+
       context.beginPath();
       context.moveTo(ax, ay);
       context.lineTo(bx, by);
       context.lineTo(cxPt, cyPt);
       context.closePath();
+
+      // Faceta cristalina semi-rellena: le da cuerpo y presencia geométrica reconocible al sombrero y logo
+      context.fillStyle = color;
+      context.globalAlpha = clampedAlpha * 0.65;
+      context.fill();
+
+      // Arista brillante de la constelación
+      context.strokeStyle = color;
+      context.globalAlpha = clampedAlpha;
       context.stroke();
     };
 
     const render = () => {
       if (!isTabVisible) return;
 
+      // 1. Interpolación suave del scroll con inercia (calculada SIEMPRE al inicio de cada frame)
+      const scrollDelta = targetScrollY - currentScrollY;
+      currentScrollY += scrollDelta * 0.08;
+      scrollVelocity = targetScrollY - lastScrollY;
+      lastScrollY = targetScrollY;
+
       const isMobileNow = width < 768;
-      const cutoffY = isMobileNow ? 650 : 1000;
-      // Pausar y vaciar renderizado cuando el usuario hace scroll hacia el catálogo para liberar 100% de GPU y CPU
-      if (currentScrollY > cutoffY) {
+      const cutoffY = isMobileNow ? 900 : 1400;
+
+      // Pausar y vaciar renderizado ÚNICAMENTE si tanto el scroll real como el interpolado están lejos del hero
+      if (currentScrollY > cutoffY && targetScrollY > cutoffY) {
         isCanvasPaused = true;
         ctx.clearRect(0, 0, width, height);
         return;
@@ -429,7 +708,7 @@ export const ConstellationCanvas: React.FC<{
       ctx.clearRect(0, 0, width, height);
       ctx.lineWidth = isLight ? 1.35 : 1.15;
 
-      // 1. Intro animación suave al inicio
+      // 2. Intro animación suave al inicio
       introProgress = Math.min(introProgress + 0.022, 1.0);
       const introEase = 1 - Math.pow(1 - introProgress, 3);
 
@@ -438,13 +717,7 @@ export const ConstellationCanvas: React.FC<{
       currentRotX += (targetRotX - currentRotX) * 0.05;
       globalAngle += 0.003;
 
-      // Interpolación suave del scroll con inercia
-      const scrollDelta = targetScrollY - currentScrollY;
-      currentScrollY += scrollDelta * 0.075;
-      scrollVelocity = targetScrollY - lastScrollY;
-      lastScrollY = targetScrollY;
-
-      // 2. Peso de deformación del logo
+      // Peso de deformación del logo en scroll
       const morphProgress = Math.min(currentScrollY / 320, 1.0);
       const logoWeight = Math.max(0, 1.0 - Math.pow(morphProgress, 1.25)) * introEase;
 
@@ -550,13 +823,14 @@ export const ConstellationCanvas: React.FC<{
 
       const logoScale = brainScale * 0.95;
 
-      // Iteración y dibujado directo en una sola pasada a 60+ FPS (sin allocations ni .sort)
+      // Iteración y dibujado de los triángulos 3D de la constelación:
+      // Forman el logotipo y el sombrero festivo 100% con triángulos reactivos
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.rotation += p.rotSpeed + Math.abs(scrollVelocity) * 0.004;
         p.pulsePhase += p.pulseSpeed;
 
-        // 1. Posición Logo Giantucchi
+        // 1. Posición Logo + Sombrero de Triángulos
         const lX = p.logoX * logoScale;
         const lY = p.logoY * logoScale;
         const lZ = p.logoZ * logoScale;
@@ -570,7 +844,7 @@ export const ConstellationCanvas: React.FC<{
         const bY = p.baseY + expandY;
         const bZ = p.baseZ + (expandX * sinS + expandZ * cosS);
 
-        // Interpolación fluida: Logo -> Red Deformada en Scroll
+        // Interpolación fluida: Logo y Sombrero -> Dispersión en Scroll
         const deformWave = Math.sin(p.pulsePhase + globalAngle * 2) * (1 - logoWeight) * 12;
 
         p.x = lX * logoWeight + bX * (1 - logoWeight) + deformWave * 0.2;
@@ -606,7 +880,7 @@ export const ConstellationCanvas: React.FC<{
 
         const dynamicSize = p.baseSize * (1 + dispersionEase * 0.35);
 
-        // Renderizado directo ultrarrápido
+        // Todos los elementos (logo + sombrero festivo) se dibujan exclusivamente como micro-triángulos 3D
         drawFastTriangle(ctx, x2d, y2d, dynamicSize, p.rotation, displayColor, alpha);
       }
 
@@ -623,6 +897,7 @@ export const ConstellationCanvas: React.FC<{
       window.removeEventListener('docentos-theme-change', handleThemeChange);
       window.removeEventListener(LOGO_CHANGE_EVENT, handleLogoUpdate);
       window.removeEventListener('docentos-customizer-change', handleLogoUpdate);
+      window.removeEventListener(SEASONAL_EVENT_NAME, handleSeasonalUpdate);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       themeObserver.disconnect();
     };

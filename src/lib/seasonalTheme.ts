@@ -25,6 +25,11 @@ export const SEASONAL_EVENT_NAME = 'docentos-seasonal-change';
 export function getSeasonalTheme(): SeasonalTheme {
   if (typeof window === 'undefined') return 'none';
 
+  const override = getSeasonalOverride();
+  if (override !== 'auto') {
+    return override;
+  }
+
   // Detección automática por fecha real de calendario
   const now = new Date();
   const month = now.getMonth(); // 0 = Enero, 9 = Octubre, 11 = Diciembre

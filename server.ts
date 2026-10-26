@@ -1015,16 +1015,35 @@ app.get(
     const safeUrl = safeExternalUrl(targetUrl, config.DOCENTOS_ENV === 'development');
     if (!safeUrl) return res.status(400).json({ error: 'URL del video no segura.' });
 
+    let finalUrl = safeUrl;
+    if (finalUrl.includes('youtube.com') || finalUrl.includes('youtube-nocookie.com') || finalUrl.includes('youtu.be')) {
+      try {
+        const u = new URL(finalUrl);
+        u.searchParams.set('enablejsapi', '1');
+        u.searchParams.set('widgetid', '1');
+        const reqOrigin =
+          req.headers.origin ||
+          (req.headers.referer ? new URL(req.headers.referer).origin : '') ||
+          `${req.protocol}://${req.get('host')}`;
+        if (reqOrigin) {
+          u.searchParams.set('origin', reqOrigin);
+        }
+        finalUrl = u.toString();
+      } catch {
+        // En caso de error al instanciar URL se mantiene safeUrl
+      }
+    }
+
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
         id: video.id,
-        playbackUrl: safeUrl,
+        playbackUrl: finalUrl,
         mimeType: video.mimeType,
         source: video.source,
       });
     }
 
-    return res.redirect(safeUrl);
+    return res.redirect(finalUrl);
   }),
 );
 

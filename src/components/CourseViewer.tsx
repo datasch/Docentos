@@ -44,7 +44,7 @@ import {
 } from '../lib/courseNavigation';
 import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord, Meeting } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
-import { parseVideoSource } from '../lib/videoParser';
+import { parseVideoSource, VideoProvider } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
 import { syncModuleQuizCounts, getModuleQuestionCount, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
@@ -233,6 +233,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // Live Meetings State (Plugin LiveMeetings)
   const [courseMeetings, setCourseMeetings] = useState<Meeting[]>([]);
   const [selectedMeetingPlayback, setSelectedMeetingPlayback] = useState<Meeting | null>(null);
+  const [resolvedPlaybackUrls, setResolvedPlaybackUrls] = useState<Record<string, string>>({});
 
   const currentModule = course.modules[activeModuleIndex] || course.modules[0];
   const currentVideo: VideoDriveLink | undefined = currentModule?.videos[activeVideoIndex];
@@ -429,6 +430,33 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       loadVideoNotes(currentVideo.id);
     }
   }, [currentVideo?.id]);
+
+  // Resolver la URL de reproducción real con autorización para habilitar el IFrame Player API
+  useEffect(() => {
+    if (!currentVideo?.id) return;
+    if (currentVideo.embedUrl && !currentVideo.embedUrl.startsWith('/api/')) return;
+    if (resolvedPlaybackUrls[currentVideo.id]) return;
+
+    let active = true;
+    const fetchPlayback = async () => {
+      try {
+        const res = await fetch(`/api/content/videos/${currentVideo.id}`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && data?.playbackUrl) {
+          setResolvedPlaybackUrls((prev) => ({ ...prev, [currentVideo.id]: data.playbackUrl }));
+        }
+      } catch {
+        // En caso de fallo de red, se mantiene el iframe con /api/content/videos/:id que el backend redirige
+      }
+    };
+    fetchPlayback();
+    return () => {
+      active = false;
+    };
+  }, [currentVideo?.id, currentVideo?.embedUrl, resolvedPlaybackUrls]);
 
   const loadVideoNotes = async (videoId: string) => {
     try {
@@ -695,62 +723,122 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
-  // Detección automática al terminar el video (YouTube IFrame API / evento ended)
+  // Detección automática al terminar el video (protocolo postMessage del IFrame API de YouTube / Vimeo / <video>)
   useEffect(() => {
     if (!currentVideo?.id) return;
 
+    // YouTube solo envía `duration` en initialDelivery; los infoDelivery posteriores traen
+    // únicamente los campos que cambian (p. ej. solo currentTime). Se cachean aquí.
+    let knownDuration = 0;
+    let knownTime = 0;
+    let connected = false;
+
+    const getPlayerWindow = () =>
+      (document.getElementById('docentos-video-iframe') as HTMLIFrameElement | null)?.contentWindow || null;
+
+    const markWatched = () => {
+      setWatchedVideos((prev) => (prev[currentVideo.id] ? prev : { ...prev, [currentVideo.id]: true }));
+      if (currentUser?.id) {
+        localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+      }
+    };
+
     const handleWindowMessage = (event: MessageEvent) => {
-      try {
-        let data = event.data;
-        if (typeof data === 'string') {
-          try {
-            data = JSON.parse(data);
-          } catch {
-            return;
-          }
+      // Aceptar mensajes del reproductor de la lección o dominios de video soportados
+      const playerWin = getPlayerWindow();
+      const isKnownVideoOrigin =
+        event.origin.includes('youtube.com') ||
+        event.origin.includes('youtube-nocookie.com') ||
+        event.origin.includes('vimeo.com') ||
+        event.origin.includes('loom.com');
+
+      if (!isKnownVideoOrigin && (!playerWin || event.source !== playerWin)) return;
+
+      let data = event.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          return;
         }
-        if (!data || typeof data !== 'object') return;
+      }
+      if (!data || typeof data !== 'object') return;
+      connected = true;
 
-        // Detección exhaustiva para YouTube Player API:
-        // 1. info === 0 (estado ENDED)
-        // 2. info.playerState === 0 (estado ENDED en infoDelivery)
-        // 3. currentTime >= duration - 2 (video completado al 99%+)
-        const playerState = typeof data.info === 'object' ? data.info?.playerState : data.info;
-        const currentTime = typeof data.info === 'object' ? data.info?.currentTime : undefined;
-        const duration = typeof data.info === 'object' ? data.info?.duration : undefined;
-
-        // Persistir el segundo donde el usuario va viendo el video
-        if (typeof currentTime === 'number' && currentTime > 0) {
-          localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(currentTime)));
+      // --- YouTube ---
+      // playerState: -1 sin iniciar, 0 terminado, 1 reproduciendo, 2 pausa, 3 buffering, 5 en cola
+      let playerState: unknown;
+      if (data.event === 'onStateChange') {
+        playerState = data.info;
+      } else if ((data.event === 'infoDelivery' || data.event === 'initialDelivery') && data.info && typeof data.info === 'object') {
+        if (typeof data.info.duration === 'number' && data.info.duration > 0) knownDuration = data.info.duration;
+        if (typeof data.info.currentTime === 'number') knownTime = data.info.currentTime;
+        if (data.info.playerState !== undefined) {
+          playerState = data.info.playerState;
         }
+      }
 
-        const isEnded =
-          playerState === 0 ||
-          (data?.event === 'onStateChange' && data?.info === 0) ||
-          (typeof currentTime === 'number' && typeof duration === 'number' && duration > 0 && currentTime >= duration - 2);
+      // --- Vimeo ---
+      if (data.event === 'finish' || data.event === 'ended') playerState = 0;
+      if (data.event === 'timeupdate' && data.data) {
+        if (typeof data.data.duration === 'number') knownDuration = data.data.duration;
+        if (typeof data.data.seconds === 'number') knownTime = data.data.seconds;
+      }
 
-        if (isEnded) {
-          setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
-          localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
-        }
-      } catch {
-        // Ignorar mensajes no compatibles
+      // Persistir el segundo donde el alumno va viendo el video
+      if (knownTime > 0 && currentUser?.id) {
+        localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(knownTime)));
+      }
+
+      const reachedEnd =
+        knownDuration > 0 &&
+        (knownTime >= knownDuration - 3 || (knownDuration > 30 && knownTime >= knownDuration * 0.95));
+      if (playerState === 0 || playerState === '0' || reachedEnd) {
+        markWatched();
       }
     };
 
     window.addEventListener('message', handleWindowMessage);
 
-    // Handshake periódico hacia iframes para activar la emisión de eventos de YouTube
+    // Handshake del IFrame API de YouTube y Vimeo
+    // Se repite hasta que el reproductor responde y luego se reafirma la suscripción.
+    const sendHandshake = () => {
+      const win = getPlayerWindow();
+      if (!win) return;
+      try {
+        win.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+        win.postMessage(
+          JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'], id: 1 }),
+          '*',
+        );
+        win.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*');
+        win.postMessage(
+          JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'], id: 1, channel: 'widget' }),
+          '*',
+        );
+        // Vimeo Player API
+        win.postMessage(JSON.stringify({ method: 'addEventListener', value: 'finish' }), '*');
+        win.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*');
+      } catch {
+        // Ignorar restricciones cross-origin
+      }
+    };
+
+    sendHandshake();
+    let tick = 0;
     const handshakeInterval = setInterval(() => {
-      const iframes = document.querySelectorAll('iframe');
-      iframes.forEach((iframe) => {
-        try {
-          iframe.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*');
-        } catch {
-          // Ignorar restricciones cross-origin
-        }
-      });
+      tick++;
+      // Antes de conectar: cada segundo. Después: cada 5 s por si el iframe se recarga.
+      if (!connected || tick % 5 === 0) sendHandshake();
     }, 1000);
+    const iframeEl = document.getElementById('docentos-video-iframe');
+    const handleIframeLoad = () => {
+      connected = false;
+      knownDuration = 0;
+      knownTime = 0;
+      sendHandshake();
+    };
+    iframeEl?.addEventListener('load', handleIframeLoad);
 
     const videoEl = document.querySelector('video');
     const handleNativeEnded = () => {
@@ -781,6 +869,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     return () => {
       window.removeEventListener('message', handleWindowMessage);
       clearInterval(handshakeInterval);
+      iframeEl?.removeEventListener('load', handleIframeLoad);
       if (videoEl) {
         videoEl.removeEventListener('ended', handleNativeEnded);
         videoEl.removeEventListener('timeupdate', handleNativeTimeUpdate);
@@ -798,14 +887,22 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       return parseVideoSource(selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl);
     }
     if (!currentVideo) return null;
-    const parsed = parseVideoSource(currentVideo.embedUrl || currentVideo.driveFileId || currentVideo.playbackUrl);
+    const directUrl =
+      resolvedPlaybackUrls[currentVideo.id] ||
+      currentVideo.embedUrl ||
+      currentVideo.driveFileId ||
+      currentVideo.playbackUrl;
+    const preferredProvider: VideoProvider | undefined =
+      (currentVideo.provider as VideoProvider) ||
+      (currentVideo.source === 'YOUTUBE' ? 'youtube' : undefined);
+    const parsed = parseVideoSource(directUrl, preferredProvider);
     if (parsed && parsed.provider === 'youtube' && savedVideoTime > 3) {
       if (!parsed.embedUrl.includes('start=')) {
         parsed.embedUrl += `&start=${savedVideoTime}`;
       }
     }
     return parsed;
-  }, [selectedMeetingPlayback, currentVideo, savedVideoTime]);
+  }, [selectedMeetingPlayback, currentVideo, savedVideoTime, resolvedPlaybackUrls]);
 
   const providerLabel = selectedMeetingPlayback
     ? 'Grabación Asincrónica'
@@ -1058,6 +1155,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
             <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
               {showsPlayer && videoSource ? (
                 <iframe
+                  id="docentos-video-iframe"
                   /* La clave fuerza un iframe nuevo por lección o reunión grabada. */
                   key={selectedMeetingPlayback ? selectedMeetingPlayback.id : videoSource.embedUrl}
                   src={videoSource.embedUrl}

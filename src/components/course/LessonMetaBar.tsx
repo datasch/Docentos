@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronLeft, ChevronRight, ExternalLink, PlaySquare, Lock } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ExternalLink, PlaySquare, Lock, Unlock } from 'lucide-react';
 
 interface LessonMetaBarProps {
   lessonTitle: string;
@@ -87,46 +87,48 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
     </div>
 
     {/* Botón estricto de completar o desmarcar misión */}
-    <div className="hidden shrink-0 items-center lg:flex">
-      <button
-        type="button"
-        onClick={onToggleComplete}
-        disabled={(!isCompleted && !canComplete) || (isCompleted && !canUncomplete)}
-        aria-pressed={isCompleted}
-        title={
-          !isCompleted && !canComplete
-            ? lockedReason === 'quiz'
-              ? 'Debes aprobar el examen del módulo para poder completar esta misión'
-              : 'Debes ver el video completo para poder marcar la misión como completada'
-            : isCompleted
+    <div className="hidden shrink-0 flex-col items-end gap-1.5 lg:flex">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleComplete}
+          disabled={(!isCompleted && !canComplete) || (isCompleted && !canUncomplete)}
+          aria-pressed={isCompleted}
+          title={
+            !isCompleted && !canComplete
+              ? lockedReason === 'quiz'
+                ? 'Debes aprobar el examen del módulo para poder completar esta misión'
+                : 'Debes ver el video completo para poder marcar la misión como completada'
+              : isCompleted
+                ? !canUncomplete
+                  ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.'
+                  : 'Desmarcar misión completada'
+                : 'Marcar misión como completada'
+          }
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-bold transition-all ${
+            isCompleted
               ? !canUncomplete
-                ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.'
-                : 'Desmarcar misión completada'
-              : 'Marcar misión como completada'
-        }
-        className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-bold transition-all ${
-          isCompleted
-            ? !canUncomplete
-              ? 'bg-purple-100/70 dark:bg-purple-950/30 text-purple-700/60 dark:text-purple-300/50 border border-purple-200 dark:border-purple-500/20 cursor-not-allowed'
-              : 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 cursor-pointer shadow-sm'
+                ? 'bg-purple-100/70 dark:bg-purple-950/30 text-purple-700/60 dark:text-purple-300/50 border border-purple-200 dark:border-purple-500/20 cursor-not-allowed'
+                : 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 cursor-pointer shadow-sm'
+              : !canComplete
+                ? 'bg-slate-100 dark:bg-raised/40 text-slate-500 dark:text-ink-muted border border-slate-200 dark:border-line/60 cursor-not-allowed opacity-75'
+                : 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-200 dark:border-line hover:bg-slate-200/80 dark:hover:bg-line cursor-pointer shadow-sm'
+          }`}
+        >
+          {!isCompleted && !canComplete ? (
+            <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
+          ) : (
+            <Check aria-hidden className="h-4 w-4 shrink-0 text-cyan-400" strokeWidth={isCompleted ? 3 : 2} />
+          )}
+          {isCompleted
+            ? 'Misión completada'
             : !canComplete
-              ? 'bg-slate-100 dark:bg-raised/40 text-slate-500 dark:text-ink-muted border border-slate-200 dark:border-line/60 cursor-not-allowed opacity-75'
-              : 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-200 dark:border-line hover:bg-slate-200/80 dark:hover:bg-line cursor-pointer shadow-sm'
-        }`}
-      >
-        {!isCompleted && !canComplete ? (
-          <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
-        ) : (
-          <Check aria-hidden className="h-4 w-4 shrink-0 text-cyan-400" strokeWidth={isCompleted ? 3 : 2} />
-        )}
-        {isCompleted
-          ? 'Misión completada'
-          : !canComplete
-            ? lockedReason === 'quiz'
-              ? 'Aprobar examen para completar'
-              : 'Ver video para completar'
-            : 'Marcar completada'}
-      </button>
+              ? lockedReason === 'quiz'
+                ? 'Aprobar examen para completar'
+                : 'Ver video para completar'
+              : 'Marcar completada'}
+        </button>
+      </div>
     </div>
   </div>
 );
