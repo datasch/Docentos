@@ -10,6 +10,7 @@ import React, { useState, useEffect } from 'react';
 import { HardDrive, Search, Play, Plus, CheckCircle2, Film, ExternalLink, RefreshCw, Layers } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveVideoFile, Module, UserRole } from '../types';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 
 interface DriveExplorerModalProps {
   userRole: UserRole;
@@ -22,6 +23,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
   modules,
   onVideoLinked,
 }) => {
+  useBodyScrollLock(true);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [driveVideos, setDriveVideos] = useState<DriveVideoFile[]>([]);

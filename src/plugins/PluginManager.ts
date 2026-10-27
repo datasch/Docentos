@@ -85,13 +85,13 @@ export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
     category: 'custom',
     icon: 'Palette',
     config: {
-      interfaceVersion: 'v0.4-classic',
+      interfaceVersion: 'v0.5-modern',
       colorTheme: 'cyan',
       colorMode: 'dark',
       density: 'comfortable',
       showQuickVersionSwitcher: false,
-      customCampusName: 'DocentOS',
-      customBrandName: 'DocentOS',
+      customCampusName: '',
+      customBrandName: '',
       customLogoUrl: '',
     },
   },
@@ -158,7 +158,25 @@ class PluginManagerEngine {
       if (typeof window !== 'undefined') {
         const customizer = pluginsList.find((p) => p.id === 'docentos-customizer');
         if (customizer?.config) {
-          window.dispatchEvent(new CustomEvent('docentos-customizer-change', { detail: customizer.config }));
+          const cfg = { ...customizer.config };
+          if (cfg.customCampusName === 'Academia Giantucchi') cfg.customCampusName = 'DocentOS Command Center';
+          if (cfg.customBrandName === 'Academia Giantucchi') cfg.customBrandName = 'DocentOS';
+          if (cfg.customBrandName && typeof cfg.customBrandName === 'string') {
+            try {
+              localStorage.setItem('docentos_custom_brand_name', cfg.customBrandName.trim());
+            } catch {}
+          }
+          if (cfg.customLogoUrl && typeof cfg.customLogoUrl === 'string') {
+            try {
+              localStorage.setItem('docentos_custom_logo_url', cfg.customLogoUrl.trim());
+            } catch {}
+          }
+          if (cfg.customCampusName && typeof cfg.customCampusName === 'string') {
+            try {
+              localStorage.setItem('docentos_custom_campus_name', cfg.customCampusName.trim());
+            } catch {}
+          }
+          window.dispatchEvent(new CustomEvent('docentos-customizer-change', { detail: cfg }));
         }
       }
     }
@@ -324,10 +342,10 @@ class PluginManagerEngine {
    * Si el plugin está desactivado, siempre devuelve el estándar oficial 'v0.5-modern'.
    */
   public getInterfaceVersion(): 'v0.5-modern' | 'v0.4-classic' {
-    if (!this.isEnabled('docentos-customizer')) return 'v0.4-classic';
+    if (!this.isEnabled('docentos-customizer')) return 'v0.5-modern';
     const plugin = this.getPlugin('docentos-customizer');
     const version = plugin?.config?.interfaceVersion;
-    return version === 'v0.5-modern' ? 'v0.5-modern' : 'v0.4-classic';
+    return version === 'v0.4-classic' ? 'v0.4-classic' : 'v0.5-modern';
   }
 
   /**
@@ -344,14 +362,15 @@ class PluginManagerEngine {
     customLogoUrl?: string;
   } {
     const plugin = this.getPlugin('docentos-customizer');
-    const brand = plugin?.config?.customCampusName || plugin?.config?.customBrandName || 'DocentOS';
+    const brand = plugin?.config?.customBrandName || (plugin?.config?.customCampusName && plugin?.config?.customCampusName !== 'DocentOS Command Center' ? plugin?.config?.customCampusName : undefined) || 'DocentOS';
+    const campus = plugin?.config?.customCampusName || 'DocentOS Command Center';
     return {
-      interfaceVersion: plugin?.config?.interfaceVersion === 'v0.5-modern' ? 'v0.5-modern' : 'v0.4-classic',
+      interfaceVersion: plugin?.config?.interfaceVersion === 'v0.4-classic' ? 'v0.4-classic' : 'v0.5-modern',
       colorTheme: plugin?.config?.colorTheme || 'cyan',
       colorMode: plugin?.config?.colorMode === 'light' ? 'light' : 'dark',
       density: plugin?.config?.density || 'comfortable',
       showQuickVersionSwitcher: false,
-      customCampusName: brand,
+      customCampusName: campus,
       customBrandName: brand,
       customLogoUrl: plugin?.config?.customLogoUrl || '',
     };

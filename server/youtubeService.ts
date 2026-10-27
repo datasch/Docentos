@@ -91,6 +91,16 @@ export function extractPlaylistId(input: string): string | null {
   return null;
 }
 
+/** Extrae el ID de un video de YouTube a partir de una URL directa o ID de 11 caracteres. */
+export function extractSingleVideoId(input: string): string | null {
+  if (!input || typeof input !== 'string') return null;
+  const clean = input.trim();
+  const vMatch = clean.match(/(?:youtube\.com\/(?:watch\?.*?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+  if (vMatch && vMatch[1]) return vMatch[1];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) return clean;
+  return null;
+}
+
 /** Convierte duracion ISO 8601 (PT1H2M30S) a segundos totales. */
 export function parseIsoDuration(durationStr: string): number {
   if (!durationStr || typeof durationStr !== 'string') return 0;
@@ -767,27 +777,39 @@ export async function searchYouTubeVideos(
 
   const limit = Math.min(Math.max(maxResults, 1), 25);
 
-  let searchRes;
-  try {
-    searchRes = await youtube.search.list({
-      part: ['snippet'],
-      q: cleanQuery,
-      type: ['video'],
-      maxResults: limit,
-      safeSearch: 'moderate',
-    });
-  } catch (err: any) {
-    const msg = err.message || '';
-    if (err.code === 403 && msg.includes('quota')) {
-      throw new YouTubeError('Se ha superado la cuota de la API de YouTube. Intenta más tarde.', 'API_QUOTA_EXCEEDED', 429);
-    }
-    throw new YouTubeError(`Error al buscar videos en YouTube: ${msg}`, 'UNKNOWN', err.code || 500);
-  }
+  // Si el usuario ingresó un enlace directo de video o ID de video de YouTube
+  const directVideoId = extractSingleVideoId(cleanQuery);
+  let videoIds: string[] = [];
+  let itemsSnippetMap = new Map<string, any>();
 
-  const items = searchRes.data.items || [];
-  const videoIds = items
-    .map((item) => item.id?.videoId)
-    .filter((id): id is string => Boolean(id));
+  if (directVideoId) {
+    videoIds = [directVideoId];
+  } else {
+    let searchRes;
+    try {
+      searchRes = await youtube.search.list({
+        part: ['snippet'],
+        q: cleanQuery,
+        type: ['video'],
+        maxResults: limit,
+        safeSearch: 'moderate',
+      });
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (err.code === 403 && msg.includes('quota')) {
+        throw new YouTubeError('Se ha superado la cuota de la API de YouTube. Intenta más tarde.', 'API_QUOTA_EXCEEDED', 429);
+      }
+      throw new YouTubeError(`Error al buscar videos en YouTube: ${msg}`, 'UNKNOWN', err.code || 500);
+    }
+
+    const items = searchRes.data.items || [];
+    for (const item of items) {
+      if (item.id?.videoId) {
+        videoIds.push(item.id.videoId);
+        itemsSnippetMap.set(item.id.videoId, item.snippet);
+      }
+    }
+  }
 
   if (videoIds.length === 0) {
     return [];
@@ -813,7 +835,7 @@ export async function searchYouTubeVideos(
   for (let i = 0; i < videoIds.length; i++) {
     const vidId = videoIds[i];
     const details = detailMap.get(vidId);
-    const snippet = details?.snippet || items[i]?.snippet;
+    const snippet = details?.snippet || itemsSnippetMap.get(vidId);
     const durationSeconds = parseIsoDuration(details?.contentDetails?.duration || '');
     const privacy = normalizePrivacy(details?.status?.privacyStatus);
 

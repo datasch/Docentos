@@ -8,6 +8,7 @@
 import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import express, { NextFunction, Request, Response } from 'express';
+import compression from 'compression';
 import path from 'path';
 import fs from 'node:fs';
 import helmet from 'helmet';
@@ -535,6 +536,7 @@ app.use(
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    strictTransportSecurity: { maxAge: 31536000, includeSubDomains: true, preload: true },
   }),
 );
 app.use(
@@ -563,6 +565,15 @@ app.use((req, res, next) => {
   next();
 });
 app.use(requestTracingMiddleware);
+app.use(
+  compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      if (req.headers['x-no-compression']) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
 app.use(
   express.json({
     limit: '5mb',
@@ -3523,6 +3534,24 @@ app.put(
 
 // Landing page CMS
 app.get(
+  '/api/public/brand',
+  asyncRoute(async (_req, res) => {
+    const plugin = await prisma.plugin.findUnique({ where: { id: 'docentos-customizer' } });
+    if (!plugin) {
+      return res.json({ success: true, brandName: 'DocentOS', campusName: 'DocentOS Command Center', logoUrl: '' });
+    }
+    const parsed = parsePlugin(plugin, false);
+    const cfg = (parsed.config || {}) as Record<string, any>;
+    res.json({
+      success: true,
+      brandName: cfg.customBrandName || 'DocentOS',
+      campusName: cfg.customCampusName || 'DocentOS Command Center',
+      logoUrl: cfg.customLogoUrl || '',
+    });
+  }),
+);
+
+app.get(
   '/api/public/landing-config',
   asyncRoute(async (_req, res) => {
     res.json({ success: true, config: toLandingConfig(await getLandingRecord()) });
@@ -4474,7 +4503,7 @@ app.post(
   '/api/youtube/ai-generate',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
-    const { playlistId, courseRequest, videos } = req.body;
+    const { playlistId, courseRequest, videos, courseTitle } = req.body;
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return res.status(400).json({ error: 'Debes seleccionar al menos un video para generar el curso.' });
     }
@@ -4485,6 +4514,7 @@ app.post(
         playlistId || null,
         String(courseRequest || '').trim(),
         videos,
+        typeof courseTitle === 'string' ? courseTitle.trim() : undefined,
       );
       res.json({ success: true, job });
     } catch (err: any) {
@@ -4508,7 +4538,7 @@ app.get(
   }),
 );
 
-// Aplicar el resultado generado/editado como un Curso BORRADOR en DocentOS
+// Aplicar el resultado generado/editado como un Curso BORRADOR o PUBLICADO en DocentOS
 app.post(
   '/api/youtube/ai-apply/:id',
   requireRole(['ADMIN', 'MENTOR']),
@@ -4518,6 +4548,7 @@ app.post(
         req.params.id,
         req.user!.id,
         req.body.customCourseData,
+        Boolean(req.body.publishImmediately),
       );
       res.json(result);
     } catch (err: any) {
@@ -4527,7 +4558,7 @@ app.post(
   }),
 );
 
-// Publicar un curso generado por el mentor
+// Publicar o alternar estado de un curso generado por el mentor
 app.post(
   '/api/youtube/courses/:id/publish',
   requireRole(['ADMIN', 'MENTOR']),
@@ -4539,22 +4570,23 @@ app.post(
     if (!course) {
       return res.status(404).json({ error: 'Curso no encontrado.' });
     }
+    const targetPublished = req.body?.published !== undefined ? Boolean(req.body.published) : true;
     if (req.user!.role === 'MENTOR') {
-      const ownDraft = !course.published && await prisma.aIJob.findFirst({
+      const ownDraft = await prisma.aIJob.findFirst({
         where: { courseId: course.id, userId: req.user!.id }, select: { id: true },
       });
-      if (!ownDraft) return res.status(403).json({ error: 'Solo puedes publicar un borrador generado por ti.' });
+      if (!ownDraft) return res.status(403).json({ error: 'Solo puedes publicar o modificar un borrador generado por ti.' });
     }
 
     const updated = await prisma.course.update({
       where: { id: req.params.id },
       data: {
-        published: true,
-        publishedAt: new Date(),
+        published: targetPublished,
+        publishedAt: targetPublished ? (course.publishedAt || new Date()) : course.publishedAt,
       },
     });
 
-    logger.info('youtube.course_published', { courseId: updated.id, userId: req.user!.id });
+    logger.info('youtube.course_published', { courseId: updated.id, userId: req.user!.id, published: updated.published });
     res.json({ success: true, courseId: updated.id, published: updated.published });
   }),
 );
@@ -5077,23 +5109,41 @@ app.post(
 
 // --- CONTRATOS VIRTUALES Y ONBOARDING LEGAL ---
 const CURRENT_CONTRACT_VERSION = 'v1.0.2026';
+// Fecha de corte: usuarios registrados previamente a este instante quedan exentos del onboarding obligatorio
+const CONTRACT_MANDATORY_FROM = new Date(process.env.DOCENTOS_CONTRACT_MANDATORY_FROM || '2026-10-26T21:30:00.000Z');
 const CONTRACT_TEXT = `# Contrato de Servicios Educativos y Tratamiento de Datos
 
-**Plataforma DocentOS - Academia Giantucchi**
+**Plataforma DocentOS**
 
 ### 1. Objeto y Acceso a la Plataforma
-El presente contrato regula el acceso y uso de los contenidos formativos, lecciones multimedia, mentorías y herramientas tecnológicas provistas por la plataforma DocentOS.
+El presente contrato regula el acceso y uso de los contenidos formativos, lecciones multimedia, mentorías y herramientas tecnológicas provistas por la plataforma.
 
 ### 2. Vigencia y Periodo de Acceso
 - Fecha de Inicio: A partir del momento exacto del registro y firma electrónica de este acuerdo.
 - Fecha de Fin de Vigencia: El acceso estándar a los materiales se otorga por un período renovable de 12 meses calendario.
 
 ### 3. Tratamiento y Periodo Prolongado de Retención de Datos
-- Custodia de Datos y Progreso: En cumplimiento de las normativas de protección de datos personales y con la finalidad de acreditar certificaciones académicas emitidas, DocentOS conservará de forma segura su historial de usuario, calificaciones y progreso por un periodo prolongado de 24 meses tras la finalización del servicio.
+- Custodia de Datos y Progreso: En cumplimiento de las normativas de protección de datos personales y con la finalidad de acreditar certificaciones académicas emitidas, la plataforma conservará de forma segura su historial de usuario, calificaciones y progreso por un periodo prolongado de 24 meses tras la finalización del servicio.
 - Derechos ARCO: El usuario podrá solicitar en cualquier momento la rectificación o supresión anticipada de sus datos de contacto conforme a los canales oficiales.
 
 ### 4. Propiedad Intelectual y Normas de Conducta
 Los contenidos multimedia, guiones y recursos descargables son de uso personal e intransferible. Queda prohibida la redistribución o comercialización no autorizada.`;
+
+app.get(
+  '/api/contracts/public',
+  asyncRoute(async (_req, res) => {
+    const crypto = await import('crypto');
+    const contractHash = crypto.createHash('sha256').update(CONTRACT_TEXT).digest('hex');
+    res.json({
+      version: CURRENT_CONTRACT_VERSION,
+      title: 'Términos y Condiciones de la Plataforma & Política de Custodia',
+      content: CONTRACT_TEXT,
+      contractHash,
+      retentionPeriodMonths: 24,
+      accessPeriodMonths: 12,
+    });
+  }),
+);
 
 app.get(
   '/api/contracts/pending',
@@ -5122,6 +5172,20 @@ app.get(
           dataRetentionUntil: latestSignature.dataRetentionUntil,
           contractVersion: latestSignature.contractVersion,
         },
+      });
+    }
+
+    // Eximir a usuarios registrados antes de la entrada en vigor de la política obligatoria
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { createdAt: true },
+    });
+
+    if (dbUser && dbUser.createdAt < CONTRACT_MANDATORY_FROM) {
+      return res.json({
+        requiresSignature: false,
+        exempt: true,
+        reason: 'Usuario registrado previamente al requerimiento de onboarding',
       });
     }
 
@@ -5343,6 +5407,81 @@ Disallow: /api/
 Sitemap: ${baseUrl}/sitemap.xml`);
 });
 
+// Agentic Browsing & Discovery (llms.txt y ARD ai-catalog.json)
+app.get(
+  '/llms.txt',
+  asyncRoute(async (req, res) => {
+    const host = req.get('host') || `localhost:${PORT}`;
+    const baseUrl = `${req.protocol || 'https'}://${host}`;
+    const courses = await prisma.course.findMany({
+      where: { published: true },
+      select: { id: true, title: true, description: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const courseLines = courses
+      .map(
+        (c) =>
+          `- [${c.title}](${baseUrl}/courses/${encodeURIComponent(c.id)}): ${(c.description || 'Curso interactivo en DocentOS.').replace(/\s+/g, ' ').trim()}`,
+      )
+      .join('\n');
+
+    const markdown = `# DocentOS
+
+> DocentOS Constellation es una plataforma educativa AI-Native de código abierto para aprendizaje técnico, mentoría en tiempo real, cursos interactivos en streaming y certificaciones verificables.
+
+## Navegación Principal
+
+- [Inicio y Exploración](${baseUrl}/): Portada principal con acceso al motor de aprendizaje interactivo DocentOS Constellation.
+- [Catálogo de Cursos](${baseUrl}/courses): Programas académicos estructurados en módulos prácticos con video streaming y evaluaciones.
+- [Mapa del Sitio XML](${baseUrl}/sitemap.xml): Índice estructurado de páginas y cursos publicados.
+
+## Cursos Publicados
+
+${courseLines || `- [Catálogo General](${baseUrl}/courses): Explora los cursos disponibles en la plataforma.`}
+
+## Recursos de API Pública
+
+- [Catálogo JSON de Cursos](${baseUrl}/api/courses): Listado público de programas educativos y módulos.
+- [Versión del Motor](${baseUrl}/api/version): Metadatos de versión y edición de DocentOS.
+`;
+
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(markdown);
+  }),
+);
+
+const serveAiCatalog = (req: Request, res: Response) => {
+  const host = (req.get('host') || 'docentos.giantucchi.com').split(':')[0];
+  const baseUrl = `${req.protocol || 'https'}://${req.get('host') || host}`;
+  const manifest = {
+    specVersion: '1.0',
+    host: {
+      displayName: 'DocentOS',
+      identifier: `did:web:${host}`,
+    },
+    entries: [
+      {
+        identifier: `urn:air:${host}:api:courses`,
+        displayName: 'Catálogo Público de Cursos DocentOS',
+        type: 'application/json',
+        url: `${baseUrl}/api/courses`,
+      },
+    ],
+  };
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(JSON.stringify(manifest, null, 2));
+};
+
+app.get('/.well-known/ai-catalog.json', serveAiCatalog);
+app.get('/ai-catalog.json', serveAiCatalog);
+app.use('/.well-known', (_req, res) => {
+  res.status(404).json({ error: 'Recurso well-known no encontrado.' });
+});
+
 app.use(
   asyncRoute(async (req, res, next) => {
     const userAgent = String(req.headers['user-agent'] || '');
@@ -5377,7 +5516,17 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(
+      express.static(distPath, {
+        setHeaders(res, filePath) {
+          if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          } else if (/\.(avif|webp|png|jpg|jpeg|svg|ico|woff2?)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+          }
+        },
+      }),
+    );
     app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
 

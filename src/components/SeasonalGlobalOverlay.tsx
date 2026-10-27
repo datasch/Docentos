@@ -31,16 +31,16 @@ export const SeasonalGlobalOverlay: React.FC = () => {
       {/* 1. Efecto Ambiental de Fondo en TODO DocentOS (Adaptativo y optimizado para móviles) */}
       {theme === 'christmas' && (
         <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
-          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 14 : 38 }).map((_, i) => (
+          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24 }).map((_, i) => (
             <div
               key={i}
               className="copo-nieve"
               style={{
-                left: `${(i * 2.7 + 1.2) % 100}%`,
-                animationDelay: `${(i * 0.35) % 6}s`,
+                left: `${(i * 3.8 + 1.2) % 100}%`,
+                animationDelay: `${(i * 0.45) % 6}s`,
                 animationDuration: `${5.0 + ((i * 1.2) % 5)}s`,
-                width: `${2.5 + (i % 3) * 1.8}px`,
-                height: `${2.5 + (i % 3) * 1.8}px`,
+                width: `${2.5 + (i % 3) * 1.5}px`,
+                height: `${2.5 + (i % 3) * 1.5}px`,
                 opacity: 0.35 + (i % 4) * 0.12,
               }}
             />
@@ -51,14 +51,14 @@ export const SeasonalGlobalOverlay: React.FC = () => {
       {theme === 'halloween' && (
         <div className="halloween-ambient-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
           {/* Murciélagos flotantes (solo 2 en móviles) */}
-          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 7 }).map((_, i) => (
+          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 6 }).map((_, i) => (
             <div
               key={`bat-${i}`}
-              className="absolute pointer-events-none opacity-20 dark:opacity-30"
+              className="absolute pointer-events-none opacity-20 dark:opacity-30 [will-change:transform]"
               style={{
                 top: `${14 + (i * 14) % 70}%`,
                 left: `${(i * 16 + 6) % 88}%`,
-                transform: `scale(${0.6 + (i % 3) * 0.2}) rotate(${(i % 2 === 0 ? 1 : -1) * 6}deg)`,
+                transform: `scale(${0.6 + (i % 3) * 0.2}) rotate(${(i % 2 === 0 ? 1 : -1) * 6}deg) translate3d(0, 0, 0)`,
                 animationDuration: `${4 + i}s`,
               }}
             >
@@ -68,17 +68,20 @@ export const SeasonalGlobalOverlay: React.FC = () => {
             </div>
           ))}
 
-          {/* Destellos de fuego fatuo (adaptativo) */}
-          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 4 : 12 }).map((_, i) => (
+          {/* Destellos de fuego fatuo optimizados con radial-gradient (cero repaints en GPU) */}
+          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 4 : 10 }).map((_, i) => (
             <div
               key={`ember-${i}`}
-              className="absolute w-2 h-2 rounded-full pointer-events-none"
+              className="absolute w-3 h-3 rounded-full pointer-events-none [will-change:transform]"
               style={{
-                top: `${(i * 8.2 + 5) % 92}%`,
-                left: `${(i * 7.8 + 4) % 94}%`,
-                backgroundColor: i % 2 === 0 ? '#f97316' : '#a855f7',
-                boxShadow: typeof window !== 'undefined' && window.innerWidth < 768 ? 'none' : (i % 2 === 0 ? '0 0 10px 2px rgba(249,115,22,0.5)' : '0 0 10px 2px rgba(168,85,247,0.5)'),
-                opacity: 0.25 + (i % 3) * 0.15,
+                top: `${(i * 8.8 + 5) % 92}%`,
+                left: `${(i * 8.4 + 4) % 94}%`,
+                background:
+                  i % 2 === 0
+                    ? 'radial-gradient(circle, rgba(249,115,22,0.9) 0%, rgba(249,115,22,0.25) 45%, transparent 72%)'
+                    : 'radial-gradient(circle, rgba(168,85,247,0.9) 0%, rgba(168,85,247,0.25) 45%, transparent 72%)',
+                opacity: 0.35 + (i % 3) * 0.15,
+                transform: 'translate3d(0, 0, 0)',
                 animation: `float ${4.5 + (i % 3)}s ease-in-out infinite`,
                 animationDelay: `${i * 0.5}s`,
               }}

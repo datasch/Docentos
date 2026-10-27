@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { getCustomLogoUrl, DEFAULT_LOGO_URL, LOGO_CHANGE_EVENT } from '../../lib/logoConfig';
 import { getSeasonalTheme, SeasonalTheme, SEASONAL_EVENT_NAME } from '../../lib/seasonalTheme';
+import { isBodyScrollLocked } from '../../lib/useBodyScrollLock';
 
 // Espectro oficial de 6 colores Giantucchi (Dala Style) - Modo Oscuro
 const GIANTUCCHI_SPECTRUM = [
@@ -273,13 +274,26 @@ export const ConstellationCanvas: React.FC<{
   className?: string;
   particleCount?: number;
   fullScreen?: boolean;
-}> = ({ className = '', particleCount, fullScreen = true }) => {
+  paused?: boolean;
+}> = ({ className = '', particleCount, fullScreen = true, paused = false }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pausedRef = useRef(paused);
+  const resumeLoopRef = useRef<(() => void) | null>(null);
+  const pauseLoopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) {
+      pauseLoopRef.current?.();
+    } else {
+      resumeLoopRef.current?.();
+    }
+  }, [paused]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: true });
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let animationFrameId: number;
@@ -307,25 +321,38 @@ export const ConstellationCanvas: React.FC<{
     let introProgress = 0;
 
     const handleScroll = () => {
+      if (window.innerWidth < 768) return;
+      if (isBodyScrollLocked()) return;
       targetScrollY = window.scrollY;
-      const isMobileNow = window.innerWidth < 768;
-      const cutoffY = isMobileNow ? 900 : 1400;
+      const cutoffY = 1400;
 
       // Si el lienzo estaba pausado por scroll profundo y el usuario regresa arriba, reactivar de inmediato
       if (targetScrollY < cutoffY && isCanvasPaused && isTabVisible) {
         isCanvasPaused = false;
-        currentScrollY = Math.min(currentScrollY, cutoffY - 10);
+        currentScrollY = Math.min(targetScrollY + 50, 140);
         cancelAnimationFrame(animationFrameId);
         animationFrameId = requestAnimationFrame(render);
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
+    let mousePending = false;
+    let pendingMouseX = 0;
+    let pendingMouseY = 0;
+
     const handleMouseMove = (e: MouseEvent) => {
-      const x = e.clientX - width / 2;
-      const y = e.clientY - height / 2;
-      targetRotY = (x / width) * 0.7;
-      targetRotX = -(y / height) * 0.5;
+      if (window.innerWidth < 768) return;
+      if (isBodyScrollLocked()) return;
+      pendingMouseX = e.clientX;
+      pendingMouseY = e.clientY;
+      if (!mousePending) {
+        mousePending = true;
+        requestAnimationFrame(() => {
+          targetRotY = ((pendingMouseX - width / 2) / width) * 0.7;
+          targetRotX = -((pendingMouseY - height / 2) / height) * 0.5;
+          mousePending = false;
+        });
+      }
     };
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
 
@@ -367,8 +394,12 @@ export const ConstellationCanvas: React.FC<{
     // 1. Inicialización de partículas con geometría base cerebral y fallback del Logo Giantucchi + Gorro de triángulos
     const particles: Particle3D[] = [];
     const isMobileInitial = width < 768;
-    const actualParticleCount = particleCount ?? (isMobileInitial ? 180 : 420);
-    const brainScale = Math.min(width, height) * (isMobileInitial ? 0.32 : 0.38);
+    // Densidad balanceada en el punto óptimo (360 en PC, 120 en móvil para 60 FPS garantizados)
+    const actualParticleCount = particleCount ?? (isMobileInitial ? 120 : 360);
+    // Escala del logo y cerebro: incrementada en móvil para mayor presencia e impacto visual
+    const brainScale = isMobileInitial
+      ? Math.min(width * 0.48, height * 0.38)
+      : Math.min(width, height) * 0.38;
 
     // Generar puntos iniciales del gorro sobre el fallback si hay festividad
     const fallbackHatPoints =
@@ -378,7 +409,8 @@ export const ConstellationCanvas: React.FC<{
         ? generateSantaHatTrianglePoints(-0.28, -0.72, 0.52)
         : [];
 
-    const fallbackHatCount = fallbackHatPoints.length > 0 ? Math.floor(actualParticleCount * 0.34) : 0;
+    // 18% de partículas para el gorro festivo y 82% para que el logotipo mantenga máxima presencia y densidad
+    const fallbackHatCount = fallbackHatPoints.length > 0 ? Math.floor(actualParticleCount * 0.18) : 0;
 
     for (let i = 0; i < actualParticleCount; i++) {
       const hemisphere = Math.random() > 0.5 ? 1 : -1;
@@ -411,8 +443,8 @@ export const ConstellationCanvas: React.FC<{
 
       const color = GIANTUCCHI_SPECTRUM[Math.floor(Math.random() * GIANTUCCHI_SPECTRUM.length)];
       const baseSize = (i < fallbackHatCount && fallbackHatPoints.length > 0)
-        ? 1.9 + Math.random() * 2.2
-        : 1.1 + Math.random() * 2.4;
+        ? (isMobileInitial ? 3.0 : 2.4) + Math.random() * 2.3
+        : (isMobileInitial ? 2.8 : 2.2) + Math.random() * 2.4;
 
       let initLogoX = 0;
       let initLogoY = 0;
@@ -474,27 +506,29 @@ export const ConstellationCanvas: React.FC<{
     // Cargar y muestrear con precisión los píxeles del logo y generar el gorro con triángulos
     const loadAndSampleLogo = (logoUrl: string) => {
       const logoImg = new Image();
-      if (!logoUrl.startsWith('data:') && !logoUrl.startsWith('/')) {
+      const effectiveUrl = (!logoUrl || logoUrl === DEFAULT_LOGO_URL) ? '/logo-64.avif' : logoUrl;
+      if (!effectiveUrl.startsWith('data:') && !effectiveUrl.startsWith('/')) {
         logoImg.crossOrigin = 'anonymous';
       }
-      logoImg.src = logoUrl || DEFAULT_LOGO_URL;
+      logoImg.src = effectiveUrl;
 
       logoImg.onload = () => {
         try {
+          const sampleDim = 64;
           const offCanvas = document.createElement('canvas');
-          offCanvas.width = 256;
-          offCanvas.height = 256;
+          offCanvas.width = sampleDim;
+          offCanvas.height = sampleDim;
           const offCtx = offCanvas.getContext('2d');
           if (!offCtx) return;
 
-          offCtx.drawImage(logoImg, 0, 0, 256, 256);
-          const data = offCtx.getImageData(0, 0, 256, 256).data;
+          offCtx.drawImage(logoImg, 0, 0, sampleDim, sampleDim);
+          const data = offCtx.getImageData(0, 0, sampleDim, sampleDim).data;
 
           // 1. Encontrar límites de píxeles del logotipo
-          let minX = 256, maxX = 0, minY = 256, maxY = 0;
-          for (let y = 0; y < 256; y++) {
-            for (let x = 0; x < 256; x++) {
-              const alpha = data[(y * 256 + x) * 4 + 3];
+          let minX = sampleDim, maxX = 0, minY = sampleDim, maxY = 0;
+          for (let y = 0; y < sampleDim; y++) {
+            for (let x = 0; x < sampleDim; x++) {
+              const alpha = data[(y * sampleDim + x) * 4 + 3];
               if (alpha > 50) {
                 if (x < minX) minX = x;
                 if (x > maxX) maxX = x;
@@ -505,7 +539,7 @@ export const ConstellationCanvas: React.FC<{
           }
 
           if (minX >= maxX || minY >= maxY) {
-            minX = 40; maxX = 216; minY = 40; maxY = 216;
+            minX = 10; maxX = 54; minY = 10; maxY = 54;
           }
 
           const logoW = maxX - minX;
@@ -516,9 +550,9 @@ export const ConstellationCanvas: React.FC<{
 
           // 2. Muestrear los puntos reales del logotipo cargado
           const logoPoints: ConstellationPoint[] = [];
-          for (let y = minY; y <= maxY; y += 2) {
-            for (let x = minX; x <= maxX; x += 2) {
-              const idx = (y * 256 + x) * 4;
+          for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+              const idx = (y * sampleDim + x) * 4;
               if (data[idx + 3] > 60) {
                 logoPoints.push({
                   x: (x - cx) / halfSize,
@@ -543,8 +577,8 @@ export const ConstellationCanvas: React.FC<{
             hatPoints = generateSantaHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
           }
 
-          // 4. Distribuir las partículas: 34% de triángulos dedicados a formar el gorro y 66% al logotipo
-          const hatParticleCount = hatPoints.length > 0 ? Math.floor(particles.length * 0.34) : 0;
+          // 4. Distribuir las partículas: 18% de triángulos dedicados al gorro y 82% al logotipo
+          const hatParticleCount = hatPoints.length > 0 ? Math.floor(particles.length * 0.18) : 0;
           const logoParticleCount = particles.length - hatParticleCount;
 
           for (let i = 0; i < particles.length; i++) {
@@ -554,7 +588,7 @@ export const ConstellationCanvas: React.FC<{
               particles[i].logoY = hp.y;
               particles[i].logoZ = hp.z;
               particles[i].logoColor = hp.color;
-              particles[i].baseSize = 1.9 + Math.random() * 2.2;
+              particles[i].baseSize = 2.4 + Math.random() * 2.2;
             } else if (logoPoints.length > 0) {
               const logoIdx = Math.floor(((i - hatParticleCount) / logoParticleCount) * logoPoints.length);
               const lp = logoPoints[logoIdx] || logoPoints[i % logoPoints.length];
@@ -562,6 +596,7 @@ export const ConstellationCanvas: React.FC<{
               particles[i].logoY = lp.y;
               particles[i].logoZ = lp.z;
               particles[i].logoColor = lp.color;
+              particles[i].baseSize = 2.2 + Math.random() * 2.4;
             }
           }
         } catch (e) {
@@ -647,7 +682,8 @@ export const ConstellationCanvas: React.FC<{
       size: number,
       rot: number,
       color: string,
-      alpha: number
+      alpha: number,
+      skipStroke: boolean = false
     ) => {
       const cosR = Math.cos(rot);
       const sinR = Math.sin(rot);
@@ -666,7 +702,7 @@ export const ConstellationCanvas: React.FC<{
       const cxPt = tX - halfW * cosR - yBC * sinR;
       const cyPt = tY - halfW * sinR + yBC * cosR;
 
-      const minAlpha = isLight ? 0.32 : 0.05;
+      const minAlpha = isLight ? 0.38 : 0.12;
       const clampedAlpha = Math.max(minAlpha, Math.min(1, alpha));
 
       context.beginPath();
@@ -675,28 +711,42 @@ export const ConstellationCanvas: React.FC<{
       context.lineTo(cxPt, cyPt);
       context.closePath();
 
-      // Faceta cristalina semi-rellena: le da cuerpo y presencia geométrica reconocible al sombrero y logo
+      // Faceta cristalina semi-rellena: en modo logo da un cuerpo denso y nítido
       context.fillStyle = color;
-      context.globalAlpha = clampedAlpha * 0.65;
+      context.globalAlpha = Math.min(1.0, clampedAlpha * 0.90);
       context.fill();
 
-      // Arista brillante de la constelación
-      context.strokeStyle = color;
-      context.globalAlpha = clampedAlpha;
-      context.stroke();
+      // Arista brillante de la constelación (omitida durante scroll activo en móvil para 60 FPS puros)
+      if (!skipStroke) {
+        context.strokeStyle = color;
+        context.globalAlpha = Math.min(1.0, clampedAlpha * 1.15);
+        context.stroke();
+      }
     };
 
     const render = () => {
-      if (!isTabVisible) return;
+      if (!isTabVisible || pausedRef.current || width < 768) return;
 
-      // 1. Interpolación suave del scroll con inercia (calculada SIEMPRE al inicio de cada frame)
-      const scrollDelta = targetScrollY - currentScrollY;
-      currentScrollY += scrollDelta * 0.08;
+      const isMobileNow = width < 768;
+
+      // 1. En móvil el scroll ya cuenta con inercia táctil nativa del sistema operativo:
+      // Sincronizamos directamente para respuesta 1:1 inmediata sin doble inercia ni retardo
+      if (isMobileNow) {
+        currentScrollY = targetScrollY <= 25 ? 0 : targetScrollY;
+      } else {
+        const scrollDelta = targetScrollY - currentScrollY;
+        const isReturningToTop = targetScrollY < currentScrollY;
+        const lerpRate = isReturningToTop ? 0.22 : 0.08;
+        currentScrollY += scrollDelta * lerpRate;
+        if (Math.abs(scrollDelta) < 1.2) {
+          currentScrollY = targetScrollY;
+        }
+      }
+
       scrollVelocity = targetScrollY - lastScrollY;
       lastScrollY = targetScrollY;
 
-      const isMobileNow = width < 768;
-      const cutoffY = isMobileNow ? 900 : 1400;
+      const cutoffY = isMobileNow ? 480 : 1400;
 
       // Pausar y vaciar renderizado ÚNICAMENTE si tanto el scroll real como el interpolado están lejos del hero
       if (currentScrollY > cutoffY && targetScrollY > cutoffY) {
@@ -709,7 +759,7 @@ export const ConstellationCanvas: React.FC<{
       ctx.lineWidth = isLight ? 1.35 : 1.15;
 
       // 2. Intro animación suave al inicio
-      introProgress = Math.min(introProgress + 0.022, 1.0);
+      introProgress = Math.min(introProgress + 0.045, 1.0);
       const introEase = 1 - Math.pow(1 - introProgress, 3);
 
       // Lerp del mouse
@@ -717,9 +767,14 @@ export const ConstellationCanvas: React.FC<{
       currentRotX += (targetRotX - currentRotX) * 0.05;
       globalAngle += 0.003;
 
-      // Peso de deformación del logo en scroll
-      const morphProgress = Math.min(currentScrollY / 320, 1.0);
-      const logoWeight = Math.max(0, 1.0 - Math.pow(morphProgress, 1.25)) * introEase;
+      // Peso de deformación del logo en scroll: en la cima el logo se ensambla instantáneamente
+      const morphThreshold = isMobileNow ? 240 : 320;
+      const morphProgress = currentScrollY <= (isMobileNow ? 25 : 5)
+        ? 0
+        : Math.min(currentScrollY / morphThreshold, 1.0);
+      const logoWeight = currentScrollY <= (isMobileNow ? 25 : 5)
+        ? 1.0
+        : Math.max(0, 1.0 - Math.pow(morphProgress, 1.25)) * introEase;
 
       // Dispersión cósmica en scroll más profundo
       const deepScrollFactor = Math.max(0, (currentScrollY - 140) / 540);
@@ -749,69 +804,73 @@ export const ConstellationCanvas: React.FC<{
 
       const fov = 440 + dispersionEase * 80;
 
-      // Partículas ambientales de fondo
-      for (let i = 0; i < ambientParticles.length; i++) {
-        const ap = ambientParticles[i];
-        ap.x += ap.vx;
-        ap.y += ap.vy - scrollVelocity * 0.18;
-        ap.rotation += ap.vRot;
+      // Partículas ambientales de fondo: solo activas en escritorio para máximo rendimiento
+      if (!isMobileNow) {
+        for (let i = 0; i < ambientParticles.length; i++) {
+          const ap = ambientParticles[i];
+          ap.x += ap.vx;
+          ap.y += ap.vy - scrollVelocity * 0.18;
+          ap.rotation += ap.vRot;
 
-        if (ap.x < -30) ap.x = width + 30;
-        if (ap.x > width + 30) ap.x = -30;
-        if (ap.y < -30) ap.y = height + 30;
-        if (ap.y > height + 30) ap.y = -30;
+          if (ap.x < -30) ap.x = width + 30;
+          if (ap.x > width + 30) ap.x = -30;
+          if (ap.y < -30) ap.y = height + 30;
+          if (ap.y > height + 30) ap.y = -30;
 
-        drawFastTriangle(ctx, ap.x, ap.y, ap.size, ap.rotation, ap.color, ap.opacity);
+          drawFastTriangle(ctx, ap.x, ap.y, ap.size, ap.rotation, ap.color, ap.opacity, true);
+        }
       }
 
-      // Impulsos sinápticos
-      const scrollActivity = Math.min(Math.abs(scrollVelocity) * 0.04, 1);
-      const synapseChance = 0.05 + Math.min(scrollActivity * 0.03, 0.3);
-      if (Math.random() < synapseChance) spawnSynapse(scrollActivity);
+      // Impulsos sinápticos: exclusivos de escritorio para garantizar 60 FPS ininterrumpidos en móviles
+      if (!isMobileNow) {
+        const scrollActivity = Math.min(Math.abs(scrollVelocity) * 0.04, 1);
+        const synapseChance = 0.05 + Math.min(scrollActivity * 0.03, 0.3);
+        if (Math.random() < synapseChance) spawnSynapse(scrollActivity);
 
-      for (let s = synapses.length - 1; s >= 0; s--) {
-        const syn = synapses[s];
-        syn.progress += syn.speed;
+        for (let s = synapses.length - 1; s >= 0; s--) {
+          const syn = synapses[s];
+          syn.progress += syn.speed;
 
-        const pA = particles[syn.fromIdx];
-        const pB = particles[syn.toIdx];
+          const pA = particles[syn.fromIdx];
+          const pB = particles[syn.toIdx];
 
-        if (pA && pB && syn.progress < 1) {
-          const xA1 = pA.x * cosY - pA.z * sinY;
-          const zA1 = pA.x * sinY + pA.z * cosY;
-          const yA2 = pA.y * cosX - zA1 * sinX;
-          const zA2 = pA.y * sinX + zA1 * cosX;
-          const scaleA = fov / (fov + zA2);
-          const xA2d = cx + xA1 * scaleA;
-          const yA2d = cy + yA2 * scaleA;
+          if (pA && pB && syn.progress < 1) {
+            const xA1 = pA.x * cosY - pA.z * sinY;
+            const zA1 = pA.x * sinY + pA.z * cosY;
+            const yA2 = pA.y * cosX - zA1 * sinX;
+            const zA2 = pA.y * sinX + zA1 * cosX;
+            const scaleA = fov / (fov + zA2);
+            const xA2d = cx + xA1 * scaleA;
+            const yA2d = cy + yA2 * scaleA;
 
-          const xB1 = pB.x * cosY - pB.z * sinY;
-          const zB1 = pB.x * sinY + pB.z * cosY;
-          const yB2 = pB.y * cosX - zB1 * sinX;
-          const zB2 = pB.y * sinX + zB1 * cosX;
-          const scaleB = fov / (fov + zB2);
-          const xB2d = cx + xB1 * scaleB;
-          const yB2d = cy + yB2 * scaleB;
+            const xB1 = pB.x * cosY - pB.z * sinY;
+            const zB1 = pB.x * sinY + pB.z * cosY;
+            const yB2 = pB.y * cosX - zB1 * sinX;
+            const zB2 = pB.y * sinX + zB1 * cosX;
+            const scaleB = fov / (fov + zB2);
+            const xB2d = cx + xB1 * scaleB;
+            const yB2d = cy + yB2 * scaleB;
 
-          const lineAlpha = (1 - syn.progress) * (isLight ? 0.75 : 0.55);
-          const synColor = isLight ? (COLOR_MAP_LIGHT[syn.color] || syn.color) : syn.color;
-          ctx.strokeStyle = synColor;
-          ctx.lineWidth = isLight ? 1.35 : 1.0;
-          ctx.globalAlpha = lineAlpha;
-          ctx.beginPath();
-          ctx.moveTo(xA2d, yA2d);
-          ctx.lineTo(xB2d, yB2d);
-          ctx.stroke();
+            const lineAlpha = (1 - syn.progress) * (isLight ? 0.75 : 0.55);
+            const synColor = isLight ? (COLOR_MAP_LIGHT[syn.color] || syn.color) : syn.color;
+            ctx.strokeStyle = synColor;
+            ctx.lineWidth = isLight ? 1.35 : 1.0;
+            ctx.globalAlpha = lineAlpha;
+            ctx.beginPath();
+            ctx.moveTo(xA2d, yA2d);
+            ctx.lineTo(xB2d, yB2d);
+            ctx.stroke();
 
-          const sparkX = xA2d + (xB2d - xA2d) * syn.progress;
-          const sparkY = yA2d + (yB2d - yA2d) * syn.progress;
-          ctx.fillStyle = isLight ? '#0f172a' : '#ffffff';
-          ctx.globalAlpha = (1 - syn.progress) * 0.95;
-          ctx.beginPath();
-          ctx.arc(sparkX, sparkY, isLight ? 2.5 : 2.0, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          synapses.splice(s, 1);
+            const sparkX = xA2d + (xB2d - xA2d) * syn.progress;
+            const sparkY = yA2d + (yB2d - yA2d) * syn.progress;
+            ctx.fillStyle = isLight ? '#0f172a' : '#ffffff';
+            ctx.globalAlpha = (1 - syn.progress) * 0.95;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, isLight ? 2.5 : 2.0, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            synapses.splice(s, 1);
+          }
         }
       }
 
@@ -821,7 +880,10 @@ export const ConstellationCanvas: React.FC<{
       const cosS = Math.cos(swirlAngle);
       const sinS = Math.sin(swirlAngle);
 
-      const logoScale = brainScale * 0.95;
+      const logoScale = brainScale * (isMobileNow ? 1.08 : 0.95);
+
+      // En móvil omitimos el trazo de borde para 50% menos llamadas al canvas y 60 FPS estables
+      const skipParticleStroke = isMobileNow;
 
       // Iteración y dibujado de los triángulos 3D de la constelación:
       // Forman el logotipo y el sombrero festivo 100% con triángulos reactivos
@@ -835,21 +897,28 @@ export const ConstellationCanvas: React.FC<{
         const lY = p.logoY * logoScale;
         const lZ = p.logoZ * logoScale;
 
-        // 2. Posición Red Neuronal / Nebulosa
-        const expandX = p.dirX * p.disperseDist * dispersionEase;
-        const expandY = p.dirY * p.disperseDist * dispersionEase;
-        const expandZ = p.dirZ * p.disperseDist * dispersionEase;
+        if (logoWeight >= 0.98) {
+          // Optimización de cima: si el logo está formado, asignación directa instantánea
+          p.x = lX;
+          p.y = lY;
+          p.z = lZ;
+        } else {
+          // 2. Posición Red Neuronal / Nebulosa
+          const expandX = p.dirX * p.disperseDist * dispersionEase;
+          const expandY = p.dirY * p.disperseDist * dispersionEase;
+          const expandZ = p.dirZ * p.disperseDist * dispersionEase;
 
-        const bX = p.baseX + (expandX * cosS - expandZ * sinS);
-        const bY = p.baseY + expandY;
-        const bZ = p.baseZ + (expandX * sinS + expandZ * cosS);
+          const bX = p.baseX + (expandX * cosS - expandZ * sinS);
+          const bY = p.baseY + expandY;
+          const bZ = p.baseZ + (expandX * sinS + expandZ * cosS);
 
-        // Interpolación fluida: Logo y Sombrero -> Dispersión en Scroll
-        const deformWave = Math.sin(p.pulsePhase + globalAngle * 2) * (1 - logoWeight) * 12;
+          // Interpolación fluida: Logo y Sombrero -> Dispersión en Scroll
+          const deformWave = Math.sin(p.pulsePhase + globalAngle * 2) * (1 - logoWeight) * 12;
 
-        p.x = lX * logoWeight + bX * (1 - logoWeight) + deformWave * 0.2;
-        p.y = lY * logoWeight + bY * (1 - logoWeight) + deformWave * 0.2;
-        p.z = lZ * logoWeight + bZ * (1 - logoWeight);
+          p.x = lX * logoWeight + bX * (1 - logoWeight) + deformWave * 0.2;
+          p.y = lY * logoWeight + bY * (1 - logoWeight) + deformWave * 0.2;
+          p.z = lZ * logoWeight + bZ * (1 - logoWeight);
+        }
 
         // Rotación 3D
         const x1 = p.x * cosY - p.z * sinY;
@@ -867,30 +936,60 @@ export const ConstellationCanvas: React.FC<{
 
         if (x2d < -80 || x2d > width + 80 || y2d < -80 || y2d > height + 80) continue;
 
-        // Opacidad y brillo
-        const depthAlpha = Math.max(0.18, Math.min(1.0, (z2 + brainScale * (1 + dispersionEase)) / (brainScale * 2.5)));
-        const pulse = 0.85 + 0.25 * Math.sin(p.pulsePhase);
-        const alpha = Math.min(1.0, depthAlpha * pulse * (0.4 + logoWeight * 0.6));
+        // Opacidad y brillo reforzado en estado de logo para que la silueta sea viva y reconocible
+        const depthAlpha = Math.max(0.35, Math.min(1.0, (z2 + brainScale * (1 + dispersionEase)) / (brainScale * 2.5)));
+        const pulse = 0.92 + 0.16 * Math.sin(p.pulsePhase);
+        const alpha = Math.min(1.0, depthAlpha * pulse * (0.4 + logoWeight * 0.6) + (logoWeight > 0.3 ? 0.38 : 0));
 
         // Color
-        let displayColor = logoWeight > 0.4 ? p.logoColor : p.color;
+        let displayColor = logoWeight > 0.35 ? p.logoColor : p.color;
         if (isLight && COLOR_MAP_LIGHT[displayColor]) {
           displayColor = COLOR_MAP_LIGHT[displayColor];
         }
 
-        const dynamicSize = p.baseSize * (1 + dispersionEase * 0.35);
+        // En modo logo, dar un boost de escala generoso (1.45x en móvil) para que los triángulos se toquen y formen un mosaico nítido y continuo
+        const logoBoost = logoWeight * (isMobileNow ? 1.45 : 1.35);
+        const dynamicSize = p.baseSize * (1 + dispersionEase * 0.35 + logoBoost);
 
         // Todos los elementos (logo + sombrero festivo) se dibujan exclusivamente como micro-triángulos 3D
-        drawFastTriangle(ctx, x2d, y2d, dynamicSize, p.rotation, displayColor, alpha);
+        drawFastTriangle(ctx, x2d, y2d, dynamicSize, p.rotation, displayColor, alpha, skipParticleStroke);
       }
 
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    const resumeLoop = () => {
+      if (window.innerWidth < 768) return;
+      targetScrollY = window.scrollY;
+      currentScrollY = window.scrollY;
+      // Al volver a la vista explorar en escritorio, el logo debe estar 100% ensamblado al instante
+      introProgress = 1.0;
+      isCanvasPaused = false;
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    const pauseLoop = () => {
+      isCanvasPaused = true;
+      cancelAnimationFrame(animationFrameId);
+    };
+
+    resumeLoopRef.current = resumeLoop;
+    pauseLoopRef.current = pauseLoop;
+
+    // Iniciar el bucle de renderizado solo si no está pausado y estamos en escritorio (>= md)
+    let startTimer: number | null = null;
+    if (!pausedRef.current && window.innerWidth >= 768) {
+      startTimer = window.setTimeout(() => {
+        animationFrameId = requestAnimationFrame(render);
+      }, 50);
+    }
 
     return () => {
+      if (startTimer) window.clearTimeout(startTimer);
       cancelAnimationFrame(animationFrameId);
+      resumeLoopRef.current = null;
+      pauseLoopRef.current = null;
       window.removeEventListener('resize', resize);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('mousemove', handleMouseMove);

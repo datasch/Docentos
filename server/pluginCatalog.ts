@@ -39,7 +39,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     icon: 'Award',
     config: {
       institutionName: 'Academia Giantucchi',
-      signatoryTitle: 'Prof.Giantucchi - Mentor Director & Evaluador',
+      signatoryTitle: 'Prof.Giancarlo Giantucchi - Mentor Director & Evaluador',
       primaryColor: '#06b6d4',
       badgeText: 'Certificado de Excelencia Técnica',
       backgroundColor: 'dark',
@@ -145,12 +145,12 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     category: 'custom',
     icon: 'Palette',
     config: {
-      interfaceVersion: 'v0.4-classic',
+      interfaceVersion: 'v0.5-modern',
       colorTheme: 'cyan',
       colorMode: 'dark',
       density: 'comfortable',
       showQuickVersionSwitcher: false,
-      customCampusName: 'DocentOS',
+      customCampusName: 'DocentOS Command Center',
       customBrandName: 'DocentOS',
       customLogoUrl: '',
     },

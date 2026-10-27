@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Course } from '../../types';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   Play,
   Layers,
@@ -21,13 +20,43 @@ interface ConstellationCourseCatalogProps {
 }
 
 const FALLBACK_COVERS = [
-  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=900&auto=format&fit=crop&q=80', // Matrix/Code
-  'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=900&auto=format&fit=crop&q=80', // Cyber/Security
-  'https://images.unsplash.com/photo-1518770660439-4636190af475?w=900&auto=format&fit=crop&q=80', // Circuit/Microchip
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=900&auto=format&fit=crop&q=80', // 3D Fluid Abstract
-  'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=900&auto=format&fit=crop&q=80', // Frontend Development
-  'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=900&auto=format&fit=crop&q=80', // AI Neural Network
+  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=640&auto=format&fit=crop&q=72', // Matrix/Code
+  'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=640&auto=format&fit=crop&q=72', // Cyber/Security
+  'https://images.unsplash.com/photo-1518770660439-4636190af475?w=640&auto=format&fit=crop&q=72', // Circuit/Microchip
+  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=640&auto=format&fit=crop&q=72', // 3D Fluid Abstract
+  'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=640&auto=format&fit=crop&q=72', // Frontend Development
+  'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=640&auto=format&fit=crop&q=72', // AI Neural Network
 ];
+
+function getResponsiveCoverProps(rawUrl: string, variant: 'featured' | 'card') {
+  if (!rawUrl || (!rawUrl.includes('images.unsplash.com') && !rawUrl.includes('plus.unsplash.com'))) {
+    return { src: rawUrl };
+  }
+  const buildVariant = (w: number, q: number) => {
+    try {
+      const u = new URL(rawUrl);
+      u.searchParams.set('w', String(w));
+      u.searchParams.set('q', String(q));
+      u.searchParams.set('auto', 'format');
+      u.searchParams.set('fit', 'crop');
+      return u.toString();
+    } catch {
+      return rawUrl;
+    }
+  };
+  if (variant === 'featured') {
+    return {
+      src: buildVariant(600, 72),
+      srcSet: `${buildVariant(400, 70)} 400w, ${buildVariant(600, 72)} 600w, ${buildVariant(800, 74)} 800w`,
+      sizes: '(max-width: 640px) 92vw, (max-width: 1024px) 90vw, 520px',
+    };
+  }
+  return {
+    src: buildVariant(400, 70),
+    srcSet: `${buildVariant(360, 68)} 360w, ${buildVariant(420, 70)} 420w, ${buildVariant(600, 72)} 600w`,
+    sizes: '(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px',
+  };
+}
 
 export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProps> = ({
   courses,
@@ -101,40 +130,57 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
 
         {/* Banner Destacado Spotlight (Si hay cursos) */}
         {featuredCourse && activeCategory === 'todos' && searchQuery === '' && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
+          <div
             className="mb-14 relative rounded-[28px] overflow-hidden border border-slate-200/80 dark:border-white/10 hover:border-[#06b6d4]/40 transition-all duration-300 group cursor-pointer bg-gradient-to-tr from-white via-slate-50 to-white dark:from-[#0a0a14] dark:via-[#08080f] dark:to-[#050505] shadow-sm dark:shadow-2xl"
             onClick={() => onSelectCourse(featuredCourse)}
           >
             <div className="grid grid-cols-1 lg:grid-cols-12 items-center">
               
-              {/* Información Destacada */}
-              <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col items-start justify-between z-10">
+              {/* Cover Panorámico Destacado: Arriba en móvil con aspect-video natural (sin recortes), a la derecha en escritorio */}
+              <div className="order-1 lg:order-2 lg:col-span-5 w-full aspect-video lg:aspect-auto lg:h-full relative overflow-hidden bg-slate-900">
+                <img
+                  {...getResponsiveCoverProps(featuredCourse.coverImage || FALLBACK_COVERS[0], 'featured')}
+                  alt={featuredCourse.title}
+                  decoding="async"
+                  fetchPriority="high"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white/80 via-transparent to-transparent dark:from-[#0a0a14] dark:via-transparent dark:to-transparent opacity-80" />
+                
+                {/* Floating Play Icon */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#06b6d4]/30 border border-[#06b6d4]/60 flex items-center justify-center text-[#06b6d4] shadow-xl group-hover:scale-110 transition-transform">
+                    <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-[#06b6d4] ml-0.5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Información Destacada: Abajo de la imagen en móvil, a la izquierda en escritorio */}
+              <div className="order-2 lg:order-1 lg:col-span-7 p-5 sm:p-8 lg:p-12 flex flex-col items-start justify-between z-10">
                 <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-semibold bg-[#eab308]/15 text-[#eab308] border border-[#eab308]/30">
+                  <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-semibold bg-[#eab308]/15 text-[#eab308] border border-[#eab308]/30">
                       <Flame className="w-3.5 h-3.5" />
                       <span>PROGRAMA DESTACADO</span>
                     </span>
-                    <span className="text-slate-300 dark:text-white/30 text-xs">·</span>
-                    <span className="text-[#06b6d4] text-xs font-mono font-semibold uppercase">
+                    <span className="text-slate-500 dark:text-slate-400 text-xs">·</span>
+                    <span className="text-[#06b6d4] text-[11px] sm:text-xs font-mono font-semibold uppercase">
                       {featuredCourse.category || 'INGENIERÍA'}
                     </span>
                   </div>
 
-                  <h3 className="font-constellation-display text-2xl sm:text-3xl md:text-4xl text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors leading-tight mb-4">
+                  <h3 className="font-constellation-display text-xl sm:text-2xl md:text-3xl lg:text-4xl text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors leading-snug sm:leading-tight mb-3 sm:mb-4">
                     {featuredCourse.title}
                   </h3>
 
-                  <p className="font-constellation-body text-sm sm:text-base text-slate-600 dark:text-white/65 leading-relaxed line-clamp-3 mb-6 font-extralight max-w-xl">
+                  <p className="font-constellation-body text-xs sm:text-sm lg:text-base text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 sm:line-clamp-3 mb-5 sm:mb-6 font-extralight max-w-xl">
                     {featuredCourse.description ||
                       'Domina arquitectura avanzada, buenas prácticas y despliegues empresariales guiados por mentores técnicos.'}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-6 w-full pt-4 border-t border-slate-200 dark:border-white/[0.06]">
-                  <div className="flex items-center gap-4 text-xs font-mono text-slate-500 dark:text-white/50">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 w-full pt-4 border-t border-slate-200 dark:border-white/[0.06]">
+                  <div className="flex items-center gap-4 text-xs font-mono text-slate-600 dark:text-slate-300">
                     <span className="flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-[#06b6d4]" />
                       <span>{featuredCourse.modules?.length || 0} módulos</span>
@@ -151,35 +197,15 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     </span>
                   </div>
 
-                  <button className="btn-constellation-pill text-xs ml-auto cursor-pointer">
+                  <button className="btn-constellation-pill text-xs w-full sm:w-auto justify-center cursor-pointer">
                     <Play className="w-3.5 h-3.5 fill-current" />
                     <span>Iniciar Ahora</span>
                   </button>
                 </div>
               </div>
 
-              {/* Cover Panorámico Destacado */}
-              <div className="lg:col-span-5 h-[280px] sm:h-[340px] relative overflow-hidden bg-slate-900">
-                <img
-                  src={
-                    featuredCourse.coverImage ||
-                    FALLBACK_COVERS[0]
-                  }
-                  alt={featuredCourse.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t lg:bg-gradient-to-r from-white/90 via-transparent to-transparent dark:from-[#0a0a14] dark:via-transparent dark:to-transparent opacity-90" />
-                
-                {/* Floating Play Icon */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-14 h-14 rounded-full bg-[#06b6d4]/30 border border-[#06b6d4]/60 flex items-center justify-center text-[#06b6d4] shadow-xl group-hover:scale-110 transition-transform">
-                    <Play className="w-6 h-6 fill-[#06b6d4] ml-0.5" />
-                  </div>
-                </div>
-              </div>
-
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Barra de Filtros por Categoría y Búsqueda */}
@@ -245,7 +271,6 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence>
               {filteredCourses.map((course, idx) => {
                 const totalVideos = (course.modules || []).reduce(
                   (acc, m) => acc + (m.videos || []).length,
@@ -256,20 +281,16 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                   FALLBACK_COVERS[idx % FALLBACK_COVERS.length];
 
                 return (
-                  <motion.article
+                  <article
                     key={course.id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
                     onMouseEnter={() => onPrefetchCourse?.(course.id)}
                     onClick={() => onSelectCourse(course)}
-                    className="flex flex-col rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-lg [content-visibility:auto]"
+                    className="flex flex-col rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-lg [content-visibility:auto]"
                   >
                     {/* Contenedor Visual de la Portada / Imagen */}
                     <div className="relative aspect-video w-full overflow-hidden bg-slate-950">
                       <img
-                        src={cover}
+                        {...getResponsiveCoverProps(cover, 'card')}
                         alt={course.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         loading="lazy"
@@ -307,18 +328,18 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     {/* Cuerpo de la Tarjeta con Tipografía Jerárquica */}
                     <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between">
                       <div>
-                        <h4 className="font-constellation-display text-lg text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors line-clamp-2 leading-snug mb-2">
+                        <h3 className="font-constellation-display text-lg text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors line-clamp-2 leading-snug mb-2">
                           {course.title}
-                        </h4>
+                        </h3>
 
-                        <p className="font-constellation-body text-xs text-slate-600 dark:text-white/60 line-clamp-2 leading-relaxed font-extralight mb-4">
+                        <p className="font-constellation-body text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight mb-4">
                           {course.description ||
                             'Aprende técnicas aplicadas, arquitectura y dominio técnico con evaluación continua.'}
                         </p>
                       </div>
 
                       {/* Metadatos Inferiores y Botón de Entrada */}
-                      <div className="pt-4 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-xs font-mono text-slate-500 dark:text-white/40">
+                      <div className="pt-4 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-xs font-mono text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1">
                             <Layers className="w-3.5 h-3.5 text-[#06b6d4]" />
@@ -336,10 +357,9 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                         </span>
                       </div>
                     </div>
-                  </motion.article>
+                  </article>
                 );
               })}
-            </AnimatePresence>
           </div>
         ) : (
           /* Vista de Lista Cinemática Expandida */
@@ -354,16 +374,15 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                 FALLBACK_COVERS[idx % FALLBACK_COVERS.length];
 
               return (
-                <motion.article
+                <article
                   key={course.id}
-                  whileHover={{ y: -3, transition: { duration: 0.2 } }}
                   onMouseEnter={() => onPrefetchCourse?.(course.id)}
                   onClick={() => onSelectCourse(course)}
-                  className="grid grid-cols-1 md:grid-cols-12 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-none [content-visibility:auto]"
+                  className="grid grid-cols-1 md:grid-cols-12 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-none [content-visibility:auto]"
                 >
                   <div className="md:col-span-4 aspect-video relative overflow-hidden bg-slate-950">
                     <img
-                      src={cover}
+                      {...getResponsiveCoverProps(cover, 'card')}
                       alt={course.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                       loading="lazy"
@@ -383,17 +402,17 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                         <span className="text-[#06b6d4] uppercase font-semibold">
                           {course.category || 'INGENIERÍA'}
                         </span>
-                        <span className="text-slate-300 dark:text-white/30">·</span>
-                        <span className="text-slate-500 dark:text-white/40">
+                        <span className="text-slate-500 dark:text-slate-400">·</span>
+                        <span className="text-slate-600 dark:text-slate-300">
                           {course.modules?.length || 0} módulos / {totalVideos} lecciones
                         </span>
                       </div>
 
-                      <h4 className="font-constellation-display text-xl text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors mb-2">
+                      <h3 className="font-constellation-display text-xl text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200 transition-colors mb-2">
                         {course.title}
-                      </h4>
+                      </h3>
 
-                      <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-white/60 line-clamp-2 leading-relaxed font-extralight">
+                      <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight">
                         {course.description ||
                           'Domina la teoría y ejecución práctica con retroalimentación automatizada y recursos de estudio sintético.'}
                       </p>
@@ -411,7 +430,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                       </button>
                     </div>
                   </div>
-                </motion.article>
+                </article>
               );
             })}
           </div>

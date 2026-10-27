@@ -32,6 +32,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import {
   countCompleted,
   findResumePosition,
@@ -48,6 +49,7 @@ import { parseVideoSource, VideoProvider } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
 import { syncModuleQuizCounts, getModuleQuestionCount, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
+import { getCustomBrandName } from '../lib/logoConfig';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
 import { CoursePanel, PanelTabId } from './course/CoursePanel';
@@ -171,10 +173,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   }, [hideSyllabus, activePanel]);
 
+  useBodyScrollLock(Boolean(isModal));
+
   useEffect(() => {
     if (!isModal) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && onCloseModal) {
@@ -183,7 +185,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isModal, onCloseModal]);
@@ -1733,12 +1734,14 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   if (isModal) {
     return createPortal(
       <div
-        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/85 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in"
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/85 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in overscroll-contain"
         onMouseDown={onCloseModal}
+        onWheel={(e) => e.stopPropagation()}
       >
         <div
-          className="constellation-mission-modal relative flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-purple-500/30 bg-white dark:bg-[#0d0a1a] shadow-2xl text-slate-900 dark:text-white transition-colors"
+          className="constellation-mission-modal relative flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-purple-500/30 bg-white dark:bg-[#0d0a1a] shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
           onMouseDown={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
         >
@@ -1774,7 +1777,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           </header>
 
           {/* Contenido scrolleable del modal */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent overscroll-contain">
             {viewerBody}
           </div>
         </div>

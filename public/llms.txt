@@ -1,0 +1,14 @@
+# DocentOS
+
+> DocentOS Constellation es una plataforma educativa AI-Native de código abierto para aprendizaje técnico, mentoría en tiempo real, cursos interactivos en streaming y certificaciones verificables.
+
+## Secciones Principales
+
+- [Inicio y Exploración](https://docentos.giantucchi.com/): Portada principal con acceso al motor de aprendizaje interactivo DocentOS Constellation.
+- [Catálogo de Cursos](https://docentos.giantucchi.com/courses): Programas académicos estructurados en módulos prácticos con video streaming y evaluaciones.
+- [Mapa del Sitio XML](https://docentos.giantucchi.com/sitemap.xml): Índice estructurado de páginas y cursos publicados.
+
+## Capacidades de la Plataforma
+
+- [API de Cursos Públicos](https://docentos.giantucchi.com/api/courses): Listado en formato JSON de los programas educativos activos, módulos y metadatos.
+- [Estado y Versión del Motor](https://docentos.giantucchi.com/api/version): Información de versión y edición del motor DocentOS LMS.

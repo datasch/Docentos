@@ -363,6 +363,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   /** Estudio ya hecho por quien tiene la sesión abierta; null mientras no se sepa. */
   const [studyStats, setStudyStats] = useState<{ lessons: number; certificates: number } | null>(null);
 
+
+
   /** Testimonios aprobados. Vacío mientras se cargan o si aún no hay ninguno. */
   const [testimonials, setTestimonials] = useState<LandingTestimonial[]>([]);
   /** El de quien tiene sesión, en cualquier estado: pendiente, publicado o rechazado. */

@@ -558,6 +558,7 @@ export interface GeneratedCourseDraft {
     targetAudience: string[];
     generalObjectives: string[];
     category?: string;
+    coverImage?: string;
   };
   modules: GeneratedModuleDraft[];
 }

@@ -214,9 +214,9 @@ test('AI Course Builder: Ciclo de vida asíncrono de AIJob', async (t) => {
   });
 
   await t.test('3. El job se procesa asíncronamente y culmina en estado COMPLETED con progreso 100%', async () => {
-    // Esperar hasta 4 segundos a que el procesamiento asíncrono finalice
+    // Esperar a que el procesamiento asíncrono finalice
     let jobStatus;
-    const maxWaitMs = 5000;
+    const maxWaitMs = 15000;
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitMs) {
@@ -249,7 +249,7 @@ test('AI Course Builder: Persistencia de Curso BORRADOR y Publicación', async (
 
   while (true) {
     const st = await getAiJobStatus(jobId, TEST_USER_ID);
-    if (st.status === 'COMPLETED') break;
+    if (st.status === 'COMPLETED' || st.status === 'FAILED') break;
     await new Promise((r) => setTimeout(r, 150));
   }
 

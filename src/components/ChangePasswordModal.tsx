@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, Lock, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { TwoFactorPanel } from './TwoFactorPanel';
 
 interface ChangePasswordModalProps {
@@ -20,6 +21,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -27,14 +29,11 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     setNewPassword('');
     setConfirmPassword('');
     setError(null);
-    const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
-    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -65,10 +64,15 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overscroll-contain"
+      onMouseDown={onClose}
+      onWheel={(e) => e.stopPropagation()}
+    >
       <div
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="change-password-title"

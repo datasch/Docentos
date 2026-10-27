@@ -4,6 +4,7 @@ import { generateCertificatePNG, downloadCertificate, CertificateData } from '..
 import { pluginManager } from '../../plugins/PluginManager';
 import { api } from '../../lib/api';
 import { getCustomBrandName, getCustomLogoUrl } from '../../lib/logoConfig';
+import { useBodyScrollLock } from '../../lib/useBodyScrollLock';
 
 interface CertificatePreviewModalProps {
   isOpen: boolean;
@@ -25,15 +26,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [certData, setCertData] = useState<CertificateData | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -64,7 +57,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
           studentName: studentName || 'Estudiante',
           courseTitle: courseTitle,
           certificateId: verificationCode,
-          institutionName: finalCfg.institutionName || getCustomBrandName(),
+          institutionName: finalCfg.institutionName || 'Academia Giantucchi',
           signatoryTitle: finalCfg.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador',
           primaryColor: finalCfg.primaryColor || '#06b6d4',
           badgeText: finalCfg.badgeText || 'Certificado de Excelencia Técnica',
@@ -105,12 +98,14 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-fade-in overscroll-contain"
       onClick={onClose}
+      onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="relative flex flex-col max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-3xl border-2 border-amber-500/40 bg-white dark:bg-[#0d0a17] shadow-2xl dark:shadow-[0_0_80px_rgba(245,158,11,0.25)] text-slate-900 dark:text-white transition-colors"
+        className="relative flex flex-col max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-3xl border-2 border-amber-500/40 bg-white dark:bg-[#0d0a17] shadow-2xl dark:shadow-[0_0_80px_rgba(245,158,11,0.25)] text-slate-900 dark:text-white transition-colors overscroll-contain"
         onClick={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
@@ -179,7 +174,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
                 )}
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase text-purple-600 dark:text-purple-400">Emisor:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">Academia Giantucchi</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{certData?.institutionName || 'Academia Giantucchi'}</span>
                 </div>
               </div>
             </div>

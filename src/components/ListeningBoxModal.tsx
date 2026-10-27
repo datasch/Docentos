@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import {
   classifyNps,
   LISTENING_LIMITS,
@@ -111,6 +112,8 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
     }
   }, [onUnreadChange]);
 
+  useBodyScrollLock(isOpen);
+
   useEffect(() => {
     if (!isOpen) return;
     setTab('new');
@@ -120,14 +123,11 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
       // Una respuesta sin leer es lo más importante que puede haber aquí.
       if (pendingReplies > 0) setTab('mine');
     });
-    const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
-    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
     // loadMine cambia con onUnreadChange; reabrir es lo único que debe recargar.
@@ -195,12 +195,14 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-canvas/85 p-3 backdrop-blur-md sm:p-4"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-canvas/85 p-3 backdrop-blur-md sm:p-4 overscroll-contain"
       onMouseDown={onClose}
+      onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="relative flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-2xl"
+        className="relative flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-2xl overscroll-contain"
         onMouseDown={(event) => event.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="listening-title"

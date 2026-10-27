@@ -10,6 +10,7 @@ import React, { useState, useEffect } from 'react';
 import { Award, CheckCircle2, XCircle, Search, ShieldCheck, Copy, Check, ExternalLink, X, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { CertificateRecord } from '../types';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 
 interface CertificateVerifyModalProps {
   initialCode?: string;
@@ -22,6 +23,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  useBodyScrollLock(isOpen);
   const [code, setCode] = useState(initialCode);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<{
@@ -65,7 +67,10 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overscroll-contain"
+      onWheel={(e) => e.stopPropagation()}
+    >
       <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-[#141420] border border-[#2d2d44] p-6 sm:p-8 shadow-2xl text-white">
         {/* Close Button */}
         <button

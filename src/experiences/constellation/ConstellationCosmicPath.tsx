@@ -206,7 +206,13 @@ interface ModuloCaminoTrackProps {
     module: Module;
     index: number;
   } | null;
-  setSelectedNode: (node: { video: VideoDriveLink; module: Module; index: number } | null) => void;
+  setSelectedNode: React.Dispatch<
+    React.SetStateAction<{
+      video: VideoDriveLink;
+      module: Module;
+      index: number;
+    } | null>
+  >;
   isCourseCompleted: boolean;
   isPrevModuleCompleted: boolean;
   allMissionsCompleted: boolean;
@@ -524,11 +530,15 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 }}
                 aria-label={`Misión ${mission.missionNumber} de ${totalMissions}: ${mission.video.title}, estado: ${estado}`}
                 onClick={() => {
-                  setSelectedNode({
-                    video: mission.video,
-                    module: mission.module,
-                    index: mission.missionNumber,
-                  });
+                  setSelectedNode((prev) =>
+                    prev?.video.id === mission.video.id
+                      ? null
+                      : {
+                          video: mission.video,
+                          module: mission.module,
+                          index: mission.missionNumber,
+                        }
+                  );
                 }}
               >
                 <span className="isla-roca" aria-hidden="true">
@@ -756,6 +766,57 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
       activeVideoId = allMissions[allMissions.length - 1].video.id;
     }
   }
+
+  // Referencias para detectar transiciones de avance o finalización de misiones
+  const prevCompletedSetRef = useRef<Set<string>>(new Set(completedVideoIds));
+  const prevActiveVideoIdRef = useRef<string | undefined>(activeVideoId);
+
+  // 1. Si la misión que estaba abierta se acaba de marcar como completada, cerrar su popover de inmediato
+  useEffect(() => {
+    const prevSet = prevCompletedSetRef.current;
+    const currentSet = new Set(completedVideoIds);
+
+    if (selectedNode && !prevSet.has(selectedNode.video.id) && currentSet.has(selectedNode.video.id)) {
+      setSelectedNode(null);
+    }
+
+    prevCompletedSetRef.current = currentSet;
+  }, [completedVideoIds, selectedNode]);
+
+  // 2. Si la misión activa avanza a una nueva posición en la ruta, cerrar cualquier ficha previa rezagada
+  useEffect(() => {
+    if (prevActiveVideoIdRef.current && activeVideoId && prevActiveVideoIdRef.current !== activeVideoId) {
+      setSelectedNode(null);
+    }
+    prevActiveVideoIdRef.current = activeVideoId;
+  }, [activeVideoId]);
+
+  // 3. Cerrar el popover al hacer clic fuera de él o al presionar la tecla Escape
+  useEffect(() => {
+    if (!selectedNode) return;
+
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('.mision-popover') || target.closest('.isla')) {
+        return;
+      }
+      setSelectedNode(null);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedNode(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedNode]);
 
   const completedCount = allMissions.filter((m) => isCompleted(m.video.id)).length;
   const progressPct = totalMissions > 0 ? Math.round((completedCount / totalMissions) * 100) : 0;

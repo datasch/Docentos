@@ -63,6 +63,33 @@ test('Contratos: una instalación migrada permite firmar y consultar la evidenci
     assert.equal((await request('/api/contracts/sign', undefined, consent)).status, 401);
   });
 
+  await t.test('el endpoint público /api/contracts/public entrega los términos sin autenticación', async () => {
+    const res = await request('/api/contracts/public');
+    assert.equal(res.status, 200);
+    assert.ok(res.data.content.length > 50);
+    assert.match(res.data.contractHash, /^[a-f0-9]{64}$/);
+    assert.equal(res.data.retentionPeriodMonths, 24);
+  });
+
+  await t.test('un usuario registrado previamente al cutoff queda exento del modal', async () => {
+    const oldUser = await prisma.user.create({
+      data: {
+        email: `legacy-${suffix}@example.invalid`,
+        name: 'Usuario Antiguo',
+        role: 'PUBLIC_USER',
+        createdAt: new Date('2026-09-01T00:00:00.000Z'), // Antiguo
+      },
+    });
+    userIds.push(oldUser.id);
+    const oldSession = await createUserSession(oldUser.id, { get: () => undefined, ip: '127.0.0.1' } as unknown as Request);
+    const oldCookie = `${config.SESSION_COOKIE_NAME}=${oldSession.token}`;
+
+    const res = await request('/api/contracts/pending', oldCookie);
+    assert.equal(res.status, 200);
+    assert.equal(res.data.requiresSignature, false, 'No debe exigir firma a usuarios antiguos');
+    assert.equal(res.data.exempt, true);
+  });
+
   await t.test('el contrato pendiente se consulta sin errores de tabla inexistente', async () => {
     const result = await request('/api/contracts/pending', studentCookie);
     assert.equal(result.status, 200, JSON.stringify(result.data));

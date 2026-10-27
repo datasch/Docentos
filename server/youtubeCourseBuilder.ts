@@ -96,7 +96,7 @@ REGLAS ESTRICTAS DE PEDAGOGÍA Y VERACIDAD:
 6. Devuelve EXCLUSIVAMENTE un objeto JSON válido con la estructura solicitada, sin bloques de texto adicionales fuera del JSON.`;
 }
 
-function buildUserPrompt(courseRequest: string, videos: VideoInputItem[]): string {
+function buildUserPrompt(courseRequest: string, videos: VideoInputItem[], courseTitle?: string): string {
   const videoCatalog = videos.map((v, i) => ({
     indice: i + 1,
     youtubeVideoId: v.youtubeId,
@@ -105,7 +105,11 @@ function buildUserPrompt(courseRequest: string, videos: VideoInputItem[]): strin
     duracionSegundos: v.durationSeconds,
   }));
 
-  return `Petición del mentor:
+  const titleHeader = courseTitle?.trim()
+    ? `Título asignado al curso: "${courseTitle.trim()}" (Usa exactamente este título como course.title en el JSON)\n\n`
+    : '';
+
+  return `${titleHeader}Petición del mentor:
 "${courseRequest}"
 
 Videos seleccionados (${videos.length} videos):
@@ -153,8 +157,11 @@ Formato JSON estricto requerido:
 export function generateHeuristicStructure(
   courseRequest: string,
   videos: VideoInputItem[],
+  courseTitle?: string,
 ): GeneratedCourseStructure {
-  const cleanTitle = courseRequest.trim() || 'Curso desde YouTube';
+  const cleanTitle =
+    (courseTitle || '').trim() ||
+    (courseRequest.trim() && !courseRequest.startsWith('Quiero crear') ? courseRequest.trim() : 'Curso desde YouTube');
   const total = videos.length;
   const moduleCount = total <= 4 ? 1 : total <= 10 ? 2 : Math.min(5, Math.ceil(total / 5));
   const videosPerModule = Math.ceil(total / moduleCount);
@@ -227,36 +234,54 @@ export function generateHeuristicStructure(
 
 /**
  * Consulta a Gemini mediante el SDK @google/genai si la clave está configurada.
+ * Implementa timeout estricto y corte rápido ante límites de cuota (429/RESOURCE_EXHAUSTED)
+ * para garantizar que la generación nunca se quede congelada.
  */
 async function callGemini(apiKey: string, systemPrompt: string, userPrompt: string): Promise<GeneratedCourseStructure | null> {
   try {
     const { GoogleGenAI } = await import('@google/genai');
     const ai = new GoogleGenAI({ apiKey });
     const candidateModels = [
-      process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite',
-    ];
+      process.env.GEMINI_MODEL,
+      'gemini-flash-latest',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ].filter((m): m is string => Boolean(m));
 
     let text = '';
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
     for (const model of candidateModels) {
       try {
-        const interaction = await ai.interactions.create({
+        const resp = await ai.models.generateContent({
           model,
-          input: `${systemPrompt}\n\n${userPrompt}`,
+          contents: fullPrompt,
+          config: { abortSignal: AbortSignal.timeout(12000) },
         });
-        if (interaction.output_text) {
-          text = interaction.output_text;
+        if (resp.text) {
+          text = resp.text;
           break;
         }
-      } catch {
-        // Seguir con el siguiente modelo de la lista
+      } catch (err: any) {
+        const msg = String(err?.message || err || '');
+        // Si la cuota gratuita diaria se agotó (429 / RESOURCE_EXHAUSTED), interrumpir de inmediato
+        // para que el motor heurístico tome el control sin perder minutos intentando otros modelos.
+        if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+          logger.warn('youtube.builder.gemini_quota_exhausted', {
+            model,
+            reason: 'Cuota de Gemini agotada en la capa gratuita. Activando respaldo inteligente de inmediato.',
+          });
+          break;
+        }
       }
     }
 
-    const parsed = extractJsonObject(text) as GeneratedCourseStructure;
-    if (parsed?.course && Array.isArray(parsed?.modules)) {
-      return parsed;
+    if (text) {
+      const parsed = extractJsonObject(text) as GeneratedCourseStructure;
+      if (parsed?.course && Array.isArray(parsed?.modules)) {
+        return parsed;
+      }
     }
   } catch (err) {
     logger.warn('youtube.builder.gemini_failed', { reason: String(err) });
@@ -272,6 +297,7 @@ export async function createAiJob(
   playlistId: string | null,
   courseRequest: string,
   videos: VideoInputItem[],
+  courseTitle?: string,
 ): Promise<{ id: string; status: string; progress: number }> {
   if (!videos || videos.length === 0) {
     throw new AiJobError('Debes seleccionar al menos un video para generar el curso.');
@@ -321,7 +347,7 @@ export async function createAiJob(
 
   // Procesar de fondo de forma reactiva sin bloquear la respuesta HTTP
   setImmediate(() => {
-    processJobAsync(job.id, courseRequest, videos).catch((err) => {
+    processJobAsync(job.id, courseRequest, videos, courseTitle).catch((err) => {
       logger.error('youtube.builder.job_fatal_error', { jobId: job.id, error: String(err) });
     });
   });
@@ -332,7 +358,12 @@ export async function createAiJob(
 /**
  * Procesa el AIJob actualizando estado y progreso en la base de datos.
  */
-async function processJobAsync(jobId: string, courseRequest: string, videos: VideoInputItem[]) {
+async function processJobAsync(
+  jobId: string,
+  courseRequest: string,
+  videos: VideoInputItem[],
+  courseTitle?: string,
+) {
   try {
     await prisma.aIJob.update({
       where: { id: jobId },
@@ -340,7 +371,7 @@ async function processJobAsync(jobId: string, courseRequest: string, videos: Vid
     });
 
     const systemPrompt = buildSystemPrompt();
-    const userPrompt = buildUserPrompt(courseRequest, videos);
+    const userPrompt = buildUserPrompt(courseRequest, videos, courseTitle);
 
     let resultStructure: GeneratedCourseStructure | null = null;
     let usedProvider = 'heuristic';
@@ -374,8 +405,14 @@ async function processJobAsync(jobId: string, courseRequest: string, videos: Vid
 
     // 3. Respaldo inteligente heurístico
     if (!resultStructure) {
-      resultStructure = generateHeuristicStructure(courseRequest, videos);
+      await prisma.aIJob.update({ where: { id: jobId }, data: { progress: 80 } });
+      resultStructure = generateHeuristicStructure(courseRequest, videos, courseTitle);
       usedProvider = 'heuristic';
+    }
+
+    // Asegurar que si el mentor indicó un título en el paso 1, prevalezca sobre texto de prompt
+    if (courseTitle?.trim() && (!resultStructure.course.title || resultStructure.course.title === courseRequest || resultStructure.course.title.startsWith('Quiero crear'))) {
+      resultStructure.course.title = courseTitle.trim();
     }
 
     // Formatear duraciones de las lecciones
@@ -453,7 +490,8 @@ export async function applyJobToDraftCourse(
   jobId: string,
   userId: string,
   editedStructure?: GeneratedCourseStructure,
-): Promise<{ success: boolean; courseId: string; courseTitle: string }> {
+  publishImmediately?: boolean,
+): Promise<{ success: boolean; courseId: string; courseTitle: string; published: boolean }> {
   const job = await prisma.aIJob.findFirst({
     where: { id: jobId, userId },
   });
@@ -490,14 +528,16 @@ export async function applyJobToDraftCourse(
       if (existente) return existente;
     }
 
-    // 1. Crear el Curso en estado borrador (published: false)
+    // 1. Crear el Curso en estado borrador o publicado de inmediato
+    const isPublished = Boolean(publishImmediately);
     const newCourse = await tx.course.create({
       data: {
         title: cInfo.title,
         description: `${cInfo.description}\n\n**Objetivos del curso:**\n${cInfo.generalObjectives?.map((o) => `- ${o}`).join('\n') || ''}`,
         price: 0,
         currency: 'USD',
-        published: false, // Borrador explícito según requerimiento
+        published: isPublished,
+        publishedAt: isPublished ? new Date() : null,
         category: cInfo.category || 'YouTube Masterclass',
         coverImage: resolvedCoverImage,
       },
@@ -548,6 +588,7 @@ export async function applyJobToDraftCourse(
     success: true,
     courseId: course.id,
     courseTitle: course.title,
+    published: course.published,
   };
 }
 

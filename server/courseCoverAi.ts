@@ -615,16 +615,24 @@ export async function generateCourseCoverWithAi(params: {
 
   // Intentar enriquecer el subtítulo y etiqueta temática con el proveedor de IA si está activo
   const geminiKey = config.GEMINI_API_KEY || config.AI_API_KEY || process.env.GEMINI_API_KEY;
-  if (geminiKey) {
+  const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.DOCENTOS_SKIP_LISTEN);
+
+  if (geminiKey && !isTestEnv) {
     try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout de generación de portada con IA')), 3500)
+      );
+
       const { GoogleGenAI } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const response = await ai.interactions.create({
+      const apiCall = ai.interactions.create({
         model: 'gemini-3.8-flash',
         input: `Genera metadatos visuales concisos en español para la portada de un curso llamado "${params.title}" (Categoría: "${params.category || ''}", Descripción: "${(params.description || '').slice(0, 200)}").
 Devuelve SOLO un JSON con esta forma exacta:
 {"headline": "Título corto impactante (máx 42 caracteres)", "topicTag": "ETIQUETA TEMÁTICA EN MAYÚSCULAS (máx 26 caracteres)", "subline": "3 conceptos clave separados por · (máx 55 caracteres)"}`,
       });
+
+      const response = await Promise.race([apiCall, timeoutPromise]);
       const text = response.output_text || '';
       const start = text.indexOf('{');
       const end = text.lastIndexOf('}');
@@ -643,7 +651,7 @@ Devuelve SOLO un JSON con esta forma exacta:
     } catch {
       // Continúa con el diseño determinista de baseSpec sin bloquear la creación del curso
     }
-  } else if (isAiEnabled()) {
+  } else if (isAiEnabled() && !isTestEnv) {
     try {
       const res = await requestAiJson({
         system: 'Eres un director de arte de portadas educativas. Responde solo en JSON válido.',

@@ -84,7 +84,8 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
   const certPluginConfig = pluginManager.getPlugin('pdf-certificates')?.config || {};
 
   const primaryColor = data.primaryColor || certPluginConfig.primaryColor || '#06b6d4';
-  const institution = data.institutionName || certPluginConfig.institutionName || getCustomBrandName() || 'DocentOS';
+  const rawInstitution = data.institutionName || certPluginConfig.institutionName || 'Academia Giantucchi';
+  const institution = rawInstitution || 'Academia Giantucchi';
   const giantucchiSignatory = data.signatoryTitle || certPluginConfig.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador';
   const giantucchiSignatureSrc = data.signatureImage || certPluginConfig.signatureImage || certPluginConfig.signature;
 
@@ -502,7 +503,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
     ctx.fillText(giantucchiSignatory, rightCenterX, lineY + 26);
     ctx.font = '12px sans-serif';
     ctx.fillStyle = mutedColor;
-    ctx.fillText('Academia Giantucchi', rightCenterX, lineY + 46);
+    ctx.fillText(institution, rightCenterX, lineY + 46);
 
   } else {
     // ═══════════════════════════════════════════════════════════════════════════
@@ -570,7 +571,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
     ctx.fillText(giantucchiSignatory, centerX, lineY + 26);
     ctx.font = '12px sans-serif';
     ctx.fillStyle = mutedColor;
-    ctx.fillText('Academia Giantucchi — Certificación Oficial', centerX, lineY + 46);
+    ctx.fillText(`${institution} — Certificación Oficial`, centerX, lineY + 46);
   }
 
   return canvas.toDataURL('image/png');

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Brain, Video, ShieldCheck, Layers, CheckCircle2 } from 'lucide-react';
 
 export const ConstellationPillars: React.FC = () => {
@@ -60,17 +59,16 @@ export const ConstellationPillars: React.FC = () => {
             const IconComp = pillar.icon;
 
             return (
-              <motion.article
+              <article
                 key={pillar.id}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="flex flex-col justify-between p-6 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.06] hover:border-[#06b6d4]/40 transition-all group cursor-default shadow-sm dark:shadow-none"
+                className="flex flex-col justify-between p-6 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.06] hover:border-[#06b6d4]/40 transition-all duration-200 group cursor-default shadow-sm dark:shadow-none"
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">
                     <div className="p-3 rounded-2xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/10 group-hover:border-[#06b6d4]/40 group-hover:bg-[#06b6d4]/10 text-[#06b6d4] transition-colors">
                       <IconComp aria-hidden className="h-5 w-5" />
                     </div>
-                    <span className="font-mono text-xs text-slate-400 dark:text-white/30 font-bold">
+                    <span className="font-mono text-xs text-slate-600 dark:text-slate-300 font-bold">
                       0{idx + 1}
                     </span>
                   </div>
@@ -79,19 +77,19 @@ export const ConstellationPillars: React.FC = () => {
                     {pillar.title}
                   </h3>
                   
-                  <p className="font-constellation-body text-xs text-slate-600 dark:text-white/60 leading-relaxed font-extralight">
+                  <p className="font-constellation-body text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-extralight">
                     {pillar.description}
                   </p>
                 </div>
 
-                <div className="mt-8 pt-3 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-white/40">
+                <div className="mt-8 pt-3 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[10px] font-mono text-slate-600 dark:text-slate-300">
                   <span className="text-[#06b6d4] font-semibold">{pillar.tag}</span>
                   <span className="flex items-center gap-1 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                     <span>Verificado</span>
                     <CheckCircle2 className="w-3 h-3 text-[#06b6d4]" />
                   </span>
                 </div>
-              </motion.article>
+              </article>
             );
           })}
         </div>

@@ -14,6 +14,36 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.16 - 2026-10-26
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias.
+
+### Added
+
+- Publicación directa e inmediata desde el creador de cursos con IA desde
+  YouTube: tanto administradores como mentores pueden marcar la casilla
+  «Publicar inmediatamente» para que el curso quede activo en el catálogo
+  al guardar, o desmarcarla para conservarlo como borrador.
+- Publicación de cursos desde el panel del mentor: los mentores pueden
+  publicar directamente en el catálogo sus cursos generados sin depender del
+  panel de administración.
+- Endpoint público de marca (`GET /api/public/brand`) para servir el nombre y
+  logotipo institucional a visitantes, invitaciones y navegación en incógnito.
+
+### Fixed
+
+- Persistencia de identidad y marca del campus: se resolvió el parpadeo en el
+  que la marca configurada en el plugin volvía temporalmente al valor por
+  defecto al recargar la página.
+- Sincronización proactiva de plugins en el arranque de la aplicación sin
+  requerir la apertura previa del panel de administración.
+- Optimización de rendimiento móvil: desactivación condicional del renderizado 3D
+  pesado en dispositivos táctiles/móviles para garantizar 60 FPS estables y cero
+  bloqueos al desplazarse.
+- Eliminación de parpadeos de autenticación (FOUC) en la cabecera al refrescar.
+- Retiro del botón de atajo `⌘K` redundante en la barra de navegación superior.
+
 ## 0.5.0-beta.15 - 2026-10-26
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros

@@ -11,6 +11,27 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          experimentalMinChunkSize: 10000,
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('motion') || id.includes('framer-motion')) {
+                return 'vendor-motion';
+              }
+              if (id.includes('i18next')) {
+                return 'vendor-i18n';
+              }
+              if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+                return 'vendor-react';
+              }
+            }
+          },
+        },
+      },
+    },
     server: {
       headers: {
         'Permissions-Policy': 'picture-in-picture=*, fullscreen=*, accelerometer=*, autoplay=*, encrypted-media=*, gyroscope=*',

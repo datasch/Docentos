@@ -47,6 +47,7 @@ import {
   Tag,
   Film,
   ListFilter,
+  X,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import {
@@ -66,6 +67,19 @@ interface YouTubeCourseBuilderProps {
   onCourseCreated?: (courseId: string) => void;
   onCancel?: () => void;
 }
+
+const COURSE_CATEGORIES = [
+  'Mentoría Especializada',
+  'Mentoría Premium',
+  'Mentoría Elite',
+  'Desarrollo Web',
+  'Inteligencia Artificial',
+  'Tecnología e Ingeniería',
+  'Negocios y Emprendimiento',
+  'Diseño y Creatividad',
+  'YouTube Masterclass',
+  'General',
+];
 
 export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   currentUser,
@@ -109,9 +123,40 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
   // Estructura generada para edición (Paso 4)
   const [draftCourse, setDraftCourse] = useState<GeneratedCourseDraft | null>(null);
+  const [generatingCover, setGeneratingCover] = useState(false);
   const [savingCourse, setSavingCourse] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState<{ courseId: string; courseTitle: string } | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<{ courseId: string; courseTitle: string; published?: boolean } | null>(null);
+  const [publishImmediately, setPublishImmediately] = useState<boolean>(true);
   const [publishing, setPublishing] = useState(false);
+
+  const handleGenerateCover = async () => {
+    if (!draftCourse?.course?.title?.trim()) {
+      alert('Escribe primero el título del curso para generar una portada temática con IA.');
+      return;
+    }
+    setGeneratingCover(true);
+    try {
+      const res = await api.generateCourseCover({
+        title: draftCourse.course.title.trim(),
+        category: draftCourse.course.category?.trim() || 'Mentoría Especializada',
+        description: draftCourse.course.description?.trim() || '',
+      });
+      if (res.success && res.coverImage) {
+        setDraftCourse((prev) =>
+          prev
+            ? {
+                ...prev,
+                course: { ...prev.course, coverImage: res.coverImage },
+              }
+            : null,
+        );
+      }
+    } catch (err: any) {
+      alert(err.message || 'No se pudo generar la portada con IA');
+    } finally {
+      setGeneratingCover(false);
+    }
+  };
 
   // Cargar estado de conexión con YouTube al montar
   useEffect(() => {
@@ -322,8 +367,10 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setJobProgress(15);
       setJobStatusText('Enviando videos al motor de IA pedagógico...');
 
+      const resolvedTitle = courseTitle.trim() || playlist?.title || '';
       const response = await api.youtube.generateCourse({
         playlistId: playlist?.youtubeId === 'custom-search' ? undefined : playlist?.id,
+        courseTitle: resolvedTitle || undefined,
         courseRequest: coursePrompt,
         videos: includedVideos.map((v, idx) => ({
           id: v.id,
@@ -353,9 +400,13 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
   const pollJobStatus = (jobId: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 4;
+
     const interval = setInterval(async () => {
       try {
         const job = await api.youtube.getJobStatus(jobId);
+        consecutiveErrors = 0;
         setJobProgress(job.progress || 50);
 
         if (job.status === 'PROCESSING') {
@@ -365,6 +416,15 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           setJobProgress(100);
           setJobStatusText('¡Curso generado con éxito!');
           if (job.result) {
+            const finalTitle = courseTitle.trim() || playlist?.title || '';
+            if (
+              finalTitle &&
+              (!job.result.course.title ||
+                job.result.course.title === coursePrompt ||
+                job.result.course.title.startsWith('Quiero crear'))
+            ) {
+              job.result.course.title = finalTitle;
+            }
             setDraftCourse(job.result);
             setTimeout(() => setCurrentStep(4), 600);
           } else {
@@ -375,27 +435,34 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           setGenerationError(job.errorMessage || 'Falló la generación del curso por IA.');
         }
       } catch (err: any) {
-        clearInterval(interval);
-        setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
+        consecutiveErrors += 1;
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          clearInterval(interval);
+          setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
+        }
       }
     }, 2000);
     pollRef.current = interval;
   };
 
-  // Paso 4: Guardar como Borrador en DocentOS
+  // Paso 4: Guardar y Publicar / Borrador en DocentOS
   const handleSaveDraftCourse = async () => {
     if (!activeJobId || !draftCourse) return;
 
     try {
       setSavingCourse(true);
-      const res = await api.youtube.applyJob(activeJobId, draftCourse);
-      setSaveSuccess({ courseId: res.courseId, courseTitle: res.courseTitle });
+      const res = await api.youtube.applyJob(activeJobId, draftCourse, publishImmediately);
+      setSaveSuccess({
+        courseId: res.courseId,
+        courseTitle: res.courseTitle,
+        published: Boolean(res.published ?? publishImmediately),
+      });
       setCurrentStep(5);
       if (onCourseCreated) {
         onCourseCreated(res.courseId);
       }
     } catch (err: any) {
-      alert(`Error al guardar curso borrador: ${err.message}`);
+      alert(`Error al guardar curso: ${err.message}`);
     } finally {
       setSavingCourse(false);
     }
@@ -1064,32 +1131,44 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 4 && draftCourse && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-800 flex-wrap gap-3">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold mb-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-1">
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>Borrador generado por IA — Puedes editar todo</span>
+                <span>Estructura generada por IA — Puedes personalizar todo</span>
               </div>
               <h2 className="text-xl font-bold text-white">Estructura del Curso Propuesta</h2>
             </div>
-            <button
-              type="button"
-              onClick={handleSaveDraftCourse}
-              disabled={savingCourse}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition shadow-lg shadow-emerald-600/20"
-            >
-              {savingCourse ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Guardando en DocentOS...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>Guardar como Curso Borrador</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={publishImmediately}
+                  onChange={(e) => setPublishImmediately(e.target.checked)}
+                  className="accent-[#06b6d4] w-4 h-4 rounded cursor-pointer"
+                />
+                <span>Publicar inmediatamente</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handleSaveDraftCourse}
+                disabled={savingCourse}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+              >
+                {savingCourse ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{publishImmediately ? 'Publicando en DocentOS...' : 'Guardando en DocentOS...'}</span>
+                  </>
+                ) : (
+                  <>
+                    {publishImmediately ? <Globe className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    <span>{publishImmediately ? 'Guardar y Publicar Curso' : 'Guardar como Curso Borrador'}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Metadatos Generales del Curso */}
@@ -1122,21 +1201,28 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                         course: { ...draftCourse.course, level: e.target.value },
                       })
                     }
-                    className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
-                    placeholder="Nivel"
+                    className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500"
+                    placeholder="Nivel (Ej: Principiante)"
                   />
-                  <input
-                    type="text"
-                    value={draftCourse.course.category || 'YouTube Masterclass'}
+                  <select
+                    value={draftCourse.course.category || 'Mentoría Especializada'}
                     onChange={(e) =>
                       setDraftCourse({
                         ...draftCourse,
                         course: { ...draftCourse.course, category: e.target.value },
                       })
                     }
-                    className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
-                    placeholder="Categoría"
-                  />
+                    className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500 cursor-pointer"
+                  >
+                    {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category) && (
+                      <option value={draftCourse.course.category}>{draftCourse.course.category}</option>
+                    )}
+                    {COURSE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -1152,7 +1238,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     course: { ...draftCourse.course, description: e.target.value },
                   })
                 }
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500"
               />
             </div>
 
@@ -1170,8 +1256,72 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     },
                   })
                 }
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white font-mono text-xs"
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white font-mono text-xs focus:outline-none focus:border-red-500"
               />
+            </div>
+
+            {/* Imagen de Portada (Generación Temática con IA + Logo) */}
+            <div className="space-y-2 pt-3 border-t border-slate-800/80">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-medium text-slate-300 block">
+                  Imagen de Portada (Automática con IA + Logo si se deja vacía)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateCover}
+                  disabled={generatingCover}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {generatingCover ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>{generatingCover ? 'Generando con IA...' : 'Generar con IA + Logo'}</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Dejar vacío para autogenerar portada IA temática con logo del plugin..."
+                  value={draftCourse.course.coverImage || ''}
+                  onChange={(e) =>
+                    setDraftCourse({
+                      ...draftCourse,
+                      course: { ...draftCourse.course, coverImage: e.target.value },
+                    })
+                  }
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+                />
+                {draftCourse.course.coverImage && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraftCourse({
+                        ...draftCourse,
+                        course: { ...draftCourse.course, coverImage: '' },
+                      })
+                    }
+                    title="Limpiar portada"
+                    className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {draftCourse.course.coverImage && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800 mt-2">
+                  <img
+                    src={draftCourse.course.coverImage}
+                    alt="Vista previa de portada"
+                    className="w-32 h-20 rounded-lg object-cover border border-cyan-500/30 shrink-0"
+                  />
+                  <div className="text-xs text-slate-400 leading-relaxed">
+                    <span className="text-cyan-400 font-bold block mb-0.5">Vista previa de portada activa</span>
+                    Diseño temático adaptado al curso con el emblema y colores configurados en el plugin de personalización.
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1246,7 +1396,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           </div>
 
           {/* Pie con botón de guardado */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-800 flex-wrap gap-3">
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
@@ -1255,24 +1405,36 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               <ArrowLeft className="w-4 h-4" />
               <span>Atrás</span>
             </button>
-            <button
-              type="button"
-              onClick={handleSaveDraftCourse}
-              disabled={savingCourse}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition shadow-lg shadow-emerald-600/20"
-            >
-              {savingCourse ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Guardando...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  <span>Guardar como Borrador en DocentOS</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={publishImmediately}
+                  onChange={(e) => setPublishImmediately(e.target.checked)}
+                  className="accent-[#06b6d4] w-4 h-4 rounded cursor-pointer"
+                />
+                <span>Publicar inmediatamente</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handleSaveDraftCourse}
+                disabled={savingCourse}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+              >
+                {savingCourse ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{publishImmediately ? 'Publicando...' : 'Guardando...'}</span>
+                  </>
+                ) : (
+                  <>
+                    {publishImmediately ? <Globe className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    <span>{publishImmediately ? 'Guardar y Publicar Curso' : 'Guardar como Borrador en DocentOS'}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1288,36 +1450,48 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              ¡Curso Creado Exitosamente!
+              {saveSuccess.published ? '¡Curso Creado y Publicado con Éxito!' : '¡Curso Creado Exitosamente!'}
             </h2>
             <p className="text-sm text-slate-400">
-              El curso <span className="text-white font-semibold font-mono">"{saveSuccess.courseTitle}"</span> ha sido guardado como un <strong className="text-amber-400">BORRADOR</strong> en DocentOS.
+              El curso <span className="text-white font-semibold font-mono">"{saveSuccess.courseTitle}"</span> ha sido{' '}
+              {saveSuccess.published ? (
+                <strong className="text-emerald-400">PUBLICADO</strong>
+              ) : (
+                <strong className="text-amber-400">guardado como BORRADOR</strong>
+              )}{' '}
+              en DocentOS.
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 text-left space-y-2">
             <p>✅ Videos vinculados con reproducción nativa sin cookies de YouTube</p>
             <p>✅ Módulos y lecciones sincronizados en PostgreSQL</p>
-            <p>✅ Solo los mentores y administradores pueden verlo mientras esté en borrador</p>
+            <p>
+              {saveSuccess.published
+                ? '✅ Visible inmediatamente para todos los estudiantes en el Catálogo'
+                : '✅ Solo los mentores y administradores pueden verlo mientras esté en borrador'}
+            </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handlePublishNow}
-              disabled={publishing}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-            >
-              {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-              <span>Publicar Ahora en el Catálogo</span>
-            </button>
+            {!saveSuccess.published ? (
+              <button
+                type="button"
+                onClick={handlePublishNow}
+                disabled={publishing}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition flex items-center justify-center gap-2"
+              >
+                {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                <span>Publicar Ahora en el Catálogo</span>
+              </button>
+            ) : null}
             {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition"
               >
-                Volver al Panel de Mentor
+                Cerrar y Volver
               </button>
             )}
           </div>

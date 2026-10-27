@@ -16,6 +16,7 @@ import { api } from '../lib/api';
 import { User } from '../types';
 import { usePlatformBrand } from '../lib/logoConfig';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  useBodyScrollLock(isOpen);
   const { logoUrl, brandName } = usePlatformBrand();
   
   // Form State
@@ -73,16 +75,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
 
-    document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -162,6 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-modal-title"
+      onWheel={(e) => e.stopPropagation()}
     >
       <div className="flex min-h-full items-center justify-center p-3 sm:p-6" onMouseDown={onClose}>
         <div

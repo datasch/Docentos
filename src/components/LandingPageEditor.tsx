@@ -58,6 +58,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
   // Course selector state
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
+
+
   const [courseSearch, setCourseSearch] = useState('');
 
   // Form State

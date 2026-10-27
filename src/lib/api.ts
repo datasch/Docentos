@@ -404,6 +404,12 @@ export const api = {
   },
 
   // Admin Management
+  async getPublicBrand(): Promise<{ success: boolean; brandName: string; campusName: string; logoUrl: string }> {
+    const res = await fetch('/api/public/brand');
+    if (!res.ok) throw new Error('Error al obtener la identidad de la plataforma');
+    return res.json();
+  },
+
   async getLandingConfig(): Promise<{ success: boolean; config: LandingConfig }> {
     const res = await fetch('/api/public/landing-config');
     if (!res.ok) throw new Error('Error al obtener la configuración de la portada');
@@ -1353,6 +1359,7 @@ export const api = {
 
     async generateCourse(input: {
       playlistId?: string;
+      courseTitle?: string;
       courseRequest: string;
       videos: Array<{
         id: string;
@@ -1385,28 +1392,44 @@ export const api = {
     async applyJob(
       jobId: string,
       customCourseData?: GeneratedCourseDraft,
-    ): Promise<{ success: boolean; courseId: string; courseTitle: string }> {
+      publishImmediately?: boolean,
+    ): Promise<{ success: boolean; courseId: string; courseTitle: string; published?: boolean }> {
       const res = await fetch(`/api/youtube/ai-apply/${encodeURIComponent(jobId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customCourseData }),
+        body: JSON.stringify({ customCourseData, publishImmediately }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || 'Error al aplicar curso borrador');
+        throw new Error(data.error || 'Error al aplicar curso');
       }
       return data;
     },
 
-    async publishCourse(courseId: string): Promise<boolean> {
+    async publishCourse(courseId: string, published = true): Promise<boolean> {
       const res = await fetch(`/api/youtube/courses/${encodeURIComponent(courseId)}/publish`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ published }),
       });
       return res.ok;
     },
   },
 
   contracts: {
+    async getPublic(): Promise<{
+      version: string;
+      title: string;
+      content: string;
+      contractHash: string;
+      retentionPeriodMonths: number;
+      accessPeriodMonths: number;
+    }> {
+      const res = await fetch('/api/contracts/public');
+      if (!res.ok) throw new Error('Error al obtener términos y condiciones de la plataforma');
+      return res.json();
+    },
+
     async getPending(): Promise<{
       requiresSignature: boolean;
       contract?: {

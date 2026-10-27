@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { Star } from 'lucide-react';
 
 export const ConstellationTestimonials: React.FC = () => {
@@ -8,7 +7,7 @@ export const ConstellationTestimonials: React.FC = () => {
       id: 't1',
       name: 'Carlos Mendoza',
       role: 'Estudiante VIP & Software Engineer',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=75&auto=format&fit=crop',
       comment: 'DocentOS me permitió completar la mentoría técnica con guías explicativas por audio e interactuar directamente con los mentores.',
       rating: 5,
     },
@@ -16,7 +15,7 @@ export const ConstellationTestimonials: React.FC = () => {
       id: 't2',
       name: 'Ing. Sofia Ruiz',
       role: 'Mentor Director en DocentOS',
-      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&q=75&auto=format&fit=crop',
       comment: 'Gestión directa de estudiantes, revisión centralizada de preguntas y vinculación automática de videos en minutos.',
       rating: 5,
     },
@@ -24,7 +23,7 @@ export const ConstellationTestimonials: React.FC = () => {
       id: 't3',
       name: 'Alejandro Valdés',
       role: 'Fullstack Engineer & Alumno',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=75&auto=format&fit=crop',
       comment: 'La fluidez de la plataforma y el enfoque directo a código sin rodeos marca la diferencia frente a cualquier otro LMS tradicional.',
       rating: 5,
     },
@@ -53,10 +52,9 @@ export const ConstellationTestimonials: React.FC = () => {
         {/* Grilla de Testimonios */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t) => (
-            <motion.article
+            <article
               key={t.id}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              className="flex flex-col justify-between p-6 rounded-[24px] bg-white/80 dark:bg-[#0c0a1a]/80 hover:bg-slate-50 dark:hover:bg-[#141026] border border-slate-200 dark:border-white/[0.08] hover:border-[#a855f7]/40 transition-all group shadow-md dark:shadow-lg [content-visibility:auto]"
+              className="flex flex-col justify-between p-6 rounded-[24px] bg-white/80 dark:bg-[#0c0a1a]/80 hover:bg-slate-50 dark:hover:bg-[#141026] hover:-translate-y-1 border border-slate-200 dark:border-white/[0.08] hover:border-[#a855f7]/40 transition-all duration-200 group shadow-md dark:shadow-lg [content-visibility:auto]"
             >
               <div>
                 {/* Cabecera con Persona y Estrellas */}
@@ -65,14 +63,16 @@ export const ConstellationTestimonials: React.FC = () => {
                     <img
                       src={t.avatarUrl}
                       alt={t.name}
+                      width={40}
+                      height={40}
                       decoding="async"
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-white/10"
                       loading="lazy"
                     />
                     <div>
-                      <h4 className="font-constellation-display text-base text-slate-900 dark:text-white font-medium">
+                      <h3 className="font-constellation-display text-base text-slate-900 dark:text-white font-medium">
                         {t.name}
-                      </h4>
+                      </h3>
                       <span className="font-constellation-label text-[11px] text-[#06b6d4] tracking-wider uppercase block">
                         {t.role}
                       </span>
@@ -88,16 +88,16 @@ export const ConstellationTestimonials: React.FC = () => {
                 </div>
 
                 {/* Comentario */}
-                <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-white/70 leading-relaxed font-extralight italic">
+                <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-extralight italic">
                   “{t.comment}”
                 </p>
               </div>
 
-              <div className="mt-6 pt-3 border-t border-slate-100 dark:border-white/[0.04] text-[10px] font-mono text-slate-500 dark:text-white/40 flex items-center justify-between">
+              <div className="mt-6 pt-3 border-t border-slate-100 dark:border-white/[0.04] text-[10px] font-mono text-slate-600 dark:text-slate-300 flex items-center justify-between">
                 <span>ESTUDIANTE VERIFICADO</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Auténtico</span>
               </div>
-            </motion.article>
+            </article>
           ))}
         </div>
 

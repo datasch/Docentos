@@ -38,12 +38,13 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { AcademiaPlugin } from '../types';
 import { pluginManager } from '../plugins/PluginManager';
 import { SignaturePad } from './SignaturePad';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
 import { applyPlatformTheme, ColorTheme, ColorMode, getCurrentColorMode, setColorMode } from '../lib/themeApplicator';
-import { setCustomLogoUrl, setCustomBrandName, DEFAULT_LOGO_URL } from '../lib/logoConfig';
+import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL } from '../lib/logoConfig';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
 
@@ -74,7 +75,8 @@ const FIELD_LABELS: Record<string, string> = {
   colorTheme: 'Paleta de Acento Visual',
   density: 'Densidad de Interfaz',
   showQuickVersionSwitcher: 'Mostrar selector rápido de versiones en cabecera',
-  customCampusName: 'Nombre del Campus / Institución',
+  customBrandName: 'Nombre de la Plataforma / Marca',
+  customCampusName: 'Título del Campus / Panel de Administración',
 };
 
 export const PluginManagerView: React.FC = () => {
@@ -82,6 +84,7 @@ export const PluginManagerView: React.FC = () => {
   const [plugins, setPlugins] = useState<AcademiaPlugin[]>(pluginManager.getPlugins());
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [configModalPlugin, setConfigModalPlugin] = useState<AcademiaPlugin | null>(null);
+  useBodyScrollLock(Boolean(configModalPlugin));
   const [configFormState, setConfigFormState] = useState<Record<string, any>>({});
   const [savingConfig, setSavingConfig] = useState<boolean>(false);
   const [downloadingSampleCert, setDownloadingSampleCert] = useState<boolean>(false);
@@ -164,11 +167,14 @@ export const PluginManagerView: React.FC = () => {
     }
     if (plugin.id === 'docentos-customizer') {
       if (!initialConfig.colorMode) initialConfig.colorMode = getCurrentColorMode();
-      const currentBrand = initialConfig.customCampusName || initialConfig.customBrandName;
-      if (currentBrand) {
-        initialConfig.customCampusName = currentBrand;
-        initialConfig.customBrandName = currentBrand;
-      }
+      if (!initialConfig.interfaceVersion) initialConfig.interfaceVersion = 'v0.5-modern';
+      const currentBrand = initialConfig.customBrandName || (initialConfig.customCampusName !== 'DocentOS Command Center' ? initialConfig.customCampusName : undefined);
+      const safeBrand = (currentBrand && currentBrand !== 'Academia Giantucchi') ? currentBrand : 'DocentOS';
+      const currentCampus = initialConfig.customCampusName;
+      const safeCampus = (currentCampus && currentCampus !== 'Academia Giantucchi') ? currentCampus : 'DocentOS Command Center';
+      initialConfig.customBrandName = safeBrand;
+      initialConfig.customCampusName = safeCampus;
+      delete initialConfig.institutionName;
     }
     setConfigFormState(initialConfig);
   };
@@ -181,11 +187,13 @@ export const PluginManagerView: React.FC = () => {
       setSavingConfig(true);
       const unifiedState = { ...configFormState };
       if (configModalPlugin.id === 'docentos-customizer') {
-        const brand = unifiedState.customCampusName || unifiedState.customBrandName;
-        if (brand) {
-          unifiedState.customCampusName = brand;
-          unifiedState.customBrandName = brand;
-        }
+        const brand = (unifiedState.customBrandName || '').trim() || 'DocentOS';
+        const safeBrand = brand === 'Academia Giantucchi' ? 'DocentOS' : brand;
+        const campus = (unifiedState.customCampusName || '').trim() || 'DocentOS Command Center';
+        const safeCampus = campus === 'Academia Giantucchi' ? 'DocentOS Command Center' : campus;
+        unifiedState.customBrandName = safeBrand;
+        unifiedState.customCampusName = safeCampus;
+        delete unifiedState.institutionName;
       }
       const res = await api.updatePluginConfig(configModalPlugin.id, unifiedState);
       if (res.plugins) {
@@ -197,9 +205,11 @@ export const PluginManagerView: React.FC = () => {
         if (unifiedState.customLogoUrl !== undefined) {
           setCustomLogoUrl(unifiedState.customLogoUrl);
         }
-        const brand = unifiedState.customCampusName || unifiedState.customBrandName;
-        if (brand) {
-          setCustomBrandName(brand);
+        if (unifiedState.customBrandName) {
+          setCustomBrandName(unifiedState.customBrandName);
+        }
+        if (unifiedState.customCampusName) {
+          setCustomCampusName(unifiedState.customCampusName);
         }
       }
       setConfigModalPlugin(null);
@@ -366,16 +376,18 @@ export const PluginManagerView: React.FC = () => {
       {/* Configuration Modal */}
       {configModalPlugin && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overscroll-contain"
           onMouseDown={() => setConfigModalPlugin(null)}
+          onWheel={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
         >
           <div
             className={`bg-raised border border-line rounded-2xl w-full ${
               configModalPlugin.id === 'docentos-customizer' ? 'max-w-3xl' : 'max-w-xl'
-            } max-h-[85vh] flex flex-col shadow-2xl overflow-hidden`}
+            } max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain`}
             onMouseDown={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
           >
             
             {/* Header del Modal (Fijo arriba) */}
@@ -403,7 +415,7 @@ export const PluginManagerView: React.FC = () => {
 
             <form onSubmit={handleSaveConfig} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               {/* Cuerpo del Formulario (Scrollable) */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-5">
                 {/* Specialized Form for Certificates Plugin */}
                 {(configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates') && (
                 <div className="space-y-4">
@@ -554,12 +566,12 @@ export const PluginManagerView: React.FC = () => {
                           <span className="text-xs font-bold text-ink block">
                             {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif'
                               ? 'Logo de Universidad / Instituto Cargado'
-                              : 'Logo Oficial Academia Giantucchi'}
+                              : 'Logo Oficial DocentOS'}
                           </span>
                           <span className="text-micro text-ink-muted">
                             {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif'
                               ? 'Se mostrará en la cabecera oficial del diploma'
-                              : 'Emblema institucional por defecto de la academia'}
+                              : 'Emblema institucional por defecto'}
                           </span>
                         </div>
                       </div>
@@ -571,7 +583,7 @@ export const PluginManagerView: React.FC = () => {
                             onClick={() => setConfigFormState({ ...configFormState, institutionLogo: '/logo.avif' })}
                             className="px-2.5 py-1.5 text-xs text-ink-soft hover:text-ink bg-elevated hover:bg-elevated border border-line rounded-lg transition-colors"
                           >
-                            Restablecer Giantucchi
+                            Restablecer Logo
                           </button>
                         )}
                         <input
@@ -628,7 +640,7 @@ export const PluginManagerView: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <label className="text-micro font-bold text-brand-magenta uppercase tracking-wider flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-brand-magenta" />
-                          Firma 1 : Academia Giantucchi (Principal)
+                          Firma 1 : DocentOS (Principal)
                         </label>
                         <span className="text-micro font-bold text-brand-magenta bg-brand-magenta/10 border border-brand-magenta/20 px-2 py-0.5 rounded-full">
                           Mentor Director & Evaluador
@@ -1015,52 +1027,99 @@ export const PluginManagerView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Nombre de la Institución o Campus (Global) */}
+                      {/* 1. Nombre de la Plataforma / Marca (Navbar & Footer) */}
                       <div className="space-y-2 p-4 rounded-xl bg-raised border border-line">
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
-                            <Sliders className="w-3.5 h-3.5 text-brand-cyan" />
-                            <span>Nombre de la Institución o Campus (Global)</span>
+                            <Sparkles className="w-3.5 h-3.5 text-brand-cyan" />
+                            <span>Nombre de la Plataforma / Marca</span>
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Cambio Global en Vivo
+                            Navbar & Footer
                           </span>
                         </div>
                         <p className="text-[11px] text-ink-muted leading-relaxed">
-                          Define el nombre oficial de tu plataforma. Se actualiza en tiempo real en la barra de navegación, panel administrativo, diplomas y portal.
+                          Define el nombre visible de la marca en la barra de navegación superior, pie de página y títulos del portal.
                         </p>
                         <input
                           type="text"
-                          value={configFormState.customCampusName ?? configFormState.customBrandName ?? ''}
+                          value={configFormState.customBrandName ?? 'DocentOS'}
                           onChange={(e) => {
-                            const newName = e.target.value;
+                            const newBrand = e.target.value;
                             setConfigFormState((prev) => ({
                               ...prev,
-                              customCampusName: newName,
-                              customBrandName: newName,
+                              customBrandName: newBrand,
                             }));
-                            setCustomBrandName(newName);
+                            setCustomBrandName(newBrand);
                           }}
                           className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
-                          placeholder="ej. DocentOS, Academia Giantucchi o Nombre de tu Institución"
+                          placeholder="ej. Academia Giantucchi"
                         />
                         <div className="flex items-center gap-2 pt-1 flex-wrap">
                           <span className="text-[10px] text-ink-muted">Sugerencias:</span>
-                          {['DocentOS', 'Academia Giantucchi', 'Instituto Tecnológico'].map((name) => (
+                          {['DocentOS', 'Academia', 'Campus Virtual'].map((brand) => (
                             <button
-                              key={name}
+                              key={brand}
                               type="button"
                               onClick={() => {
                                 setConfigFormState((prev) => ({
                                   ...prev,
-                                  customCampusName: name,
-                                  customBrandName: name,
+                                  customBrandName: brand,
                                 }));
-                                setCustomBrandName(name);
+                                setCustomBrandName(brand);
                               }}
                               className="text-[10px] px-2 py-0.5 rounded-md bg-canvas border border-line text-ink-soft hover:text-ink hover:border-brand-cyan transition-colors cursor-pointer"
                             >
-                              {name}
+                              {brand}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 2. Título del Campus / Panel de Administración */}
+                      <div className="space-y-2 p-4 rounded-xl bg-raised border border-line">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                            <Sliders className="w-3.5 h-3.5 text-brand-cyan" />
+                            <span>Título del Campus / Panel de Administración</span>
+                          </label>
+                          <span className="text-micro font-bold text-brand-cyan">
+                            Cabecera Admin
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-ink-muted leading-relaxed">
+                          Define el título de la cabecera en el Panel de Control & Administración Global RBAC.
+                        </p>
+                        <input
+                          type="text"
+                          value={configFormState.customCampusName ?? 'DocentOS Command Center'}
+                          onChange={(e) => {
+                            const newCampus = e.target.value;
+                            setConfigFormState((prev) => ({
+                              ...prev,
+                              customCampusName: newCampus,
+                            }));
+                            setCustomCampusName(newCampus);
+                          }}
+                          className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
+                          placeholder="ej. DocentOS Command Center"
+                        />
+                        <div className="flex items-center gap-2 pt-1 flex-wrap">
+                          <span className="text-[10px] text-ink-muted">Sugerencias:</span>
+                          {['DocentOS Command Center', 'Centro de Control', 'Campus Central', 'Panel Administrativo'].map((campus) => (
+                            <button
+                              key={campus}
+                              type="button"
+                              onClick={() => {
+                                setConfigFormState((prev) => ({
+                                  ...prev,
+                                  customCampusName: campus,
+                                }));
+                                setCustomCampusName(campus);
+                              }}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-canvas border border-line text-ink-soft hover:text-ink hover:border-brand-cyan transition-colors cursor-pointer"
+                            >
+                              {campus}
                             </button>
                           ))}
                         </div>

@@ -1,0 +1,15 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "DocentOS",
+    "identifier": "did:web:docentos.giantucchi.com"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:docentos.giantucchi.com:api:courses",
+      "displayName": "Catálogo Público de Cursos DocentOS",
+      "type": "application/json",
+      "url": "https://docentos.giantucchi.com/api/courses"
+    }
+  ]
+}

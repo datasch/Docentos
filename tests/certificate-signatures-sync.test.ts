@@ -24,7 +24,7 @@ test('Batería de Verificación: Sincronización de Plugins y Generación de Cer
       category: 'certificates',
       icon: 'Award',
       config: {
-        institutionName: 'Academia Giantucchi',
+        institutionName: 'DocentOS',
         signatoryTitle: 'Prof. Joaquin Sime - Mentor Director & Evaluador',
         signatureImage: SAMPLE_BASE64_SIG,
         universitySignatoryTitle: 'Dr. Roberto Mendoza - Decano de Ingeniería',
@@ -132,7 +132,7 @@ test('Batería de Verificación: Sincronización de Plugins y Generación de Cer
       studentName: 'Ing. Sofia Ruiz (Mentor Senior)',
       courseTitle: 'Programa de Mentoría Elite Giantucchi: Full-Stack & Cloud Architecture',
       certificateId: 'DOC-0167B0727B19A0F9',
-      institutionName: cfg.institutionName || 'Academia Giantucchi',
+      institutionName: cfg.institutionName || 'DocentOS',
       signatoryTitle: cfg.signatoryTitle,
       signatureImage: cfg.signatureImage,
       universitySignatoryTitle: cfg.universitySignatoryTitle,

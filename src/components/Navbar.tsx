@@ -410,11 +410,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-expanded={profileOpen}
                 aria-label="Menú de cuenta"
               >
-                <span className="lp-avatar-wrapper">
+                <span className="lp-avatar-wrapper relative w-9 h-9 shrink-0 rounded-full block">
                   {currentUser.avatarUrl ? (
-                    <img className="lp-avatar-img" src={avatarSrc(currentUser.avatarUrl)} alt="" />
+                    <img className="lp-avatar-img w-full h-full rounded-full object-cover" src={avatarSrc(currentUser.avatarUrl)} alt="" />
                   ) : (
-                    <span className="lp-avatar-fallback">{initialsOf(currentUser.name)}</span>
+                    <span className="lp-avatar-fallback w-full h-full rounded-full flex items-center justify-center">{initialsOf(currentUser.name)}</span>
                   )}
                   <span className="lp-status-badge" title="En línea" />
                 </span>

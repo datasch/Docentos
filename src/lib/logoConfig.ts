@@ -10,10 +10,13 @@ import { siteConfig } from '../config/theme';
 
 export const DEFAULT_LOGO_URL = '/logo.avif';
 export const DEFAULT_BRAND_NAME = 'DocentOS';
+export const DEFAULT_CAMPUS_NAME = 'DocentOS Command Center';
 export const LOGO_CHANGE_EVENT = 'docentos-logo-change';
 export const BRAND_CHANGE_EVENT = 'docentos-brand-change';
+export const CAMPUS_CHANGE_EVENT = 'docentos-campus-change';
 const STORAGE_LOGO_KEY = 'docentos_custom_logo_url';
-const STORAGE_BRAND_KEY = 'docentos_custom_campus_name';
+const STORAGE_BRAND_KEY = 'docentos_custom_brand_name';
+const STORAGE_CAMPUS_KEY = 'docentos_custom_campus_name';
 
 export function getCustomLogoUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_LOGO_URL;
@@ -47,28 +50,85 @@ export function getCustomBrandName(): string {
   if (typeof window === 'undefined') return DEFAULT_BRAND_NAME;
 
   try {
-    // 1. Prioridad: Plugin docentos-customizer
+    // 1. Prioridad: LocalStorage específico de marca (persistencia inmediata sin flash)
+    const savedBrand = localStorage.getItem(STORAGE_BRAND_KEY);
+    if (savedBrand && savedBrand.trim().length > 0) {
+      const cleanSaved = savedBrand.trim();
+      if (cleanSaved !== 'Academia Giantucchi') {
+        return cleanSaved;
+      }
+      localStorage.removeItem(STORAGE_BRAND_KEY);
+    }
+
+    // 2. Plugin docentos-customizer en memoria (si tiene marca personalizada configurada)
     const customizer = pluginManager.getPlugin('docentos-customizer');
-    const pluginBrand = customizer?.config?.customCampusName || customizer?.config?.customBrandName;
+    const pluginBrand = customizer?.config?.customBrandName;
     if (pluginBrand && typeof pluginBrand === 'string' && pluginBrand.trim().length > 0) {
-      return pluginBrand.trim();
+      const cleanPlugin = pluginBrand.trim();
+      if (cleanPlugin !== 'Academia Giantucchi' && cleanPlugin !== DEFAULT_BRAND_NAME) {
+        return cleanPlugin;
+      }
     }
 
-    // 2. Fallback de localStorage
-    const saved = localStorage.getItem(STORAGE_BRAND_KEY);
-    if (saved && saved.trim().length > 0) {
-      return saved.trim();
+    // 3. Fallback a configuración de campus si no hay marca definida
+    const savedCampus = localStorage.getItem(STORAGE_CAMPUS_KEY);
+    if (savedCampus && savedCampus.trim().length > 0) {
+      const cleanSaved = savedCampus.trim();
+      if (cleanSaved !== 'Academia Giantucchi' && cleanSaved !== DEFAULT_CAMPUS_NAME) {
+        return cleanSaved;
+      }
     }
 
-    // 3. siteConfig
+    const legacyCampus = customizer?.config?.customCampusName;
+    if (legacyCampus && typeof legacyCampus === 'string' && legacyCampus.trim().length > 0) {
+      const cleanCampus = legacyCampus.trim();
+      if (cleanCampus !== 'Academia Giantucchi' && cleanCampus !== DEFAULT_CAMPUS_NAME) {
+        return cleanCampus;
+      }
+    }
+
+    // 4. siteConfig
     if (siteConfig.appName && siteConfig.appName.trim().length > 0) {
-      return siteConfig.appName.trim();
+      const cleanSite = siteConfig.appName.trim();
+      if (cleanSite !== 'Academia Giantucchi') {
+        return cleanSite;
+      }
     }
   } catch {
     // Almacenamiento no disponible
   }
 
   return DEFAULT_BRAND_NAME;
+}
+
+export function getCustomCampusName(): string {
+  if (typeof window === 'undefined') return DEFAULT_CAMPUS_NAME;
+
+  try {
+    // 1. Prioridad: LocalStorage de campus
+    const saved = localStorage.getItem(STORAGE_CAMPUS_KEY);
+    if (saved && saved.trim().length > 0) {
+      const cleanSaved = saved.trim();
+      if (cleanSaved !== 'Academia Giantucchi' && cleanSaved !== DEFAULT_CAMPUS_NAME) {
+        return cleanSaved;
+      }
+      localStorage.removeItem(STORAGE_CAMPUS_KEY);
+    }
+
+    // 2. Plugin docentos-customizer
+    const customizer = pluginManager.getPlugin('docentos-customizer');
+    const pluginCampus = customizer?.config?.customCampusName;
+    if (pluginCampus && typeof pluginCampus === 'string' && pluginCampus.trim().length > 0) {
+      const clean = pluginCampus.trim();
+      if (clean !== 'Academia Giantucchi' && clean !== DEFAULT_CAMPUS_NAME) {
+        return clean;
+      }
+    }
+  } catch {
+    // Error silencioso
+  }
+
+  return DEFAULT_CAMPUS_NAME;
 }
 
 export function setCustomLogoUrl(url: string): void {
@@ -110,7 +170,8 @@ export function setCustomLogoUrl(url: string): void {
 export function setCustomBrandName(name: string): void {
   if (typeof window === 'undefined') return;
 
-  const cleanName = name.trim();
+  const rawClean = name.trim();
+  const cleanName = rawClean === 'Academia Giantucchi' ? '' : rawClean;
   try {
     if (cleanName) {
       localStorage.setItem(STORAGE_BRAND_KEY, cleanName);
@@ -128,10 +189,9 @@ export function setCustomBrandName(name: string): void {
     document.title = `${effectiveName} — Plataforma Educativa`;
   }
 
-  // Actualizar configuración en el Plugin Manager
+  // Actualizar únicamente marca en docentos-customizer (sin mutar institutionName de certificados)
   try {
     pluginManager.updateConfig('docentos-customizer', {
-      customCampusName: effectiveName,
       customBrandName: effectiveName,
     });
   } catch {
@@ -141,12 +201,51 @@ export function setCustomBrandName(name: string): void {
   // Notificar a toda la plataforma
   window.dispatchEvent(
     new CustomEvent(BRAND_CHANGE_EVENT, {
-      detail: { brandName: effectiveName, customCampusName: effectiveName, customBrandName: effectiveName },
+      detail: { brandName: effectiveName, customBrandName: effectiveName },
     })
   );
   window.dispatchEvent(
     new CustomEvent('docentos-customizer-change', {
-      detail: { customCampusName: effectiveName, customBrandName: effectiveName },
+      detail: { customBrandName: effectiveName },
+    })
+  );
+}
+
+export function setCustomCampusName(name: string): void {
+  if (typeof window === 'undefined') return;
+
+  const rawClean = name.trim();
+  const cleanName = rawClean === 'Academia Giantucchi' ? '' : rawClean;
+  try {
+    if (cleanName) {
+      localStorage.setItem(STORAGE_CAMPUS_KEY, cleanName);
+    } else {
+      localStorage.removeItem(STORAGE_CAMPUS_KEY);
+    }
+  } catch {
+    // Error silencioso
+  }
+
+  const effectiveCampus = cleanName || DEFAULT_CAMPUS_NAME;
+
+  // Actualizar únicamente campus en docentos-customizer
+  try {
+    pluginManager.updateConfig('docentos-customizer', {
+      customCampusName: effectiveCampus,
+    });
+  } catch {
+    // Error silencioso
+  }
+
+  // Notificar a toda la plataforma
+  window.dispatchEvent(
+    new CustomEvent(CAMPUS_CHANGE_EVENT, {
+      detail: { customCampusName: effectiveCampus },
+    })
+  );
+  window.dispatchEvent(
+    new CustomEvent('docentos-customizer-change', {
+      detail: { customCampusName: effectiveCampus },
     })
   );
 }
@@ -176,14 +275,16 @@ export function useCustomLogo(): string {
 }
 
 /**
- * Hook de React para reaccionar inmediatamente a cambios del nombre institucional/marca
+ * Hook de React para reaccionar inmediatamente a cambios del nombre de la marca (Navbar, Footer, Título)
  */
 export function useCustomBrandName(): string {
   const [brandName, setBrandName] = useState<string>(getCustomBrandName);
 
   useEffect(() => {
     const handleUpdate = (e: any) => {
-      const newName = e.detail?.brandName || e.detail?.customCampusName || e.detail?.customBrandName || getCustomBrandName();
+      const candidate = e.detail?.brandName || e.detail?.customBrandName;
+      const cleanCandidate = candidate && typeof candidate === 'string' && candidate.trim() !== 'Academia Giantucchi' ? candidate.trim() : '';
+      const newName = cleanCandidate || getCustomBrandName();
       setBrandName(newName);
     };
 
@@ -200,12 +301,39 @@ export function useCustomBrandName(): string {
 }
 
 /**
- * Hook unificado de Marca Institucional (Logo + Nombre + Inicial)
+ * Hook de React para reaccionar inmediatamente a cambios del título del campus / panel de administración
  */
-export function usePlatformBrand(): { logoUrl: string; brandName: string; logoInitial: string } {
+export function useCustomCampusName(): string {
+  const [campusName, setCampusName] = useState<string>(getCustomCampusName);
+
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      const candidate = e.detail?.customCampusName;
+      const cleanCandidate = candidate && typeof candidate === 'string' && candidate.trim() !== 'Academia Giantucchi' ? candidate.trim() : '';
+      const newName = cleanCandidate || getCustomCampusName();
+      setCampusName(newName);
+    };
+
+    window.addEventListener(CAMPUS_CHANGE_EVENT, handleUpdate);
+    window.addEventListener('docentos-customizer-change', handleUpdate);
+
+    return () => {
+      window.removeEventListener(CAMPUS_CHANGE_EVENT, handleUpdate);
+      window.removeEventListener('docentos-customizer-change', handleUpdate);
+    };
+  }, []);
+
+  return campusName;
+}
+
+/**
+ * Hook unificado de Marca Institucional (Logo + Nombre + Campus + Inicial)
+ */
+export function usePlatformBrand(): { logoUrl: string; brandName: string; campusName: string; logoInitial: string } {
   const logoUrl = useCustomLogo();
   const brandName = useCustomBrandName();
+  const campusName = useCustomCampusName();
   const logoInitial = (siteConfig.logoInitial || brandName.charAt(0) || 'D').toUpperCase();
 
-  return { logoUrl, brandName, logoInitial };
+  return { logoUrl, brandName, campusName, logoInitial };
 }

@@ -129,6 +129,21 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [newCoursePublished, setNewCoursePublished] = useState<boolean>(false);
   const [creatingCourse, setCreatingCourse] = useState<boolean>(false);
   const [createCourseError, setCreateCourseError] = useState<string>('');
+  const [publishingCourseId, setPublishingCourseId] = useState<string | null>(null);
+
+  const handlePublishMentorCourse = async (courseId: string) => {
+    try {
+      setPublishingCourseId(courseId);
+      await api.youtube.publishCourse(courseId, true);
+      if (onRefreshCourses) {
+        onRefreshCourses();
+      }
+    } catch (err: any) {
+      alert(`Error al publicar curso: ${err.message}`);
+    } finally {
+      setPublishingCourseId(null);
+    }
+  };
 
   // Q&A State
   const [qnaComments, setQnaComments] = useState<MentorshipComment[]>([]);
@@ -491,10 +506,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <div className="flex border-b border-[#262626] gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1">
+      <div className="flex border-b border-[#262626] gap-1 sm:gap-2 overflow-x-auto custom-horizontal-scrollbar scroll-smooth pb-1 pt-0.5">
         <button
           onClick={() => setActiveTab('courses')}
-          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'courses'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
@@ -506,7 +521,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('mentees')}
-          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'mentees'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
@@ -518,31 +533,31 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('qna')}
-          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'qna'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <MessageSquare className="w-4 h-4 shrink-0" />
-          <span>Centro de Consultas Q&A ({pendingQuestions.length})</span>
+          <span>Consultas Q&A ({pendingQuestions.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('meetings')}
-          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'meetings'
               ? 'border-[#06b6d4] text-[#06b6d4]'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <Video className="w-4 h-4 shrink-0" />
-          <span>Clases en Vivo & Sincrónicas</span>
+          <span>Clases en Vivo</span>
         </button>
 
         <button
           onClick={() => setActiveTab('quizzes')}
-          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'quizzes'
               ? 'border-purple-500 text-purple-400'
               : 'border-transparent text-slate-400 hover:text-white'
@@ -554,7 +569,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('youtube-builder')}
-          className={`shrink-0 whitespace-nowrap pb-3 px-3.5 sm:px-4 font-bold text-xs flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'youtube-builder'
               ? 'border-red-500 text-red-400'
               : 'border-transparent text-slate-400 hover:text-white'
@@ -603,13 +618,31 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     </span>
                     {/* Un curso recién creado nace sin publicar: decir siempre
                         «Publicado» mentía sobre lo que ve el alumnado. */}
-                    <span
-                      className={`text-xs font-mono font-bold ${
-                        course.published ? 'text-emerald-400' : 'text-amber-400'
-                      }`}
-                    >
-                      {course.published ? 'Publicado' : 'Borrador'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs font-mono font-bold ${
+                          course.published ? 'text-emerald-400' : 'text-amber-400'
+                        }`}
+                      >
+                        {course.published ? 'Publicado' : 'Borrador'}
+                      </span>
+                      {!course.published && (
+                        <button
+                          type="button"
+                          onClick={() => handlePublishMentorCourse(course.id)}
+                          disabled={publishingCourseId === course.id}
+                          className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50"
+                          title="Publicar curso de inmediato en el catálogo de DocentOS"
+                        >
+                          {publishingCourseId === course.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Globe className="w-3 h-3" />
+                          )}
+                          Publicar
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="font-extrabold text-base text-white line-clamp-2">

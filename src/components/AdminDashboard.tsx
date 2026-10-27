@@ -86,15 +86,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const isCustomizerEnabled = pluginManager.isEnabled('docentos-customizer');
   const [customizerConfig, setCustomizerConfig] = useState(() => pluginManager.getCustomizerConfig());
   const [uiVersion, setUiVersion] = useState<'v0.5-modern' | 'v0.4-classic'>(() => {
-    return isCustomizerEnabled ? customizerConfig.interfaceVersion : 'v0.5-modern';
+    try {
+      const saved = localStorage.getItem('docentos_ui_version') as 'v0.5-modern' | 'v0.4-classic';
+      if (saved === 'v0.5-modern' || saved === 'v0.4-classic') return saved;
+    } catch {}
+    return isCustomizerEnabled ? (customizerConfig.interfaceVersion || 'v0.5-modern') : 'v0.5-modern';
   });
+
+  // Carga inmediata de la configuración de plugins desde el backend al entrar a Admin
+  useEffect(() => {
+    api.getPlugins().then((res) => {
+      if (res?.plugins) {
+        pluginManager.setPlugins(res.plugins);
+        const latestCustomizer = res.plugins.find((p: any) => p.id === 'docentos-customizer');
+        if (latestCustomizer?.config?.interfaceVersion) {
+          const ver = latestCustomizer.config.interfaceVersion === 'v0.4-classic' ? 'v0.4-classic' : 'v0.5-modern';
+          setUiVersion(ver);
+          try {
+            localStorage.setItem('docentos_ui_version', ver);
+          } catch {}
+        }
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-ui-version', uiVersion);
     const handleCustomizerUpdate = () => {
       const cfg = pluginManager.getCustomizerConfig();
       setCustomizerConfig(cfg);
-      setUiVersion(cfg.interfaceVersion);
+      const effectiveVer = cfg.interfaceVersion || 'v0.5-modern';
+      setUiVersion(effectiveVer);
+      try {
+        localStorage.setItem('docentos_ui_version', effectiveVer);
+      } catch {}
     };
     window.addEventListener('docentos-customizer-change', handleCustomizerUpdate);
     window.addEventListener('docentos-brand-change', handleCustomizerUpdate);
@@ -108,6 +133,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
   const handleSwitchUiVersion = async (targetVer: 'v0.5-modern' | 'v0.4-classic') => {
     setUiVersion(targetVer);
+    try {
+      localStorage.setItem('docentos_ui_version', targetVer);
+    } catch {}
     setCustomizerConfig((prev) => ({ ...prev, interfaceVersion: targetVer }));
     pluginManager.updateConfig('docentos-customizer', { interfaceVersion: targetVer });
     try {
@@ -778,7 +806,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <span>PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {customizerConfig.customCampusName ? `${customizerConfig.customCampusName} Control Center` : 'DocentOS Control Center'}
+                {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Control Center`}
               </h1>
               <p className="text-slate-400 text-xs mt-1 max-w-md leading-relaxed">
                 Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
@@ -856,7 +884,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="w-14 h-14 rounded-2xl bg-raised border border-line flex items-center justify-center p-2 shrink-0 relative overflow-visible shadow-inner">
                 <img
                   src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
-                  alt={customizerConfig.customCampusName || 'Logo'}
+                  alt={customizerConfig.customBrandName || customizerConfig.customCampusName || 'Logo'}
                   className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
@@ -870,7 +898,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <span>Panel de Control & Administración Global RBAC</span>
                 </div>
                 <h2 className="text-2xl font-extrabold text-ink tracking-tight">
-                  {customizerConfig.customCampusName || 'DocentOS Command Center'}
+                  {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Command Center`}
                 </h2>
                 <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
                   Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.

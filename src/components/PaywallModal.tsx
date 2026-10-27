@@ -11,6 +11,7 @@ import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, Refr
 import { siteConfig } from '../config/theme';
 import { api } from '../lib/api';
 import { UserRole } from '../types';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 
 interface PaywallModalProps {
   userRole: UserRole;
@@ -28,6 +29,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   price,
   onPaymentSuccess,
 }) => {
+  useBodyScrollLock(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [devCheckoutData, setDevCheckoutData] = useState<{ paymentId: string; checkoutUrl: string } | null>(null);

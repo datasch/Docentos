@@ -27,6 +27,7 @@ import {
 import { Module, QuizQuestion } from '../types';
 import { api } from '../lib/api';
 import { setModuleQuiz, getModuleQuestions } from '../plugins/QuizzesPlugin';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 
 interface QuizManagerModalProps {
   module: Module;
@@ -41,6 +42,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  useBodyScrollLock(isOpen);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [generatingAi, setGeneratingAi] = useState<boolean>(false);
@@ -192,8 +194,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fadeIn overscroll-contain"
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <div
+        className="bg-[#141420] border border-[#2d2d44] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain"
+        onWheel={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[#2d2d44] bg-[#0f0f18]">
