@@ -460,11 +460,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       fetch(`/api/content/videos/${currentVideo.id}`, { headers: { Accept: 'application/json' } })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (active && data?.playbackUrl) {
-            setResolvedPlaybackUrls((prev) => ({ ...prev, [currentVideo.id]: data.playbackUrl }));
+          if (active) {
+            const url = data?.playbackUrl || currentVideo.playbackUrl;
+            if (url) {
+              setResolvedPlaybackUrls((prev) => ({ ...prev, [currentVideo.id]: url }));
+            }
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          if (active && currentVideo.playbackUrl) {
+            setResolvedPlaybackUrls((prev) => ({ ...prev, [currentVideo.id]: currentVideo.playbackUrl }));
+          }
+        });
     }
 
     // 2. Precachear en segundo plano las lecciones siguientes del módulo actual para que carguen al instante
@@ -957,20 +964,19 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     let directUrl: string;
     const isDrive = isDriveVideo(currentVideo);
 
-    // Para Google Drive: si ya se montó una URL válida para esta lección, conservarla
-    // para evitar que el navegador reinicie el iframe a mitad de carga provocando la pantalla negra
-    if (isDrive && initialMountedUrlsRef.current[currentVideo.id]) {
+    const resolved = resolvedPlaybackUrls[currentVideo.id];
+    if (resolved) {
+      directUrl = resolved;
+      if (isDrive) {
+        initialMountedUrlsRef.current[currentVideo.id] = resolved;
+      }
+    } else if (isDrive && initialMountedUrlsRef.current[currentVideo.id] && !initialMountedUrlsRef.current[currentVideo.id].startsWith('/api/')) {
       directUrl = initialMountedUrlsRef.current[currentVideo.id];
     } else {
       directUrl =
-        resolvedPlaybackUrls[currentVideo.id] ||
-        currentVideo.embedUrl ||
-        currentVideo.driveFileId ||
+        (currentVideo.embedUrl && !currentVideo.embedUrl.startsWith('/api/') ? currentVideo.embedUrl : undefined) ||
+        (currentVideo.driveFileId ? `https://drive.google.com/file/d/${currentVideo.driveFileId}/preview` : undefined) ||
         currentVideo.playbackUrl;
-
-      if (isDrive && directUrl) {
-        initialMountedUrlsRef.current[currentVideo.id] = directUrl;
-      }
     }
 
     const preferredProvider: VideoProvider | undefined =
@@ -1296,7 +1302,21 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 </div>
               )}
 
-              {showsPlayer && videoSource ? (
+              {/* Acceso directo a Google Drive para navegadores con protecciones estrictas (Brave Shields, cookies de terceros bloqueadas) */}
+              {showsPlayer && currentVideo && isDriveVideo(currentVideo) && (
+                <a
+                  href={resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Abrir video directamente en Google Drive"
+                  className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-lg bg-black/75 backdrop-blur-md border border-white/10 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 hover:text-white hover:bg-black/90 transition-all opacity-80 hover:opacity-100 shadow-lg"
+                >
+                  <ExternalLink className="h-3 w-3 text-cyan-400" />
+                  <span>Abrir en Google Drive</span>
+                </a>
+              )}
+
+              {showsPlayer && videoSource && Boolean(videoSource.embedUrl) ? (
                 <iframe
                   id="docentos-video-iframe"
                   /* La clave estable por lección evita que React destruya y vuelva a montar el iframe cuando se resuelven URLs secundarias */
@@ -1311,6 +1331,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   style={{ backgroundColor: '#000000' }}
                   referrerPolicy="strict-origin-when-cross-origin"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen; picture-in-picture; web-share"
+                  allowFullScreen
                 />
               ) : hasAccess ? (
                 /* Con acceso concedido y sin clase que reproducir, el curso
@@ -1466,7 +1487,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
-                    playbackUrl={showsPlayer ? (currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
+                    playbackUrl={showsPlayer ? (resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
                     meetingType={currentVideo.meetingType || activeLiveMeeting?.meetingType}
                     meetingUrl={currentVideo.meetingUrl || (activeLiveMeeting?.id === currentVideo.id ? activeLiveMeeting.meetingUrl : undefined)}

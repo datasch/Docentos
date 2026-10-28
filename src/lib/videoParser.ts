@@ -157,7 +157,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (preferredProvider === 'youtube') {
     return {
       provider: 'youtube',
-      embedUrl: safeExternalUrl(str, import.meta.env?.DEV) || (/^[\w-]+$/.test(str) ? `https://www.youtube-nocookie.com/embed/${str}` : ''),
+      embedUrl: safeVideoUrl(str) || (/^[\w-]+$/.test(str) ? `https://www.youtube-nocookie.com/embed/${str}` : ''),
       originalUrl: str,
       videoId: str,
     };
@@ -166,7 +166,7 @@ export function parseVideoSource(input: string, preferredProvider?: VideoProvide
   if (preferredProvider === 'drive') {
     return {
       provider: 'drive',
-      embedUrl: safeExternalUrl(str, import.meta.env?.DEV) || (/^[\w-]+$/.test(str) ? `https://drive.google.com/file/d/${str}/preview` : ''),
+      embedUrl: safeVideoUrl(str) || (/^[\w-]+$/.test(str) ? `https://drive.google.com/file/d/${str}/preview` : ''),
       originalUrl: str,
       videoId: str,
     };

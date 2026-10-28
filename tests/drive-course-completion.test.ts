@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isDriveVideo, supportsPlaybackTracking } from '../src/lib/videoParser.js';
+import { isDriveVideo, supportsPlaybackTracking, parseVideoSource } from '../src/lib/videoParser.js';
 import type { VideoDriveLink } from '../src/types.js';
 
 test('Google Drive Video Engine: Detección y compatibilidad de tracking de reproducción', async (t) => {
@@ -116,5 +116,19 @@ test('Google Drive Video Engine: Detección y compatibilidad de tracking de repr
 
     const isDriveWatched = !isTrackingDrive || Boolean(watchedVideos[driveLesson.id!]);
     assert.equal(isDriveWatched, true, 'Drive debe considerarse visto para no bloquear el botón de completar');
+  });
+
+  await t.test('4. parseVideoSource resuelve rutas protegidas /api/content/videos/<id> con provider drive y youtube', () => {
+    const driveParsed = parseVideoSource('/api/content/videos/test-id-123', 'drive');
+    assert.equal(driveParsed.provider, 'drive');
+    assert.equal(driveParsed.embedUrl, '/api/content/videos/test-id-123', 'No debe vaciar embedUrl para rutas relativas protegidas');
+
+    const ytParsed = parseVideoSource('/api/content/videos/yt-id-456', 'youtube');
+    assert.equal(ytParsed.provider, 'youtube');
+    assert.equal(ytParsed.embedUrl, '/api/content/videos/yt-id-456');
+
+    const fileIdDrive = parseVideoSource('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs', 'drive');
+    assert.equal(fileIdDrive.provider, 'drive');
+    assert.equal(fileIdDrive.embedUrl, 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/preview');
   });
 });

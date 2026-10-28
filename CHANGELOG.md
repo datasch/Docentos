@@ -14,6 +14,17 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.18 - 2026-10-28
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias.
+
+### Fixed
+
+- Reproducción confiable de Google Drive sin bloqueos en negro: se eliminó el bloqueo de URLs temporales `/api/` en memoria que congelaba el reproductor en pantalla negra antes de resolver la vista previa de Drive, se habilitó el parseo de rutas virtuales protegidas para todos los proveedores y se condicionó el renderizado del iframe a tener una URL válida.
+- Conexión directa y resolución instantánea para videos de Drive: el reproductor monta directamente la URL de vista previa de Google Drive tan pronto como se resuelve la autorización (sin redirecciones intermedias 302 que sean interceptadas o bloqueadas por navegadores como Brave con escudos de rastreo activados).
+- Botón de acceso directo a Google Drive en el reproductor: se añadió un acceso flotante «Abrir en Google Drive» sobre el reproductor y se enlazó la URL resuelta en «Abrir el video aparte», permitiendo a los alumnos abrir la clase en pestaña nueva con un clic si su navegador bloquea el almacenamiento en marcos embebidos.
+
 ## 0.5.0-beta.17 - 2026-10-28
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros
