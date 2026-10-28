@@ -1520,9 +1520,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
           {/* Panel lateral. En escritorio se posiciona en absoluto dentro de su
               celda para que la fila la marque el video y no el largo del
-              temario; en móvil es un bloque de altura acotada. */}
-          <div className={theaterMode ? 'lg:hidden' : 'lg:relative lg:col-span-4'}>
-            <div className="h-[70dvh] px-4 lg:absolute lg:inset-0 lg:h-auto lg:px-0">
+              temario; en móvil o modal es un bloque de altura adaptable y responsivo que
+              crece de forma dinámica con el contenido (sesiones, notas, mentoría). */}
+          <div className={theaterMode ? 'lg:hidden' : `lg:relative lg:col-span-4 flex flex-col ${isModal ? 'lg:self-start' : ''}`}>
+            <div className={`h-auto min-h-0 max-h-[70vh] flex flex-col px-4 ${isModal ? 'lg:relative lg:h-auto lg:max-h-[calc(100dvh-12rem)] lg:px-0' : 'lg:absolute lg:inset-0 lg:h-auto lg:max-h-none lg:px-0'}`}>
               <CoursePanel
                 active={activePanel}
                 onChange={setActivePanel}
@@ -1578,7 +1579,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         </div>
 
                         {courseMeetings.length === 0 ? (
-                          <div className="py-12 text-center space-y-2 bg-card rounded-xl border border-line p-4">
+                          <div className="py-8 text-center space-y-2 bg-card rounded-xl border border-line p-4">
                             <Video className="h-8 w-8 mx-auto text-ink-faint" />
                             <p className="text-xs font-semibold text-ink">No hay sesiones programadas aún</p>
                             <p className="text-micro text-ink-muted">

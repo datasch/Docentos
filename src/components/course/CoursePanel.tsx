@@ -55,7 +55,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
   const activeTab = tabs.find((tab) => tab.id === active) ?? tabs[0];
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
+    <section className="flex h-full flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
       <div className="flex shrink-0 items-stretch border-b border-line">
         <div role="tablist" aria-label="Paneles del curso" className="flex min-w-0 flex-1">
           {tabs.map((tab) => {

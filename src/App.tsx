@@ -21,6 +21,7 @@ const AIAssistantTour = lazy(() => import('./components/AIAssistantTour').then((
 const CertificateVerifyModal = lazy(() => import('./components/CertificateVerifyModal').then((m) => ({ default: m.CertificateVerifyModal })));
 const ContractSignatureModal = lazy(() => import('./components/ContractSignatureModal').then((m) => ({ default: m.ContractSignatureModal })));
 const ListeningBoxModal = lazy(() => import('./components/ListeningBoxModal').then((m) => ({ default: m.ListeningBoxModal })));
+import { ListeningFloatingButton } from './components/ListeningFloatingButton';
 
 // Inicializar tema y festividad inmediatamente para evitar parpadeos
 initSavedTheme();
@@ -456,6 +457,14 @@ export default function App() {
           />
         )}
       </Suspense>
+
+      {/* Botón flotante accesible de Buzón de Escucha en la esquina inferior izquierda */}
+      {!showListening && (
+        <ListeningFloatingButton
+          unreadCount={unreadListening}
+          onClick={handleOpenListening}
+        />
+      )}
 
     </div>
   );
