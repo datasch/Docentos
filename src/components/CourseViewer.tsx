@@ -7,7 +7,7 @@
  * vacia en escritorio y enterraba el video bajo el temario en movil.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Award,
@@ -30,6 +30,8 @@ import {
   AlertCircle,
   Compass,
   X,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
@@ -45,7 +47,7 @@ import {
 } from '../lib/courseNavigation';
 import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord, Meeting } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
-import { parseVideoSource, VideoProvider } from '../lib/videoParser';
+import { parseVideoSource, VideoProvider, isDriveVideo, supportsPlaybackTracking } from '../lib/videoParser';
 import { pluginManager } from '../plugins/PluginManager';
 import { syncModuleQuizCounts, getModuleQuestionCount, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
@@ -235,6 +237,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [courseMeetings, setCourseMeetings] = useState<Meeting[]>([]);
   const [selectedMeetingPlayback, setSelectedMeetingPlayback] = useState<Meeting | null>(null);
   const [resolvedPlaybackUrls, setResolvedPlaybackUrls] = useState<Record<string, string>>({});
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
+  const [hasLoadTimedOut, setHasLoadTimedOut] = useState(false);
+  const initialMountedUrlsRef = useRef<Record<string, string>>({});
 
   const currentModule = course.modules[activeModuleIndex] || course.modules[0];
   const currentVideo: VideoDriveLink | undefined = currentModule?.videos[activeVideoIndex];
@@ -432,32 +437,68 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   }, [currentVideo?.id]);
 
-  // Resolver la URL de reproducción real con autorización para habilitar el IFrame Player API
+  // Restablecer estado de carga visual y timeout de auxilio al cambiar de clase o grabación
   useEffect(() => {
-    if (!currentVideo?.id) return;
-    if (currentVideo.embedUrl && !currentVideo.embedUrl.startsWith('/api/')) return;
-    if (resolvedPlaybackUrls[currentVideo.id]) return;
+    setIsVideoLoading(true);
+    setHasLoadTimedOut(false);
+
+    const timer = setTimeout(() => {
+      setHasLoadTimedOut(true);
+    }, 8000);
+
+    return () => clearTimeout(timer);
+  }, [currentVideo?.id, selectedMeetingPlayback?.id]);
+
+  // Resolver y precargar URLs de reproducción autorizadas (optimiza velocidad y elimina dobles cargas)
+  useEffect(() => {
+    if (!currentVideo?.id && !currentModule?.videos) return;
 
     let active = true;
-    const fetchPlayback = async () => {
-      try {
-        const res = await fetch(`/api/content/videos/${currentVideo.id}`, {
-          headers: { Accept: 'application/json' },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (active && data?.playbackUrl) {
-          setResolvedPlaybackUrls((prev) => ({ ...prev, [currentVideo.id]: data.playbackUrl }));
+
+    // 1. Resolver el video actual prioritariamente
+    if (currentVideo?.id && (!currentVideo.embedUrl || currentVideo.embedUrl.startsWith('/api/')) && !resolvedPlaybackUrls[currentVideo.id]) {
+      fetch(`/api/content/videos/${currentVideo.id}`, { headers: { Accept: 'application/json' } })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (active && data?.playbackUrl) {
+            setResolvedPlaybackUrls((prev) => ({ ...prev, [currentVideo.id]: data.playbackUrl }));
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 2. Precachear en segundo plano las lecciones siguientes del módulo actual para que carguen al instante
+    const pendingInModule = (currentModule?.videos || []).filter(
+      (v) => v.id !== currentVideo?.id && !resolvedPlaybackUrls[v.id] && (!v.embedUrl || v.embedUrl.startsWith('/api/'))
+    );
+    if (pendingInModule.length > 0) {
+      Promise.all(
+        pendingInModule.slice(0, 4).map(async (v) => {
+          try {
+            const res = await fetch(`/api/content/videos/${v.id}`, { headers: { Accept: 'application/json' } });
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data?.playbackUrl ? { id: v.id, url: data.playbackUrl } : null;
+          } catch {
+            return null;
+          }
+        })
+      ).then((results) => {
+        if (!active) return;
+        const batch: Record<string, string> = {};
+        for (const item of results) {
+          if (item) batch[item.id] = item.url;
         }
-      } catch {
-        // En caso de fallo de red, se mantiene el iframe con /api/content/videos/:id que el backend redirige
-      }
-    };
-    fetchPlayback();
+        if (Object.keys(batch).length > 0) {
+          setResolvedPlaybackUrls((prev) => ({ ...prev, ...batch }));
+        }
+      });
+    }
+
     return () => {
       active = false;
     };
-  }, [currentVideo?.id, currentVideo?.embedUrl, resolvedPlaybackUrls]);
+  }, [currentVideo?.id, currentModule?.id, hasAccess]);
 
   const loadVideoNotes = async (videoId: string) => {
     try {
@@ -588,6 +629,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // Restaurar estado de video visto desde persistencia
   useEffect(() => {
     if (!currentVideo?.id || !currentUser?.id) return;
+    // Para videos de Google Drive o fuentes sin telemetría de eventos postMessage,
+    // se asegura el estado visto para permitir marcar la clase como completada
+    if (!supportsPlaybackTracking(currentVideo)) {
+      if (!watchedVideos[currentVideo.id]) {
+        setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+      }
+      localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+      return;
+    }
     const isSavedWatched = localStorage.getItem(getVideoWatchedKey(currentUser.id, currentVideo.id)) === 'true';
     if (isSavedWatched && !watchedVideos[currentVideo.id]) {
       setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
@@ -615,7 +665,16 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         targetLessonIndex !== -1 &&
         lessons.slice(targetLessonIndex + 1).some((l) => Boolean(completedVideos[l.videoId]));
 
+      // Determinar si el video destino admite telemetría interactiva de reproducción
+      const targetLesson = targetLessonIndex !== -1 ? lessons[targetLessonIndex] : null;
+      const targetVideo = targetLesson
+        ? course.modules[targetLesson.moduleIndex]?.videos[targetLesson.videoIndex]
+        : (currentVideo?.id === videoId ? currentVideo : null);
+
+      const requiresTracking = supportsPlaybackTracking(targetVideo);
+
       const isWatched =
+        !requiresTracking ||
         watchedVideos[videoId] ||
         completedVideos[videoId] ||
         hasCompletedAfter ||
@@ -743,6 +802,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
       }
     };
+
+    // Si el video actual proviene de Google Drive o un proveedor sin tracking interactivo (postMessage),
+    // se marca como visto de inmediato para que la opción de completar esté habilitada al terminar de ver la clase
+    if (!supportsPlaybackTracking(currentVideo)) {
+      markWatched();
+    }
 
     const handleWindowMessage = (event: MessageEvent) => {
       // Aceptar mensajes del reproductor de la lección o dominios de video soportados
@@ -882,17 +947,32 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     ? comments.filter((c) => c.isMentorResponse || (c.replies && c.replies.some((r) => r.isMentorResponse)))
     : comments;
 
-  // La fuente que se reproduce: priorizar embedUrl directo con &start=${savedVideoTime} para reanudar donde se quedó
+  // La fuente que se reproduce: priorizar URL directa autorizada y reanudar tiempo donde se quedó
   const videoSource = useMemo(() => {
     if (selectedMeetingPlayback) {
       return parseVideoSource(selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl);
     }
     if (!currentVideo) return null;
-    const directUrl =
-      resolvedPlaybackUrls[currentVideo.id] ||
-      currentVideo.embedUrl ||
-      currentVideo.driveFileId ||
-      currentVideo.playbackUrl;
+
+    let directUrl: string;
+    const isDrive = isDriveVideo(currentVideo);
+
+    // Para Google Drive: si ya se montó una URL válida para esta lección, conservarla
+    // para evitar que el navegador reinicie el iframe a mitad de carga provocando la pantalla negra
+    if (isDrive && initialMountedUrlsRef.current[currentVideo.id]) {
+      directUrl = initialMountedUrlsRef.current[currentVideo.id];
+    } else {
+      directUrl =
+        resolvedPlaybackUrls[currentVideo.id] ||
+        currentVideo.embedUrl ||
+        currentVideo.driveFileId ||
+        currentVideo.playbackUrl;
+
+      if (isDrive && directUrl) {
+        initialMountedUrlsRef.current[currentVideo.id] = directUrl;
+      }
+    }
+
     const preferredProvider: VideoProvider | undefined =
       (currentVideo.provider as VideoProvider) ||
       (currentVideo.source === 'YOUTUBE' ? 'youtube' : undefined);
@@ -929,9 +1009,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const canUncompleteLesson = !hasSubsequentCompleted;
 
   // Validación estricta para desbloquear la misión:
-  // 1. Debe haber visto el video completo (detectado automáticamente o persistido, o si ya tiene misiones posteriores completadas)
+  // 1. Debe haber visto el video completo (detectado automáticamente o persistido, o si ya tiene misiones posteriores completadas).
+  //    En lecciones de Google Drive o reproductores sin telemetría interactiva cross-origin, no se bloquea al usuario.
   // 2. Si la lección es la última del módulo y el módulo tiene cuestionario interactivo, debe haberlo aprobado.
+  const currentSupportsTracking = supportsPlaybackTracking(currentVideo);
   const isVideoWatched = Boolean(
+    !currentSupportsTracking ||
     (currentVideo && (watchedVideos[currentVideo.id] || completedVideos[currentVideo.id])) ||
     (currentVideo && currentUser?.id && localStorage.getItem(getVideoWatchedKey(currentUser.id, currentVideo.id)) === 'true') ||
     hasSubsequentCompleted
@@ -1154,12 +1237,75 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
             )}
 
             <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
+              {/* Indicador de carga visual del reproductor con auxilio ante timeouts (Drive/enlaces caídos) */}
+              {showsPlayer && isVideoLoading && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/95 px-4 text-center backdrop-blur-sm transition-opacity duration-300">
+                  {!hasLoadTimedOut ? (
+                    <div className="pointer-events-none flex flex-col items-center">
+                      <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 border border-cyan-500/20 shadow-inner">
+                        <Loader2 className="h-6 w-6 text-cyan-400 animate-spin" />
+                      </div>
+                      <p className="text-section font-semibold text-white">
+                        {providerLabel === 'Google Drive' ? 'Cargando clase desde Google Drive...' : 'Cargando reproductor...'}
+                      </p>
+                      <p className="mt-1 text-meta text-zinc-400">
+                        {providerLabel === 'Google Drive' ? 'Conectando con el visor de Google Workspace' : 'Preparando el contenido audiovisual'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex max-w-md flex-col items-center animate-fade-in">
+                      <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                        <AlertCircle className="h-6 w-6" />
+                      </div>
+                      <p className="text-section font-semibold text-white">
+                        ¿Tarda demasiado en cargar?
+                      </p>
+                      <p className="mt-1 text-meta leading-relaxed text-zinc-400">
+                        {providerLabel === 'Google Drive'
+                          ? 'Google Drive puede tardar si la conexión es lenta o si el archivo tiene permisos restringidos en Drive.'
+                          : 'El reproductor está tardando más de lo habitual en responder.'}
+                      </p>
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+                        {videoSource?.embedUrl && (
+                          <a
+                            href={videoSource.embedUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-3.5 py-2 text-micro font-bold text-cyan-300 hover:bg-cyan-500/30 transition-colors"
+                          >
+                            <span>Abrir en pestaña nueva</span>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsVideoLoading(true);
+                            setHasLoadTimedOut(false);
+                            const ifr = document.getElementById('docentos-video-iframe') as HTMLIFrameElement | null;
+                            if (ifr) ifr.src = ifr.src;
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 border border-zinc-700 px-3.5 py-2 text-micro font-bold text-zinc-200 hover:bg-zinc-700 transition-colors"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          <span>Reintentar</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {showsPlayer && videoSource ? (
                 <iframe
                   id="docentos-video-iframe"
-                  /* La clave fuerza un iframe nuevo por lección o reunión grabada. */
-                  key={selectedMeetingPlayback ? selectedMeetingPlayback.id : videoSource.embedUrl}
+                  /* La clave estable por lección evita que React destruya y vuelva a montar el iframe cuando se resuelven URLs secundarias */
+                  key={selectedMeetingPlayback ? `meeting-${selectedMeetingPlayback.id}` : `video-${currentVideo?.id || videoSource.embedUrl}`}
                   src={videoSource.embedUrl}
+                  onLoad={() => {
+                    setIsVideoLoading(false);
+                    setHasLoadTimedOut(false);
+                  }}
                   title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
                   className="h-full w-full border-0 bg-black"
                   style={{ backgroundColor: '#000000' }}

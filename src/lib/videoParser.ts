@@ -11,6 +11,48 @@
 export type VideoProvider = 'youtube' | 'drive' | 'embed';
 import { safeExternalUrl } from './safeUrl';
 
+export interface VideoLike {
+  source?: string | null;
+  provider?: string | null;
+  driveFileId?: string | null;
+  embedUrl?: string | null;
+  playbackUrl?: string | null;
+}
+
+/**
+ * Determina si un video proviene o se almacena en Google Drive.
+ */
+export function isDriveVideo(video?: VideoLike | null): boolean {
+  if (!video) return false;
+  if (video.source === 'GOOGLE_DRIVE') return true;
+  if (video.provider === 'drive') return true;
+  if (Boolean(video.driveFileId && video.driveFileId.trim())) return true;
+  const url = `${video.embedUrl || ''} ${video.playbackUrl || ''}`;
+  if (url.includes('drive.google.com') || url.includes('/file/d/')) return true;
+  return false;
+}
+
+/**
+ * Determina si el reproductor de video admite telemetría interactiva de reproducción
+ * (como los eventos postMessage de fin de video en YouTube y Vimeo, o un elemento <video> nativo).
+ * Los videos reproducidos mediante iframe de Google Drive u otros embeds de terceros
+ * están protegidos por Same-Origin Policy y no ofrecen API de eventos al sitio padre,
+ * por lo que no es posible ni debe exigirse detección automática de visualización completa.
+ */
+export function supportsPlaybackTracking(video?: VideoLike | null): boolean {
+  if (!video) return false;
+  if (isDriveVideo(video)) return false;
+  const provider = video.provider;
+  const url = `${video.embedUrl || ''} ${video.playbackUrl || ''}`.toLowerCase();
+  if (provider === 'youtube' || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com')) {
+    return true;
+  }
+  if (url.includes('vimeo.com')) {
+    return true;
+  }
+  return false;
+}
+
 // Las clases llegan como `/api/content/videos/<id>`: una ruta de nuestro propio
 // origen. Se acepta tal cual; «//host» y la contrabarra quedan fuera porque el
 // navegador los convierte en una URL de otro dominio.

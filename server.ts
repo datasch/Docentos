@@ -1054,6 +1054,7 @@ app.get(
       });
     }
 
+    res.setHeader('Cache-Control', 'private, max-age=3600');
     return res.redirect(finalUrl);
   }),
 );
