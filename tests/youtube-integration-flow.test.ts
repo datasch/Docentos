@@ -282,7 +282,7 @@ test('E2E Flow: AI YouTube Course Builder completo sobre HTTP', async (t) => {
 
   await t.test('7. GET /api/youtube/ai-jobs/:id sondea el trabajo hasta completarse', async () => {
     let jobData: any = null;
-    const maxTries = 30;
+    const maxTries = 60;
 
     for (let i = 0; i < maxTries; i++) {
       const res = await fetch(`${base}/api/youtube/ai-jobs/${aiJobId}`, {

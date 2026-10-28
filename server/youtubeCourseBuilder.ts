@@ -377,7 +377,7 @@ async function processJobAsync(
     let usedProvider = 'heuristic';
 
     // 1. Intentar con Gemini si hay clave
-    const geminiKey = config.GEMINI_API_KEY || config.AI_API_KEY || process.env.GEMINI_API_KEY;
+    const geminiKey = config.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (geminiKey) {
       await prisma.aIJob.update({ where: { id: jobId }, data: { progress: 50 } });
       resultStructure = await callGemini(geminiKey, systemPrompt, userPrompt);

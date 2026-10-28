@@ -14,6 +14,19 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.17 - 2026-10-28
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias.
+
+### Fixed
+
+- Marcado manual y compleción de lecciones en Google Drive: las lecciones alojadas en Google Drive ahora permiten ser marcadas manualmente como completadas por el alumno sin trabar su progreso, preservando las evaluaciones obligatorias si el módulo las requiere.
+- Rendimiento y carga fluida para videos de Google Drive: se estabilizó la clave del reproductor para evitar parpadeos y desmontajes al interactuar, se añadió precarga en segundo plano y se incorporó un temporizador de auxilio tras 8 segundos con opción de reintento y enlace alternativo.
+- Altura dinámica y diseño responsivo para el panel lateral de cursos: las pestañas de Sesiones, Notas y Mentoría ahora inician compactas abrazando su contenido en lugar de forzar un alto fijo de 70vh, expandiéndose dinámicamente según se añaden elementos y permitiendo scroll fluido si superan la pantalla.
+- Restauración y reubicación del Buzón de Escucha: se recuperó el botón flotante en la interfaz principal, ubicado en la esquina inferior izquierda con su tooltip, distintivo de respuestas no leídas y nivel de superposición calibrado.
+- Generador de cursos con IA desde YouTube: discriminación estricta entre credenciales de Gemini y proveedores genéricos (OpenAI/DeepSeek), evitando retardos innecesarios en la cola de trabajos asíncronos.
+
 ## 0.5.0-beta.16 - 2026-10-26
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros

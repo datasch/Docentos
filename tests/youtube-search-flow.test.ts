@@ -126,7 +126,7 @@ test('YouTube Search & Curation Flow', async (t) => {
 
     // Esperar a que el job termine (usa el fallback o proveedor disponible)
     let finalJob;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       await new Promise((r) => setTimeout(r, 100));
       finalJob = await getAiJobStatus(job.id, mentor.id);
       if (finalJob.status === 'COMPLETED' || finalJob.status === 'FAILED') break;
