@@ -1071,13 +1071,15 @@ export const api = {
     return res.json();
   },
 
-  async deleteCourse(courseId: string): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`/api/admin/courses/${courseId}`, {
+  async deleteCourse(courseId: string, force = false): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/courses/${courseId}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al eliminar curso');
+      const error: any = new Error(err.error || 'Error al eliminar curso');
+      error.canForce = Boolean(err.canForce);
+      throw error;
     }
     return res.json();
   },
@@ -1109,13 +1111,15 @@ export const api = {
     return res.json();
   },
 
-  async deleteModule(moduleId: string): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`/api/admin/modules/${moduleId}`, {
+  async deleteModule(moduleId: string, force = false): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/modules/${moduleId}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al eliminar módulo');
+      const error: any = new Error(err.error || 'Error al eliminar módulo');
+      error.canForce = Boolean(err.canForce);
+      throw error;
     }
     return res.json();
   },
@@ -1147,13 +1151,15 @@ export const api = {
     return res.json();
   },
 
-  async deleteVideo(videoId: string): Promise<{ success: boolean; message: string }> {
-    const res = await fetch(`/api/admin/videos/${videoId}`, {
+  async deleteVideo(videoId: string, force = false): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/admin/videos/${videoId}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al eliminar video');
+      const error: any = new Error(err.error || 'Error al eliminar video');
+      error.canForce = Boolean(err.canForce);
+      throw error;
     }
     return res.json();
   },

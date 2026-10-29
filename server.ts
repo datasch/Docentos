@@ -3800,25 +3800,77 @@ app.delete(
     });
     if (!existing) return res.status(404).json({ error: 'Curso no encontrado.' });
 
-    if (existing._count.payments || existing._count.enrollments || existing._count.certificates) {
-      return res.status(409).json({ error: 'El curso tiene pagos, matrículas o certificados: despublícalo.' });
-    }
+    const force = req.query.force === 'true' || req.body?.force === true;
 
-    try {
-      await prisma.course.delete({ where: { id: existing.id } });
-    } catch (error) {
-      // Una escritura concurrente o el historial de un módulo también impide el borrado.
-      if ((error as { code?: string }).code === 'P2003') {
-        return res.status(409).json({ error: 'El curso tiene pagos, matrículas, certificados o historial de alumnos: despublícalo.' });
+    if (!force) {
+      if (existing._count.payments || existing._count.enrollments || existing._count.certificates) {
+        return res.status(409).json({
+          error: 'El curso tiene pagos, matrículas o certificados: despublícalo.',
+          canForce: true,
+        });
       }
-      throw error;
+
+      try {
+        await prisma.course.delete({ where: { id: existing.id } });
+      } catch (error) {
+        if ((error as { code?: string }).code === 'P2003') {
+          return res.status(409).json({
+            error: 'El curso tiene pagos, matrículas, certificados o historial de alumnos: despublícalo.',
+            canForce: true,
+          });
+        }
+        throw error;
+      }
+    } else {
+      // Forzar eliminación atómica purgando en cascada el progreso, notas, comentarios y relaciones
+      await prisma.$transaction(async (tx) => {
+        const modules = await tx.module.findMany({
+          where: { courseId: existing.id },
+          select: { id: true },
+        });
+        const moduleIds = modules.map((m) => m.id);
+
+        const videos = await tx.videoDriveLink.findMany({
+          where: { moduleId: { in: moduleIds } },
+          select: { id: true },
+        });
+        const videoIds = videos.map((v) => v.id);
+
+        if (videoIds.length > 0) {
+          await tx.userProgress.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.videoNote.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.mentorshipComment.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.tTSGuide.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.videoDriveLink.deleteMany({ where: { id: { in: videoIds } } });
+        }
+
+        if (moduleIds.length > 0) {
+          await tx.quizAttempt.deleteMany({ where: { moduleId: { in: moduleIds } } });
+          await tx.moduleQuiz.deleteMany({ where: { moduleId: { in: moduleIds } } });
+          await tx.meeting.deleteMany({ where: { moduleId: { in: moduleIds } } });
+          await tx.tTSGuide.deleteMany({ where: { moduleId: { in: moduleIds } } });
+          await tx.courseResource.deleteMany({ where: { moduleId: { in: moduleIds } } });
+          await tx.module.deleteMany({ where: { id: { in: moduleIds } } });
+        }
+
+        await tx.tTSGuide.deleteMany({ where: { courseId: existing.id } });
+        await tx.courseResource.deleteMany({ where: { courseId: existing.id } });
+        await tx.menteeAssignment.deleteMany({ where: { courseId: existing.id } });
+        await tx.meeting.deleteMany({ where: { courseId: existing.id } });
+        await tx.certificate.deleteMany({ where: { courseId: existing.id } });
+        await tx.courseEnrollment.deleteMany({ where: { courseId: existing.id } });
+        await tx.payment.deleteMany({ where: { courseId: existing.id } });
+        await tx.aIJob.updateMany({ where: { courseId: existing.id }, data: { courseId: null } });
+        await tx.listeningEntry.updateMany({ where: { courseId: existing.id }, data: { courseId: null } });
+        await tx.course.delete({ where: { id: existing.id } });
+      });
     }
 
     await recordAuditEvent(req, {
       action: 'course.delete',
       targetType: 'Course',
       targetId: existing.id,
-      metadata: { title: existing.title },
+      metadata: { title: existing.title, forced: force },
     });
 
     res.json({ success: true, message: 'Curso eliminado exitosamente.' });
@@ -3879,14 +3931,50 @@ app.delete(
     const existing = await prisma.module.findUnique({ where: { id: req.params.moduleId } });
     if (!existing) return res.status(404).json({ error: 'Módulo no encontrado.' });
 
-    try {
-      await prisma.module.delete({ where: { id: existing.id } });
-    } catch (error) {
-      if ((error as { code?: string }).code === 'P2003') {
-        return res.status(409).json({ error: 'El módulo tiene progreso de alumnos.' });
+    const force = req.query.force === 'true' || req.body?.force === true;
+
+    if (!force) {
+      try {
+        await prisma.module.delete({ where: { id: existing.id } });
+      } catch (error) {
+        if ((error as { code?: string }).code === 'P2003') {
+          return res.status(409).json({ error: 'El módulo tiene progreso de alumnos.', canForce: true });
+        }
+        throw error;
       }
-      throw error;
+    } else {
+      // Forzar eliminación atómica del módulo y sus videos/progreso asociados
+      await prisma.$transaction(async (tx) => {
+        const videos = await tx.videoDriveLink.findMany({
+          where: { moduleId: existing.id },
+          select: { id: true },
+        });
+        const videoIds = videos.map((v) => v.id);
+
+        if (videoIds.length > 0) {
+          await tx.userProgress.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.videoNote.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.mentorshipComment.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.tTSGuide.deleteMany({ where: { videoId: { in: videoIds } } });
+          await tx.videoDriveLink.deleteMany({ where: { id: { in: videoIds } } });
+        }
+
+        await tx.quizAttempt.deleteMany({ where: { moduleId: existing.id } });
+        await tx.moduleQuiz.deleteMany({ where: { moduleId: existing.id } });
+        await tx.meeting.deleteMany({ where: { moduleId: existing.id } });
+        await tx.tTSGuide.deleteMany({ where: { moduleId: existing.id } });
+        await tx.courseResource.deleteMany({ where: { moduleId: existing.id } });
+        await tx.module.delete({ where: { id: existing.id } });
+      });
     }
+
+    await recordAuditEvent(req, {
+      action: 'module.delete',
+      targetType: 'Module',
+      targetId: existing.id,
+      metadata: { title: existing.title, forced: force },
+    });
+
     res.json({ success: true, message: 'Módulo eliminado exitosamente.' });
   }),
 );
@@ -4103,14 +4191,35 @@ app.delete(
     const existing = await prisma.videoDriveLink.findUnique({ where: { id: req.params.videoId } });
     if (!existing) return res.status(404).json({ error: 'Video no encontrado.' });
 
-    try {
-      await prisma.videoDriveLink.delete({ where: { id: existing.id } });
-    } catch (error) {
-      if ((error as { code?: string }).code === 'P2003') {
-        return res.status(409).json({ error: 'El video tiene progreso de alumnos.' });
+    const force = req.query.force === 'true' || req.body?.force === true;
+
+    if (!force) {
+      try {
+        await prisma.videoDriveLink.delete({ where: { id: existing.id } });
+      } catch (error) {
+        if ((error as { code?: string }).code === 'P2003') {
+          return res.status(409).json({ error: 'El video tiene progreso de alumnos.', canForce: true });
+        }
+        throw error;
       }
-      throw error;
+    } else {
+      // Forzar eliminación atómica purgando progreso, notas y comentarios
+      await prisma.$transaction(async (tx) => {
+        await tx.userProgress.deleteMany({ where: { videoId: existing.id } });
+        await tx.videoNote.deleteMany({ where: { videoId: existing.id } });
+        await tx.mentorshipComment.deleteMany({ where: { videoId: existing.id } });
+        await tx.tTSGuide.deleteMany({ where: { videoId: existing.id } });
+        await tx.videoDriveLink.delete({ where: { id: existing.id } });
+      });
     }
+
+    await recordAuditEvent(req, {
+      action: 'video.delete',
+      targetType: 'VideoDriveLink',
+      targetId: existing.id,
+      metadata: { title: existing.title, forced: force },
+    });
+
     res.json({ success: true, message: 'Video eliminado exitosamente.' });
   }),
 );

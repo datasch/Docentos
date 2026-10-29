@@ -33,6 +33,7 @@ import {
   Globe,
   Youtube,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
@@ -73,6 +74,15 @@ const emptyForm = {
 };
 
 type CourseForm = typeof emptyForm;
+
+interface DeleteTarget {
+  type: 'course' | 'module' | 'video';
+  id: string;
+  title: string;
+  warningText?: string;
+  error?: string;
+  canForce?: boolean;
+}
 
 export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   currentUser,
@@ -115,6 +125,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState('');
   const [driveIsDemo, setDriveIsDemo] = useState(false);
+
+  // Forzar / Confirmar eliminación
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -234,24 +248,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     }
   };
 
-  const handleDeleteCourse = async (course: Course) => {
-    const confirmed = window.confirm(
-      `Se eliminará "${course.title}" junto con sus módulos, videos y recursos. Esta acción no se puede deshacer.\n\n¿Continuar?`,
-    );
-    if (!confirmed) return;
-
-    setBusyId(course.id);
-    try {
-      await api.deleteCourse(course.id);
-      if (expandedCourseId === course.id) setExpandedCourseId(null);
-      if (editingCourseId === course.id) resetForm();
-      flash('Curso eliminado.');
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message || 'Error al eliminar el curso');
-    } finally {
-      setBusyId(null);
-    }
+  const handleDeleteCourse = (course: Course) => {
+    setDeleteTarget({
+      type: 'course',
+      id: course.id,
+      title: course.title,
+      warningText: 'Se eliminará el curso junto con sus módulos, videos y recursos vinculados.',
+    });
   };
 
   const handleCreateModule = async (courseId: string) => {
@@ -279,18 +282,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     }
   };
 
-  const handleDeleteModule = async (module: Module) => {
-    const confirmed = window.confirm(
-      `Se eliminará el módulo "${module.title}" y sus ${module.videos.length} video(s). ¿Continuar?`,
-    );
-    if (!confirmed) return;
-    try {
-      await api.deleteModule(module.id);
-      flash('Módulo eliminado.');
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message || 'Error al eliminar el módulo');
-    }
+  const handleDeleteModule = (module: Module) => {
+    setDeleteTarget({
+      type: 'module',
+      id: module.id,
+      title: module.title,
+      warningText: `Se eliminará el módulo con sus ${module.videos.length} video(s).`,
+    });
   };
 
   // Intercambia el campo `order` con el elemento vecino para reordenar.
@@ -379,14 +377,47 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     }
   };
 
-  const handleDeleteVideo = async (video: VideoDriveLink) => {
-    if (!window.confirm(`¿Eliminar el video "${video.title}"?`)) return;
+  const handleDeleteVideo = (video: VideoDriveLink) => {
+    setDeleteTarget({
+      type: 'video',
+      id: video.id,
+      title: video.title,
+      warningText: 'Se eliminará esta misión/lección de video del módulo.',
+    });
+  };
+
+  const executeDelete = async (force: boolean) => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await api.deleteVideo(video.id);
-      flash('Video eliminado.');
+      if (deleteTarget.type === 'course') {
+        setBusyId(deleteTarget.id);
+        await api.deleteCourse(deleteTarget.id, force);
+        if (expandedCourseId === deleteTarget.id) setExpandedCourseId(null);
+        if (editingCourseId === deleteTarget.id) resetForm();
+        flash(force ? 'Curso forzado y eliminado por completo.' : 'Curso eliminado.');
+      } else if (deleteTarget.type === 'module') {
+        await api.deleteModule(deleteTarget.id, force);
+        flash(force ? 'Módulo forzado y eliminado.' : 'Módulo eliminado.');
+      } else if (deleteTarget.type === 'video') {
+        await api.deleteVideo(deleteTarget.id, force);
+        flash(force ? 'Video forzado y eliminado.' : 'Video eliminado.');
+      }
+      setDeleteTarget(null);
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al eliminar el video');
+      setDeleteTarget((prev) =>
+        prev
+          ? {
+              ...prev,
+              error: err.message || 'Error al eliminar.',
+              canForce: true,
+            }
+          : null,
+      );
+    } finally {
+      setIsDeleting(false);
+      setBusyId(null);
     }
   };
 
@@ -1202,6 +1233,104 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             loadCourses();
           }}
         />
+      )}
+
+      {/* Modal de confirmación y forzado de eliminación */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in text-white relative">
+            <button
+              onClick={() => !isDeleting && setDeleteTarget(null)}
+              disabled={isDeleting}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#2d2d44]/50 transition-colors disabled:opacity-50"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-[#2d2d44] pb-3">
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {deleteTarget.type === 'course'
+                    ? 'Eliminar Curso'
+                    : deleteTarget.type === 'module'
+                    ? 'Eliminar Módulo'
+                    : 'Eliminar Misión / Video'}
+                </h3>
+                <p className="text-xs text-slate-400 truncate max-w-[260px]">
+                  «{deleteTarget.title}»
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {deleteTarget.warningText}
+            </p>
+
+            {deleteTarget.error && (
+              <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs space-y-2">
+                <p className="font-semibold flex items-center gap-1.5 text-red-200">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  {deleteTarget.error}
+                </p>
+                <p className="text-[11px] text-red-300/80 leading-snug">
+                  {deleteTarget.type === 'course'
+                    ? 'El curso contiene registros de alumnos (pagos, matrículas, certificados o progreso). Forzar la eliminación purgará definitivamente todos estos registros asociados.'
+                    : deleteTarget.type === 'module'
+                    ? 'El módulo contiene intentos de examen o progreso de alumnos. Forzar la eliminación purgará permanentemente los datos.'
+                    : 'Esta lección tiene progreso o notas de alumnos. Forzar la eliminación eliminará el progreso de los alumnos en este video.'}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#1a1a2e] transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+
+              {!deleteTarget.error ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => executeDelete(false)}
+                    disabled={isDeleting}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    Eliminar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => executeDelete(true)}
+                    disabled={isDeleting}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
+                    title="Forzar eliminación ignorando y purgando progreso de alumnos"
+                  >
+                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                    Forzar eliminación
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => executeDelete(true)}
+                  disabled={isDeleting}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                  Confirmar y Forzar Eliminación
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

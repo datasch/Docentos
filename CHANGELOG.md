@@ -14,6 +14,20 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.19 - 2026-10-29
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias.
+
+### Added
+
+- Opción de forzar eliminación en el Gestor de Cursos: se permite purgar cursos, módulos y lecciones/videos de forma definitiva cuando la base de datos bloquea el borrado por restricciones de integridad foránea (progreso de alumnos, notas personales, comentarios de mentoría, intentos de examen o matrículas).
+- Modal interactivo de confirmación y advertencia: se sustituyeron los diálogos nativos del navegador por un modal estilizado que detecta automáticamente los conflictos por progreso o pagos y habilita el botón «Forzar eliminación» para ejecutar una purga atómica en cascada.
+
+### Fixed
+
+- Desbloqueo de cursos y lecciones con alumnos matriculados o progreso registrado: la administración ahora puede limpiar lecciones del temario o cursos de prueba sin quedar atascada por errores 409 de clave foránea.
+
 ## 0.5.0-beta.18 - 2026-10-28
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros
