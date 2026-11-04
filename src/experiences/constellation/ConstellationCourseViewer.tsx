@@ -4,6 +4,7 @@ import { Course, User, Module, VideoDriveLink, CertificateRecord } from '../../t
 import { CourseViewer } from '../../components/CourseViewer';
 import { ConstellationCosmicPath } from './ConstellationCosmicPath';
 import { api } from '../../lib/api';
+import { syncModuleQuizCounts, quizzesPluginEngine } from '../../plugins/QuizzesPlugin';
 
 interface ConstellationCourseViewerProps {
   course: Course;
@@ -113,8 +114,30 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     }
   };
 
+  const loadQuizzes = async () => {
+    try {
+      const [summaryRes, attemptsRes] = await Promise.all([
+        api.getCourseQuizSummary(course.id).catch(() => null),
+        api.getCourseQuizAttempts(course.id).catch(() => null),
+      ]);
+      if (summaryRes?.counts) {
+        syncModuleQuizCounts(summaryRes.counts);
+      }
+      if (attemptsRes?.attempts) {
+        quizzesPluginEngine.restoreAttempts(
+          effectiveUser.id,
+          attemptsRes.attempts,
+          (course.modules || []).map((m) => m.id)
+        );
+      }
+    } catch {
+      // Si falla la red o es modo invitado, mantiene estado local
+    }
+  };
+
   useEffect(() => {
     loadProgress();
+    loadQuizzes();
   }, [currentUser, course.id]);
 
   const handleOpenLesson = (video: VideoDriveLink, module: Module) => {
@@ -320,6 +343,11 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           onCloseModal={() => {
             setIsPlayerModalOpen(false);
             loadProgress();
+            loadQuizzes();
+          }}
+          onQuizPassed={() => {
+            loadProgress();
+            loadQuizzes();
           }}
         />
       )}

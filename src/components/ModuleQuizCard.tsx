@@ -65,7 +65,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     let active = true;
     api.getCourseQuizAttempts(courseId).then(({ attempts }) => {
       if (!active) return;
-      const recent = attempts.filter((attempt) => attempt.moduleId === module.id &&
+      const safeAttempts = Array.isArray(attempts) ? attempts : [];
+      const recent = safeAttempts.filter((attempt) => attempt.moduleId === module.id &&
         Date.now() - new Date(attempt.createdAt).getTime() < 24 * 60 * 60 * 1000);
       setAttemptsUsed(recent.length);
     }).catch(() => setSubmitError('No se pudieron cargar los intentos.'));

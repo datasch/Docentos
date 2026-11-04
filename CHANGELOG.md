@@ -14,6 +14,17 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.20 - 2026-11-04
+
+**Esta versión no migra el esquema de la base de datos.** No elimina registros
+ni añade variables obligatorias.
+
+### Fixed
+
+- **Apertura de Exámenes y Quizzes en Reproductor**: Se solucionó el problema por el cual el botón «Rendir el examen» en la última lección de un módulo no abría el modal ni la vista del examen cuando el módulo no estaba explícitamente expandido en el acordeón del temario.
+- **Sincronización en Experiencia Constellation**: Los quizzes y el estado del curso ahora se inicializan al montar el visor del estudiante y se sincronizan reactivamente al aprobar una evaluación.
+- **Manejo Seguro de Respuestas de Red en Intentos**: Se añadieron protecciones en el componente de examen para evitar excepciones de JavaScript cuando la API de intentos devuelve valores nulos o indefinidos ante respuestas vacías.
+
 ## 0.5.0-beta.19 - 2026-10-29
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros

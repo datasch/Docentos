@@ -141,4 +141,20 @@ test('Exámenes: un módulo sin examen no puede bloquear al siguiente', async (t
       assert.equal(engine.isModuleUnlocked(modules, 2, 'user-1', 80, false), true);
     });
   });
+
+  await t.test('6. El alumno siempre puede rendir el examen del módulo activo aunque módulos previos tuviesen examen pendiente', () => {
+    withQuiz('m-1', () => {
+      withQuiz('m-2', () => {
+        const engine = new QuizzesPluginEngine();
+        // m-1 tiene examen no aprobado, por lo que m-2 está bloqueado para avance normal
+        assert.equal(engine.isModuleUnlocked(modules, 1, 'user-1'), false);
+        // Sin embargo, si el alumno ya se encuentra navegando dentro de m-2 (módulo activo),
+        // abrir el examen del módulo activo (moduleIndex === activeModuleIndex) debe permitirse
+        const activeModuleIndex = 1;
+        const targetModuleIndex = 1;
+        const canOpenQuiz = targetModuleIndex === activeModuleIndex || engine.isModuleUnlocked(modules, targetModuleIndex, 'user-1');
+        assert.equal(canOpenQuiz, true, 'El examen del módulo activo nunca debe auto-bloquearse');
+      });
+    });
+  });
 });

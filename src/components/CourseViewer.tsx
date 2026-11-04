@@ -85,6 +85,8 @@ interface CourseViewerProps {
   onProgressChange?: (completedMap: Record<string, boolean>) => void;
   /** Callback cuando se completa una lección y se avanza hacia la siguiente (para animar en ruta cósmica) */
   onLessonCompletedAndAdvance?: (nextTarget: LessonPosition | null) => void;
+  /** Callback cuando un examen de módulo es aprobado con éxito */
+  onQuizPassed?: (moduleId: string, score: number) => void;
 }
 
 /**
@@ -159,6 +161,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   onActiveLessonChange,
   onProgressChange,
   onLessonCompletedAndAdvance,
+  onQuizPassed,
 }) => {
   const [activeModuleIndex, setActiveModuleIndex] = useState(initialModuleIndex ?? 0);
   const [activeVideoIndex, setActiveVideoIndex] = useState(initialVideoIndex ?? 0);
@@ -240,6 +243,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [hasLoadTimedOut, setHasLoadTimedOut] = useState(false);
   const initialMountedUrlsRef = useRef<Record<string, string>>({});
+  const modalScrollRef = useRef<HTMLDivElement | null>(null);
 
   const currentModule = course.modules[activeModuleIndex] || course.modules[0];
   const currentVideo: VideoDriveLink | undefined = currentModule?.videos[activeVideoIndex];
@@ -402,11 +406,24 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   /** Abre el examen de un módulo en el escenario principal. */
   const abrirExamen = (moduleIndex: number) => {
-    if (!isModuleOpen(moduleLocks, moduleIndex)) return;
+    // Si se invoca para el módulo activo o si el módulo está abierto, se abre el examen.
+    // Nunca bloquear al alumno de rendir el examen del módulo en el que ya se encuentra navegando.
+    if (moduleIndex !== activeModuleIndex && !isModuleOpen(moduleLocks, moduleIndex)) return;
     setSelectedMeetingPlayback(null);
     setPickedByUser(true);
     setActiveModuleIndex(moduleIndex);
     setExamenModuleIndex(moduleIndex);
+
+    // Auto-scroll al inicio del contenedor para que la tarjeta del examen sea inmediatamente visible
+    setTimeout(() => {
+      if (modalScrollRef.current) {
+        modalScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const el = document.getElementById('modulo-examen-container');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 50);
   };
 
   const cerrarExamen = () => setExamenModuleIndex(null);
@@ -1148,14 +1165,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 vista. Verlo debajo del video mientras corría la clase era leer
                 las preguntas —y el cronómetro— antes de llegar a ellas. */}
             {examenActivo && moduloDelExamen && (
-              <div className="px-4 pb-4 lg:max-h-[calc(100dvh-9.5rem)] lg:overflow-y-auto lg:px-0">
+              <div id="modulo-examen-container" className="px-4 pb-4 lg:max-h-[calc(100dvh-9.5rem)] lg:overflow-y-auto lg:px-0">
                 <ModuleQuizCard
                   key={`${moduloDelExamen.id}-examen`}
                   module={moduloDelExamen}
                   courseId={course.id}
                   user={currentUser}
                   onExit={cerrarExamen}
-                  onPassed={() => { setQuizPassKey((prev) => prev + 1); void loadUserProgress(); }}
+                  onPassed={(score) => {
+                    setQuizPassKey((prev) => prev + 1);
+                    void loadUserProgress();
+                    onQuizPassed?.(moduloDelExamen.id, score);
+                  }}
                 />
               </div>
             )}
@@ -1916,20 +1937,28 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           {/* Cabecera del Modal de Misión */}
           <header className="flex shrink-0 items-center justify-between border-b border-slate-200/80 dark:border-white/10 px-5 py-4 bg-slate-50/90 dark:bg-[#140e26] transition-colors">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 dark:bg-purple-600/30 border border-purple-400/30 dark:border-purple-400/40 text-purple-600 dark:text-purple-300">
-                <Play className="h-4 w-4 fill-current" />
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                examenActivo
+                  ? 'bg-amber-500/10 dark:bg-amber-500/20 border-amber-400/30 dark:border-amber-400/40 text-amber-500 dark:text-amber-300'
+                  : 'bg-purple-500/10 dark:bg-purple-600/30 border border-purple-400/30 dark:border-purple-400/40 text-purple-600 dark:text-purple-300'
+              }`}>
+                {examenActivo ? <Award className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
               </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-                    {currentModule?.title || 'Misión'}
+                    {moduloDelExamen?.title || currentModule?.title || 'Misión'}
                   </span>
-                  <span className="text-[10px] text-purple-600/80 dark:text-purple-300/70 font-semibold">
-                    Lección {activeVideoIndex + 1} de {currentModule?.videos.length || 1}
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    examenActivo
+                      ? 'bg-amber-500/15 dark:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-400/30'
+                      : 'text-purple-600/80 dark:text-purple-300/70'
+                  }`}>
+                    {examenActivo ? 'Evaluación Requerida' : `Lección ${activeVideoIndex + 1} de ${currentModule?.videos.length || 1}`}
                   </span>
                 </div>
                 <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate max-w-xl">
-                  {currentVideo?.title}
+                  {examenActivo ? `Examen: ${moduloDelExamen?.title || currentModule?.title}` : currentVideo?.title}
                 </h2>
               </div>
             </div>
@@ -1945,7 +1974,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           </header>
 
           {/* Contenido scrolleable del modal */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent overscroll-contain">
+          <div ref={modalScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent overscroll-contain">
             {viewerBody}
           </div>
         </div>
