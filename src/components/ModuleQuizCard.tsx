@@ -1,3 +1,4 @@
+import type { QuizAttemptStatus } from '../lib/quizAttemptStatus';
 /**
  * Componente de Evaluación e Interacción de Módulo (`ModuleQuizCard.tsx`)
  * Plugin Core: Exámenes & Cuestionarios
@@ -56,22 +57,70 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   const [sending, setSending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [passed, setPassed] = useState(false);
+  const [canReviewAnswers, setCanReviewAnswers] = useState(false);
   const [scorePercentage, setScorePercentage] = useState<number>(0);
   const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number>(timeLimitMinutes * 60);
 
+  const [attemptStatus, setAttemptStatus] = useState<QuizAttemptStatus | null>(null);
+  const [statusReady, setStatusReady] = useState(!user);
+  const [clockNow, setClockNow] = useState(Date.now());
+  const serverOffset = useRef(0);
+  const lastRefresh = useRef(0);
+  const statusIdentity = useRef({ moduleId: module.id, userId: user?.id });
+  statusIdentity.current = { moduleId: module.id, userId: user?.id };
+
+  const applyStatus = (status: QuizAttemptStatus) => {
+    serverOffset.current = new Date(status.serverNow).getTime() - Date.now();
+    setClockNow(Date.now() + serverOffset.current);
+    setAttemptStatus(status);
+    setAttemptsUsed(status.attemptsUsed);
+    setPassed(status.passed);
+    if (status.passed && status.scorePercentage !== undefined) setScorePercentage(status.scorePercentage);
+    setStatusReady(true);
+  };
+
+  const refreshStatus = async () => {
+    const requestedModule = module.id;
+    const requestedUser = user?.id;
+    const status = await api.getQuizAttemptStatus(requestedModule);
+    if (statusIdentity.current.moduleId !== requestedModule || statusIdentity.current.userId !== requestedUser) return null;
+    applyStatus(status);
+    return status;
+  };
+
   useEffect(() => {
-    if (!courseId || !user) return;
     let active = true;
-    api.getCourseQuizAttempts(courseId).then(({ attempts }) => {
-      if (!active) return;
-      const safeAttempts = Array.isArray(attempts) ? attempts : [];
-      const recent = safeAttempts.filter((attempt) => attempt.moduleId === module.id &&
-        Date.now() - new Date(attempt.createdAt).getTime() < 24 * 60 * 60 * 1000);
-      setAttemptsUsed(recent.length);
-    }).catch(() => setSubmitError('No se pudieron cargar los intentos.'));
+    setAttemptStatus(null);
+    setAttemptsUsed(0);
+    setPassed(false);
+    setSubmitted(false);
+    setIniciado(false);
+    setSubmitError(null);
+    setStatusReady(!user);
+    if (user) api.getQuizAttemptStatus(module.id).then(status => {
+      if (active) applyStatus(status);
+    }).catch(() => {
+      if (active) setSubmitError('No se pudo verificar el examen. Vuelve a abrirlo para reintentar.');
+    });
     return () => { active = false; };
-  }, [courseId, module.id, user?.id]);
+  }, [module.id, user?.id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now() + serverOffset.current), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!attemptStatus || !user || attemptStatus.passed) return;
+    const parts = new Intl.DateTimeFormat('en', { timeZone: attemptStatus.resetTimeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(clockNow));
+    const dayKey = ['year', 'month', 'day'].map(type => parts.find(p => p.type === type)!.value).join('-');
+    const expired = attemptStatus.cooldownUntil && clockNow >= new Date(attemptStatus.cooldownUntil).getTime();
+    if ((expired || dayKey !== attemptStatus.dayKey) && Date.now() - lastRefresh.current >= 5000) {
+      lastRefresh.current = Date.now();
+      refreshStatus().then(() => setSubmitError(null)).catch(() => setSubmitError('No se pudo actualizar la disponibilidad. Reintentando…'));
+    }
+  }, [clockNow, attemptStatus, module.id, user?.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -125,6 +174,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
         submittedAnswers[question.id] === undefined ? [] : [[index, submittedAnswers[question.id]]]
       ));
       const result = await quizzesPluginEngine.submitAttempt(module.id, indexed);
+      setCanReviewAnswers(Boolean(result.correctIndexes));
       if (result.correctIndexes && result.explanations) {
         setQuestions((prev) => prev.map((question, index) => ({
           ...question,
@@ -135,13 +185,14 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       setScorePercentage(result.scorePercentage);
       setPassed(result.passed);
       setSubmitted(true);
-      setAttemptsUsed((prev) => prev + 1);
+      applyStatus(result.attemptStatus);
       if (result.passed) {
         if (user) quizzesPluginEngine.recordAttempt(user.id, module.id, result.scorePercentage, passingScore);
         if (user) pluginManager.onQuizPass(user, module.id, result.scorePercentage);
         onPassed?.(result.scorePercentage);
       }
     } catch (error) {
+      if ((error as any)?.attemptStatus) applyStatus((error as any).attemptStatus);
       setSubmitError(error instanceof Error ? error.message : 'No se pudo calificar el examen.');
     } finally {
       sendingRef.current = false;
@@ -160,7 +211,18 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     triggerAutoSubmit();
   };
 
-  const handleStartQuiz = () => {
+  const handleStartQuiz = async () => {
+    if (user) {
+      try {
+        const status = await refreshStatus();
+        if (!status || status.passed || status.cooldownUntil) return;
+      } catch {
+        setSubmitError('No se pudo verificar el examen. Inténtalo nuevamente.');
+        return;
+      }
+    }
+    setSubmitError(null);
+    setCanReviewAnswers(false);
     setAnswers({});
     answersRef.current = {};
     setSubmitted(false);
@@ -171,7 +233,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
 
   /** Volver a la portada, no al examen: el reloj no corre mientras se decide. */
   const handleResetQuiz = () => {
-    if (attemptsUsed >= maxAttempts) return;
+    if (intentosAgotados) return;
+    setCanReviewAnswers(false);
     setAnswers({});
     answersRef.current = {};
     setSubmitted(false);
@@ -181,7 +244,27 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   };
 
   const isPassed = passed;
-  const intentosAgotados = attemptsUsed >= maxAttempts;
+  const waitSeconds = attemptStatus?.cooldownUntil
+    ? Math.max(0, Math.ceil((new Date(attemptStatus.cooldownUntil).getTime() - clockNow) / 1000)) : 0;
+  const waitTime = `${Math.floor(waitSeconds / 60).toString().padStart(2, '0')}:${(waitSeconds % 60).toString().padStart(2, '0')}`;
+  // Keep the button blocked until the server confirms that the wait expired.
+  const intentosAgotados = !statusReady || Boolean(attemptStatus?.cooldownUntil) || passed;
+  const retryLabel = passed ? 'Examen aprobado' : !statusReady ? 'Verificando intentos…'
+    : attemptStatus?.cooldownUntil ? (waitSeconds > 0 ? `Reintentar en ${waitTime}` : 'Verificando disponibilidad…') : 'Reintentar examen';
+  const attemptLabel = attemptStatus
+    ? `${attemptStatus.initialAttemptsRemaining}/${attemptStatus.maxAttempts} iniciales disponibles`
+    : `${Math.max(0, maxAttempts - attemptsUsed)}/${maxAttempts} iniciales disponibles`;
+  const waitNotice = attemptStatus?.cooldownUntil ? (
+    <div role="status" className="rounded-xl border border-line bg-raised p-4 text-sm text-ink-soft">
+      <p className="font-semibold text-ink">Prepárate para tu próximo intento</p>
+      <p className="mt-2 leading-relaxed">
+        Repasa los temas que te resultaron más difíciles.{' '}
+        {waitSeconds > 0 ? (
+          <>Podrás volver a intentarlo a las <strong className="font-semibold text-ink">{new Date(attemptStatus.cooldownUntil).toLocaleTimeString('es-PE', { timeZone: attemptStatus.resetTimeZone, hour: 'numeric', minute: '2-digit' })}</strong>.</>
+        ) : 'Estamos verificando la disponibilidad de tu próximo intento…'}
+      </p>
+    </div>
+  ) : null;
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -193,7 +276,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       className="flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
     >
       <ArrowLeft aria-hidden className="h-4 w-4" />
-      Volver a la clase
+      {attemptStatus?.cooldownUntil ? 'Volver al módulo' : 'Volver a la clase'}
     </button>
   ) : null;
 
@@ -250,7 +333,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             { etiqueta: 'Preguntas', valor: String(questions.length) },
             { etiqueta: 'Para aprobar', valor: `${passingScore}%` },
             { etiqueta: 'Tiempo', valor: hasTimer ? `${timeLimitMinutes} min` : 'Sin límite' },
-            { etiqueta: 'Intentos', valor: `${attemptsUsed}/${maxAttempts}` },
+            { etiqueta: 'Intentos', valor: attemptLabel },
           ].map((dato) => (
             <div key={dato.etiqueta} className="rounded-xl border border-line bg-raised px-3 py-2.5">
               <dt className="text-micro text-ink-muted">{dato.etiqueta}</dt>
@@ -269,6 +352,11 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           </p>
         )}
 
+        {attemptStatus && !passed && !attemptStatus.cooldownUntil && attemptStatus.initialAttemptsRemaining === 0 && (
+          <p role="status" className="text-meta text-ink-soft">Tienes un intento adicional disponible. Si no apruebas, habrá una nueva espera.</p>
+        )}
+        {waitNotice}
+        {submitError && <p role="alert" className="text-meta text-danger-light">{submitError}</p>}
         {submitted && (
           <p className="text-meta text-ink-soft">
             Último resultado: <span className="font-semibold text-ink tabular-nums">{scorePercentage}%</span>.
@@ -284,7 +372,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             className="btn-brand-primary flex items-center gap-2 px-6 py-2.5 text-meta font-semibold disabled:opacity-50"
           >
             <Award aria-hidden className="h-4 w-4" />
-            {intentosAgotados ? 'Sin intentos disponibles' : attemptsUsed > 0 ? 'Reintentar examen' : 'Comenzar examen'}
+            {intentosAgotados ? retryLabel : attemptsUsed > 0 ? 'Reintentar examen' : 'Comenzar examen'}
           </button>
         </div>
       </div>
@@ -302,7 +390,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           <div className="min-w-0">
             <h2 className="text-section font-semibold text-ink">Examen de validación: {module.title}</h2>
             <p className="text-micro text-ink-muted">
-              Aprobación: {passingScore}% • Intentos: {attemptsUsed}/{maxAttempts}
+              Aprobación: {passingScore}% • Intentos: {attemptLabel}
             </p>
           </div>
         </div>
@@ -343,11 +431,12 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
         </div>
       </div>
 
+      {waitNotice}
       {/* Preguntas */}
       <form onSubmit={handleSubmitQuiz} className="space-y-6">
         {questions.map((q, idx) => {
           const selectedOption = answers[q.id];
-          const canReview = submitted && q.correctIndex !== undefined;
+          const canReview = submitted && canReviewAnswers && q.correctIndex !== undefined;
           const isQuestionCorrect = canReview && selectedOption === q.correctIndex;
           const isQuestionWrong = canReview && selectedOption !== undefined && selectedOption !== q.correctIndex;
 
@@ -426,7 +515,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                 className="flex items-center gap-2 rounded-xl border border-line bg-raised px-4 py-2 text-meta font-semibold text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw aria-hidden className="h-4 w-4 text-brand-cyan" />
-                {intentosAgotados ? 'Sin intentos disponibles' : 'Reintentar examen'}
+                {retryLabel}
               </button>
             </div>
           ) : (

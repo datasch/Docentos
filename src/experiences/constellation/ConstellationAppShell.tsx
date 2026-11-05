@@ -137,6 +137,32 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   };
 
   const currentCourse = selectedCourseForViewer || activeCourse || courses[0] || null;
+  // Never authorize playback from a prefetched course or a previous account.
+  const [viewerError, setViewerError] = useState(false);
+  const [verifiedCourse, setVerifiedCourse] = useState<{
+    course: Course;
+    user: User | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVerifiedCourse(null);
+    setViewerError(false);
+    courseCacheRef.current.clear();
+    if (constellationTab === 'viewer' && currentCourse) {
+      api.getCourse(currentCourse.id).then(({ course }) => {
+        if (!cancelled) setVerifiedCourse({ course, user: currentUser });
+      }).catch(() => {
+        if (!cancelled) { setVerifiedCourse(null); setViewerError(true); }
+      });
+    }
+    return () => { cancelled = true; };
+  }, [currentCourse?.id, currentUser, constellationTab]);
+
+  const viewerCourse = constellationTab === 'viewer' &&
+    verifiedCourse?.course.id === currentCourse?.id && verifiedCourse?.user === currentUser
+    ? verifiedCourse.course : null;
+
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col font-sans selection:bg-[#06b6d4] selection:text-[#050505] relative overflow-x-hidden w-full max-w-full">
@@ -274,7 +300,10 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
             )}
 
             {/* 4. Vista Reproductor Inmersivo */}
-            {constellationTab === 'viewer' && currentCourse && (
+            {constellationTab === 'viewer' && !viewerCourse && (
+              <p role="status" className="p-8 text-center">{viewerError ? 'No se pudo verificar el acceso. Vuelve a abrir el curso para reintentar.' : 'Verificando acceso al curso…'}</p>
+            )}
+            {constellationTab === 'viewer' && currentCourse && viewerCourse && (
               <motion.div
                 key={`view-viewer-${currentCourse.id}`}
                 variants={pageTransitionVariants}
@@ -284,9 +313,10 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                 className="w-full"
               >
                 <ConstellationCourseViewer
-                  course={currentCourse}
+                  key={`${viewerCourse.id}-${currentUser?.id || 'guest'}`}
+                  course={viewerCourse}
                   currentUser={currentUser}
-                  hasAccess={hasAccess}
+                  hasAccess={viewerCourse?.hasAccess === true}
                   onOpenPaywall={onOpenPaywall}
                   onGoHome={() => {
                     setConstellationTab('courses');

@@ -73,7 +73,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     return () => {
       active = false;
     };
-  }, [initialCourse.id]);
+  }, [initialCourse]);
 
   const loadProgress = async () => {
     try {

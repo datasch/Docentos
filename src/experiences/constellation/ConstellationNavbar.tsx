@@ -165,7 +165,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
       : isStaff
         ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
         : hasAccess
-          ? { label: '¡Ilimitado!', tone: 'lp-tone-green' }
+          ? { label: 'Cursos habilitados', tone: 'lp-tone-green' }
           : { label: 'Sin acceso', tone: 'lp-tone-warn' };
 
   const { logoUrl: customLogoUrl, brandName } = usePlatformBrand();

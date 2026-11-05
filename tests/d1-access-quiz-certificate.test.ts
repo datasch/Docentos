@@ -85,26 +85,34 @@ test('D1: reuniones, examen y certificado respetan permisos y aprobacion persist
     const wrong = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: { 0: 1, 1: 0 } });
     assert.equal(wrong.status, 200);
     assert.deepEqual([wrong.data.scorePercentage, wrong.data.passed], [0, false]);
-    assert.deepEqual(wrong.data, { scorePercentage: 0, passed: false, attemptsLeft: 2 });
+    assert.equal(wrong.data.attemptsLeft, 2);
+    assert.equal(wrong.data.correctIndexes, undefined);
+    assert.equal(wrong.data.attemptStatus.cooldownUntil, null);
     const restored = await request(learner.id, `/api/courses/${course.id}/quiz-attempts`);
     assert.equal(restored.data.attempts.length, 1);
     assert.equal(restored.data.attempts[0].passed, false);
     assert.equal((await request(outsider.id, `/api/courses/${course.id}/quiz-attempts`)).status, 403);
     assert.equal((await request(learner.id, '/api/progress')).data.certificates.length, 0);
 
+    const second = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: {} });
+    assert.equal(second.status, 200);
+    const third = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: {} });
+    assert.equal(third.status, 200);
+    assert.equal(third.data.attemptsLeft, 0);
+    assert.equal(third.data.correctIndexes, undefined);
+    assert.ok(third.data.attemptStatus.cooldownUntil);
+    const fourth = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: {} });
+    assert.equal(fourth.status, 429);
+    assert.equal(await prisma.quizAttempt.count({ where: { userId: learner.id, moduleId: module.id } }), 3);
+    await prisma.quizAttempt.updateMany({ where: { userId: learner.id, moduleId: module.id }, data: { cooldownUntil: new Date(Date.now() - 1000) } });
     const correct = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: { 0: 0, 1: 1 } });
     assert.equal(correct.status, 200);
     assert.deepEqual([correct.data.scorePercentage, correct.data.passed], [100, true]);
     assert.deepEqual(correct.data.correctIndexes, { 0: 0, 1: 1 });
     assert.equal(correct.data.explanations[0], 'Bien es correcta.');
     assert.equal((await request(learner.id, '/api/progress')).data.certificates.length, 1);
-    const third = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: {} });
-    assert.equal(third.status, 200);
-    assert.equal(third.data.attemptsLeft, 0);
-    assert.deepEqual(third.data.correctIndexes, { 0: 0, 1: 1 });
-    const fourth = await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: {} });
-    assert.equal(fourth.status, 429);
-    assert.equal(await prisma.quizAttempt.count({ where: { userId: learner.id, moduleId: module.id } }), 3);
+    assert.equal((await request(learner.id, `/api/modules/${module.id}/quiz/attempts`, { answers: {} })).status, 409);
+
     });
     await t.test('sin plugin de exámenes, completar videos concede certificado', async () => {
       const other = await prisma.user.create({ data: { email: `d1-noquiz-${suffix}@example.invalid`, name: 'Sin examen', role: 'PUBLIC_USER' } });

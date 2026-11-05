@@ -113,6 +113,7 @@ export default function App() {
     }
     return null;
   });
+  const [accessVerified, setAccessVerified] = useState(false);
   const [loading, setLoading] = useState<boolean>(() => readCachedCourses().length === 0);
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
@@ -158,6 +159,7 @@ export default function App() {
   const loadData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
+      setAccessVerified(false);
 
       const [setupResult, authResult, coursesResult] = await Promise.allSettled([
         checkSetupStatus(),
@@ -215,6 +217,7 @@ export default function App() {
 
       if (coursesResult.status === 'fulfilled') {
         const coursesRes = coursesResult.value;
+        setAccessVerified(authResult.status === 'fulfilled');
         if (coursesRes.courses && coursesRes.courses.length > 0) {
           setCourses(coursesRes.courses);
           writeCachedCourses(coursesRes.courses);
@@ -260,6 +263,7 @@ export default function App() {
       console.error('Error en logout:', err);
     } finally {
       writeCachedUser(null);
+      setAccessVerified(false);
       setCurrentUser(null);
       setCourse(null);
       navigateTo('landing');
@@ -294,11 +298,7 @@ export default function App() {
     setShowListening(true);
   };
 
-  const hasAccess = Boolean(
-    currentUser?.role === 'ADMIN' ||
-    currentUser?.role === 'MENTOR' ||
-    currentUser?.role === 'VIP'
-  );
+  const hasAccess = accessVerified && courses.some((c) => c.hasAccess === true);
 
   if (showSetupWizard) {
     return (

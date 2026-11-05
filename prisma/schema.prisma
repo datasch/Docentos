@@ -260,6 +260,7 @@ model QuizAttempt {
   scorePercentage Int
   passed          Boolean
   answersJson     String
+  cooldownUntil   DateTime?
   createdAt       DateTime @default(now())
 
   @@index([userId, moduleId, createdAt])

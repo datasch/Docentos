@@ -10,6 +10,6 @@ const pool = new pg.Pool({
   connectionTimeoutMillis: 5000,
 });
 
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(pool, { disposeExternalPool: true });
 
 export const prisma = new PrismaClient({ adapter });

@@ -247,13 +247,25 @@ test('Seguridad: un mentor no puede cambiar el rol de una cuenta existente', asy
 });
 
 test('Acceso a cursos: la resolucion por lotes coincide con la individual', async (t) => {
-  const courses = await prisma.course.findMany({
-    select: { id: true, published: true, price: true, openToAllRegistered: true },
+  // Own fixtures prevent another test from deleting a course between queries.
+  const suffix = `access-consistency-${Date.now()}`;
+  const student = await prisma.user.create({ data: { email: `student-${suffix}@example.invalid`, name: 'Estudiante', role: 'PUBLIC_USER' } });
+  const mentor = await prisma.user.create({ data: { email: `mentor-${suffix}@example.invalid`, name: 'Mentor', role: 'MENTOR' } });
+  const courses = [];
+  t.after(async () => {
+    await prisma.user.deleteMany({ where: { id: { in: [student.id, mentor.id] } } });
+    await prisma.course.deleteMany({ where: { id: { in: courses.map(c => c.id) } } });
   });
-  assert.ok(courses.length > 0, 'La base de demostracion debe tener cursos');
-
-  const student = await prisma.user.findUnique({ where: { id: TEST_USER_ID } });
-  assert.ok(student, 'El usuario de demostracion debe existir');
+  for (const flags of [
+    { published: true, openToAllRegistered: false },
+    { published: false, openToAllRegistered: false },
+    { published: true, openToAllRegistered: true },
+    { published: true, openToAllRegistered: false },
+  ]) {
+    courses.push(await prisma.course.create({ data: { title: suffix, description: 'Prueba de consistencia', price: 100, coverImage: '', ...flags }, select: { id: true, published: true, price: true, openToAllRegistered: true } }));
+  }
+  await prisma.menteeAssignment.create({ data: { menteeId: student.id, mentorId: mentor.id, courseId: courses[0].id } });
+  await prisma.courseEnrollment.create({ data: { userId: student.id, courseId: courses[3].id, source: 'ADMIN', status: 'ACTIVE' } });
 
   const viewers: Array<{ label: string; user: AuthenticatedUser | undefined }> = [
     { label: 'visitante anonimo', user: undefined },
@@ -278,13 +290,10 @@ test('Acceso a cursos: la resolucion por lotes coincide con la individual', asyn
 
   // El rol MENTOR es el unico que consulta tambien las asignaciones donde figura
   // como mentor, asi que la version por lotes debe reproducir esa quinta consulta.
-  const mentor = await prisma.user.findFirst({ where: { role: 'MENTOR' } });
-  if (mentor) {
-    viewers.push({
-      label: 'mentor con cartera asignada',
-      user: { id: mentor.id, email: mentor.email, name: mentor.name, role: 'MENTOR' },
-    });
-  }
+  viewers.push({
+    label: 'mentor con cartera asignada',
+    user: { id: mentor.id, email: mentor.email, name: mentor.name, role: 'MENTOR' },
+  });
 
   for (const viewer of viewers) {
     await t.test(`Decisiones identicas para ${viewer.label}`, async () => {

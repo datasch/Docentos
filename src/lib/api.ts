@@ -1,3 +1,4 @@
+import type { QuizAttemptStatus } from './quizAttemptStatus';
 /**
  * Cliente de API para Academia Giantucchi
  * Gestiona llamadas al backend de Express, RBAC y Google Drive
@@ -657,6 +658,7 @@ export const api = {
   ): Promise<{
     success: boolean;
     added: number;
+    reactivated: number;
     removed: number;
     ignored: number;
     stillHaveAccess: string[];
@@ -681,6 +683,7 @@ export const api = {
   ): Promise<{
     success: boolean;
     added: number;
+    reactivated: number;
     removed: number;
     ignored: number;
     stillHaveAccess: string[];
@@ -730,7 +733,26 @@ export const api = {
     return res.json();
   },
 
-  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; attemptsLeft: number; correctIndexes?: Record<number, number>; explanations?: Record<number, string> }> {
+  async getQuizAttemptStatus(moduleId: string): Promise<QuizAttemptStatus> {
+    const res = await fetch(`/api/modules/${moduleId}/quiz/attempt-status`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('No se pudo verificar la disponibilidad del examen.');
+    const status = await res.json();
+    // Validate the replacement endpoint before the exam uses its counters or clock.
+    if (!status || !Number.isInteger(status.attemptsUsed) || status.attemptsUsed < 0 ||
+        !Number.isInteger(status.maxAttempts) || status.maxAttempts < 1 ||
+        !Number.isInteger(status.initialAttemptsRemaining) || status.initialAttemptsRemaining < 0 ||
+        status.initialAttemptsRemaining > status.maxAttempts || typeof status.passed !== 'boolean' ||
+        typeof status.serverNow !== 'string' || !Number.isFinite(Date.parse(status.serverNow)) ||
+        typeof status.dayKey !== 'string' || typeof status.resetTimeZone !== 'string' ||
+        (status.cooldownUntil !== null && (typeof status.cooldownUntil !== 'string' || !Number.isFinite(Date.parse(status.cooldownUntil))))) {
+      throw new Error('El servidor devolvió una disponibilidad de examen inválida.');
+    }
+    try { new Intl.DateTimeFormat('en', { timeZone: status.resetTimeZone }).format(); }
+    catch { throw new Error('El servidor devolvió una zona horaria inválida.'); }
+    return status;
+  },
+
+  async submitQuizAttempt(moduleId: string, answers: Record<number, number>): Promise<{ scorePercentage: number; passed: boolean; attemptsLeft: number; attemptStatus: QuizAttemptStatus; correctIndexes?: Record<number, number>; explanations?: Record<number, string> }> {
     const res = await fetch(`/api/modules/${moduleId}/quiz/attempts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -738,7 +760,7 @@ export const api = {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Error al calificar el examen');
+      throw Object.assign(new Error(body.error || 'Error al calificar el examen'), { attemptStatus: body.attemptStatus });
     }
     return res.json();
   },
@@ -887,7 +909,7 @@ export const api = {
     email: string,
     mentorId?: string,
     courseId?: string,
-  ): Promise<{ success: boolean; existed?: boolean; mentee: any }> {
+  ): Promise<{ success: boolean; existed?: boolean; reactivated?: boolean; mentee: any }> {
     const res = await fetch('/api/mentor/assign-mentee', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

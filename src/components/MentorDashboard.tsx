@@ -295,6 +295,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       if (res.added > 0) {
         partes.push(res.added === 1 ? '1 asignación nueva' : `${res.added} asignaciones nuevas`);
       }
+      if (res.reactivated > 0) {
+        partes.push(res.reactivated === 1 ? '1 acceso reactivado' : `${res.reactivated} accesos reactivados`);
+      }
       if (res.removed > 0) {
         partes.push(res.removed === 1 ? '1 retirada' : `${res.removed} retiradas`);
       }
@@ -336,7 +339,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       // usa el que está guardado y no el que se acaba de teclear.
       const nombre = res.mentee?.name || newMenteeName.trim();
       announce(
-        res.existed
+        res.reactivated
+          ? `${nombre}: acceso reactivado, conservando su progreso.`
+          : res.existed
           ? `${nombre} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.`
           : `${nombre} queda asignado a tu mentoría.`,
       );

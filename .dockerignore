@@ -2,7 +2,8 @@ node_modules
 dist
 generated
 .git
-.env
+.env*
+!.env.example
 .codex
 .agents
 coverage

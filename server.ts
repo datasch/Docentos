@@ -1,3 +1,4 @@
+import { QUIZ_POLICY_DEFAULTS, validateQuizPolicy, loadQuizSettings, getQuizAttemptStatus, cooldownDeadline } from './server/quizCooldown.js';
 /**
  * DocentOS API server.
  *
@@ -217,6 +218,8 @@ function parsePlugin(plugin: any, isAdmin = false) {
     console.error(`DocentOS: no se pudo leer la configuracion del plugin ${plugin.id}:`, error);
     config = {};
   }
+
+  if (plugin.id === 'interactive-quizzes') config = { ...QUIZ_POLICY_DEFAULTS, ...config };
 
   // Las credenciales de la configuracion no salen de administracion. La regla
   // vive en server/pluginConfig.ts: mira la forma de la clave, no el id del
@@ -2721,6 +2724,10 @@ app.post(
     if (!plugin) return res.status(404).json({ error: 'Plugin no encontrado' });
     // La fusion parte de la configuracion completa para conservar claves no enviadas.
     const mergedConfig = { ...parsePlugin(plugin, true).config, ...(parsed.data.config || {}) };
+    if (plugin.id === 'interactive-quizzes') {
+      try { validateQuizPolicy(mergedConfig); }
+      catch (error) { return res.status(400).json({ error: (error as Error).message }); }
+    }
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
       // Se guarda cifrada: aqui es donde entran las URL de webhook y las
@@ -3212,6 +3219,11 @@ app.put(
       .filter((a) => cambios.toRemove.includes(a.menteeId))
       .map((a) => a.id);
 
+    const aReactivar = actuales.filter((a) => pedidos.includes(a.menteeId) && a.status === 'REVOKED');
+    const reactivated = (await prisma.menteeAssignment.updateMany({
+      where: { id: { in: aReactivar.map((a) => a.id) }, status: 'REVOKED', ...ambito },
+      data: { status: 'ACTIVE' },
+    })).count;
     const totalVideosCount = await courseLessonCount(courseId);
 
     const retirados = actuales.filter((a) => aQuitar.includes(a.id)).map((a) => a.menteeId);
@@ -3230,12 +3242,12 @@ app.put(
     }
 
     // Asignar un curso da acceso a su contenido, asi que queda registrado.
-    if (aQuitar.length > 0 || aAnadir.length > 0) {
+    if (aQuitar.length > 0 || aAnadir.length > 0 || reactivated > 0) {
       await recordAuditEvent(req, {
         action: 'mentorship.course_roster_updated',
         targetType: 'Course',
         targetId: courseId,
-        metadata: { added: aAnadir.length, removed: aQuitar.length },
+        metadata: { added: aAnadir.length, removed: aQuitar.length, reactivated },
       });
     }
 
@@ -3247,6 +3259,7 @@ app.put(
     res.json({
       success: true,
       added: aAnadir.length,
+      reactivated,
       removed: aQuitar.length,
       ignored: ignorados,
       stillHaveAccess: acceso.retienenAcceso,
@@ -3293,6 +3306,11 @@ app.put(
       .filter((a) => cambios.toRemove.includes(a.courseId))
       .map((a) => a.id);
 
+    const aReactivar = actuales.filter((a) => pedidos.includes(a.courseId) && a.status === 'REVOKED');
+    const reactivated = (await prisma.menteeAssignment.updateMany({
+      where: { id: { in: aReactivar.map((a) => a.id) }, status: 'REVOKED', ...ambito },
+      data: { status: 'ACTIVE' },
+    })).count;
     const cursosRetirados = actuales.filter((a) => aQuitar.includes(a.id)).map((a) => a.courseId);
     if (aQuitar.length > 0) {
       await prisma.menteeAssignment.deleteMany({ where: { id: { in: aQuitar } } });
@@ -3317,12 +3335,12 @@ app.put(
       });
     }
 
-    if (aQuitar.length > 0 || aAnadir.length > 0) {
+    if (aQuitar.length > 0 || aAnadir.length > 0 || reactivated > 0) {
       await recordAuditEvent(req, {
         action: 'mentorship.mentee_courses_updated',
         targetType: 'User',
         targetId: menteeId,
-        metadata: { added: aAnadir.length, removed: aQuitar.length },
+        metadata: { added: aAnadir.length, removed: aQuitar.length, reactivated },
       });
     }
 
@@ -3334,6 +3352,7 @@ app.put(
     res.json({
       success: true,
       added: aAnadir.length,
+      reactivated,
       removed: aQuitar.length,
       ignored: ignorados,
       stillHaveAccess: Array.from(retienenAcceso),
@@ -3399,9 +3418,22 @@ app.post(
       ? existingMentee
       : await prisma.user.create({ data: { name, email, role: 'MENTEE', avatarUrl: DEFAULT_AVATAR } });
     const totalVideosCount = await courseLessonCount(course.id);
+    const previousAssignment = await prisma.menteeAssignment.findUnique({
+      where: { menteeId_courseId: { menteeId: mentee.id, courseId: course.id } },
+    });
+    if (previousAssignment && req.user!.role === 'MENTOR' && previousAssignment.mentorId !== req.user!.id) {
+      return res.status(403).json({ error: 'La asignación pertenece a otro mentor.' });
+    }
+    const reactivated = (await prisma.menteeAssignment.updateMany({
+      where: {
+        menteeId: mentee.id, courseId: course.id, status: 'REVOKED',
+        ...(req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : {}),
+      },
+      data: { status: 'ACTIVE' },
+    })).count > 0;
     const assignment = await prisma.menteeAssignment.upsert({
       where: { menteeId_courseId: { menteeId: mentee.id, courseId: course.id } },
-      update: { mentorId: mentor.id },
+      update: req.user!.role === 'ADMIN' ? { mentorId: mentor.id } : {},
       create: { menteeId: mentee.id, mentorId: mentor.id, courseId: course.id, totalVideosCount },
     });
     res.json({
@@ -3410,6 +3442,7 @@ app.post(
       // que se tecleo en el formulario no se aplico, y decir "Fulano queda
       // asignado" usando ese texto seria inventarse un nombre que no se guardo.
       existed: Boolean(existingMentee),
+      reactivated,
       mentee: {
         ...toRuntimeUser(mentee),
         assignedMentorId: assignment.mentorId,
@@ -4042,6 +4075,22 @@ app.get(
   }),
 );
 
+app.get(
+  '/api/modules/:moduleId/quiz/attempt-status',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const moduleId = req.params.moduleId;
+    if (!(await userHasModuleAccess(req.user, moduleId))) return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    const settings = await loadQuizSettings();
+    const userId = req.user!.id;
+    const status = await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${moduleId}))`;
+      return getQuizAttemptStatus(tx, userId, moduleId, settings);
+    });
+    res.set('Cache-Control', 'no-store').json(status);
+  }),
+);
+
 app.post(
   '/api/modules/:moduleId/quiz/attempts',
   requireAuthenticated,
@@ -4059,37 +4108,39 @@ app.post(
         !Number.isInteger(value) || (value as number) < 0 || (value as number) >= questions[Number(key)].options.length)) {
       return res.status(400).json({ error: 'Respuestas inválidas.' });
     }
-    const plugin = await prisma.plugin.findUnique({ where: { id: 'interactive-quizzes' }, select: { configJson: true } });
-    let settings: Record<string, unknown> = {};
-    try {
-      const parsed = JSON.parse(plugin?.configJson || '{}');
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) settings = parsed;
-    } catch { /* Configuración inválida: usar valores seguros. */ }
-    const maxAttempts = Number.isInteger(settings.maxAttempts) && (settings.maxAttempts as number) > 0
-      ? settings.maxAttempts as number : 3;
+    const settings = await loadQuizSettings();
     const passingScore = typeof settings.passingScore === 'number' && settings.passingScore > 0 && settings.passingScore <= 100
       ? settings.passingScore : 80;
     const userId = req.user!.id;
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    // El bloqueo por usuario y módulo impide superar el límite con envíos simultáneos.
     const result = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${moduleId}))`;
-      const used = await tx.quizAttempt.count({ where: { userId, moduleId, createdAt: { gte: since } } });
-      if (used >= maxAttempts) return null;
+      const now = new Date();
+      const before = await getQuizAttemptStatus(tx, userId, moduleId, settings, now);
+      if (before.passed) return { alreadyPassed: true, passed: true, attemptStatus: before };
+      if (before.retryAfterSeconds > 0) return { blocked: true, attemptStatus: before };
       const correctCount = questions.reduce((count, question, index) => count + (answers[index] === question.correctIndex ? 1 : 0), 0);
       const scorePercentage = Math.round(correctCount / questions.length * 100);
       const passed = scorePercentage >= passingScore;
-      await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers) } });
-      const attemptsLeft = maxAttempts - used - 1;
+      const used = before.attemptsUsed + 1;
+      const cooldownUntil = !passed && used >= settings.maxAttempts
+        ? cooldownDeadline(now, settings.cooldownMinMinutes, settings.cooldownMaxMinutes) : null;
+      await tx.quizAttempt.create({ data: { userId, moduleId, scorePercentage, passed, answersJson: JSON.stringify(answers), cooldownUntil, createdAt: now } });
+      const attemptStatus = await getQuizAttemptStatus(tx, userId, moduleId, settings, now);
       return {
-        scorePercentage, passed, attemptsLeft,
-        ...(passed || attemptsLeft === 0 ? {
+        scorePercentage, passed, attemptsLeft: attemptStatus.initialAttemptsRemaining, attemptStatus,
+        // Failed retries do not disclose the answer key: there is no final failed attempt anymore.
+        ...(passed ? {
           correctIndexes: Object.fromEntries(questions.map((question, index) => [index, question.correctIndex])),
           explanations: Object.fromEntries(questions.map((question, index) => [index, question.explanation])),
         } : {}),
       };
     });
-    if (!result) return res.status(429).json({ error: `Límite de ${maxAttempts} intentos en 24 horas.` });
+    if ('blocked' in result) {
+      return res.set('Retry-After', String(result.attemptStatus.retryAfterSeconds)).status(429).json({
+        error: 'Debes esperar antes del próximo intento.', ...result.attemptStatus, attemptStatus: result.attemptStatus,
+      });
+    }
+    if ('alreadyPassed' in result) return res.status(409).json({ error: 'Este examen ya está aprobado.', attemptStatus: result.attemptStatus });
     if (result.passed) {
       const modulo = await prisma.module.findUnique({ where: { id: moduleId }, select: { courseId: true } });
       if (modulo) await calculateCourseProgress(userId, modulo.courseId);
