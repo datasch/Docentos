@@ -14,6 +14,37 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## 0.5.0-beta.21 - 2026-11-05
+
+**Esta versión migra el esquema de la base de datos.** Añade la columna
+`cooldownUntil` (`TIMESTAMP(3)`) a la tabla `QuizAttempt` para gestionar
+períodos de enfriamiento entre intentos de examen. Se recomienda realizar backup
+antes de desplegar. Las migraciones se aplican automáticamente al arrancar.
+
+### Added
+
+- **Período de enfriamiento (cooldown) y políticas de examen configurables**: Los
+  administradores ahora pueden configurar el tope de intentos diarios, límites
+  de espera mínimo y máximo (`cooldownMinMinutes` y `cooldownMaxMinutes`) y la
+  zona horaria de reinicio diario para el plugin de exámenes (`interactive-quizzes`).
+- **Verificación en tiempo real y cabecera Retry-After**: Nuevo endpoint de
+  consulta de disponibilidad de examen que informa los intentos utilizados,
+  tiempo restante y reloj sincronizado con el servidor, devolviendo `HTTP 429`
+  con la cabecera estándar `Retry-After` ante intentos prematuros.
+- **Temporizador reactivo en interfaz del estudiante**: El visor de exámenes
+  muestra una cuenta regresiva sincronizada con la hora exacta en que se
+  habilitará el próximo intento y bloquea reintentos anticipados.
+
+### Fixed
+
+- **Acceso por curso individual para rol MENTEE**: Se corrigió la validación
+  de acceso general en el cliente, permitiendo el ingreso directo a los cursos
+  asignados al estudiante sin depender de comprobaciones estáticas de rol.
+- **Reactivación de cursos revocados**: Reasignar un curso a un alumno con
+  asignación en estado `REVOKED` ahora restaura su estado a `ACTIVE` conservando
+  el progreso y porcentaje de lecciones completadas, preservando el estado de
+  alumnos graduados y asegurando el aislamiento entre mentores.
+
 ## 0.5.0-beta.20 - 2026-11-04
 
 **Esta versión no migra el esquema de la base de datos.** No elimina registros
