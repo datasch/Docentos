@@ -528,7 +528,7 @@ body[data-festividad="halloween"] .camino svg.ruta .ruta-viva {
 .mision-popover {
   position: absolute;
   z-index: 50;
-  width: 290px;
+  width: min(290px, 100%);
   max-width: calc(100vw - 32px);
   background: rgba(23, 19, 40, 0.96);
   border: 2px solid rgba(168, 85, 247, 0.4);

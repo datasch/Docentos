@@ -70,7 +70,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
+        className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
         role="dialog"

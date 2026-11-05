@@ -695,7 +695,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       ) : (
                         <Lock className="w-3.5 h-3.5 text-ink-faint" />
                       )}
-                      {course.openToAllRegistered ? 'Todos los registrados' : 'Solo asignados'}
+                      {course.openToAllRegistered ? 'Acceso para miembros' : 'Solo asignados'}
                     </button>
                   )}
                 </div>
@@ -1109,7 +1109,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           se retira al guardar. */}
       {rosterMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+          <div className="app-dialog bg-[#0a0a0f] border border-[#262626] rounded-2xl w-full max-w-lg flex flex-col max-h-[calc(100dvh-1.5rem)]">
             <div className="p-5 border-b border-[#262626] flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="font-extrabold text-base text-white">

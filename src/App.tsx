@@ -6,6 +6,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { api } from './lib/api';
+import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
 import { RefreshCw } from 'lucide-react';
 import { initSavedTheme } from './lib/themeApplicator';
@@ -27,11 +28,12 @@ import { ListeningFloatingButton } from './components/ListeningFloatingButton';
 initSavedTheme();
 applySeasonalTheme();
 
-type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
+type ActiveTab = 'landing' | 'courses' | 'viewer' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
 const TAB_PATHS: Record<ActiveTab, string> = {
   landing: '/',
   courses: '/courses',
+  viewer: '/courses',
   mentor: '/mentor/dashboard',
   admin: '/admin',
   plugins: '/admin/plugins',
@@ -119,6 +121,7 @@ export default function App() {
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
 
   const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromPath(window.location.pathname));
+  const [sharedCourseId, setSharedCourseId] = useState(() => courseIdFromPath(window.location.pathname));
   const [showPaywallModal, setShowPaywallModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
@@ -137,6 +140,7 @@ export default function App() {
       if (options?.replace) window.history.replaceState({}, '', path);
       else window.history.pushState({}, '', path);
     }
+    setSharedCourseId(null);
     setActiveTabState(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -230,8 +234,9 @@ export default function App() {
             } catch {}
           }
 
-          const preferred = lastStudiedId
-            ? coursesRes.courses.find((c) => c.id === lastStudiedId)
+          const preferredId = courseIdFromPath(window.location.pathname) || lastStudiedId;
+          const preferred = preferredId
+            ? coursesRes.courses.find((c) => c.id === preferredId)
             : null;
           setCourse(preferred ?? coursesRes.courses[0]);
         } else {
@@ -251,7 +256,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handlePopState = () => setActiveTabState(tabFromPath(window.location.pathname));
+    const handlePopState = () => {
+      setSharedCourseId(courseIdFromPath(window.location.pathname));
+      setActiveTabState(tabFromPath(window.location.pathname));
+    };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -336,6 +344,17 @@ export default function App() {
         activeCourse={course}
         activeTab={activeTab === 'landing' ? 'explore' : activeTab}
         hasAccess={hasAccess}
+        sharedCourseId={sharedCourseId}
+        courseAccessReady={accessVerified}
+        onOpenCourseOverview={(selected) => {
+          selectCourse(selected);
+          window.history.pushState({}, '', coursePath(selected.id));
+          setSharedCourseId(selected.id);
+          setActiveTabState('courses');
+          window.scrollTo({ top: 0 });
+        }}
+        onContinueCourse={(selected) => { selectCourse(selected); navigateTo('viewer'); }}
+        onRegister={() => { setAuthMode('register'); setAuthNotice(null); setShowAuthModal(true); }}
         onNavigate={(tab) => navigateTo(tab)}
         onSelectCourse={(selected) => {
           selectCourse(selected);
@@ -374,8 +393,8 @@ export default function App() {
               writeCachedUser(user);
               setAuthNotice(null);
               loadData();
-              navigateTo(tabFromPath(redirectPath));
-              if (!localStorage.getItem('giantucchi_tour_completed')) {
+              if (!sharedCourseId) navigateTo(tabFromPath(redirectPath));
+              if (!sharedCourseId && !localStorage.getItem('giantucchi_tour_completed')) {
                 setShowTour(true);
               }
             }}

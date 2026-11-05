@@ -150,6 +150,28 @@
     overflow-x: hidden;
   }
 
+  :where(input, select, textarea, fieldset) {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+
+  :where(.grid, .flex) > :where(div, section, article, form, fieldset) {
+    min-inline-size: 0;
+  }
+
+  :where(h1, h2, h3, h4, p, dd) {
+    overflow-wrap: anywhere;
+  }
+
+  :where(img, video, canvas) {
+    max-inline-size: 100%;
+  }
+
+  pre {
+    max-inline-size: 100%;
+    overflow-x: auto;
+  }
+
   /* Un solo anillo de foco para toda la app: el cian se lee sobre cualquiera de
      los seis tonos de modulo y sobre las tres superficies. */
   :focus-visible {
@@ -1420,6 +1442,8 @@ body[data-color-mode="light"],
 
 .btn-constellation-pill {
   display: inline-flex;
+  max-inline-size: 100%;
+  text-align: center;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -1582,3 +1606,21 @@ html[data-festividad="navidad"] .selection\:bg-\[\#06b6d4\]::selection {
 }
 
 
+@media (max-width: 640px) and (pointer: coarse) {
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) {
+    font-size: 16px;
+  }
+}
+
+/* En horizontal o con teclado abierto, se desplaza la ventana completa. */
+@media (max-height: 480px) {
+  .app-dialog {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .app-dialog > .flex-1 {
+    max-height: none;
+    overflow: visible;
+  }
+}

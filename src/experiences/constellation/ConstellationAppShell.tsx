@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { User, Course } from '../../types';
 import { api } from '../../lib/api';
+import { CourseOverview } from '../../components/CourseOverview';
 import { ConstellationNavbar, ConstellationTab } from './ConstellationNavbar';
 import { ConstellationHero } from './ConstellationHero';
 import { ConstellationCourseCatalog } from './ConstellationCourseCatalog';
@@ -54,6 +55,11 @@ interface ConstellationAppShellProps {
   activeCourse: Course | null;
   activeTab: string;
   hasAccess: boolean;
+  sharedCourseId?: string | null;
+  courseAccessReady?: boolean;
+  onOpenCourseOverview: (course: Course) => void;
+  onContinueCourse: (course: Course) => void;
+  onRegister: () => void;
   onNavigate: (tab: any) => void;
   onSelectCourse: (course: Course) => void;
   onOpenAuth: () => void;
@@ -75,6 +81,11 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   activeCourse,
   activeTab,
   hasAccess,
+  sharedCourseId = null,
+  courseAccessReady = false,
+  onOpenCourseOverview,
+  onContinueCourse,
+  onRegister,
   onNavigate,
   onSelectCourse,
   onOpenAuth,
@@ -129,6 +140,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
 
   const handleSelectCourse = (selected: Course) => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    if (sharedCourseId || selected.hasAccess !== true) { onOpenCourseOverview(selected); return; }
     const cached = courseCacheRef.current.get(selected.id);
     const resolved = (cached && cached.modules && cached.modules.length > 0) ? cached : selected;
     setSelectedCourseForViewer(resolved);
@@ -178,7 +190,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
         activeTab={constellationTab}
         hasAccess={hasAccess}
         onSelectTab={(tab) => {
-          if (tab === constellationTab) {
+          if (tab === constellationTab && !sharedCourseId) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
           }
@@ -225,7 +237,24 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
       {/* Contenido Dinámico con Transiciones Fluidas sin saltos de layout */}
       <main className="flex-1 w-full relative z-10">
         <Suspense fallback={null}>
-          <AnimatePresence mode="wait">
+          {sharedCourseId ? (
+            <CourseOverview
+              course={courses.find(c => c.id === sharedCourseId && c.published)}
+              ready={courseAccessReady}
+              user={currentUser}
+              onBack={() => onNavigate('courses')}
+              onRegister={onRegister}
+              onLogin={onOpenAuth}
+              onPurchase={() => {
+                const selected = courses.find(c => c.id === sharedCourseId && c.published);
+                if (selected) { onSelectCourse(selected); onOpenPaywall(); }
+              }}
+              onContinue={() => {
+                const selected = courses.find(c => c.id === sharedCourseId && c.published);
+                if (selected) { setSelectedCourseForViewer(selected); onContinueCourse(selected); }
+              }}
+            />
+          ) : <AnimatePresence mode="wait">
             {/* 1. Vista Explorar: Hero con Constelación 3D + Búsqueda Neural + Muestra de Catálogo */}
             {constellationTab === 'explore' && (
               <motion.div
@@ -482,20 +511,15 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                 />
               </motion.div>
             )}
-          </AnimatePresence>
+          </AnimatePresence>}
         </Suspense>
       </main>
 
       {/* Footer Oficial de DocentOS Principal adaptado a la estética Constellation */}
       <ConstellationFooter
-        onGoToCourses={() => {
-          setConstellationTab('courses');
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-        }}
-        onGoToSearch={() => {
-          setConstellationTab('search');
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-        }}
+        onOpenListening={onOpenListening}
+        unreadListening={unreadListening}
+
       />
 
     </div>

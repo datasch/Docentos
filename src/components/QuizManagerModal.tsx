@@ -199,7 +199,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="bg-[#141420] border border-[#2d2d44] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain"
+        className="app-dialog bg-[#141420] border border-[#2d2d44] rounded-2xl w-full max-w-4xl max-h-[calc(100dvh-1.5rem)] flex flex-col shadow-2xl overflow-hidden overscroll-contain"
         onWheel={(e) => e.stopPropagation()}
       >
         
@@ -273,7 +273,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
         )}
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-[#06b6d4]" />

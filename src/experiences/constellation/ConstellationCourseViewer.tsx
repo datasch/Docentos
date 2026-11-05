@@ -4,6 +4,7 @@ import { Course, User, Module, VideoDriveLink, CertificateRecord } from '../../t
 import { CourseViewer } from '../../components/CourseViewer';
 import { ConstellationCosmicPath } from './ConstellationCosmicPath';
 import { api } from '../../lib/api';
+import { CourseShareButton } from '../../components/CourseShareButton';
 import { syncModuleQuizCounts, quizzesPluginEngine } from '../../plugins/QuizzesPlugin';
 
 interface ConstellationCourseViewerProps {
@@ -274,8 +275,8 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   return (
     <div className="constellation-viewer-root w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white">
       {/* Barra superior de contexto en Constellation */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 pb-2 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex w-full min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
             onClick={onGoHome}
@@ -285,20 +286,23 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
             <span>Inicio</span>
           </button>
           <span className="text-slate-700">/</span>
-          <span className="text-xs font-bold text-cyan-400 truncate max-w-[200px] sm:max-w-md">
+          <span className="text-xs font-bold text-cyan-400 truncate min-w-0 sm:max-w-md">
             {course.title}
           </span>
         </div>
 
-        {/* Botón de acceso directo a la misión activa */}
-        <button
-          type="button"
-          onClick={handleOpenActiveLesson}
-          className="flex shrink-0 items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-[#1d1633] border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/60 shadow-sm transition-all cursor-pointer"
-        >
-          <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
-          <span>Ver Lección</span>
-        </button>
+        {/* Acciones del curso */}
+        <div className="flex w-full sm:w-auto sm:ml-auto shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleOpenActiveLesson}
+            className="flex min-h-11 shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap bg-[#1d1633] border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/60 shadow-sm transition-all cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
+            <span>Ver lección</span>
+          </button>
+          <CourseShareButton course={course} />
+        </div>
       </div>
 
       {/* Ruta de Misiones Cósmicas (Separada por módulos con Certificado Final) */}

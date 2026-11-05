@@ -171,7 +171,7 @@ test('eventos tardíos no revierten reembolsos ni reactivan matrículas', async 
     const c = await course();
     const payment = await prisma.payment.create({ data: { userId: studentId, courseId: c.id, amount: 20, status: initialStatus, stripeSessionId: `cs_${suffix}_${initialStatus}`, stripePaymentIntentId: `pi_${suffix}_${initialStatus}` } });
     await prisma.courseEnrollment.create({ data: { userId: studentId, courseId: c.id, status: 'REVOKED', source: 'PAYMENT' } });
-    await event('checkout.session.completed', { id: payment.stripeSessionId, payment_intent: payment.stripePaymentIntentId, metadata: { paymentId: payment.id } });
+    await event('checkout.session.completed', { id: payment.stripeSessionId, payment_status: 'paid', payment_intent: payment.stripePaymentIntentId, metadata: { paymentId: payment.id } });
     await event('payment_intent.succeeded', { id: payment.stripePaymentIntentId, metadata: { paymentId: payment.id } });
     assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status, initialStatus);
     assert.equal((await prisma.courseEnrollment.findUniqueOrThrow({ where: { userId_courseId: { userId: studentId, courseId: c.id } } })).status, 'REVOKED');

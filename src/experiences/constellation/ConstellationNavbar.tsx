@@ -165,19 +165,19 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
       : isStaff
         ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
         : hasAccess
-          ? { label: 'Cursos habilitados', tone: 'lp-tone-green' }
-          : { label: 'Sin acceso', tone: 'lp-tone-warn' };
+          ? { label: 'Acceso activo', tone: 'lp-tone-green' }
+          : { label: currentUser?.role === 'EXTERNAL' ? 'Sin cursos adquiridos' : 'Sin acceso', tone: 'lp-tone-warn' };
 
   const { logoUrl: customLogoUrl, brandName } = usePlatformBrand();
 
   return (
     <header
-      className={`lp-header sticky top-0 z-50 w-full transition-all duration-300 select-none ${isScrolled
-        ? 'bg-white/95 dark:bg-[#07070b]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.06] shadow-sm py-2 sm:py-3.5'
-        : 'bg-white/80 dark:bg-[#07070b]/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/60 dark:border-white/[0.06] md:border-transparent py-2.5 sm:py-5'
+      className={`lp-header constellation-navbar sticky top-0 z-50 w-full transition-all duration-300 select-none ${isScrolled
+        ? 'bg-white/95 dark:bg-[#07070b]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.06] shadow-sm py-3 sm:py-3.5'
+        : 'bg-white/80 dark:bg-[#07070b]/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/60 dark:border-white/[0.06] md:border-transparent py-3 sm:py-5'
         }`}
     >
-      <div className="max-w-[1280px] w-full mx-auto px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-6 min-w-0">
+      <div className="max-w-[1280px] w-full mx-auto px-3 sm:px-6 flex min-h-11 items-center justify-between gap-2 sm:gap-6 min-w-0">
 
         {/* 1. Logo Lockup con soporte para logo personalizado y adorno festivo */}
         <button
@@ -218,7 +218,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           <div
             className={`overflow-hidden transition-all duration-500 ease-out flex items-center min-w-0 ${isScrolled
               ? 'max-w-0 opacity-0 -translate-x-3 pointer-events-none'
-              : 'max-w-[120px] xs:max-w-[170px] sm:max-w-[280px] md:max-w-[400px] opacity-100 translate-x-0'
+              : 'max-w-[88px] min-[360px]:max-w-[112px] sm:max-w-[220px] xl:max-w-[180px] opacity-100 translate-x-0'
               }`}
           >
             <span
@@ -231,7 +231,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
         </button>
 
         {/* 2. Navegación Principal Fantasma (Mayúsculas 13px weight 600, tracking 0.05em estilo Dala) */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-8 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
+        <nav className="hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
           <button
             onClick={() => {
               onSelectTab('explore');
@@ -318,7 +318,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           <div className="lp-menu-anchor" ref={langRef}>
             <button
               type="button"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white text-xs transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+              className="flex items-center justify-center gap-1.5 min-h-11 min-w-11 px-2 sm:px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white text-xs transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
               onClick={() => {
                 setLangOpen((open) => !open);
                 setProfileOpen(false);
@@ -328,8 +328,8 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               title="Idioma"
             >
               <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-white/50" />
-              <span className="font-semibold text-[11px]">{currentLangCode}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <span className="hidden sm:inline font-semibold text-[11px]">{currentLangCode}</span>
+              <ChevronDown className="hidden sm:block w-3 h-3 text-slate-400" />
             </button>
 
             {langOpen && (
@@ -356,7 +356,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           <button
             onClick={handleToggleTheme}
             title={colorMode === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
           >
             {colorMode === 'dark' ? (
               <Sun className="w-4 h-4 text-amber-400" />
@@ -370,7 +370,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             <div className="lp-menu-anchor" ref={profileRef}>
               <button
                 type="button"
-                className="lp-user-profile flex items-center gap-1.5 p-0.5 rounded-full hover:opacity-90 transition-all cursor-pointer border-0 bg-transparent"
+                className="lp-user-profile flex min-h-11 items-center gap-1.5 p-0.5 rounded-full hover:opacity-90 transition-all cursor-pointer border-0 bg-transparent"
                 onClick={() => {
                   setProfileOpen((prev) => !prev);
                   setLangOpen(false);
@@ -401,7 +401,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                   </div>
 
                   {/* Secciones de navegación en móviles dentro del menú */}
-                  <div className="md:hidden py-1 border-b border-slate-100 dark:border-white/[0.06]">
+                  <div className="xl:hidden py-1 border-b border-slate-100 dark:border-white/[0.06]">
                     <button
                       type="button"
                       role="menuitem"
@@ -629,7 +629,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="cursor-pointer px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs sm:text-[13px] font-semibold tracking-[0.05em] uppercase transition-all shadow-[0_0_20px_rgba(128,82,255,0.35)] hover:shadow-[0_0_30px_rgba(128,82,255,0.55)] active:scale-95"
+              className="cursor-pointer px-3 sm:px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs sm:text-[13px] font-semibold tracking-[0.05em] uppercase transition-all shadow-[0_0_20px_rgba(128,82,255,0.35)] hover:shadow-[0_0_30px_rgba(128,82,255,0.55)] active:scale-95"
             >
               <span>Acceder</span>
             </button>
@@ -639,17 +639,17 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
 
       </div>
 
-      {/* 4. Barra de Navegación Rápida Móvil (Visible únicamente en móviles < md) */}
+      {/* Navegación desplazable para móviles y tablets. */}
       <nav
         aria-label="Navegación principal móvil"
-        className="md:hidden w-full border-t border-slate-200/80 dark:border-white/[0.06] bg-slate-50/90 dark:bg-[#07070b]/95 backdrop-blur-md px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-xs"
+        className="xl:hidden mt-3 w-full border-t border-slate-200/80 dark:border-white/[0.06] bg-slate-50/90 dark:bg-[#07070b]/95 backdrop-blur-md px-3 sm:px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-xs"
       >
         <button
           onClick={() => {
             onSelectTab('explore');
             if (activeTab === 'explore') window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer ${activeTab === 'explore'
+          className={`shrink-0 min-h-11 px-3 py-2 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer ${activeTab === 'explore'
             ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-sm shadow-cyan-500/25'
             : 'text-slate-600 dark:text-white/60 bg-slate-200/60 dark:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
             }`}
@@ -662,7 +662,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             onSelectTab('courses');
             if (activeTab === 'courses') window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer ${activeTab === 'courses'
+          className={`shrink-0 min-h-11 px-3 py-2 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer ${activeTab === 'courses'
             ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-sm shadow-cyan-500/25'
             : 'text-slate-600 dark:text-white/60 bg-slate-200/60 dark:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
             }`}
@@ -675,7 +675,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             onSelectTab('search');
             if (activeTab === 'search') window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'search'
+          className={`shrink-0 min-h-11 px-3 py-2 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'search'
             ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-sm shadow-cyan-500/25'
             : 'text-slate-600 dark:text-white/60 bg-slate-200/60 dark:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
             }`}
@@ -690,7 +690,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               onSelectTab('viewer');
               if (activeTab === 'viewer') window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'viewer'
+            className={`shrink-0 min-h-11 px-3 py-2 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'viewer'
               ? 'bg-cyan-500 text-[#050505] font-bold shadow-sm shadow-cyan-500/30'
               : 'text-cyan-600 dark:text-[#06b6d4] bg-cyan-500/10 border border-cyan-500/30'
               }`}
@@ -706,7 +706,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               onSelectTab('mentor');
               if (activeTab === 'mentor') window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'mentor'
+            className={`shrink-0 min-h-11 px-3 py-2 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'mentor'
               ? 'bg-[#a855f7] text-white font-bold shadow-sm shadow-purple-500/30'
               : 'text-purple-600 dark:text-[#a855f7] bg-purple-500/10 border border-purple-500/30'
               }`}
@@ -722,7 +722,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               onSelectTab('admin');
               if (activeTab === 'admin') window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'admin'
+            className={`shrink-0 min-h-11 px-3 py-2 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'admin'
               ? 'bg-[#eab308] text-black font-bold shadow-sm shadow-amber-500/30'
               : 'text-amber-600 dark:text-[#eab308] bg-amber-500/10 border border-amber-500/30'
               }`}

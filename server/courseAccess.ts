@@ -5,7 +5,7 @@ import { parseVideoSource } from '../src/lib/videoParser.js';
 export type CourseAccessReason =
   | 'admin'
   | 'vip_membership'
-  | 'open_to_all_registered'
+  | 'member_access'
   | 'confirmed_payment'
   | 'active_enrollment'
   | 'mentorship_assignment'
@@ -71,9 +71,12 @@ function resolveStaticDecision(
   if (user?.role === 'ADMIN') return decision(true, 'admin');
   // Sin cuenta no se entra a ningun curso. El precio ya no abre nada por si
   // solo: un curso a 0 sigue necesitando que administracion lo conceda, salvo
-  // que este marcado como abierto a todo el mundo.
+  // que la cuenta sea miembro y el curso tenga acceso para miembros.
   if (!user) return decision(false, 'not_authenticated');
-  if (course.published && course.openToAllRegistered) return decision(true, 'open_to_all_registered');
+  // La bandera existente se conserva en la BD; solo abre cursos para miembros.
+  if (course.published && course.openToAllRegistered && ['MENTEE', 'MENTOR'].includes(user.role)) {
+    return decision(true, 'member_access');
+  }
   if (user.role === 'VIP' && course.published) return decision(true, 'vip_membership');
   return null;
 }

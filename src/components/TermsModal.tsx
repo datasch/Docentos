@@ -67,7 +67,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="terms-modal-title"
-        className="bg-[#0e0e17] border border-white/10 rounded-2xl w-full max-w-[640px] overflow-hidden shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150 overscroll-contain"
+        className="app-dialog bg-[#0e0e17] border border-white/10 rounded-2xl w-full max-w-[640px] overflow-y-auto shadow-2xl max-h-[calc(100dvh-1.5rem)] animate-in fade-in zoom-in-95 duration-150 overscroll-contain"
         onClick={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
       >
@@ -124,7 +124,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Cuerpo del contrato con scroll independiente */}
-        <div className="p-6 overflow-y-auto flex-1 min-h-[220px] max-h-[440px] text-sm text-slate-200 leading-relaxed bg-black/20 space-y-4">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0 max-h-[40dvh] text-sm text-slate-200 leading-relaxed bg-black/20 space-y-4">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
               <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
@@ -184,7 +184,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer del Modal */}
-        <div className="px-6 py-3.5 bg-black/40 border-t border-white/10 flex items-center justify-between shrink-0">
+        <div className="px-6 py-3.5 bg-black/40 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <span className="text-[11px] text-slate-400">
             Documento legal público transparente
           </span>

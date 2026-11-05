@@ -136,7 +136,7 @@ import {
   IntegrationError,
   isIntegrationAuthorized,
 } from './server/integrationEnrollment.js';
-import { escapeHtml, isCrawlerUserAgent, renderSeoLandingHtml } from './server/seo.js';
+import { escapeHtml, isCrawlerUserAgent, renderSeoLandingHtml, renderSeoCourseHtml } from './server/seo.js';
 import {
   generateAuthUrl,
   handleOAuthCallback,
@@ -2494,7 +2494,7 @@ app.post(
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, role: 'PUBLIC_USER', avatarUrl: DEFAULT_AVATAR },
+      data: { name, email, passwordHash, role: 'EXTERNAL', avatarUrl: DEFAULT_AVATAR },
     });
     await revokeRequestSession(req);
     const { token } = await createUserSession(user.id, req);
@@ -3802,8 +3802,8 @@ app.put(
         ...(req.body.sequentialUnlock !== undefined
           ? { sequentialUnlock: Boolean(req.body.sequentialUnlock) }
           : {}),
-        // "Todos los registrados": la unica via que abre un curso sin pasar por
-        // una matricula nominal. Solo ADMIN llega hasta aqui (requireRole).
+        // "Acceso para miembros" abre el curso a mentees y personal autorizado
+        // sin matrícula nominal. Solo ADMIN llega hasta aqui (requireRole).
         ...(req.body.openToAllRegistered !== undefined
           ? { openToAllRegistered: Boolean(req.body.openToAllRegistered) }
           : {}),
@@ -5536,6 +5536,19 @@ app.use('/api', (_req, res) => {
 });
 
 // SEO endpoints
+app.get(
+  '/courses/:courseId',
+  asyncRoute(async (req, res, next) => {
+    if (!isCrawlerUserAgent(String(req.headers['user-agent'] || ''))) return next();
+    const course = await prisma.course.findFirst({
+      where: { id: req.params.courseId, published: true },
+      select: { id: true, title: true, description: true, price: true, currency: true, coverImage: true },
+    });
+    if (!course) return res.status(404).type('text').send('Este curso no está disponible.');
+    res.set('Cache-Control', 'no-store').type('html').send(renderSeoCourseHtml(course, config.APP_URL));
+  }),
+);
+
 app.get(
   '/sitemap.xml',
   asyncRoute(async (req, res) => {

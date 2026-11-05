@@ -71,7 +71,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overscroll-contain"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-[#141420] border border-[#2d2d44] p-6 sm:p-8 shadow-2xl text-white">
+      <div className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-[#141420] border border-[#2d2d44] p-6 sm:p-8 shadow-2xl text-white">
         {/* Close Button */}
         <button
           onClick={onClose}

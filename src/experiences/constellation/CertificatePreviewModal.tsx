@@ -103,7 +103,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="relative flex flex-col max-h-[95vh] w-full max-w-5xl overflow-hidden rounded-3xl border-2 border-amber-500/40 bg-white dark:bg-[#0d0a17] shadow-2xl dark:shadow-[0_0_80px_rgba(245,158,11,0.25)] text-slate-900 dark:text-white transition-colors overscroll-contain"
+        className="app-dialog relative flex flex-col max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl overflow-hidden rounded-3xl border-2 border-amber-500/40 bg-white dark:bg-[#0d0a17] shadow-2xl dark:shadow-[0_0_80px_rgba(245,158,11,0.25)] text-slate-900 dark:text-white transition-colors overscroll-contain"
         onClick={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
         role="dialog"

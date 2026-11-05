@@ -477,7 +477,7 @@ html:has(.lp-root) {
 .lp-search-results {
   right: auto;
   left: 0;
-  min-width: 280px;
+  min-width: min(280px, calc(100vw - 32px));
   max-height: 320px;
   overflow-y: auto;
 }
@@ -529,7 +529,11 @@ html:has(.lp-root) {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  min-width: 210px;
+  min-width: min(210px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   background: var(--lp-bg-elevated);
   border: 1px solid var(--lp-border);
@@ -842,6 +846,98 @@ html:has(.lp-root) {
 @keyframes lpPulseFlame {
   0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #f59e0b); }
   50% { transform: scale(1.15); filter: drop-shadow(0 0 12px #fb923c); }
+}
+
+.course-share-overlay,
+.catalog-course-badge {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.15);
+}
+
+.catalog-course-badge {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 12px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-family: var(--font-constellation-body, inherit);
+}
+
+.catalog-price-amount {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+
+.catalog-price-currency {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+}
+
+.course-share-overlay:hover {
+  background-color: #f1f5f9;
+  border-color: #64748b;
+}
+
+:where([data-color-mode="dark"], .dark) .course-share-overlay,
+:where([data-color-mode="dark"], .dark) .catalog-course-badge {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #64748b;
+}
+
+:where([data-color-mode="dark"], .dark) .course-share-overlay:hover {
+  background-color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.catalog-featured-glow {
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.04), 0 0 10px rgb(245 158 11 / 0.06);
+  animation: catalogFeaturedGlow 1.8s infinite ease-in-out;
+}
+
+@property --catalog-fire-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.catalog-featured-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--catalog-fire-angle, 0deg), #b4530926, #f59e0b66 18%, #fde68a 30%, #f59e0b66 40%, #b4530926 58%, #fef3c7 72%, #f59e0b66 82%, #b4530926);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: catalogFireBorder 6s linear infinite;
+}
+
+@keyframes catalogFireBorder {
+  to { --catalog-fire-angle: 360deg; }
+}
+
+@keyframes catalogFeaturedGlow {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgb(15 23 42 / 0.04), 0 0 10px rgb(245 158 11 / 0.06);
+  }
+  50% {
+    box-shadow: 0 8px 24px rgb(15 23 42 / 0.04), 0 0 16px rgb(245 158 11 / 0.1);
+  }
 }
 
 .lp-streak-info {
@@ -1309,7 +1405,7 @@ html:has(.lp-root) {
    ========================================================================== */
 .lp-courses-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr));
   gap: 24px;
 }
 
@@ -1627,7 +1723,7 @@ html:has(.lp-root) {
    ========================================================================== */
 .lp-benefits-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 20px;
 }
 
@@ -1693,7 +1789,7 @@ html:has(.lp-root) {
    ========================================================================== */
 .lp-testimonials-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 20px;
 }
 
@@ -1896,7 +1992,7 @@ html:has(.lp-root) {
    ========================================================================== */
 .lp-plans-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
   gap: 24px;
   align-items: stretch;
 }
@@ -2319,7 +2415,9 @@ html:has(.lp-root) {
   border-radius: var(--lp-r-md);
   font-size: 0.82rem;
   font-weight: 600;
-  white-space: nowrap;
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  white-space: normal;
   border: 1px solid var(--lp-border);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   pointer-events: none;
@@ -2355,6 +2453,15 @@ html:has(.lp-root) {
 }
 
 @media (max-width: 768px) {
+  .constellation-navbar .lp-menu-anchor {
+    position: static;
+  }
+  .constellation-navbar .lp-menu {
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+    max-height: calc(100dvh - 160px);
+  }
   .lp-container {
     padding: 0 16px;
   }
@@ -2411,8 +2518,8 @@ html:has(.lp-root) {
     display: none;
   }
   .lp-listening-floating-btn {
-    bottom: 20px;
-    left: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    left: calc(20px + env(safe-area-inset-left, 0px));
     right: auto;
     padding: 10px 16px;
     font-size: 0.84rem;
@@ -2463,7 +2570,15 @@ html:has(.lp-root) {
   }
 }
 
+@media (width < 640px) {
+  .lp-listening-floating-btn {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .catalog-featured-glow,
+  .catalog-featured-glow::before,
   .lp-streak-flame,
   .lp-promo-badge,
   .lp-listening-floating-btn--has-unread::after,

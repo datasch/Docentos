@@ -535,7 +535,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         </div>
 
         {/* Wizard Progress Steps */}
-        <div className="grid grid-cols-4 gap-2 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
           <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 1 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
             <span>Buscar / Importar</span>

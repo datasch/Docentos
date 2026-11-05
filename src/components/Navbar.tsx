@@ -229,8 +229,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       : isStaff
         ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
         : hasAccess
-          ? { label: t('nav.unlimited'), tone: 'lp-tone-green' }
-          : { label: t('nav.noPayment'), tone: 'lp-tone-warn' };
+          ? { label: 'Acceso activo', tone: 'lp-tone-green' }
+          : { label: currentUser.role === 'EXTERNAL' ? 'Sin cursos adquiridos' : 'Sin acceso', tone: 'lp-tone-warn' };
 
   /** Los destinos de la barra, ya filtrados por permisos. */
   const destinations: { tab: Tab; label: string; icon: React.ReactNode }[] = [

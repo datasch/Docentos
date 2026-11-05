@@ -165,7 +165,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     >
       <div className="flex min-h-full items-center justify-center p-3 sm:p-6" onMouseDown={onClose}>
         <div
-          className="relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl p-5 pt-12 sm:p-8 sm:pt-8"
+          className="app-dialog relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl p-5 pt-12 sm:p-8 sm:pt-8"
           onMouseDown={(event) => event.stopPropagation()}
         >
         

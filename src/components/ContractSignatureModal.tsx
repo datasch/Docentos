@@ -77,7 +77,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
         role="dialog"
         aria-modal="true"
         aria-labelledby="contract-signature-title"
-        className="bg-[#0e0e17] border border-white/10 rounded-2xl w-full max-w-[620px] overflow-hidden shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-150 overscroll-contain"
+        className="app-dialog bg-[#0e0e17] border border-white/10 rounded-2xl w-full max-w-[620px] overflow-y-auto shadow-2xl max-h-[calc(100dvh-1.5rem)] animate-in fade-in zoom-in-95 duration-150 overscroll-contain"
         onWheel={(e) => e.stopPropagation()}
       >
         {/* Header amplio y profesional */}
@@ -99,7 +99,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
         </div>
 
         {/* Resumen de Fechas Clave */}
-        <div className="grid grid-cols-3 gap-3 px-6 py-3 bg-black/40 border-b border-white/10 text-xs shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 sm:px-6 py-3 bg-black/40 border-b border-white/10 text-xs shrink-0">
           <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#141420] border border-white/5">
             <Calendar aria-hidden="true" className="w-4 h-4 text-emerald-400 shrink-0" />
             <div className="min-w-0">
@@ -126,7 +126,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
         </div>
 
         {/* Visor de Contrato: más alto, estilizado y cómodo de leer */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-[220px] max-h-[420px] text-sm text-slate-200 leading-relaxed bg-black/20 border-b border-white/10 scrollbar-thin scrollbar-thumb-white/10">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 max-h-[40dvh] text-sm text-slate-200 leading-relaxed bg-black/20 border-b border-white/10 scrollbar-thin scrollbar-thumb-white/10">
           <div className="space-y-4 font-sans max-w-none">
             {contractData.content.split('\n\n').map((paragraph, idx) => {
               const trimmed = paragraph.trim();

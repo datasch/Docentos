@@ -746,15 +746,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
    * tenía manera de saberlo hasta abrir el curso equivocado.
    */
   const courseScopeBar = (
-    <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+    <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
+      <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-2 w-full xl:w-auto">
         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
           Curso sobre el que trabajas
         </label>
         <select
           value={workCourseId}
           onChange={(e) => setWorkCourseId(e.target.value)}
-          className="w-full sm:w-96 bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
+          className="w-full min-w-0 sm:w-64 xl:w-96 bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
         >
           {allCourses.map((item) => (
             <option key={item.id} value={item.id}>
@@ -879,7 +879,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       ) : (
         <>
           {/* Admin Header v0.5 Moderna */}
-          <div className="bg-canvas border border-line rounded-2xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-raised border border-line flex items-center justify-center p-2 shrink-0 relative overflow-visible shadow-inner">
                 <img
@@ -1274,7 +1274,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
               )}
 
-              <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+              <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
                 <div>
                   <label className="text-[11px] font-bold text-slate-400 block mb-1">Usuario</label>
                   <select
@@ -1424,7 +1424,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       <option value="MENTEE">Mentees</option>
                       <option value="PUBLIC_USER">Estudiantes</option>
                       <option value="VIP">Estudiantes (VIP)</option>
-                      <option value="EXTERNAL">Externos</option>
+                      <option value="EXTERNAL">Invitados</option>
                     </select>
                   </div>
                 </div>
@@ -1440,7 +1440,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 )}
 
                 <div className="overflow-x-auto rounded-xl border border-[#2d2d44]">
-                  <table className="w-full text-left text-xs text-slate-300">
+                  <table className="w-full min-w-[720px] text-left text-xs text-slate-300">
                     <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[11px] border-b border-[#2d2d44]">
                       <tr>
                         <th className="p-3.5">Usuario</th>
@@ -1512,7 +1512,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 )}
                                 {u.role === 'EXTERNAL' && (
                                   <span className="bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 font-medium px-2.5 py-1 rounded-lg text-[10px]">
-                                    EXTERNO
+                                    INVITADO
                                   </span>
                                 )}
                               </td>
@@ -1588,7 +1588,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                   <option value="MENTEE">Mentee</option>
                                   <option value="PUBLIC_USER">Estudiante</option>
                                   <option value="VIP">Estudiante (Pase VIP)</option>
-                                  <option value="EXTERNAL">Externo</option>
+                                  <option value="EXTERNAL">Invitado</option>
                                 </select>
                               </td>
                             </tr>
@@ -1637,7 +1637,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
+                <table className="w-full min-w-[720px] text-left text-xs text-slate-300">
                   <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
                     <tr>
                       <th className="py-3 px-4">Estudiante</th>
@@ -1806,7 +1806,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
                 )}
 
-                <form onSubmit={handleAddResource} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <form onSubmit={handleAddResource} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Recurso</label>
                     <input
@@ -1970,7 +1970,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
               </h4>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
                 <div className="md:col-span-2">
                   <label className="text-[11px] font-bold text-slate-400 block mb-1">
                     Enlace de Drive o URL de reproducción
@@ -2449,7 +2449,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+            <table className="w-full min-w-[720px] text-left text-xs text-slate-300">
               <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
                 <tr>
                   <th className="py-3 px-4">Código Único</th>
@@ -2590,7 +2590,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-ink-soft">
+                <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
                   <thead className="bg-surface text-ink-muted uppercase font-semibold text-micro tracking-wider border-b border-line">
                     <tr>
                       <th className="p-3">Alumno</th>

@@ -311,7 +311,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
         {/* Conector SVG continuo que pasa por detrás del encabezado */}
         {hasPrevModule && (
           <div className="absolute -top-12 -bottom-10 inset-x-0 flex justify-center pointer-events-none z-0 overflow-visible">
-            <svg className="w-[340px] h-full overflow-visible" viewBox="0 0 340 100" preserveAspectRatio="none">
+            <svg className="w-full max-w-[340px] h-full overflow-visible" viewBox="0 0 340 100" preserveAspectRatio="none">
               <defs>
                 <linearGradient id={`th-connector-grad-${module.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#ffffff" />
@@ -571,7 +571,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 <div 
                   className="mision-popover"
                   style={{
-                    left: `${coordinates[0]}%`,
+                    left: '50%',
                     ...(isNearBottom 
                       ? { bottom: `calc(${100 - coordinates[1]}% + 52px)` } 
                       : { top: `calc(${coordinates[1]}% + 82px)` }),
@@ -876,11 +876,11 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
       />
       <div 
         aria-hidden="true"
-        className="fixed top-1/4 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl pointer-events-none z-0" 
+        className="fixed top-1/4 left-1/4 w-[min(500px,75vw)] h-[min(500px,75vw)] bg-purple-600/10 rounded-full blur-3xl pointer-events-none z-0"
       />
       <div 
         aria-hidden="true"
-        className="fixed top-2/3 right-1/4 w-[450px] h-[450px] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none z-0" 
+        className="fixed top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none z-0"
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6">
@@ -1040,8 +1040,8 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
         <div className="relative flex flex-col items-center mt-6">
           
           {/* Conector punteado continuo hacia la estación final */}
-          <div className="relative w-[340px] h-20 pointer-events-none flex justify-center -my-2 overflow-visible">
-            <svg className="w-[340px] h-full overflow-visible" viewBox="0 0 340 80" preserveAspectRatio="none">
+          <div className="relative w-full max-w-[340px] h-20 pointer-events-none flex justify-center -my-2 overflow-visible">
+            <svg className="w-full max-w-[340px] h-full overflow-visible" viewBox="0 0 340 80" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="cert-connector-grad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" className="estela-c1" />

@@ -66,7 +66,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
   return (
     <div className="space-y-3 bg-[#141420] border border-[#2d2d44] rounded-xl p-4">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#2d2d44] pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#2d2d44] pb-2">
         <label className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
           <PenTool className="w-3.5 h-3.5 text-[#06b6d4]" />
           {label}
@@ -79,7 +79,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
       </div>
 
       {/* Mode Tabs */}
-      <div className="flex gap-1.5 p-1 bg-[#0a0a0f] rounded-lg border border-[#2d2d44]">
+      <div className="flex flex-col sm:flex-row gap-1.5 p-1 bg-[#0a0a0f] rounded-lg border border-[#2d2d44]">
         <button
           type="button"
           onClick={() => setMode('upload')}
@@ -125,13 +125,13 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
 
       {/* MODO 2: CALIGRÁFICA */}
       {mode === 'type' && (
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={calligraphyName}
             onChange={(e) => setCalligraphyName(e.target.value)}
             placeholder="Nombre del firmante..."
-            className="flex-1 py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none"
+            className="min-w-0 flex-1 py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none"
           />
           <button
             type="button"

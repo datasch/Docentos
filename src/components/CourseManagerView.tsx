@@ -601,7 +601,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <div>
               <label className="text-[11px] font-bold text-slate-400 block mb-1">Precio</label>
               <input
@@ -726,12 +726,11 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 ) : (
                   <Lock className="w-3.5 h-3.5 text-ink-faint" />
                 )}
-                Todos los registrados
+                Acceso para miembros
               </span>
               <span className="block text-micro text-ink-muted mt-1 leading-relaxed">
-                Encendido, cualquier cuenta registrada entra a este curso sin matrícula. Apagado
-                —lo normal— solo entran quienes lo tengan asignado, hayan pagado o lleven una
-                mentoría. El precio ya no abre nada por su cuenta.
+                Disponible para mentees y personal de la academia. Los invitados y estudiantes
+                externos necesitan una compra o asignación para acceder.
               </span>
             </span>
           </label>
@@ -826,10 +825,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                           )}
                           {course.openToAllRegistered && (
                             <span
-                              title="Cualquier cuenta registrada entra sin matrícula"
+                              title="Disponible para mentees y personal de la academia"
                               className="text-micro font-bold px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1"
                             >
-                              <Globe className="w-2.5 h-2.5" /> Abierto
+                              <Globe className="w-2.5 h-2.5" /> Miembros
                             </span>
                           )}
                           {course.sequentialUnlock && (
@@ -1008,7 +1007,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                               {videoModuleId === module.id && (
                                 <form
                                   onSubmit={(e) => handleCreateVideo(e, module.id)}
-                                  className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end p-2 rounded-lg bg-[#141420] border border-[#2d2d44]"
+                                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-end p-2 rounded-lg bg-[#141420] border border-[#2d2d44]"
                                 >
                                   <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-400 block mb-1">
@@ -1063,7 +1062,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
                                   {/* Selector de Google Drive */}
                                   {driveOpen && (
-                                    <div className="md:col-span-4 rounded-lg bg-[#0a0a0f] border border-[#2d2d44] p-2 space-y-2">
+                                    <div className="col-span-full rounded-lg bg-[#0a0a0f] border border-[#2d2d44] p-2 space-y-2">
                                       <div className="flex gap-1">
                                         <input
                                           type="text"
@@ -1148,7 +1147,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                     </div>
                                   )}
 
-                                  <div className="md:col-span-4 flex items-center justify-between gap-2">
+                                  <div className="col-span-full flex flex-wrap items-center justify-between gap-2">
                                     <span className="text-[10px] text-slate-500 truncate">
                                       {videoDriveId
                                         ? `Enlazado a Drive: ${videoDriveId}`
@@ -1238,7 +1237,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       {/* Modal de confirmación y forzado de eliminación */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-in text-white relative">
+          <div className="app-dialog bg-[#141420] border border-[#2d2d44] rounded-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4 animate-scale-in text-white relative">
             <button
               onClick={() => !isDeleting && setDeleteTarget(null)}
               disabled={isDeleting}
