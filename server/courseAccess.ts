@@ -301,6 +301,13 @@ export function serializeCourseForViewer(course: any, hasAccess: boolean) {
     sequentialUnlock: Boolean(course.sequentialUnlock),
     // El panel pinta con esto el estado del boton "Todos los registrados".
     openToAllRegistered: Boolean(course.openToAllRegistered),
+    mentors: (course.mentors || []).map((m: any) => ({
+      id: m.mentor?.id || m.id || m.mentorId,
+      name: m.mentor?.name || m.name || 'Mentor',
+      email: m.mentor?.email || m.email || '',
+      avatarUrl: m.mentor?.avatarUrl || m.avatarUrl || null,
+    })),
+    assignedMentor: course.assignedMentor || null,
     createdAt: course.createdAt,
     updatedAt: course.updatedAt,
   };

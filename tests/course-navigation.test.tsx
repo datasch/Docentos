@@ -25,7 +25,7 @@ import {
   visibleCourses,
 } from '../src/components/LandingPage.js';
 import { DEFAULT_AVATAR, avatarSrc } from '../src/lib/avatar.js';
-import { certificateForCourse, switchableCourses } from '../src/components/CourseViewer.js';
+import { certificateForCourse, switchableCourses, canCloseOnBackdropClick } from '../src/components/CourseViewer.js';
 import type { CertificateRecord, Course } from '../src/types.js';
 
 /** Curso de tres módulos: 2 + 1 + 2 lecciones. */
@@ -350,5 +350,17 @@ test('Curso: el selector de la cabecera solo ofrece los cursos propios', async (
   await t.test('3. Con un solo curso propio no hay nada entre lo que saltar', () => {
     const solo = switchableCourses([{ id: 'mio', hasAccess: true }, { id: 'ajeno' }], 'mio');
     assert.equal(solo.length, 1, 'Con una sola opción la cabecera pinta el título, no un desplegable');
+  });
+});
+
+test('Modal de misión: proteger progreso durante el examen', async (t) => {
+  await t.test('1. Cuando el examen está activo, hacer clic fuera del modal (backdrop) nunca lo cierra', () => {
+    assert.equal(canCloseOnBackdropClick(true, true), false, 'Clic directo en backdrop con examen activo debe ignorarse');
+    assert.equal(canCloseOnBackdropClick(true, false), false, 'Clic interno con examen activo debe ignorarse');
+  });
+
+  await t.test('2. Durante una clase ordinaria sin examen activo, clic en el fondo sí permite cerrar', () => {
+    assert.equal(canCloseOnBackdropClick(false, true), true, 'Clic en el fondo sin examen activo cierra el modal');
+    assert.equal(canCloseOnBackdropClick(false, false), false, 'Clic dentro de la ventana de la misión no cierra el modal');
   });
 });

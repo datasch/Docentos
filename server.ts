@@ -925,20 +925,57 @@ app.get(
             resources: { orderBy: { order: 'asc' } },
           },
         },
+        mentors: {
+          include: {
+            mentor: {
+              select: { id: true, name: true, email: true, avatarUrl: true },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
 
+    let userAssignedMentor: { id: string; name: string; email: string; avatarUrl: string | null } | null = null;
+    if (user?.role === 'MENTEE') {
+      const assignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId: user.id },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          mentor: {
+            select: { id: true, name: true, email: true, avatarUrl: true },
+          },
+        },
+      });
+      userAssignedMentor = assignment?.mentor || null;
+    }
+
     const decisions = await getCourseAccessDecisions(user, courses);
     const formattedCourses = courses.map((course) => {
       const decision = decisions.get(course.id)!;
-      const serialized = serializeCourseForViewer(course, decision.allowed);
+      const courseMentors = (course.mentors || []).map((m: any) => ({
+        id: m.mentor?.id || m.mentorId,
+        name: m.mentor?.name || 'Mentor',
+        email: m.mentor?.email || '',
+        avatarUrl: m.mentor?.avatarUrl || null,
+      }));
+      const resolvedMentor = userAssignedMentor || courseMentors[0] || null;
+      const serialized = serializeCourseForViewer(
+        {
+          ...course,
+          mentors: courseMentors,
+          assignedMentor: resolvedMentor,
+        },
+        decision.allowed,
+      );
       return {
         ...serialized,
         hasAccess: decision.allowed,
         accessReason: decision.reason,
         userRole: viewerRole,
-        requiresPaywall: !decision.allowed,
+        requiresPaywall: viewerRole === 'MENTEE' ? false : !decision.allowed,
+        mentors: courseMentors,
+        assignedMentor: resolvedMentor,
       };
     });
 
@@ -961,13 +998,57 @@ app.get(
             resources: { orderBy: { order: 'asc' } },
           },
         },
+        mentors: {
+          include: {
+            mentor: {
+              select: { id: true, name: true, email: true, avatarUrl: true },
+            },
+          },
+        },
       },
     });
     if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
 
     const viewerRole: UserRole = req.user?.role || 'PUBLIC_USER';
     const decision = await getCourseAccessDecision(req.user, course.id);
-    const serialized = serializeCourseForViewer(course, decision.allowed);
+
+    let userAssignedMentor: { id: string; name: string; email: string; avatarUrl: string | null } | null = null;
+    let hasPendingRequest = false;
+    if (req.user?.role === 'MENTEE') {
+      const assignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId: req.user.id },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          mentor: {
+            select: { id: true, name: true, email: true, avatarUrl: true },
+          },
+        },
+      });
+      userAssignedMentor = assignment?.mentor || null;
+
+      const pendingAssignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId: req.user.id, courseId: course.id, status: 'PENDING' },
+        select: { id: true },
+      });
+      hasPendingRequest = Boolean(pendingAssignment);
+    }
+
+    const courseMentors = (course.mentors || []).map((m: any) => ({
+      id: m.mentor?.id || m.mentorId,
+      name: m.mentor?.name || 'Mentor',
+      email: m.mentor?.email || '',
+      avatarUrl: m.mentor?.avatarUrl || null,
+    }));
+    const resolvedMentor = userAssignedMentor || courseMentors[0] || null;
+
+    const serialized = serializeCourseForViewer(
+      {
+        ...course,
+        mentors: courseMentors,
+        assignedMentor: resolvedMentor,
+      },
+      decision.allowed,
+    );
 
     res.json({
       course: {
@@ -975,12 +1056,17 @@ app.get(
         hasAccess: decision.allowed,
         accessReason: decision.reason,
         userRole: viewerRole,
-        requiresPaywall: !decision.allowed,
+        requiresPaywall: viewerRole === 'MENTEE' ? false : !decision.allowed,
+        mentors: courseMentors,
+        assignedMentor: resolvedMentor,
+        hasPendingRequest,
       },
       hasAccess: decision.allowed,
       accessReason: decision.reason,
       userRole: viewerRole,
-      requiresPaywall: !decision.allowed,
+      requiresPaywall: viewerRole === 'MENTEE' ? false : !decision.allowed,
+      mentor: resolvedMentor,
+      hasPendingRequest,
     });
   }),
 );
@@ -990,9 +1076,43 @@ app.get(
   asyncRoute(async (req, res) => {
     const course = await prisma.course.findUnique({
       where: { id: req.params.courseId },
-      select: { id: true, price: true, currency: true },
+      select: {
+        id: true,
+        price: true,
+        currency: true,
+        mentors: {
+          include: {
+            mentor: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          },
+        },
+      },
     });
     const decision = await getCourseAccessDecision(req.user, req.params.courseId);
+
+    let assignedMentor = null;
+    let hasPendingRequest = false;
+    if (req.user?.role === 'MENTEE') {
+      const assignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId: req.user.id },
+        orderBy: { createdAt: 'asc' },
+        include: { mentor: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      });
+      assignedMentor = assignment?.mentor || null;
+
+      const pendingAssignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId: req.user.id, courseId: req.params.courseId, status: 'PENDING' },
+        select: { id: true },
+      });
+      hasPendingRequest = Boolean(pendingAssignment);
+    }
+    const courseMentors = (course?.mentors || []).map((m: any) => ({
+      id: m.mentor?.id || m.mentorId,
+      name: m.mentor?.name || 'Mentor',
+      email: m.mentor?.email || '',
+      avatarUrl: m.mentor?.avatarUrl || null,
+    }));
+    const resolvedMentor = assignedMentor || courseMentors[0] || null;
+
     res.json({
       courseId: req.params.courseId,
       userRole: req.user?.role || 'PUBLIC_USER',
@@ -1003,6 +1123,165 @@ app.get(
       hasMentorshipAssignment: decision.hasMentorshipAssignment,
       priceUSD: course?.price || 0,
       currency: course?.currency || 'USD',
+      mentors: courseMentors,
+      mentor: resolvedMentor,
+      hasPendingRequest,
+    });
+  }),
+);
+
+app.get(
+  '/api/mentee/my-mentor',
+  requireRole(['MENTEE', 'ADMIN']),
+  asyncRoute(async (req, res) => {
+    const menteeId = req.user!.id;
+    const courseId = req.query.courseId as string | undefined;
+
+    let assignment = null;
+    if (courseId) {
+      assignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId, courseId },
+        include: { mentor: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      });
+    }
+    if (!assignment) {
+      assignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId },
+        orderBy: { createdAt: 'asc' },
+        include: { mentor: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      });
+    }
+
+    let courseMentor = null;
+    if (courseId) {
+      const cm = await prisma.courseMentor.findFirst({
+        where: { courseId },
+        include: { mentor: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      });
+      courseMentor = cm?.mentor || null;
+    }
+
+    let fallbackMentor = null;
+    if (!assignment?.mentor && !courseMentor) {
+      fallbackMentor = await prisma.user.findFirst({
+        where: { role: 'MENTOR', isActive: true },
+        select: { id: true, name: true, email: true, avatarUrl: true },
+      });
+    }
+
+    const mentor = assignment?.mentor || courseMentor || fallbackMentor;
+
+    let hasPendingRequest = false;
+    if (courseId) {
+      const pendingAssignment = await prisma.menteeAssignment.findFirst({
+        where: { menteeId, courseId, status: 'PENDING' },
+        select: { id: true },
+      });
+      hasPendingRequest = Boolean(pendingAssignment);
+    }
+
+    res.json({
+      success: true,
+      mentor,
+      assignedMentor: assignment?.mentor || null,
+      courseMentor,
+      hasPendingRequest,
+    });
+  }),
+);
+
+app.post(
+  '/api/mentee/request-access',
+  requireRole(['MENTEE', 'ADMIN']),
+  asyncRoute(async (req, res) => {
+    const courseId = req.body?.courseId as string;
+    if (!courseId) {
+      return res.status(400).json({ error: 'courseId es requerido' });
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        mentors: {
+          include: { mentor: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+        },
+      },
+    });
+    if (!course) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+
+    const decision = await getCourseAccessDecision(req.user, courseId);
+    if (decision.allowed) {
+      return res.json({ success: true, message: 'Ya tienes acceso a este curso', alreadyHasAccess: true });
+    }
+
+    const existingAssignment = await prisma.menteeAssignment.findFirst({
+      where: { menteeId: req.user!.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    const courseMentorId = course.mentors[0]?.mentor?.id;
+    let fallbackMentorId: string | undefined;
+    if (!existingAssignment?.mentorId && !courseMentorId) {
+      const fallback = await prisma.user.findFirst({
+        where: { role: 'MENTOR', isActive: true },
+        select: { id: true },
+      });
+      fallbackMentorId = fallback?.id;
+    }
+    const mentorId = existingAssignment?.mentorId || courseMentorId || fallbackMentorId || req.user!.id;
+
+    const existing = await prisma.menteeAssignment.findUnique({
+      where: { menteeId_courseId: { menteeId: req.user!.id, courseId } },
+    });
+
+    const totalVideosCount = await prisma.videoDriveLink.count({
+      where: { module: { courseId } },
+    });
+
+    let assignment;
+    if (existing) {
+      assignment = await prisma.menteeAssignment.update({
+        where: { id: existing.id },
+        data: {
+          status: 'PENDING',
+          mentorId,
+          totalVideosCount,
+          lastActiveDate: 'Reciente',
+        },
+      });
+    } else {
+      assignment = await prisma.menteeAssignment.create({
+        data: {
+          menteeId: req.user!.id,
+          mentorId,
+          courseId,
+          status: 'PENDING',
+          totalVideosCount,
+          lastActiveDate: 'Reciente',
+        },
+      });
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: req.user!.id,
+        action: 'mentorship.access_requested',
+        targetType: 'Course',
+        targetId: courseId,
+        metadataJson: JSON.stringify({
+          courseTitle: course.title,
+          mentorId,
+          assignmentId: assignment.id,
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      status: 'PENDING',
+      message: 'Solicitud de acceso enviada correctamente a tu mentor.',
+      assignmentId: assignment.id,
     });
   }),
 );
@@ -3141,16 +3420,214 @@ async function mentorForNewAssignment(menteeId: string, fallbackMentorId: string
   return previa?.mentorId || fallbackMentorId;
 }
 
+/**
+ * Determina el ámbito de cursos permitidos para un usuario en tareas de tutoría.
+ * Si es ADMIN, tiene acceso total a todos los cursos ('ALL').
+ * Si es MENTOR, devuelve los IDs de los cursos explícitamente asignados en CourseMentor.
+ */
+async function getMentorAllowedCourseIds(userId: string, role: string): Promise<string[] | 'ALL'> {
+  if (role === 'ADMIN') return 'ALL';
+  const records = await prisma.courseMentor.findMany({
+    where: { mentorId: userId },
+    select: { courseId: true },
+  });
+  return records.map((r) => r.courseId);
+}
+
+/**
+ * Cursos que el mentor o admin puede gestionar en su panel.
+ * Si es ADMIN, devuelve todos los cursos con sus módulos y recursos.
+ * Si es MENTOR, devuelve solo los cursos explícitamente asignados en CourseMentor.
+ */
+app.get(
+  '/api/mentor/courses',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    const where = scope === 'ALL' ? {} : { id: { in: scope } };
+    const courses = await prisma.course.findMany({
+      where,
+      include: {
+        resources: { orderBy: { order: 'asc' } },
+        modules: {
+          orderBy: { order: 'asc' },
+          include: {
+            videos: { orderBy: { order: 'asc' } },
+            resources: { orderBy: { order: 'asc' } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ success: true, courses });
+  }),
+);
+
 app.get(
   '/api/mentor/mentees',
   requireRole(['ADMIN', 'MENTOR']),
   asyncRoute(async (req, res) => {
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    const whereClause: any = req.user!.role === 'MENTOR'
+      ? {
+          OR: [
+            { mentorId: req.user!.id },
+            { courseId: { in: Array.isArray(scope) ? scope : [] } },
+          ],
+          status: { not: 'PENDING' },
+        }
+      : { status: { not: 'PENDING' } };
     const assignments = await prisma.menteeAssignment.findMany({
-      where: req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : undefined,
+      where: whereClause,
       include: { mentee: true, course: true },
       orderBy: { createdAt: 'asc' },
     });
     res.json({ success: true, mentees: groupAssignmentsByMentee(assignments) });
+  }),
+);
+
+app.get(
+  '/api/mentor/access-requests',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    const whereClause: any = {
+      status: 'PENDING',
+    };
+    if (scope !== 'ALL') {
+      whereClause.OR = [
+        { mentorId: req.user!.id },
+        { courseId: { in: Array.isArray(scope) ? scope : [] } },
+      ];
+    }
+
+    const assignments = await prisma.menteeAssignment.findMany({
+      where: whereClause,
+      include: {
+        mentee: { select: { id: true, name: true, email: true, avatarUrl: true } },
+        course: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const requests = assignments.map((a) => ({
+      id: a.id,
+      menteeId: a.menteeId,
+      menteeName: a.mentee?.name || 'Alumno',
+      menteeEmail: a.mentee?.email || '',
+      menteeAvatarUrl: a.mentee?.avatarUrl || null,
+      courseId: a.courseId,
+      courseTitle: a.course?.title || 'Curso',
+      mentorId: a.mentorId,
+      status: a.status,
+      createdAt: a.createdAt.toISOString(),
+    }));
+
+    res.json({ success: true, requests });
+  }),
+);
+
+app.post(
+  '/api/mentor/access-requests/:id/approve',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const { id } = req.params;
+    const assignment = await prisma.menteeAssignment.findUnique({
+      where: { id },
+      include: {
+        mentee: { select: { id: true, name: true, email: true } },
+        course: { select: { id: true, title: true } },
+      },
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    if (req.user!.role === 'MENTOR') {
+      const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+      const isAllowed = scope === 'ALL' || assignment.mentorId === req.user!.id || (Array.isArray(scope) && scope.includes(assignment.courseId));
+      if (!isAllowed) {
+        return res.status(403).json({ error: 'No tienes permisos para autorizar esta solicitud.' });
+      }
+    }
+
+    const updated = await prisma.menteeAssignment.update({
+      where: { id },
+      data: {
+        status: 'ACTIVE',
+        lastActiveDate: 'Reciente',
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: req.user!.id,
+        action: 'mentorship.access_request_approved',
+        targetType: 'MenteeAssignment',
+        targetId: assignment.courseId,
+        metadataJson: JSON.stringify({
+          menteeId: assignment.menteeId,
+          assignmentId: id,
+          courseTitle: assignment.course?.title || '',
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Acceso al curso «${assignment.course?.title || 'Curso'}» aprobado para ${assignment.mentee?.name || 'el alumno'}.`,
+      assignment: updated,
+    });
+  }),
+);
+
+app.post(
+  '/api/mentor/access-requests/:id/reject',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const { id } = req.params;
+    const assignment = await prisma.menteeAssignment.findUnique({
+      where: { id },
+      include: {
+        mentee: { select: { id: true, name: true, email: true } },
+        course: { select: { id: true, title: true } },
+      },
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    if (req.user!.role === 'MENTOR') {
+      const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+      const isAllowed = scope === 'ALL' || assignment.mentorId === req.user!.id || (Array.isArray(scope) && scope.includes(assignment.courseId));
+      if (!isAllowed) {
+        return res.status(403).json({ error: 'No tienes permisos para rechazar esta solicitud.' });
+      }
+    }
+
+    await prisma.menteeAssignment.delete({
+      where: { id },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: req.user!.id,
+        action: 'mentorship.access_request_rejected',
+        targetType: 'MenteeAssignment',
+        targetId: assignment.courseId,
+        metadataJson: JSON.stringify({
+          menteeId: assignment.menteeId,
+          courseTitle: assignment.course?.title || '',
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Solicitud rechazada correctamente.',
+    });
   }),
 );
 
@@ -3189,6 +3666,12 @@ app.put(
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) {
       res.status(404).json({ error: 'Curso no encontrado' });
+      return;
+    }
+
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    if (scope !== 'ALL' && !scope.includes(courseId)) {
+      res.status(403).json({ error: 'No tienes asignado este curso para gestionar mentorías.' });
       return;
     }
 
@@ -3233,7 +3716,7 @@ app.put(
     const acceso = await revokeMentorshipAccess(courseId, retirados);
 
     for (const menteeId of aAnadir) {
-      const mentorId = await mentorForNewAssignment(menteeId, req.user!.id);
+      const mentorId = req.user!.role === 'MENTOR' ? req.user!.id : await mentorForNewAssignment(menteeId, req.user!.id);
       await prisma.menteeAssignment.upsert({
         where: { menteeId_courseId: { menteeId, courseId } },
         update: {},
@@ -3286,17 +3769,32 @@ app.put(
     const pedidos: string[] = Array.isArray(req.body.courseIds)
       ? Array.from(new Set(req.body.courseIds.map((id: any) => String(id))))
       : [];
+
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+
+    // Protección Multicurso: Si quien opera es mentor, se acotan estrictamente
+    // los cursos solicitados a aquellos que tiene asignados.
+    const cursosPermitidosIds = scope === 'ALL'
+      ? pedidos
+      : pedidos.filter((id) => scope.includes(id));
+
     const cursos = await prisma.course.findMany({
-      where: { id: { in: pedidos } },
+      where: { id: { in: cursosPermitidosIds } },
       select: { id: true },
     });
-    const ambito = req.user!.role === 'MENTOR' ? { mentorId: req.user!.id } : {};
+
+    // Para un mentor, el ámbito de evaluación de actuales son SOLO los cursos
+    // de su competencia (scope). Cursos del mentee con otros mentores quedan
+    // completamente aislados, imposibles de desasignar accidentalmente.
+    const ambito = scope === 'ALL'
+      ? {}
+      : { courseId: { in: scope } };
     const actuales = await prisma.menteeAssignment.findMany({ where: { menteeId, ...ambito } });
 
     // Aqui lo que se valida es que el curso exista; el permiso ya lo resolvio
     // requireRole y el ambito del mentor limita sobre que filas se actua.
     const cambios = resolveRosterChanges(
-      pedidos,
+      cursosPermitidosIds,
       actuales.map((a) => a.courseId),
       cursos.map((c) => c.id),
     );
@@ -3306,7 +3804,7 @@ app.put(
       .filter((a) => cambios.toRemove.includes(a.courseId))
       .map((a) => a.id);
 
-    const aReactivar = actuales.filter((a) => pedidos.includes(a.courseId) && a.status === 'REVOKED');
+    const aReactivar = actuales.filter((a) => cursosPermitidosIds.includes(a.courseId) && a.status === 'REVOKED');
     const reactivated = (await prisma.menteeAssignment.updateMany({
       where: { id: { in: aReactivar.map((a) => a.id) }, status: 'REVOKED', ...ambito },
       data: { status: 'ACTIVE' },
@@ -3321,7 +3819,7 @@ app.put(
       for (const nombre of acceso.retienenAcceso) retienenAcceso.add(nombre);
     }
 
-    const mentorId = await mentorForNewAssignment(menteeId, req.user!.id);
+    const mentorId = req.user!.role === 'MENTOR' ? req.user!.id : await mentorForNewAssignment(menteeId, req.user!.id);
     for (const courseId of aAnadir) {
       await prisma.menteeAssignment.upsert({
         where: { menteeId_courseId: { menteeId, courseId } },
@@ -3369,6 +3867,18 @@ app.post(
     const email = String(req.body.email || '').toLowerCase();
     if (!name || !email) return res.status(400).json({ error: 'Nombre y email son requeridos' });
 
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    const requestedCourseId = req.body.courseId ? String(req.body.courseId) : null;
+
+    if (scope !== 'ALL') {
+      if (scope.length === 0) {
+        return res.status(403).json({ error: 'No tienes cursos asignados para dar de alta mentees.' });
+      }
+      if (requestedCourseId && !scope.includes(requestedCourseId)) {
+        return res.status(403).json({ error: 'No tienes asignado este curso para dar de alta mentees.' });
+      }
+    }
+
     const assignedMentorId = req.user!.role === 'MENTOR' ? req.user!.id : mentorId;
     const mentor = await prisma.user.findFirst({
       where: assignedMentorId
@@ -3377,12 +3887,13 @@ app.post(
       orderBy: { createdAt: 'asc' },
     });
     // El curso se elige desde el panel. Sin indicarlo se cae al primero
-    // publicado, que es lo que hacia antes siempre: daba igual a que programa
-    // quisieras meter a la persona, siempre entraba al mismo.
-    const requestedCourseId = req.body.courseId ? String(req.body.courseId) : null;
+    // publicado dentro de los cursos permitidos para este mentor.
     const course = requestedCourseId
       ? await prisma.course.findUnique({ where: { id: requestedCourseId } })
-      : await prisma.course.findFirst({ where: { published: true }, orderBy: { createdAt: 'asc' } });
+      : await prisma.course.findFirst({
+          where: scope === 'ALL' ? { published: true } : { id: { in: scope }, published: true },
+          orderBy: { createdAt: 'asc' },
+        });
     if (requestedCourseId && !course) {
       return res.status(404).json({ error: 'El curso indicado no existe.' });
     }
@@ -3563,6 +4074,165 @@ app.put(
       metadata: { previousRole: target.role, role: user.role },
     });
     res.json({ success: true, user: toRuntimeUser(user) });
+  }),
+);
+
+/**
+ * Cursos asignados a un mentor específico (para panel de administración).
+ */
+app.get(
+  '/api/admin/mentors/:mentorId/courses',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const mentor = await prisma.user.findUnique({
+      where: { id: req.params.mentorId },
+      select: { id: true, name: true, email: true, role: true },
+    });
+    if (!mentor) {
+      return res.status(404).json({ error: 'Mentor no encontrado' });
+    }
+    const assignments = await prisma.courseMentor.findMany({
+      where: { mentorId: mentor.id },
+      select: { courseId: true },
+    });
+    res.json({
+      success: true,
+      mentor,
+      courseIds: assignments.map((a) => a.courseId),
+    });
+  }),
+);
+
+/**
+ * Actualiza la lista de cursos asignados a un mentor.
+ */
+app.put(
+  '/api/admin/mentors/:mentorId/courses',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const mentor = await prisma.user.findUnique({
+      where: { id: req.params.mentorId },
+    });
+    if (!mentor) {
+      return res.status(404).json({ error: 'Mentor no encontrado' });
+    }
+    const requestedCourseIds: string[] = Array.isArray(req.body.courseIds)
+      ? Array.from(new Set(req.body.courseIds.map((id: any) => String(id))))
+      : [];
+
+    const existingCourses = await prisma.course.findMany({
+      where: { id: { in: requestedCourseIds } },
+      select: { id: true },
+    });
+    const validCourseIds = existingCourses.map((c) => c.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.courseMentor.deleteMany({
+        where: { mentorId: mentor.id },
+      });
+      if (validCourseIds.length > 0) {
+        await tx.courseMentor.createMany({
+          data: validCourseIds.map((courseId) => ({
+            mentorId: mentor.id,
+            courseId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await recordAuditEvent(req, {
+      action: 'mentor.courses_updated',
+      targetType: 'User',
+      targetId: mentor.id,
+      metadata: { mentorEmail: mentor.email, courseIds: validCourseIds },
+    });
+
+    res.json({
+      success: true,
+      courseIds: validCourseIds,
+    });
+  }),
+);
+
+/**
+ * Mentores asignados a un curso específico.
+ */
+app.get(
+  '/api/admin/courses/:courseId/mentors',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const course = await prisma.course.findUnique({
+      where: { id: req.params.courseId },
+      select: { id: true, title: true },
+    });
+    if (!course) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+    const assignments = await prisma.courseMentor.findMany({
+      where: { courseId: course.id },
+      include: {
+        mentor: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
+      },
+    });
+    res.json({
+      success: true,
+      course,
+      mentorIds: assignments.map((a) => a.mentorId),
+      mentors: assignments.map((a) => a.mentor),
+    });
+  }),
+);
+
+/**
+ * Actualiza los mentores asignados a un curso.
+ */
+app.put(
+  '/api/admin/courses/:courseId/mentors',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const course = await prisma.course.findUnique({
+      where: { id: req.params.courseId },
+    });
+    if (!course) {
+      return res.status(404).json({ error: 'Curso no encontrado' });
+    }
+    const requestedMentorIds: string[] = Array.isArray(req.body.mentorIds)
+      ? Array.from(new Set(req.body.mentorIds.map((id: any) => String(id))))
+      : [];
+
+    const validMentors = await prisma.user.findMany({
+      where: { id: { in: requestedMentorIds }, role: { in: ['MENTOR', 'ADMIN'] } },
+      select: { id: true },
+    });
+    const validMentorIds = validMentors.map((m) => m.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.courseMentor.deleteMany({
+        where: { courseId: course.id },
+      });
+      if (validMentorIds.length > 0) {
+        await tx.courseMentor.createMany({
+          data: validMentorIds.map((mentorId) => ({
+            courseId: course.id,
+            mentorId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await recordAuditEvent(req, {
+      action: 'course.mentors_updated',
+      targetType: 'Course',
+      targetId: course.id,
+      metadata: { courseTitle: course.title, mentorIds: validMentorIds },
+    });
+
+    res.json({
+      success: true,
+      mentorIds: validMentorIds,
+    });
   }),
 );
 

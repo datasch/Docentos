@@ -347,7 +347,11 @@ export default function App() {
           setShowAuthModal(true);
         }}
         onLogout={handleLogout}
-        onOpenPaywall={() => setShowPaywallModal(true)}
+        onOpenPaywall={() => {
+          if (currentUser?.role !== 'MENTEE') {
+            setShowPaywallModal(true);
+          }
+        }}
         onRefreshData={() => loadData(true)}
         onPaymentSuccess={handlePaymentSuccess}
         onVipActivated={handleVipActivated}
@@ -399,7 +403,7 @@ export default function App() {
           />
         )}
 
-        {showPaywallModal && currentUser && course && (
+        {showPaywallModal && currentUser && course && currentUser.role !== 'MENTEE' && (
           <div
             className="fixed inset-0 z-50 bg-[#07070b]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in overscroll-contain"
             onWheel={(e) => e.stopPropagation()}

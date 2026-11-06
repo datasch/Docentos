@@ -29,3 +29,4 @@ AGENTS.md
 .agy-arms/
 scripts/verificar-diseno.sh
 .vscode/
+graphify-out/

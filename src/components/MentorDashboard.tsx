@@ -8,7 +8,7 @@
  * 3. Responder dudas e interactuar en el Centro de Preguntas Q&A
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   UserCheck,
   BookOpen,
@@ -34,7 +34,7 @@ import {
 import { MeetingManager } from './MeetingManager';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
-import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment, QuizQuestion } from '../types';
+import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment, QuizQuestion, CourseAccessRequest } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
 import { getModuleQuestions, syncModuleQuizzes } from '../plugins/QuizzesPlugin';
 import { Sparkles, CheckSquare, Layers } from 'lucide-react';
@@ -73,6 +73,33 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
   const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
+
+  // Cursos asignados estrictamente a este mentor (Principio de Menor Privilegio)
+  const [scopedCourses, setScopedCourses] = useState<Course[]>(courses || []);
+  const [loadingScopedCourses, setLoadingScopedCourses] = useState<boolean>(currentUser.role === 'MENTOR');
+
+  const loadScopedCourses = useCallback(async () => {
+    if (currentUser.role !== 'MENTOR') {
+      setScopedCourses(courses || []);
+      setLoadingScopedCourses(false);
+      return;
+    }
+    setLoadingScopedCourses(true);
+    try {
+      const res = await api.getMentorCourses();
+      setScopedCourses(res.courses || []);
+    } catch (err) {
+      console.error('Error al cargar cursos asignados al mentor:', err);
+    } finally {
+      setLoadingScopedCourses(false);
+    }
+  }, [currentUser.role, courses]);
+
+  useEffect(() => {
+    loadScopedCourses();
+  }, [loadScopedCourses]);
+
+  const displayCourses = currentUser.role === 'ADMIN' ? courses : scopedCourses;
 
   useEffect(() => {
     loadAllQuizzes();
@@ -154,6 +181,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyErrorMap, setReplyErrorMap] = useState<Record<string, string>>({});
 
+  const [accessRequests, setAccessRequests] = useState<CourseAccessRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState<boolean>(false);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
   // Mensaje de confirmación compartido por las acciones de la cabecera.
   const [actionNotice, setActionNotice] = useState<string>('');
 
@@ -163,12 +194,54 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
   useEffect(() => {
     loadMenteesData();
+    loadAccessRequests();
     loadQnaData();
   }, []);
 
   const announce = (message: string) => {
     setActionNotice(message);
     setTimeout(() => setActionNotice(''), 4000);
+  };
+
+  const loadAccessRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const res = await api.getMentorAccessRequests();
+      if (res?.requests) {
+        setAccessRequests(res.requests);
+      }
+    } catch (error) {
+      console.error('Error al cargar solicitudes de acceso:', error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      setProcessingRequestId(requestId);
+      const res = await api.approveCourseAccessRequest(requestId);
+      announce(res.message || 'Acceso aprobado exitosamente');
+      await Promise.all([loadAccessRequests(), loadMenteesData()]);
+      onRefreshCourses();
+    } catch (error: any) {
+      announce(error?.message || 'Error al aprobar solicitud');
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    try {
+      setProcessingRequestId(requestId);
+      const res = await api.rejectCourseAccessRequest(requestId);
+      announce(res.message || 'Solicitud rechazada');
+      await loadAccessRequests();
+    } catch (error: any) {
+      announce(error?.message || 'Error al rechazar solicitud');
+    } finally {
+      setProcessingRequestId(null);
+    }
   };
 
   /**
@@ -476,7 +549,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { title: 'Programas Creados', value: courses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
+          { title: currentUser.role === 'MENTOR' ? 'Programas Asignados' : 'Programas del Catálogo', value: displayCourses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
           { title: 'Mentees Asignados', value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
           {
             title: 'Consultas Respondidas',
@@ -521,7 +594,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <BookOpen className="w-4 h-4 shrink-0" />
-          <span>Gestión de Cursos ({courses.length})</span>
+          <span>Gestión de Cursos ({displayCourses.length})</span>
         </button>
 
         <button
@@ -534,6 +607,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         >
           <Users className="w-4 h-4 shrink-0" />
           <span>Mentees Asignados ({mentees.length})</span>
+          {accessRequests.length > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+              {accessRequests.length} {accessRequests.length === 1 ? 'solicitud' : 'solicitudes'}
+            </span>
+          )}
         </button>
 
         <button
@@ -606,16 +684,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               <span>Crear con IA desde YouTube</span>
             </button>
           </div>
-          {courses.length === 0 ? (
+          {displayCourses.length === 0 ? (
             <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-10 text-center space-y-3">
               <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
               <p className="text-xs text-slate-400">
-                Todavía no hay programas. Los crea administración, desde Administración › Cursos.
+                {currentUser.role === 'MENTOR'
+                  ? 'No tienes cursos asignados actualmente. Contacta a un administrador para que te asigne tus programas a cargo.'
+                  : 'Todavía no hay programas. Los crea administración, desde Administración › Cursos.'}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
+              {displayCourses.map((course) => (
                 <div key={course.id} className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-5 space-y-4 hover:border-[#06b6d4] transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg">
@@ -707,93 +787,175 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
       {/* Tab Content 2: Mentees Progress Monitoring */}
       {activeTab === 'mentees' && (
-        <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl overflow-hidden">
-          <div className="p-5 border-b border-[#262626] flex items-center justify-between">
-            {/* El alta y el reparto viven ahora en «Gestión de Cursos»: se
-                asigna desde el curso, que es donde se sabe a que se asigna. */}
-            <div>
-              <h3 className="font-bold text-sm text-white">Seguimiento de Mentees</h3>
-              <p className="text-xs text-slate-400">Progreso individual y estado de estudio de alumnos asignados</p>
-            </div>
-          </div>
-
-          <div className="divide-y divide-[#262626]">
-            {loadingMentees && (
-              <p className="p-6 text-center text-xs text-slate-500">Cargando mentees...</p>
-            )}
-
-            {!loadingMentees && mentees.length === 0 && (
-              <p className="p-6 text-center text-xs text-slate-500">
-                Aún no tienes mentees asignados.
-              </p>
-            )}
-
-            {mentees.map((m) => (
-              <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#141420]/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={avatarSrc(m.avatarUrl)}
-                    alt={m.name}
-                    className="w-10 h-10 rounded-xl object-cover border border-[#262626]"
-                  />
+        <div className="space-y-6">
+          {accessRequests.length > 0 && (
+            <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/30 via-[#0a0a0f] to-[#0a0a0f] p-5 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <Clock className="w-4 h-4 animate-pulse" />
+                  </div>
                   <div>
-                    <h4 className="font-bold text-xs text-white flex items-center gap-2">
-                      {m.name}
-                      <span className="text-[9px] font-extrabold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-1.5 py-0.2 rounded">
-                        {m.status}
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      Solicitudes de Acceso a Cursos Pendientes
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                        {accessRequests.length}
                       </span>
-                    </h4>
-                    <span className="text-[11px] text-slate-400">{m.email}</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Mentees que solicitaron acceso en 1 clic desde la plataforma
+                    </p>
                   </div>
-                </div>
-
-                {/* Progress Bar Column */}
-                <div className="w-full sm:w-64 space-y-1">
-                  <div className="flex items-center justify-between text-[10px] font-mono">
-                    <span className="text-slate-400">Progreso en Curso</span>
-                    <span className="font-bold text-[#06b6d4]">{m.courseProgress}%</span>
-                  </div>
-                  <div className="w-full bg-[#000000] rounded-full h-2 border border-[#262626] overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-[#06b6d4] to-[#a855f7] h-full rounded-full transition-all"
-                      style={{ width: `${m.courseProgress}%` }}
-                    />
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-mono text-right">
-                    {m.completedVideosCount} de {m.totalVideosCount} lecciones • Activo {m.lastActiveDate}
-                  </div>
-                </div>
-
-                {/* Sus cursos, con nombre. Antes esta persona salía repetida
-                    una vez por curso y ninguna fila decía de cuál hablaba. */}
-                <div className="w-full sm:w-auto sm:max-w-xs space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {m.courses.length === 0 ? (
-                      <span className="text-[10px] text-slate-500 italic">Sin cursos asignados</span>
-                    ) : (
-                      m.courses.map((c) => (
-                        <span
-                          key={c.assignmentId}
-                          title={`${c.courseProgress}% · ${c.completedVideosCount} de ${c.totalVideosCount} lecciones`}
-                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#a855f7] bg-[#a855f7]/10 border border-[#a855f7]/30 px-2 py-0.5 rounded-lg max-w-[180px]"
-                        >
-                          <GraduationCap className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{c.courseTitle}</span>
-                          <span className="font-mono text-slate-400">{c.courseProgress}%</span>
-                        </span>
-                      ))
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => openMenteeRoster(m)}
-                    className="w-full sm:w-auto px-3 py-1.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
-                  >
-                    Editar cursos
-                  </button>
                 </div>
               </div>
-            ))}
+
+              <div className="space-y-3">
+                {accessRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-[#262626] hover:border-amber-500/30 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={avatarSrc(req.menteeAvatarUrl)}
+                        alt={req.menteeName}
+                        className="w-10 h-10 rounded-xl object-cover border border-[#262626]"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-white">{req.menteeName}</span>
+                          <span className="text-[10px] text-slate-400">({req.menteeEmail})</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs">
+                          <span className="text-slate-400">Solicita acceso a:</span>
+                          <span className="font-semibold text-purple-400 flex items-center gap-1">
+                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                            {req.courseTitle}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            • {formatDate(req.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleApproveRequest(req.id)}
+                        disabled={processingRequestId === req.id}
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                      >
+                        {processingRequestId === req.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        <span>Aprobar Acceso</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectRequest(req.id)}
+                        disabled={processingRequestId === req.id}
+                        className="px-3 py-1.5 bg-[#141420] hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-[#262626] hover:border-rose-500/30 text-xs font-medium rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        Rechazar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-[#262626] flex items-center justify-between">
+              {/* El alta y el reparto viven ahora en «Gestión de Cursos»: se
+                  asigna desde el curso, que es donde se sabe a que se asigna. */}
+              <div>
+                <h3 className="font-bold text-sm text-white">Seguimiento de Mentees</h3>
+                <p className="text-xs text-slate-400">Progreso individual y estado de estudio de alumnos asignados</p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-[#262626]">
+              {loadingMentees && (
+                <p className="p-6 text-center text-xs text-slate-500">Cargando mentees...</p>
+              )}
+
+              {!loadingMentees && mentees.length === 0 && (
+                <p className="p-6 text-center text-xs text-slate-500">
+                  Aún no tienes mentees asignados.
+                </p>
+              )}
+
+              {mentees.map((m) => (
+                <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#141420]/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={avatarSrc(m.avatarUrl)}
+                      alt={m.name}
+                      className="w-10 h-10 rounded-xl object-cover border border-[#262626]"
+                    />
+                    <div>
+                      <h4 className="font-bold text-xs text-white flex items-center gap-2">
+                        {m.name}
+                        <span className="text-[9px] font-extrabold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-1.5 py-0.2 rounded">
+                          {m.status}
+                        </span>
+                      </h4>
+                      <span className="text-[11px] text-slate-400">{m.email}</span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar Column */}
+                  <div className="w-full sm:w-64 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] font-mono">
+                      <span className="text-slate-400">Progreso en Curso</span>
+                      <span className="font-bold text-[#06b6d4]">{m.courseProgress}%</span>
+                    </div>
+                    <div className="w-full bg-[#000000] rounded-full h-2 border border-[#262626] overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-[#06b6d4] to-[#a855f7] h-full rounded-full transition-all"
+                        style={{ width: `${m.courseProgress}%` }}
+                      />
+                    </div>
+                    <div className="text-[9px] text-slate-500 font-mono text-right">
+                      {m.completedVideosCount} de {m.totalVideosCount} lecciones • Activo {m.lastActiveDate}
+                    </div>
+                  </div>
+
+                  {/* Sus cursos, con nombre. Antes esta persona salía repetida
+                      una vez por curso y ninguna fila decía de cuál hablaba. */}
+                  <div className="w-full sm:w-auto sm:max-w-xs space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {m.courses.length === 0 ? (
+                        <span className="text-[10px] text-slate-500 italic">Sin cursos asignados</span>
+                      ) : (
+                        m.courses.map((c) => (
+                          <span
+                            key={c.assignmentId}
+                            title={`${c.courseProgress}% · ${c.completedVideosCount} de ${c.totalVideosCount} lecciones`}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[#a855f7] bg-[#a855f7]/10 border border-[#a855f7]/30 px-2 py-0.5 rounded-lg max-w-[180px]"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{c.courseTitle}</span>
+                            <span className="font-mono text-slate-400">{c.courseProgress}%</span>
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => openMenteeRoster(m)}
+                      className="w-full sm:w-auto px-3 py-1.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
+                    >
+                      Editar cursos
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -947,7 +1109,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {activeTab === 'meetings' && (
         <MeetingManager
           currentUser={currentUser}
-          courses={courses}
+          courses={displayCourses}
           onRefreshCourses={onRefreshCourses}
         />
       )}
@@ -972,14 +1134,14 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               </div>
             </div>
 
-            {courses.length === 0 ? (
+            {displayCourses.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-xs">
-                No hay cursos registrados para gestionar evaluaciones.
+                No hay cursos disponibles para gestionar evaluaciones.
               </div>
             ) : (
               <div className="mt-6 space-y-4">
-                {courses.map((course) => {
-                  const isExpanded = quizCourseExpanded === course.id || courses.length === 1;
+                {displayCourses.map((course) => {
+                  const isExpanded = quizCourseExpanded === course.id || displayCourses.length === 1;
                   const modules = [...(course.modules || [])].sort((a, b) => a.order - b.order);
 
                   return (
@@ -1202,7 +1364,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     ));
                   })()
                 : (() => {
-                    const filtrados = courses.filter((course) => {
+                    const filtrados = displayCourses.filter((course) => {
                       const q = rosterQuery.trim().toLowerCase();
                       return !q || course.title.toLowerCase().includes(q);
                     });
@@ -1306,7 +1468,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 >
                   <option value="">Primer curso publicado</option>
-                  {courses.map((course) => (
+                  {displayCourses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.title}
                     </option>

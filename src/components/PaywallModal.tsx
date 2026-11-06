@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
+import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, RefreshCw, AlertCircle, BookOpen, GraduationCap } from 'lucide-react';
 import { siteConfig } from '../config/theme';
 import { api } from '../lib/api';
 import { UserRole } from '../types';
@@ -33,6 +33,31 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [devCheckoutData, setDevCheckoutData] = useState<{ paymentId: string; checkoutUrl: string } | null>(null);
+
+  if (userRole === 'MENTEE') {
+    return (
+      <div className="relative overflow-hidden rounded-xl bg-[#141420] border border-[#2d2d44] p-6 md:p-10 shadow-2xl text-white my-6 text-center space-y-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 mb-2">
+          <GraduationCap className="w-8 h-8" />
+        </div>
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-wider mb-3">
+            <Sparkles className="w-3.5 h-3.5 text-purple-300" /> Cuenta Mentee • Sin Cobros
+          </div>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            Acceso gestionado por mentoría
+          </h2>
+          <p className="text-slate-400 text-sm md:text-base mt-2 max-w-xl mx-auto">
+            Los usuarios con rol de Mentee no requieren pagar matrículas en la plataforma. Tu acceso al programa <strong className="text-white">"{courseTitle}"</strong> es habilitado directamente por tu mentor asignado o la administración.
+          </p>
+        </div>
+        <div className="p-4 bg-[#1a1a2e] rounded-xl border border-[#2d2d44] max-w-md mx-auto text-sm text-slate-300 flex items-center justify-center gap-2">
+          <ShieldCheck className="w-5 h-5 text-purple-400 shrink-0" />
+          <span>Comunícate con tu mentor para activar este curso en tu plan.</span>
+        </div>
+      </div>
+    );
+  }
 
   const handleCheckout = async () => {
     setIsProcessing(true);
