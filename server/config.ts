@@ -46,6 +46,26 @@ const rawSchema = z.object({
   DOCENTOS_EDITION: z.string().trim().min(1).default('community'),
   GIT_COMMIT_SHA: optionalString,
   TRUST_PROXY: z.string().trim().default('false'),
+  REDIS_URL: optionalString.refine((value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return ['redis:', 'rediss:'].includes(url.protocol) && Boolean(url.hostname);
+    } catch { return false; }
+  }, 'REDIS_URL debe usar redis:// o rediss://'),
+  RATE_LIMIT_REQUIRE_REDIS: booleanString(false),
+  RATE_LIMIT_NAMESPACE: withDefault(z.string().regex(/^[a-zA-Z0-9:_-]{1,64}$/), 'docentos'),
+  RATE_LIMIT_API_PER_MINUTE: numberWithDefault(120, 10, 10000),
+  RATE_LIMIT_API_BURST: numberWithDefault(120, 10, 10000),
+  RATE_LIMIT_WRITE_PER_MINUTE: numberWithDefault(30, 5, 10000),
+  RATE_LIMIT_WRITE_BURST: numberWithDefault(30, 5, 10000),
+  RATE_LIMIT_EXPENSIVE_PER_15_MINUTES: numberWithDefault(20, 1, 300),
+  RATE_LIMIT_ANON_PER_MINUTE: numberWithDefault(300, 10, 10000),
+  RATE_LIMIT_IP_PER_MINUTE: numberWithDefault(12000, 300, 100000),
+  LOGIN_FREE_ATTEMPTS: numberWithDefault(5, 1, 20),
+  LOGIN_FAILURE_WINDOW_MINUTES: numberWithDefault(15, 5, 60),
+  LOGIN_BACKOFF_INITIAL_SECONDS: numberWithDefault(30, 1, 300),
+  LOGIN_BACKOFF_MAX_SECONDS: numberWithDefault(300, 1, 900),
   SESSION_COOKIE_NAME: z.string().trim().min(1).max(100).default('docentos_session'),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   SESSION_COOKIE_SECURE: z.enum(['', 'true', 'false']).default(''),
@@ -213,6 +233,9 @@ export function parseTrustProxy(value: string): boolean | number | string[] {
 }
 
 const trustProxy = parseTrustProxy(raw.TRUST_PROXY);
+if (raw.RATE_LIMIT_REQUIRE_REDIS && !raw.REDIS_URL) {
+  throw new Error('Configuracion de DocentOS invalida: REDIS_URL es obligatoria con RATE_LIMIT_REQUIRE_REDIS=true.');
+}
 if (trustProxy === true) {
   console.warn(
     'DocentOS: TRUST_PROXY=true confia en cualquier X-Forwarded-For. Usa el numero de saltos (por ejemplo 1) o la lista de IPs de tu proxy.',

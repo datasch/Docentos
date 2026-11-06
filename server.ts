@@ -14,7 +14,7 @@ import path from 'path';
 import fs from 'node:fs';
 import helmet from 'helmet';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
+import { securityLimits } from './server/rateLimits.js';
 import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -577,6 +577,7 @@ app.use(
     },
   }),
 );
+app.use('/api', securityLimits.ingress);
 app.use(
   express.json({
     limit: '5mb',
@@ -593,59 +594,15 @@ app.use(function (err: any, _req: Request, res: Response, next: NextFunction) {
 });
 app.use('/api', requireSameOrigin);
 
-const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'Demasiados intentos de autenticación. Por seguridad, reintenta en 15 minutos.' },
-});
-
-const passwordResetRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'Demasiadas solicitudes de recuperación. Reintenta en 15 minutos.' },
-});
-
-const apiRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false, trustProxy: false },
-  message: { success: false, error: 'Límite de solicitudes de la API alcanzado. Intenta de nuevo más tarde.' },
-});
-
-/**
- * Escanear una carpeta abre decenas de peticiones hacia Google. Un limite
- * propio evita que una cuenta de administrador comprometida —o un bucle en la
- * interfaz— convierta a DocentOS en un amplificador de trafico.
- */
-const driveImportRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false, trustProxy: false },
-  message: {
-    success: false,
-    error: 'Demasiadas importaciones seguidas desde Google Drive. Reintenta en unos minutos.',
-  },
-});
-
-app.use('/api/auth/login', authRateLimiter);
-app.use('/api/auth/register', authRateLimiter);
-// El segundo tramo del login se limita como el primero: sin esto, la contraseña
-// quedaría protegida contra fuerza bruta y el código de seis dígitos no.
-app.use('/api/auth/2fa/verify', authRateLimiter);
-app.use('/api/auth/password/forgot', passwordResetRateLimiter);
-app.use('/api/auth/password/reset', passwordResetRateLimiter);
-app.use('/api/admin/drive/', driveImportRateLimiter);
-app.use('/api/', apiRateLimiter);
+app.use('/api/auth/login', securityLimits.login);
+app.use('/api/auth/register', securityLimits.register);
+app.use('/api/auth/2fa/verify', securityLimits.twoFactor);
+app.use('/api/auth/password/forgot', securityLimits.forgot);
+app.use('/api/auth/password/reset', securityLimits.reset);
+app.use('/api/payments/webhook', securityLimits.service);
+app.use('/api/integrations', securityLimits.service);
+app.use('/api/setup', (req, res, next) => req.method === 'POST' ? securityLimits.setup(req, res, next) : next());
+app.use(['/api/health', '/api/ready'], securityLimits.health);
 
 // Favicon fallback
 app.get('/favicon.ico', (_req, res) => {
@@ -708,6 +665,9 @@ app.get(
     try {
       await prisma.$queryRaw`SELECT 1`;
       const dbLatencyMs = Date.now() - startDb;
+      if (config.RATE_LIMIT_REQUIRE_REDIS && !(await securityLimits.isReady())) {
+        return res.status(503).json({ status: 'unavailable', database: 'connected', rateLimits: 'unavailable', ...getReleaseMetadata() });
+      }
       res.json({
         status: 'ready',
         database: 'connected',
@@ -866,6 +826,9 @@ app.use(
   }),
 );
 
+app.use('/api', securityLimits.api);
+app.use('/api/admin/drive', requireRole(['ADMIN']), securityLimits.drive);
+
 // Endpoint de Métricas operativas de sistema. Va detrás de la resolución de
 // sesión: registrado antes, req.user no existía y respondía 401 siempre.
 app.get(
@@ -882,6 +845,7 @@ app.get(
     const snapshot = getMetricsSnapshot();
     res.json({
       ...snapshot,
+      rateLimitBlocks: securityLimits.snapshot(),
       database: {
         users: userCount,
         courses: courseCount,
@@ -1096,6 +1060,7 @@ app.get(
 app.post(
   '/api/payments/checkout',
   requireAuthenticated,
+  securityLimits.checkout,
   asyncRoute(async (req, res) => {
     const courseId = req.body.courseId || 'course-giantucchi-mastery';
     // La URL de vuelta de Stripe sale de la configuración, no de la cabecera Host,
@@ -2209,55 +2174,64 @@ app.post(
     }
 
     const email = parsed.data.email.toLowerCase();
-    const user = await prisma.user.findUnique({ where: { email } });
-    const passwordMatches = await verifyPassword(
-      parsed.data.password,
-      user?.passwordHash || DUMMY_PASSWORD_HASH,
-    );
+    const ticket = await securityLimits.beginLogin(email, res);
+    if (!ticket) return;
+    try {
+      const user = await prisma.user.findUnique({ where: { email } });
+      const passwordMatches = await verifyPassword(
+        parsed.data.password,
+        user?.passwordHash || DUMMY_PASSWORD_HASH,
+      );
 
-    if (!user || !user.passwordHash || !passwordMatches) {
-      return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
-    }
+      if (!user || !user.passwordHash || !passwordMatches) {
+        if (!(await securityLimits.finishLogin(email, ticket, 'failure', res))) return;
+        return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+      }
 
-    if (!user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
+      if (!user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
 
-    /**
-     * Con segundo factor activo la contraseña correcta **no abre sesión**.
-     * Devuelve un reto de vida corta y ahí se detiene: mientras no llegue un
-     * código válido no existe ninguna sesión, ni completa ni a medias.
-     */
-    if (user.twoFactorEnabledAt) {
+      /**
+       * Con segundo factor activo la contraseña correcta **no abre sesión**.
+       * Devuelve un reto de vida corta y ahí se detiene: mientras no llegue un
+       * código válido no existe ninguna sesión, ni completa ni a medias.
+       */
+      if (user.twoFactorEnabledAt) {
+        if (!(await securityLimits.allowChallenge(req, res))) return;
+        await revokeRequestSession(req);
+        const { token: challengeToken } = await crearRetoDosFactores(user.id, req);
+        await recordAuditEvent(req, {
+          actorUserId: user.id,
+          action: 'auth.two_factor_challenged',
+          targetType: 'User',
+          targetId: user.id,
+        });
+        return res.json({
+          success: true,
+          twoFactorRequired: true,
+          challengeToken,
+          expiresInMinutes: config.TWO_FACTOR_CHALLENGE_TTL_MINUTES,
+        });
+      }
+
       await revokeRequestSession(req);
-      const { token: challengeToken } = await crearRetoDosFactores(user.id, req);
+      const { token } = await createUserSession(user.id, req);
+      if (!(await securityLimits.finishLogin(email, ticket, 'success', res))) return;
+      setSessionCookie(res, token);
       await recordAuditEvent(req, {
         actorUserId: user.id,
-        action: 'auth.two_factor_challenged',
+        action: 'auth.login_succeeded',
         targetType: 'User',
         targetId: user.id,
       });
-      return res.json({
+
+      res.json({
         success: true,
-        twoFactorRequired: true,
-        challengeToken,
-        expiresInMinutes: config.TWO_FACTOR_CHALLENGE_TTL_MINUTES,
+        user: toRuntimeUser(user),
+        redirectPath: redirectPathForRole(user.role),
       });
+    } finally {
+      await securityLimits.releaseLogin(email, ticket);
     }
-
-    await revokeRequestSession(req);
-    const { token } = await createUserSession(user.id, req);
-    setSessionCookie(res, token);
-    await recordAuditEvent(req, {
-      actorUserId: user.id,
-      action: 'auth.login_succeeded',
-      targetType: 'User',
-      targetId: user.id,
-    });
-
-    res.json({
-      success: true,
-      user: toRuntimeUser(user),
-      redirectPath: redirectPathForRole(user.role),
-    });
   }),
 );
 
@@ -2300,6 +2274,7 @@ app.post(
     const user = await prisma.user.findUnique({ where: { id: resultado.userId } });
     if (!user || !user.isActive) return res.status(403).json({ error: 'La cuenta se encuentra desactivada.' });
 
+    await securityLimits.resetLogin(user.email);
     const { token } = await createUserSession(user.id, req);
     setSessionCookie(res, token);
     await recordAuditEvent(req, {
@@ -2338,6 +2313,7 @@ app.get(
 app.post(
   '/api/auth/2fa/setup',
   requireAuthenticated,
+  securityLimits.password,
   requireSameOrigin,
   asyncRoute(async (req, res) => {
     const parsed = twoFactorPasswordSchema.safeParse(req.body);
@@ -2364,6 +2340,7 @@ app.post(
 app.post(
   '/api/auth/2fa/activate',
   requireAuthenticated,
+  securityLimits.password,
   requireSameOrigin,
   asyncRoute(async (req, res) => {
     const parsed = twoFactorActivateSchema.safeParse(req.body);
@@ -2414,6 +2391,7 @@ app.post(
 app.delete(
   '/api/auth/2fa',
   requireAuthenticated,
+  securityLimits.password,
   requireSameOrigin,
   asyncRoute(async (req, res) => {
     const parsed = twoFactorPasswordSchema.safeParse(req.body);
@@ -2443,6 +2421,7 @@ app.delete(
 app.post(
   '/api/auth/2fa/recovery-codes',
   requireAuthenticated,
+  securityLimits.password,
   requireSameOrigin,
   asyncRoute(async (req, res) => {
     const parsed = twoFactorPasswordSchema.safeParse(req.body);
@@ -2618,6 +2597,7 @@ app.post(
     if (!passwordChanged) {
       return res.status(400).json({ error: 'El enlace de recuperación ya fue utilizado.' });
     }
+    await securityLimits.resetLogin(tokenRecord.user.email);
     clearSessionCookie(res);
     await recordAuditEvent(req, {
       actorUserId: tokenRecord.userId,
@@ -2632,6 +2612,7 @@ app.post(
 app.put(
   '/api/auth/password',
   requireAuthenticated,
+  securityLimits.password,
   asyncRoute(async (req, res) => {
     const parsed = changePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -3716,6 +3697,7 @@ app.post(
 app.post(
   '/api/admin/courses/generate-cover',
   requireRole(['ADMIN', 'MENTOR']),
+  securityLimits.expensive,
   asyncRoute(async (req, res) => {
     const title = String(req.body?.title || '').trim();
     if (!title) {
@@ -4168,6 +4150,7 @@ app.put(
 app.post(
   '/api/modules/:moduleId/quiz/generate',
   requireRole(['ADMIN', 'MENTOR']),
+  securityLimits.expensive,
   asyncRoute(async (req, res) => {
     const count = typeof req.body.count === 'number' ? req.body.count : 4;
     try {
@@ -4542,6 +4525,7 @@ app.delete(
 app.post(
   '/api/youtube/playlists/import',
   requireRole(['ADMIN', 'MENTOR']),
+  securityLimits.expensive,
   asyncRoute(async (req, res) => {
     const playlistUrl = String(req.body.playlistUrl || req.body.url || '').trim();
     if (!playlistUrl) {
@@ -4663,6 +4647,7 @@ app.patch(
 app.post(
   '/api/youtube/ai-generate',
   requireRole(['ADMIN', 'MENTOR']),
+  securityLimits.expensive,
   asyncRoute(async (req, res) => {
     const { playlistId, courseRequest, videos, courseTitle } = req.body;
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
@@ -5175,6 +5160,7 @@ app.get(
 app.get(
   '/api/admin/listening/export',
   requireRole(['ADMIN']),
+  securityLimits.expensive,
   asyncRoute(async (req, res) => {
     const parsed = listeningFilterSchema.safeParse(req.query);
     if (!parsed.success) return validationError(res, parsed.error);
@@ -5236,6 +5222,7 @@ app.patch(
 app.post(
   '/api/ai/generate-script',
   requireRole(['ADMIN']),
+  securityLimits.expensive,
   asyncRoute(async (req, res) => {
     const targetLang = req.body.language || 'es';
     const topic = req.body.lessonTitle || 'Lección de Mentoría Técnica';
@@ -5732,6 +5719,7 @@ async function startServer() {
 
   const shutdown = async () => {
     httpServer.close(async () => {
+      await securityLimits.close();
       await prisma.$disconnect();
       process.exit(0);
     });

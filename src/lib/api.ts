@@ -46,8 +46,7 @@ import type {
   StaffListeningEntry,
 } from './listeningTypes';
 
-const fetch: typeof globalThis.fetch = (input, init) =>
-  globalThis.fetch(input, { ...init, credentials: 'include' });
+import { apiRequest as fetch, ApiRequestError } from './apiRequest';
 
 function listeningQuery(filter: ListeningAdminFilter): string {
   const params = new URLSearchParams();
@@ -212,7 +211,8 @@ export const api = {
     sessionExpiresAt?: string;
   }> {
     const res = await fetch('/api/auth/me');
-    if (!res.ok) throw new Error('Error al restaurar la sesión');
+    if (res.status === 401) return { authenticated: false, user: null, hasAccess: false };
+    if (!res.ok) throw new ApiRequestError('No se pudo comprobar la sesión. Inténtalo de nuevo.', res.status);
     return res.json();
   },
 
@@ -735,7 +735,7 @@ export const api = {
 
   async getQuizAttemptStatus(moduleId: string): Promise<QuizAttemptStatus> {
     const res = await fetch(`/api/modules/${moduleId}/quiz/attempt-status`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('No se pudo verificar la disponibilidad del examen.');
+    if (!res.ok) throw new ApiRequestError('No se pudo verificar la disponibilidad del examen.', res.status);
     const status = await res.json();
     // Validate the replacement endpoint before the exam uses its counters or clock.
     if (!status || !Number.isInteger(status.attemptsUsed) || status.attemptsUsed < 0 ||

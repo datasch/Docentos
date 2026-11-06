@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
+import { securityLimits } from './rateLimits.js';
+import { logger } from './logger.js';
 
 export type UserRole = 'ADMIN' | 'MENTOR' | 'MENTEE' | 'PUBLIC_USER' | 'VIP' | 'EXTERNAL';
 
@@ -41,10 +43,9 @@ export function requireRole(allowedRoles: UserRole[]) {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        error: 'Acceso denegado. Permisos insuficientes.',
-        requiredRoles: allowedRoles,
-        currentRole: req.user.role,
+      return securityLimits.forbidden(req, res, () => {
+        logger.warn('authorization.denied', { userId: req.user!.id, method: req.method, route: req.route?.path });
+        res.status(403).json({ error: 'Acceso denegado. Permisos insuficientes.', code: 'ACCESS_DENIED' });
       });
     }
 
