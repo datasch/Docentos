@@ -15,6 +15,7 @@ import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, Clock, ArrowL
 import { Module, User } from '../types';
 import { getModuleQuestions, setModuleQuiz, quizzesPluginEngine, QuizQuestion } from '../plugins/QuizzesPlugin';
 import { api } from '../lib/api';
+import { ApiRequestError, retryDelayMs } from '../lib/apiRequest';
 import { pluginManager } from '../plugins/PluginManager';
 
 interface ModuleQuizCardProps {
@@ -48,6 +49,9 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
    * volver a lo que ya tienen es parpadeo sin información.
    */
   const [cargando, setCargando] = useState<boolean>(() => getModuleQuestions(module.id).length === 0);
+  const [questionsError, setQuestionsError] = useState(false);
+  const [questionReload, setQuestionReload] = useState(0);
+  const [questionRetryAt, setQuestionRetryAt] = useState(0);
   /** El cronómetro y las preguntas no aparecen hasta que se pulsa «Comenzar». */
   const [iniciado, setIniciado] = useState<boolean>(false);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -66,7 +70,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   const [statusReady, setStatusReady] = useState(!user);
   const [clockNow, setClockNow] = useState(Date.now());
   const serverOffset = useRef(0);
-  const lastRefresh = useRef(0);
+  const refreshControl = useRef({ pending: false, nextAt: 0, failures: 0, permanent: false });
   const statusIdentity = useRef({ moduleId: module.id, userId: user?.id });
   statusIdentity.current = { moduleId: module.id, userId: user?.id };
 
@@ -91,6 +95,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
 
   useEffect(() => {
     let active = true;
+    const control = { pending: true, nextAt: 0, failures: 0, permanent: false };
+    refreshControl.current = control;
     setAttemptStatus(null);
     setAttemptsUsed(0);
     setPassed(false);
@@ -100,9 +106,13 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     setStatusReady(!user);
     if (user) api.getQuizAttemptStatus(module.id).then(status => {
       if (active) applyStatus(status);
-    }).catch(() => {
-      if (active) setSubmitError('No se pudo verificar el examen. Vuelve a abrirlo para reintentar.');
-    });
+    }).catch(error => {
+      if (!active) return;
+      control.failures++;
+      control.permanent = error instanceof ApiRequestError && [401, 403, 404].includes(error.status);
+      control.nextAt = Date.now() + retryDelayMs(error, control.failures);
+      setSubmitError('No se pudo verificar el examen. Reintentaremos en unos momentos.');
+    }).finally(() => { control.pending = false; });
     return () => { active = false; };
   }, [module.id, user?.id]);
 
@@ -112,19 +122,32 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!attemptStatus || !user || attemptStatus.passed) return;
-    const parts = new Intl.DateTimeFormat('en', { timeZone: attemptStatus.resetTimeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(clockNow));
+    const control = refreshControl.current;
+    if (!user || attemptStatus?.passed || control.pending || control.permanent || Date.now() < control.nextAt || document.visibilityState === 'hidden') return;
+    const parts = new Intl.DateTimeFormat('en', { timeZone: attemptStatus?.resetTimeZone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(clockNow));
     const dayKey = ['year', 'month', 'day'].map(type => parts.find(p => p.type === type)!.value).join('-');
-    const expired = attemptStatus.cooldownUntil && clockNow >= new Date(attemptStatus.cooldownUntil).getTime();
-    if ((expired || dayKey !== attemptStatus.dayKey) && Date.now() - lastRefresh.current >= 5000) {
-      lastRefresh.current = Date.now();
-      refreshStatus().then(() => setSubmitError(null)).catch(() => setSubmitError('No se pudo actualizar la disponibilidad. Reintentando…'));
+    const expired = attemptStatus?.cooldownUntil && clockNow >= new Date(attemptStatus.cooldownUntil).getTime();
+    if (!attemptStatus || expired || dayKey !== attemptStatus.dayKey) {
+      control.pending = true;
+      control.nextAt = Date.now() + 5000;
+      refreshStatus().then(status => {
+        if (!status || refreshControl.current !== control) return;
+        control.failures = 0;
+        setSubmitError(null);
+      }).catch(error => {
+        if (refreshControl.current !== control) return;
+        control.failures++;
+        control.permanent = error instanceof ApiRequestError && [401, 403, 404].includes(error.status);
+        control.nextAt = Date.now() + retryDelayMs(error, control.failures);
+        setSubmitError('No se pudo actualizar la disponibilidad. Reintentando…');
+      }).finally(() => { control.pending = false; });
     }
   }, [clockNow, attemptStatus, module.id, user?.id]);
 
   useEffect(() => {
     let isMounted = true;
     setCargando(getModuleQuestions(module.id).length === 0);
+    setQuestionsError(false);
     api.getModuleQuiz(module.id)
       .then((res) => {
         if (!isMounted) return;
@@ -135,9 +158,11 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           setQuestions(getModuleQuestions(module.id) || []);
         }
       })
-      .catch(() => {
+      .catch(error => {
         if (!isMounted) return;
         setQuestions(getModuleQuestions(module.id) || []);
+        setQuestionsError(true);
+        setQuestionRetryAt(Date.now() + retryDelayMs(error, 1));
       })
       .finally(() => {
         if (isMounted) setCargando(false);
@@ -145,7 +170,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [module.id]);
+  }, [module.id, questionReload]);
 
   useEffect(() => {
     if (!iniciado || !hasTimer || submitted || questions.length === 0) return;
@@ -304,11 +329,16 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       <div className="flex min-h-60 flex-col items-center justify-center gap-4 rounded-2xl border border-line bg-surface p-6 text-center">
         <CheckSquare aria-hidden className="h-7 w-7 text-ink-muted" />
         <div>
-          <h2 className="text-section font-semibold text-ink">Este módulo todavía no tiene examen</h2>
+          <h2 className="text-section font-semibold text-ink">{questionsError ? 'No pudimos cargar el examen' : 'Este módulo todavía no tiene examen'}</h2>
           <p className="mx-auto mt-1.5 max-w-sm text-meta leading-relaxed text-ink-muted">
-            Cuando el mentor publique la evaluación aparecerá aquí.
+            {questionsError ? 'No pudimos cargar la evaluación. Puedes volver a intentarlo en unos momentos.' : 'Cuando el mentor publique la evaluación aparecerá aquí.'}
           </p>
         </div>
+        {questionsError && (
+          <button type="button" disabled={questionRetryAt > Date.now()} onClick={() => setQuestionReload(value => value + 1)} className="rounded-xl border border-line px-4 py-2 text-meta font-semibold disabled:opacity-50">
+            {questionRetryAt > Date.now() ? `Reintentar en ${Math.ceil((questionRetryAt - Date.now()) / 1000)} s` : 'Volver a cargar'}
+          </button>
+        )}
         {botonVolver}
       </div>
     );

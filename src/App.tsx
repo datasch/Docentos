@@ -116,6 +116,7 @@ export default function App() {
     return null;
   });
   const [accessVerified, setAccessVerified] = useState(false);
+  const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(() => readCachedCourses().length === 0);
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
@@ -179,6 +180,8 @@ export default function App() {
       }
 
       let authUser: User | null = null;
+      setConnectionNotice(authResult.status === 'rejected' || coursesResult.status === 'rejected'
+        ? 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.' : null);
       if (authResult.status === 'fulfilled' && authResult.value?.authenticated) {
         authUser = authResult.value?.user ?? null;
         setCurrentUser(authUser);
@@ -199,7 +202,7 @@ export default function App() {
             // Silencioso
           }
         }
-      } else {
+      } else if (authResult.status === 'fulfilled') {
         setCurrentUser(null);
         writeCachedUser(null);
         setPendingContract(null);
@@ -336,6 +339,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[#06b6d4] selection:text-[#050505] font-sans">
+      {connectionNotice && (
+        <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+          <p>{connectionNotice}</p>
+          <button type="button" disabled={loading} onClick={() => loadData()} className="font-semibold underline underline-offset-4 disabled:opacity-50">Reintentar</button>
+        </div>
+      )}
       
       {/* Experiencia Principal Oficial: DocentOS Constellation */}
       <ConstellationAppShell

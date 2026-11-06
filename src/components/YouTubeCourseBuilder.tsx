@@ -50,6 +50,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { ApiRequestError } from '../lib/apiRequest';
 import {
   User,
   YouTubeConnectionStatus,
@@ -391,16 +392,22 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => () => {
     if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
   }, []);
 
   const pollJobStatus = (jobId: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let consecutiveErrors = 0;
     const MAX_CONSECUTIVE_ERRORS = 4;
+    let inFlight = false;
+    let nextAttemptAt = 0;
 
     const interval = setInterval(async () => {
+      if (inFlight || Date.now() < nextAttemptAt || document.visibilityState === 'hidden') return;
+      inFlight = true;
       try {
         const job = await api.youtube.getJobStatus(jobId);
+        if (pollRef.current !== interval) return;
         consecutiveErrors = 0;
         setJobProgress(job.progress || 50);
 
@@ -430,12 +437,17 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           setGenerationError(job.errorMessage || 'Falló la generación del curso por IA.');
         }
       } catch (err: any) {
+        if (pollRef.current !== interval) return;
+        if (err instanceof ApiRequestError && err.retryAfterSeconds) {
+          nextAttemptAt = Date.now() + err.retryAfterSeconds * 1000;
+          return;
+        }
         consecutiveErrors += 1;
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           clearInterval(interval);
           setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
         }
-      }
+      } finally { inFlight = false; }
     }, 2000);
     pollRef.current = interval;
   };

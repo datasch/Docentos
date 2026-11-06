@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
+import { ApiRequestError } from '../lib/apiRequest';
 import { User } from '../types';
 import { usePlatformBrand } from '../lib/logoConfig';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
@@ -56,6 +57,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
+  const [clock, setClock] = useState(Date.now);
+  const retryScope = `${twoFactorChallenge || recoveryMode || mode}:${email.trim().toLowerCase()}`;
+  const deadline = cooldowns[retryScope] || 0;
+  const retrySeconds = Math.max(0, Math.ceil((deadline - clock) / 1000));
+
+  useEffect(() => {
+    setClock(Date.now());
+    if (!isOpen || deadline <= Date.now()) return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [isOpen, deadline]);
 
   useEffect(() => {
     if (isOpen) {
@@ -90,6 +103,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || deadline > Date.now()) return;
     setError(null);
     setSuccessMessage(null);
     setLoading(true);
@@ -149,7 +163,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }
     } catch (err: any) {
-      setError(err.message || 'Error al autenticar');
+      if (err instanceof ApiRequestError && err.retryAfterSeconds) {
+        setCooldowns(previous => ({ ...previous, [retryScope]: Date.now() + err.retryAfterSeconds! * 1000 }));
+        setClock(Date.now());
+      }
+      setError(err instanceof ApiRequestError && err.status === 429
+        ? 'Por seguridad, espera un momento antes de volver a intentarlo.' : err.message || 'Error al autenticar');
     } finally {
       setLoading(false);
     }
@@ -401,11 +420,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || retrySeconds > 0}
             className="w-full py-3 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
           >
             {loading ? (
               <span className="animate-pulse">Procesando...</span>
+            ) : retrySeconds > 0 ? (
+              <span>Reintentar en {Math.floor(retrySeconds / 60)}:{String(retrySeconds % 60).padStart(2, '0')}</span>
             ) : (
               <>
                 <span>
