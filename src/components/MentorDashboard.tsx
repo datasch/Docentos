@@ -37,6 +37,8 @@ import { api } from '../lib/api';
 import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment, QuizQuestion, CourseAccessRequest } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
 import { getModuleQuestions, syncModuleQuizzes } from '../plugins/QuizzesPlugin';
+import { COURSE_CATEGORIES } from './CourseManagerView';
+import { MENTORSHIP_CATEGORIES, TECHNICAL_CATEGORIES } from '../lib/courseCategories';
 import { Sparkles, CheckSquare, Layers } from 'lucide-react';
 import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
 
@@ -1541,12 +1543,26 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Categoría</label>
-                  <input
-                    type="text"
+                  <select
                     value={newCourseCategory}
                     onChange={(e) => setNewCourseCategory(e.target.value)}
-                    className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  />
+                    className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
+                  >
+                    <optgroup label="Modalidades de Mentoría">
+                      {MENTORSHIP_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Áreas Temáticas Técnicas">
+                      {TECHNICAL_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
                 </div>
 
                 <div>

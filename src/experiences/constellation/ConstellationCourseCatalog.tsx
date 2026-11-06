@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Course } from '../../types';
 import { CourseShareButton } from '../../components/CourseShareButton';
 import {
@@ -13,7 +13,16 @@ import {
   List,
   Flame,
   ChevronDown,
+  SlidersHorizontal,
+  X,
+  RotateCcw,
 } from 'lucide-react';
+import {
+  isStandardCategory,
+  getCanonicalCategory,
+  MENTORSHIP_CATEGORIES,
+  TECHNICAL_CATEGORIES,
+} from '../../lib/courseCategories';
 
 interface ConstellationCourseCatalogProps {
   courses: Course[];
@@ -66,7 +75,6 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
   onPrefetchCourse,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('todos');
-  const categoryDetailsRef = useRef<HTMLDetailsElement>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -80,20 +88,30 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
     return () => mobile.removeEventListener('change', resetMobileView);
   }, []);
 
-  const categories = ['todos', ...Array.from(new Set(courses.map((c) => c.category || 'General').filter(Boolean)))];
+  // Filtra cursos dentro del estándar oficial de DocentOS (omite cursos de prueba con categorías obsoletas)
+  const catalogCourses = useMemo(() => {
+    const valid = courses.filter((c) => isStandardCategory(c.category));
+    return valid.length > 0 ? valid : courses;
+  }, [courses]);
 
-  const filteredCourses = courses.filter((c) => {
-    const matchCategory =
-      activeCategory === 'todos' ||
-      (c.category || 'General').toLowerCase() === activeCategory.toLowerCase();
-    const matchSearch =
-      searchQuery.trim() === '' ||
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.description || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCategory && matchSearch;
-  });
+  const filteredCourses = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const isAll = activeCategory === 'todos';
+    const activeLower = activeCategory.toLowerCase();
 
-  const featuredCourse = courses[0] || null;
+    return catalogCourses.filter((c) => {
+      const canonical = (getCanonicalCategory(c.category) || c.category || 'General').toLowerCase();
+      const rawCat = (c.category || 'General').toLowerCase();
+      const matchCategory = isAll || canonical === activeLower || rawCat === activeLower;
+      const matchSearch =
+        q === '' ||
+        c.title.toLowerCase().includes(q) ||
+        (c.description || '').toLowerCase().includes(q);
+      return matchCategory && matchSearch;
+    });
+  }, [catalogCourses, activeCategory, searchQuery]);
+
+  const featuredCourse = catalogCourses[0] || null;
   const showFeatured = Boolean(featuredCourse && activeCategory === 'todos' && searchQuery.trim() === '');
   const listedCourses = showFeatured
     ? filteredCourses.filter((course) => course.id !== featuredCourse?.id)
@@ -232,81 +250,107 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
         )}
 
         {/* Barra de Filtros por Categoría y Búsqueda */}
-        <div className="order-2 flex flex-col lg:flex-row items-stretch lg:items-start justify-between gap-4 mb-6 sm:mb-8 pb-5 border-b border-slate-200 dark:border-white/[0.06]">
-          {/* Píldoras de Categoría */}
-          <div className="order-2 lg:order-1 min-w-0 lg:flex-1">
-            <details ref={categoryDetailsRef} className="group/category min-w-0 rounded-xl sm:rounded-full sm:open:rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-sm transition-colors dark:border-white/10 dark:bg-white/[0.03] dark:text-white dark:shadow-none has-[:focus-visible]:border-[#06b6d4] lg:hidden">
-              <summary className="flex min-h-[46px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl sm:rounded-full px-4 py-3 font-constellation-body text-base sm:text-sm focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-                <span className="min-w-0 truncate">{activeCategory === 'todos' ? 'Todas las categorías' : activeCategory}</span>
-                <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open/category:rotate-180 dark:text-white/40" />
-              </summary>
-              <div role="group" aria-label="Filtrar por categoría" className="max-h-[40dvh] overflow-x-hidden overflow-y-auto overscroll-contain px-2 pb-2">
-                {categories.filter((cat) => cat !== activeCategory).map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => {
-                      setActiveCategory(cat);
-                      if (categoryDetailsRef.current) {
-                        categoryDetailsRef.current.open = false;
-                        categoryDetailsRef.current.querySelector('summary')?.focus();
-                      }
-                    }}
-                    className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/5"
-                  >
-                    <span className="min-w-0 break-words">{cat === 'todos' ? 'Todas las categorías' : cat}</span>
-                    <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">{cat === 'todos' ? courses.length : courses.filter((course) => (course.category || 'General').toLowerCase() === cat.toLowerCase()).length}</span>
-                  </button>
-                ))}
-              </div>
-            </details>
-            <div role="group" aria-label="Filtrar por categoría" className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">
-              {categories.map((cat) => {
-                const count =
-                  cat === 'todos'
-                    ? courses.length
-                    : courses.filter(
-                        (c) => (c.category || 'General').toLowerCase() === cat.toLowerCase()
-                      ).length;
+        <div className="order-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-5 border-b border-slate-200 dark:border-white/[0.06]">
+          {/* Selector de Filtro de Categoría Ordenado */}
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+            <div className="relative inline-flex items-center">
+              <label
+                htmlFor="catalog-category-filter"
+                className="font-constellation-label text-xs uppercase tracking-wider text-slate-500 dark:text-white/50 font-semibold flex items-center gap-1.5 mr-2"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#06b6d4]" />
+                <span>Filtro:</span>
+              </label>
 
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    aria-pressed={activeCategory === cat}
-                    className={`min-h-11 max-w-full font-constellation-label text-xs tracking-wide px-3 py-2 rounded-full transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      activeCategory === cat
-                        ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-[0_0_15px_rgba(6,182,212,0.35)]'
-                        : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-900 border border-slate-200/60 dark:bg-white/[0.03] dark:text-white/50 dark:hover:text-white dark:hover:bg-white/[0.07] dark:border-white/[0.05]'
-                    }`}
-                  >
-                    <span className="min-w-0 break-words text-left">{cat === 'todos' ? 'Todos' : cat}</span>
-                    <span
-                      className={`shrink-0 text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                        activeCategory === cat
-                          ? 'bg-black/20 text-[#050505]'
-                          : 'bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-white/60'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+              <div className="relative inline-block">
+                <select
+                  id="catalog-category-filter"
+                  aria-label="Filtrar por categoría"
+                  value={activeCategory}
+                  onChange={(e) => setActiveCategory(e.target.value)}
+                  className="appearance-none cursor-pointer pl-3.5 pr-8 py-2 rounded-full text-xs font-constellation-body bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 hover:border-[#06b6d4]/60 dark:hover:border-[#06b6d4]/60 focus:border-[#06b6d4] focus:outline-none text-slate-800 dark:text-white transition-all shadow-sm"
+                >
+                  <option value="todos" className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white font-medium">
+                    Todas las categorías ({catalogCourses.length})
+                  </option>
+                  <optgroup label="Modalidades de Mentoría" className="bg-white dark:bg-[#121212] text-slate-500 dark:text-white/60 font-semibold">
+                    {MENTORSHIP_CATEGORIES.map((cat) => {
+                      const count = catalogCourses.filter((c) => (getCanonicalCategory(c.category) || c.category) === cat).length;
+                      return (
+                        <option key={cat} value={cat} className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white">
+                          {cat} ({count})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                  <optgroup label="Áreas Temáticas Técnicas" className="bg-white dark:bg-[#121212] text-slate-500 dark:text-white/60 font-semibold">
+                    {TECHNICAL_CATEGORIES.map((cat) => {
+                      const count = catalogCourses.filter((c) => (getCanonicalCategory(c.category) || c.category) === cat).length;
+                      return (
+                        <option key={cat} value={cat} className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white">
+                          {cat} ({count})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-white/40 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
+
+            {/* Chip Activo para Categoría Seleccionada */}
+            {activeCategory !== 'todos' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-constellation-label tracking-wide uppercase bg-[#06b6d4]/10 text-[#0891b2] dark:text-[#22d3ee] border border-[#06b6d4]/30 shadow-sm animate-fadeIn">
+                <span>{activeCategory}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('todos')}
+                  aria-label="Quitar filtro de categoría"
+                  className="hover:text-red-500 dark:hover:text-red-400 transition-colors p-0.5 rounded cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
           </div>
 
-          {/* Input de Búsqueda Rápida */}
-          <div className="order-1 lg:order-2 relative w-full min-w-0 lg:w-64 lg:shrink-0">
-            <Search className="w-4 h-4 text-slate-400 dark:text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="search"
-              aria-label="Buscar cursos"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar cursos..."
-              className="min-h-12 w-full bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 focus:border-[#06b6d4] focus:outline-none rounded-xl sm:rounded-full pl-10 pr-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 font-constellation-body transition-colors shadow-sm dark:shadow-none"
-            />
+          {/* Input de Búsqueda Rápida y Botón Restablecer */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 dark:text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="search"
+                aria-label="Buscar cursos"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar cursos..."
+                className="min-h-10 w-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 hover:border-[#06b6d4]/50 focus:border-[#06b6d4] focus:outline-none rounded-full pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/35 font-constellation-body transition-colors shadow-sm"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs p-1 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {(activeCategory !== 'todos' || searchQuery.trim()) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategory('todos');
+                  setSearchQuery('');
+                }}
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-constellation-label text-[#06b6d4] hover:underline px-2 py-1 cursor-pointer transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Restablecer</span>
+              </button>
+            )}
           </div>
         </div>
 

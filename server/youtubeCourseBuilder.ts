@@ -513,7 +513,7 @@ export async function applyJobToDraftCourse(
     ? cInfo.coverImage!
     : await generateCourseCoverWithAi({
         title: cInfo.title,
-        category: cInfo.category || 'YouTube Masterclass',
+        category: cInfo.category || 'Mentoría Especializada',
         description: cInfo.description,
       });
 
@@ -538,7 +538,7 @@ export async function applyJobToDraftCourse(
         currency: 'USD',
         published: isPublished,
         publishedAt: isPublished ? new Date() : null,
-        category: cInfo.category || 'YouTube Masterclass',
+        category: cInfo.category || 'Mentoría Especializada',
         coverImage: resolvedCoverImage,
       },
     });

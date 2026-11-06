@@ -68,18 +68,13 @@ interface YouTubeCourseBuilderProps {
   onCancel?: () => void;
 }
 
-const COURSE_CATEGORIES = [
-  'Mentoría Especializada',
-  'Mentoría Premium',
-  'Mentoría Elite',
-  'Desarrollo Web',
-  'Inteligencia Artificial',
-  'Tecnología e Ingeniería',
-  'Negocios y Emprendimiento',
-  'Diseño y Creatividad',
-  'YouTube Masterclass',
-  'General',
-];
+import {
+  MENTORSHIP_CATEGORIES,
+  TECHNICAL_CATEGORIES,
+  STANDARD_COURSE_CATEGORIES,
+} from '../lib/courseCategories';
+
+const COURSE_CATEGORIES = STANDARD_COURSE_CATEGORIES;
 
 export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   currentUser,
@@ -1214,14 +1209,23 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     }
                     className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500 cursor-pointer"
                   >
-                    {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category) && (
+                    {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category as any) && (
                       <option value={draftCourse.course.category}>{draftCourse.course.category}</option>
                     )}
-                    {COURSE_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
+                    <optgroup label="Modalidades de Mentoría">
+                      {MENTORSHIP_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Áreas Temáticas Técnicas">
+                      {TECHNICAL_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>

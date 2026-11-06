@@ -49,18 +49,13 @@ interface CourseManagerViewProps {
   disableAnimation?: boolean;
 }
 
-export const COURSE_CATEGORIES = [
-  'Mentoría Elite',
-  'Mentoría Especializada',
-  'Mentoría Premium',
-  'Desarrollo Web',
-  'Inteligencia Artificial',
-  'Tecnología e Ingeniería',
-  'Negocios y Emprendimiento',
-  'Diseño y Creatividad',
-  'YouTube Masterclass',
-  'General',
-];
+import {
+  MENTORSHIP_CATEGORIES,
+  TECHNICAL_CATEGORIES,
+  STANDARD_COURSE_CATEGORIES,
+} from '../lib/courseCategories';
+
+export const COURSE_CATEGORIES = STANDARD_COURSE_CATEGORIES;
 
 const emptyForm = {
   title: '',
@@ -629,18 +624,27 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             <div>
               <label className="text-[11px] font-bold text-slate-400 block mb-1">Categoría</label>
               <select
-                value={form.category || 'Mentoría Elite'}
+                value={form.category || 'Mentoría Especializada'}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
               >
-                {form.category && !COURSE_CATEGORIES.includes(form.category) && (
+                {form.category && !COURSE_CATEGORIES.includes(form.category as any) && (
                   <option value={form.category}>{form.category}</option>
                 )}
-                {COURSE_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
+                <optgroup label="Modalidades de Mentoría">
+                  {MENTORSHIP_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Áreas Temáticas Técnicas">
+                  {TECHNICAL_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
           </div>
