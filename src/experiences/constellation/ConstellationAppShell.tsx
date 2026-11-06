@@ -140,7 +140,10 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
 
   const handleSelectCourse = (selected: Course) => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-    if (sharedCourseId || selected.hasAccess !== true) { onOpenCourseOverview(selected); return; }
+    if ((sharedCourseId || selected.hasAccess !== true) && currentUser?.role !== 'MENTEE') {
+      onOpenCourseOverview(selected);
+      return;
+    }
     const cached = courseCacheRef.current.get(selected.id);
     const resolved = (cached && cached.modules && cached.modules.length > 0) ? cached : selected;
     setSelectedCourseForViewer(resolved);
