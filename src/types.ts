@@ -292,6 +292,9 @@ export interface Course {
   hasAccess?: boolean;
   userRole?: UserRole;
   requiresPaywall?: boolean;
+  mentors?: { id: string; name: string; email: string; avatarUrl?: string | null }[];
+  assignedMentor?: { id: string; name: string; email: string; avatarUrl?: string | null } | null;
+  hasPendingRequest?: boolean;
 }
 
 export interface MentorshipComment {
@@ -350,6 +353,22 @@ export interface CourseAccessStatus {
   hasMentorshipAssignment?: boolean;
   priceUSD: number;
   currency?: string;
+  mentors?: { id: string; name: string; email: string; avatarUrl?: string | null }[];
+  mentor?: { id: string; name: string; email: string; avatarUrl?: string | null } | null;
+  hasPendingRequest?: boolean;
+}
+
+export interface CourseAccessRequest {
+  id: string;
+  menteeId: string;
+  menteeName: string;
+  menteeEmail: string;
+  menteeAvatarUrl?: string | null;
+  courseId: string;
+  courseTitle: string;
+  mentorId: string;
+  status: string;
+  createdAt: string;
 }
 
 export interface TTSGuide {

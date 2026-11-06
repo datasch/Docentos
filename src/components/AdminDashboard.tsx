@@ -201,6 +201,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const workCourse = allCourses.find((item) => item.id === workCourseId) || course || CURSO_VACIO;
   const workModules = workCourse.modules || [];
 
+  // Gestión de Cursos Asignados a Mentores (Scoped Mentorship)
+  const [selectedMentorForCourses, setSelectedMentorForCourses] = useState<User | null>(null);
+  const [mentorAssignedCourseIds, setMentorAssignedCourseIds] = useState<string[]>([]);
+  const [loadingMentorCourses, setLoadingMentorCourses] = useState<boolean>(false);
+  const [savingMentorCourses, setSavingMentorCourses] = useState<boolean>(false);
+  const [mentorCoursesNotice, setMentorCoursesNotice] = useState<string | null>(null);
+
   // Enrollments State
   const [enrollments, setEnrollments] = useState<CourseEnrollmentRecord[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
@@ -306,6 +313,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const refreshEverything = () => {
     onRefreshData();
     loadCatalog();
+  };
+
+  const handleOpenMentorCourses = async (mentor: User) => {
+    setSelectedMentorForCourses(mentor);
+    setLoadingMentorCourses(true);
+    setMentorCoursesNotice(null);
+    try {
+      const res = await api.getAdminMentorCourses(mentor.id);
+      setMentorAssignedCourseIds(res.courseIds || []);
+    } catch (err: any) {
+      setMentorCoursesNotice(err?.message || 'Error al cargar cursos del mentor');
+    } finally {
+      setLoadingMentorCourses(false);
+    }
+  };
+
+  const handleToggleMentorCourse = (courseId: string) => {
+    setMentorAssignedCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const handleSaveMentorCourses = async () => {
+    if (!selectedMentorForCourses) return;
+    setSavingMentorCourses(true);
+    setMentorCoursesNotice(null);
+    try {
+      const res = await api.setAdminMentorCourses(selectedMentorForCourses.id, mentorAssignedCourseIds);
+      setMentorAssignedCourseIds(res.courseIds || []);
+      setMentorCoursesNotice('Cursos asignados correctamente al mentor');
+      setTimeout(() => {
+        setSelectedMentorForCourses(null);
+        setMentorCoursesNotice(null);
+      }, 1000);
+    } catch (err: any) {
+      setMentorCoursesNotice(err?.message || 'Error al guardar los cursos del mentor');
+    } finally {
+      setSavingMentorCourses(false);
+    }
   };
 
   // Al cambiar de curso, los desplegables que apuntaban a módulos y clases del
@@ -1540,6 +1586,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                   >
                                     + Matricular
                                   </button>
+                                  {u.role === 'MENTOR' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenMentorCourses(u)}
+                                      className="px-2 py-0.5 rounded bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm"
+                                      title={`Gestionar cursos a cargo de ${u.name}`}
+                                    >
+                                      <BookOpen className="w-3 h-3" />
+                                      <span>Cursos a Cargo</span>
+                                    </button>
+                                  )}
                                 </div>
                               </td>
 
@@ -2724,6 +2781,126 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               >
                 Cerrar Acta
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Asignar Cursos a un Mentor */}
+      {selectedMentorForCourses && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingMentorCourses) {
+              setSelectedMentorForCourses(null);
+            }
+          }}
+        >
+          <div className="bg-[#0e0e18] border border-[#2d2d44] rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-brand-cyan/10 text-brand-cyan flex items-center justify-center">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-white">
+                    Cursos Asignados al Mentor
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {selectedMentorForCourses.name} ({selectedMentorForCourses.email})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={savingMentorCourses}
+                onClick={() => setSelectedMentorForCourses(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Marca los cursos que este mentor puede gestionar. Solo podrá ver, inscribir y tutelar estudiantes en los cursos seleccionados.
+            </p>
+
+            {mentorCoursesNotice && (
+              <div className="p-3 bg-brand-cyan/10 border border-brand-cyan/30 rounded-xl text-brand-cyan text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> {mentorCoursesNotice}
+              </div>
+            )}
+
+            {loadingMentorCourses ? (
+              <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
+                <span className="text-xs">Cargando cursos asignados...</span>
+              </div>
+            ) : (
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                {allCourses.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-4 text-center">No hay cursos en el catálogo.</p>
+                ) : (
+                  allCourses.map((c) => {
+                    const isChecked = mentorAssignedCourseIds.includes(c.id);
+                    return (
+                      <label
+                        key={c.id}
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                          isChecked
+                            ? 'bg-brand-cyan/10 border-brand-cyan/40 text-white'
+                            : 'bg-[#141424] border-[#2d2d44] text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleMentorCourse(c.id)}
+                            className="w-4 h-4 accent-[#06b6d4] rounded cursor-pointer"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">{c.title}</p>
+                            <span className="text-[10px] text-slate-500">{c.category}</span>
+                          </div>
+                        </div>
+                        {isChecked && (
+                          <span className="text-[10px] font-mono font-bold text-brand-cyan uppercase ml-2 shrink-0">
+                            Asignado
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-[#2d2d44]">
+              <span className="text-xs text-slate-400 font-mono">
+                {mentorAssignedCourseIds.length} curso{mentorAssignedCourseIds.length === 1 ? '' : 's'} asignado{mentorAssignedCourseIds.length === 1 ? '' : 's'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={savingMentorCourses}
+                  onClick={() => setSelectedMentorForCourses(null)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={savingMentorCourses || loadingMentorCourses}
+                  onClick={handleSaveMentorCourses}
+                  className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
+                >
+                  {savingMentorCourses && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Guardar Asignaciones</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

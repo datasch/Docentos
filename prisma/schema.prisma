@@ -145,6 +145,7 @@ model User {
   signedContracts     UserContractSignature[]
   listeningEntries    ListeningEntry[]     @relation("ListeningAuthor")
   listeningReplies    ListeningEntry[]     @relation("ListeningReplier")
+  assignedCourses     CourseMentor[]       @relation("AssignedCourseMentors")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -334,6 +335,19 @@ model MenteeAssignment {
   @@index([mentorId, courseId, status])
 }
 
+model CourseMentor {
+  id        String   @id @default(uuid())
+  courseId  String
+  mentorId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  mentor    User     @relation("AssignedCourseMentors", fields: [mentorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, mentorId])
+  @@index([mentorId])
+  @@index([courseId])
+}
+
 model Course {
   id                String             @id @default(uuid())
   title             String
@@ -367,6 +381,7 @@ model Course {
   meetings          Meeting[]
   aiJob             AIJob?
   listeningEntries  ListeningEntry[]
+  mentors           CourseMentor[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 

@@ -286,7 +286,10 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   onPrefetchCourse={handlePrefetchCourse}
                 />
                 <ConstellationPillars />
-                <ConstellationTestimonials />
+                <ConstellationTestimonials
+                  currentUser={currentUser}
+                  onOpenAuth={onOpenAuth}
+                />
               </motion.div>
             )}
 
@@ -324,7 +327,10 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   onPrefetchCourse={handlePrefetchCourse}
                 />
                 <ConstellationPillars />
-                <ConstellationTestimonials />
+                <ConstellationTestimonials
+                  currentUser={currentUser}
+                  onOpenAuth={onOpenAuth}
+                />
               </motion.div>
             )}
 
@@ -346,7 +352,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   course={viewerCourse}
                   currentUser={currentUser}
                   hasAccess={viewerCourse?.hasAccess === true}
-                  onOpenPaywall={onOpenPaywall}
+                  onOpenPaywall={currentUser?.role === 'MENTEE' ? () => {} : onOpenPaywall}
                   onGoHome={() => {
                     setConstellationTab('courses');
                     onNavigate('courses');
@@ -493,7 +499,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
             )}
 
             {/* Pestaña VIP Paywall si activo */}
-            {activeTab === 'vip' && currentUser && currentCourse && (
+            {activeTab === 'vip' && currentUser && currentUser.role !== 'MENTEE' && currentCourse && (
               <motion.div
                 key="view-vip"
                 variants={pageTransitionVariants}

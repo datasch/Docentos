@@ -32,6 +32,13 @@ import {
   X,
   Loader2,
   RefreshCw,
+  GraduationCap,
+  Mail,
+  Copy,
+  Check,
+  UserCheck,
+  Clock,
+  Send,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
@@ -143,6 +150,22 @@ export function certificateForCourse(
   return certificate && certificate.courseId === courseId ? certificate : null;
 }
 
+/**
+ * Decide si un clic en el fondo del modal debe cerrarlo.
+ *
+ * Durante una evaluación (examenActivo = true), el cierre por clic externo
+ * queda estrictamente deshabilitado para evitar que el alumno pierda sus
+ * respuestas por un clic accidental fuera del modal. El único modo de salir
+ * es mediante la tecla Escape o el botón de cierre (X).
+ */
+export function canCloseOnBackdropClick(
+  examenActivo: boolean,
+  isTargetCurrentTarget: boolean,
+): boolean {
+  if (examenActivo) return false;
+  return isTargetCurrentTarget;
+}
+
 export const CourseViewer: React.FC<CourseViewerProps> = ({
   course,
   currentUser,
@@ -177,6 +200,59 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       setActivePanel('sessions');
     }
   }, [hideSyllabus, activePanel]);
+
+  const [effectiveMentor, setEffectiveMentor] = useState<{ id: string; name: string; email: string; avatarUrl?: string | null } | null>(
+    course.assignedMentor || (course.mentors && course.mentors.length > 0 ? course.mentors[0] : null) || null,
+  );
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState<boolean>(Boolean(course.hasPendingRequest));
+  const [isRequestingAccess, setIsRequestingAccess] = useState<boolean>(false);
+  const [requestNotice, setRequestNotice] = useState<string>('');
+
+  useEffect(() => {
+    const directMentor = course.assignedMentor || (course.mentors && course.mentors.length > 0 ? course.mentors[0] : null);
+    if (directMentor) {
+      setEffectiveMentor(directMentor);
+    }
+    if (currentUser?.role === 'MENTEE' && !hasAccess) {
+      api
+        .getMyMentor(course.id)
+        .then((res) => {
+          if (res?.mentor) {
+            setEffectiveMentor(res.mentor);
+          }
+          if (typeof res?.hasPendingRequest === 'boolean') {
+            setHasPendingRequest(res.hasPendingRequest);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [course.id, course.assignedMentor, course.mentors, currentUser?.role, hasAccess]);
+
+  const handleRequestAccess = async () => {
+    if (!course.id || isRequestingAccess) return;
+    setIsRequestingAccess(true);
+    try {
+      const res = await api.requestCourseAccess(course.id);
+      setHasPendingRequest(true);
+      setRequestNotice(res.message || 'Solicitud de acceso enviada correctamente a tu mentor.');
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo enviar la solicitud de acceso.');
+    } finally {
+      setIsRequestingAccess(false);
+    }
+  };
+
+  const handleCopyEmail = () => {
+    if (!effectiveMentor?.email) return;
+    navigator.clipboard
+      .writeText(effectiveMentor.email)
+      .then(() => {
+        setCopiedEmail(true);
+        setTimeout(() => setCopiedEmail(false), 2000);
+      })
+      .catch(() => {});
+  };
 
   useBodyScrollLock(Boolean(isModal));
 
@@ -1373,6 +1449,155 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     </p>
                   </div>
                 </div>
+              ) : currentUser?.role === 'MENTEE' ? (
+                /* Para usuarios con rol MENTEE: se desactiva el modal de pago y se muestra
+                   el contacto de su mentor o del mentor asignado a este curso. */
+                <div className="flex h-full flex-col items-center justify-center gap-5 bg-surface px-6 py-8 text-center">
+                  <div className="inline-flex items-center justify-center rounded-2xl bg-purple-500/10 p-3 text-purple-400 border border-purple-500/20 shadow-sm">
+                    <GraduationCap aria-hidden className="h-8 w-8" />
+                  </div>
+                  <div className="max-w-md">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">
+                      Acceso por Mentoría
+                    </span>
+                    <h2 className="text-section font-bold text-ink sm:text-xl">
+                      Aún no tienes acceso a este curso
+                    </h2>
+                    <p className="mt-2 text-meta leading-relaxed text-ink-muted">
+                      Como usuario con rol de Mentee, los cursos se habilitan directamente a través de tu mentor asignado sin requerir pagos en la plataforma.
+                    </p>
+                  </div>
+
+                  {effectiveMentor ? (
+                    <div className="w-full max-w-md rounded-2xl border border-line-subtle bg-canvas/70 p-4 text-left shadow-lg backdrop-blur-sm sm:p-5">
+                      <div className="flex items-center gap-3.5">
+                        {effectiveMentor.avatarUrl ? (
+                          <img
+                            src={effectiveMentor.avatarUrl}
+                            alt={effectiveMentor.name}
+                            className="h-12 w-12 rounded-full border border-line-subtle object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-violet/20 font-bold text-brand-violet border border-brand-violet/30">
+                            {effectiveMentor.name ? effectiveMentor.name.charAt(0).toUpperCase() : 'M'}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-400">
+                            {course.assignedMentor?.id === effectiveMentor.id ? 'Tu mentor asignado' : 'Mentor del curso'}
+                          </span>
+                          <h3 className="truncate text-sm font-bold text-ink">{effectiveMentor.name}</h3>
+                          <p className="truncate text-xs text-ink-muted">{effectiveMentor.email}</p>
+                        </div>
+                      </div>
+
+                      {hasPendingRequest ? (
+                        <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-line-subtle">
+                          <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300">
+                            <Clock aria-hidden className="h-4 w-4 shrink-0 text-amber-400 mt-0.5 animate-pulse" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold">Solicitud enviada a tu mentor</p>
+                              <p className="text-[11px] font-normal text-amber-200/80 mt-0.5">
+                                Tu solicitud está en espera de aprobación. Tu mentor tiene la notificación en su panel para autorizar tu acceso en 1 clic.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-micro text-ink-muted pt-1">
+                            <a
+                              href={`mailto:${effectiveMentor.email}?subject=${encodeURIComponent(`Seguimiento: Solicitud de acceso al curso ${course.title}`)}&body=${encodeURIComponent(`Hola ${effectiveMentor.name},\n\nSoy ${currentUser.name} (${currentUser.email}). Te envié una solicitud en la plataforma para acceder al curso "${course.title}".\n\n¡Quedo atento!`)}`}
+                              className="hover:text-ink transition-colors flex items-center gap-1"
+                            >
+                              <Mail aria-hidden className="h-3 w-3" />
+                              <span>Enviar recordatorio por correo</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={handleCopyEmail}
+                              className="hover:text-ink transition-colors flex items-center gap-1 font-mono"
+                            >
+                              {copiedEmail ? <span className="text-emerald-400 font-bold">¡Copiado!</span> : <span>Copiar correo</span>}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-line-subtle">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleRequestAccess}
+                              disabled={isRequestingAccess}
+                              className="btn-brand-primary flex flex-1 items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold shadow-md disabled:opacity-50 cursor-pointer"
+                            >
+                              {isRequestingAccess ? (
+                                <>
+                                  <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin" />
+                                  <span>Enviando solicitud...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send aria-hidden className="h-3.5 w-3.5" />
+                                  <span>Solicitar acceso a mi mentor</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopyEmail}
+                              className="flex items-center justify-center gap-1.5 rounded-lg border border-line-subtle bg-surface px-3 py-2.5 text-xs font-medium text-ink hover:bg-canvas transition-colors cursor-pointer"
+                              title="Copiar correo electrónico"
+                            >
+                              {copiedEmail ? (
+                                <>
+                                  <Check aria-hidden className="h-3.5 w-3.5 text-emerald-400" />
+                                  <span className="text-emerald-400 font-semibold">¡Copiado!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
+                                  <span>Copiar correo</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-ink-muted text-center">
+                            Envía una solicitud interna en 1 clic para que tu mentor la autorice desde su panel.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-md rounded-2xl border border-line-subtle bg-canvas/70 p-4 text-center shadow-lg backdrop-blur-sm sm:p-5">
+                      <p className="text-xs text-ink-muted mb-3">
+                        Ponte en contacto con la coordinación académica o envía una solicitud para que habiliten este curso en tu perfil.
+                      </p>
+                      {hasPendingRequest ? (
+                        <div className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs font-semibold text-amber-300">
+                          <Clock aria-hidden className="h-4 w-4 animate-pulse text-amber-400" />
+                          <span>Solicitud de acceso enviada • En espera</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleRequestAccess}
+                          disabled={isRequestingAccess}
+                          className="btn-brand-primary inline-flex items-center justify-center gap-2 py-2 px-4 text-xs font-semibold shadow-md disabled:opacity-50 cursor-pointer"
+                        >
+                          {isRequestingAccess ? (
+                            <>
+                              <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin" />
+                              <span>Enviando solicitud...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send aria-hidden className="h-3.5 w-3.5" />
+                              <span>Solicitar acceso al curso</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
                   <Lock aria-hidden className="h-7 w-7 text-ink-muted" />
@@ -1583,6 +1808,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                               <SyllabusTree
                                 course={course}
                                 hasAccess={hasAccess}
+                                userRole={currentUser?.role}
                                 completedVideos={completedVideos}
                                 activeModuleIndex={activeModuleIndex}
                                 activeVideoIndex={activeVideoIndex}
@@ -1594,7 +1820,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                 onOpenQuiz={abrirExamen}
                                 quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
                                 onToggleComplete={toggleVideoCompletion}
-                                onOpenPaywall={onOpenPaywall}
+                                onOpenPaywall={currentUser?.role === 'MENTEE' ? () => {} : onOpenPaywall}
                               />
                             </div>
                           ),
@@ -1921,15 +2147,27 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   );
 
   if (isModal) {
+    const handleBackdropClose = (e: React.MouseEvent<HTMLDivElement>) => {
+      // Si el examen está activo, se deshabilita el cierre al hacer clic fuera del modal
+      // para evitar la pérdida involuntaria del progreso en la evaluación.
+      // El alumno solo podrá salir mediante la tecla Escape o el botón de cierre (X).
+      if (!canCloseOnBackdropClick(examenActivo, e.target === e.currentTarget)) return;
+      if (onCloseModal) {
+        onCloseModal();
+      }
+    };
+
     return createPortal(
       <div
         className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/85 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in overscroll-contain"
-        onMouseDown={onCloseModal}
+        onMouseDown={handleBackdropClose}
+        onClick={handleBackdropClose}
         onWheel={(e) => e.stopPropagation()}
       >
         <div
           className="app-dialog constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-purple-500/30 bg-white dark:bg-[#0d0a1a] shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
           onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"

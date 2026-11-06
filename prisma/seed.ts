@@ -283,6 +283,15 @@ async function seedApplicationData() {
     });
   }
 
+  await prisma.courseMentor.upsert({
+    where: { courseId_mentorId: { courseId: 'course-giantucchi-mastery', mentorId: 'user-mentor-01' } },
+    update: {},
+    create: {
+      courseId: 'course-giantucchi-mastery',
+      mentorId: 'user-mentor-01',
+    },
+  });
+
   await prisma.mentorshipComment.upsert({
     where: { id: 'comment-1' },
     update: {},

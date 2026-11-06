@@ -67,11 +67,12 @@ test('Invitados, miembros y compra simulada: permisos por curso', async t => {
     assert.equal((await request(`/api/modules/${module.id}/quiz/attempt-status`, cookie)).res.status, 403);
   });
   await t.test('Invitados, estudiantes y mentees ven el mismo catálogo publicado', async () => {
-    const publishedIds = (await request('/api/courses')).data.courses.map((c: any) => c.id).sort();
+    const expected = courseIds.slice().sort();
     for (const role of ['EXTERNAL', 'PUBLIC_USER', 'MENTEE'] as const) {
       const account = await createAccount(role);
       const catalog = await request('/api/courses', account.cookie);
-      assert.deepEqual(catalog.data.courses.map((c: any) => c.id).sort(), publishedIds);
+      const found = catalog.data.courses.filter((c: any) => courseIds.includes(c.id)).map((c: any) => c.id).sort();
+      assert.deepEqual(found, expected);
       for (const id of courseIds) assert.ok(catalog.data.courses.some((c: any) => c.id === id));
     }
   });

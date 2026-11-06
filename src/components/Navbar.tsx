@@ -287,13 +287,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </li>
               ))}
 
-              {/* El equivalente del «Premium» de la portada. */}
-              <li>
-                <button type="button" onClick={() => goTo('vip')} className="lp-badge-premium">
-                  <Crown aria-hidden className="h-3 w-3" fill="currentColor" />
-                  Mentee
-                </button>
-              </li>
+              {/* El equivalente del «Premium» de la portada (oculto para quienes ya son Mentee). */}
+              {currentUser.role !== 'MENTEE' && (
+                <li>
+                  <button type="button" onClick={() => goTo('vip')} className="lp-badge-premium">
+                    <Crown aria-hidden className="h-3 w-3" fill="currentColor" />
+                    Mentee
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -593,16 +595,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </li>
           ))}
 
-          <li>
-            <button
-              type="button"
-              onClick={() => goTo('vip')}
-              className={activeTab === 'vip' ? 'is-active' : undefined}
-            >
-              <Crown aria-hidden className="lp-tone-gold h-4 w-4" />
-              <span>Pase Mentee</span>
-            </button>
-          </li>
+          {currentUser.role !== 'MENTEE' && (
+            <li>
+              <button
+                type="button"
+                onClick={() => goTo('vip')}
+                className={activeTab === 'vip' ? 'is-active' : undefined}
+              >
+                <Crown aria-hidden className="lp-tone-gold h-4 w-4" />
+                <span>Pase Mentee</span>
+              </button>
+            </li>
+          )}
 
           {onOpenVerifyModal && (
             <li>
