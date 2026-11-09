@@ -184,7 +184,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     >
       <div className="flex min-h-full items-center justify-center p-3 sm:p-6" onMouseDown={onClose}>
         <div
-          className="app-dialog relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-[#0a0a0f] border border-[#262626] rounded-2xl shadow-2xl p-5 pt-12 sm:p-8 sm:pt-8"
+          className="app-dialog relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto overscroll-contain bg-canvas border border-line rounded-2xl shadow-2xl p-5 pt-12 sm:p-8 sm:pt-8"
           onMouseDown={(event) => event.stopPropagation()}
         >
         
@@ -192,7 +192,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-[#141420] hover:bg-[#1a1a2e] rounded-full transition-colors"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-surface hover:bg-raised rounded-full transition-colors"
           aria-label="Cerrar ventana de autenticación"
         >
           <X className="w-4 h-4" />
@@ -201,18 +201,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Modal Header */}
         <div className="text-center mb-6">
           <div className="flex flex-col items-center justify-center gap-2 mb-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#06b6d4] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible shadow-lg shadow-purple-500/10">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-brand-cyan via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible shadow-lg shadow-purple-500/10">
               <img
                 src={logoUrl}
                 alt={brandName}
-                className="w-full h-full object-contain rounded-[10px] bg-[#050505] p-1"
+                className="w-full h-full object-contain rounded-[10px] bg-canvas p-1"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = '/logo.avif';
                 }}
               />
               <FestiveHatOverlay size="md" />
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-[11px] font-bold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-[11px] font-bold">
               <Sparkles className="w-3 h-3" />
               <span>{brandName}</span>
             </div>
@@ -242,13 +242,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Mode Switcher Tabs */}
-        {!recoveryMode && !twoFactorChallenge && <div className="grid grid-cols-2 gap-1 bg-[#141420] p-1 rounded-xl mb-6 border border-[#262626]">
+        {!recoveryMode && !twoFactorChallenge && <div className="grid grid-cols-2 gap-1 bg-surface p-1 rounded-xl mb-6 border border-line">
           <button
             type="button"
             onClick={() => { setMode('login'); setError(null); }}
             className={`py-2 text-xs font-bold rounded-lg transition-all ${
               mode === 'login'
-                ? 'bg-[#06b6d4] text-black shadow-lg font-extrabold'
+                ? 'bg-brand-cyan text-black shadow-lg font-extrabold'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -259,7 +259,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => { setMode('register'); setError(null); }}
             className={`py-2 text-xs font-bold rounded-lg transition-all ${
               mode === 'register'
-                ? 'bg-[#06b6d4] text-black shadow-lg font-extrabold'
+                ? 'bg-brand-cyan text-black shadow-lg font-extrabold'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -289,7 +289,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode('login');
               setSuccessMessage(null);
             }}
-            className="w-full py-3 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] text-white font-bold rounded-xl transition-all"
+            className="w-full py-3 bg-surface hover:bg-raised border border-line text-white font-bold rounded-xl transition-all"
           >
             Volver a iniciar sesión
           </button>
@@ -307,7 +307,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej. Carlos Mendoza"
-                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                   autoComplete="name"
                   required={mode === 'register'}
                 />
@@ -326,7 +326,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu@email.com"
-                className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                 autoComplete="email"
                 required
               />
@@ -344,7 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                 autoComplete={recoveryMode === 'reset' || mode === 'register' ? 'new-password' : 'current-password'}
                 minLength={recoveryMode === 'reset' || mode === 'register' ? 8 : 1}
                 required
@@ -358,7 +358,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setError(null);
                   setSuccessMessage(null);
                 }}
-                className="mt-2 text-[11px] font-semibold text-[#06b6d4] hover:text-cyan-300"
+                className="mt-2 text-[11px] font-semibold text-brand-cyan hover:text-cyan-300"
               >
                 ¿Olvidaste tu contraseña?
               </button>
@@ -377,7 +377,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                   autoComplete="new-password"
                   minLength={8}
                   required
@@ -421,7 +421,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="submit"
             disabled={loading || retrySeconds > 0}
-            className="w-full py-3 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
+            className="w-full py-3 bg-gradient-to-r from-brand-cyan to-brand-purple hover:opacity-90 text-on-brand font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
           >
             {loading ? (
               <span className="animate-pulse">Procesando...</span>

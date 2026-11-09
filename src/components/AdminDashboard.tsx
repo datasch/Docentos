@@ -792,15 +792,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
    * tenía manera de saberlo hasta abrir el curso equivocado.
    */
   const courseScopeBar = (
-    <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
+    <div className="bg-raised border border-line rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
       <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-2 w-full xl:w-auto">
-        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+        <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider shrink-0">
           Curso sobre el que trabajas
         </label>
         <select
           value={workCourseId}
           onChange={(e) => setWorkCourseId(e.target.value)}
-          className="w-full min-w-0 sm:w-64 xl:w-96 bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
+          className="w-full min-w-0 sm:w-64 xl:w-96 bg-surface border border-line text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
         >
           {allCourses.map((item) => (
             <option key={item.id} value={item.id}>
@@ -810,7 +810,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         </select>
       </div>
 
-      <span className="text-[11px] font-mono text-slate-500 shrink-0">
+      <span className="text-[11px] font-mono text-ink-muted shrink-0">
         {workModules.length} módulos · {workLessonCount} clases
       </span>
     </div>
@@ -833,9 +833,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
       {/* NAVEGACIÓN Y CABECERA: MODO CLÁSICO v0.4 (Idéntico a captura del usuario) vs MODO MODERNO v0.5 */}
       {uiVersion === 'v0.4-classic' ? (
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl text-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+        <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl text-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-black/40 border border-[#2d2d44] flex items-center justify-center p-1.5 shrink-0 relative overflow-visible shadow-inner">
+            <div className="w-12 h-12 rounded-xl bg-black/40 border border-line flex items-center justify-center p-1.5 shrink-0 relative overflow-visible shadow-inner">
               <img
                 src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
                 alt="Logo"
@@ -854,7 +854,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
                 {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Control Center`}
               </h1>
-              <p className="text-slate-400 text-xs mt-1 max-w-md leading-relaxed">
+              <p className="text-ink-muted text-xs mt-1 max-w-md leading-relaxed">
                 Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
               </p>
             </div>
@@ -1246,7 +1246,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       {(activeTab === 'users' || activeTab === 'enrollments') && (
         <div className={`space-y-6 ${animClass}`}>
           {/* Header Unificado Dinámico & Barra de Acciones Principales */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2.5">
                 <Users className="w-5 h-5 text-brand-cyan" />
@@ -1256,7 +1256,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     : 'Registro Histórico de Matrículas'}
                 </span>
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-ink-muted mt-1">
                 {userSectionView === 'directory'
                   ? 'Control de acceso RBAC, moderación disciplinaria y asignación de permisos.'
                   : 'Auditoría, control de estados de admisión y activación o revocación de matrículas.'}
@@ -1280,7 +1280,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   loadEnrollments();
                 }}
                 disabled={loadingUsers || loadingEnrollments}
-                className="p-2 rounded-xl bg-[#0a0a0f] hover:bg-[#1a1a2e] border border-[#2d2d44] text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5"
+                className="p-2 rounded-xl bg-surface hover:bg-elevated border border-line text-ink-soft hover:text-white transition-all text-xs flex items-center gap-1.5"
                 title="Actualizar directorio y matrículas"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers || loadingEnrollments ? 'animate-spin' : ''}`} />
@@ -1291,8 +1291,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* Formulario de Alta de Matrícula (Desplegable con botón o visible en Matrículas) */}
           {(showQuickEnroll || userSectionView === 'enrollments') && (
-            <div className="bg-[#141420] border border-brand-cyan/40 rounded-2xl p-6 shadow-2xl space-y-4 animate-fade-in ring-1 ring-brand-cyan/20">
-              <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+            <div className="bg-raised border border-brand-cyan/40 rounded-2xl p-6 shadow-2xl space-y-4 animate-fade-in ring-1 ring-brand-cyan/20">
+              <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-emerald-400" />
                   <h3 className="text-sm font-extrabold text-white">
@@ -1303,14 +1303,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <button
                     type="button"
                     onClick={() => setShowQuickEnroll(false)}
-                    className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-[#1a1a2e] transition-colors"
+                    className="text-xs text-ink-muted hover:text-white px-2 py-1 rounded-lg hover:bg-elevated transition-colors"
                   >
                     ✕ Cerrar
                   </button>
                 )}
               </div>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).
               </p>
 
@@ -1322,11 +1322,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
               <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Usuario</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Usuario</label>
                   <select
                     value={newEnrollUserId}
                     onChange={(e) => setNewEnrollUserId(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                     required
                   >
                     <option value="">Selecciona usuario...</option>
@@ -1339,11 +1339,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Curso</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Curso</label>
                   <select
                     value={newEnrollCourseId}
                     onChange={(e) => setNewEnrollCourseId(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                     required
                   >
                     <option value="">Selecciona curso...</option>
@@ -1356,11 +1356,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Estado</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Estado</label>
                   <select
                     value={newEnrollStatus}
                     onChange={(e) => setNewEnrollStatus(e.target.value as any)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                   >
                     <option value="ACTIVE">ACTIVE (Activa)</option>
                     <option value="COMPLETED">COMPLETED (Graduado)</option>
@@ -1370,11 +1370,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Origen</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Origen</label>
                   <select
                     value={newEnrollSource}
                     onChange={(e) => setNewEnrollSource(e.target.value as any)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                   >
                     <option value="ADMIN">ADMIN (Asignación Directa)</option>
                     <option value="PAYMENT">PAYMENT (Pago)</option>
@@ -1394,15 +1394,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="space-y-6">
               {/* Course Pricing Configuration Card */}
               {course && (
-                <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+                <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-line pb-3">
                     <div>
                       <h3 className="font-extrabold text-base text-white flex items-center gap-2">
                         <Crown className="w-5 h-5 text-[#eab308]" />
                         Monetización y Precio del Programa de Mentoría
                       </h3>
-                      <p className="text-xs text-slate-400">
-                        Precio público de <span className="font-bold text-slate-200">«{course?.title}»</span>.
+                      <p className="text-xs text-ink-muted">
+                        Precio público de <span className="font-bold text-ink">«{course?.title}»</span>.
                         Deja en 0 para que sea completamente público y gratuito.
                       </p>
                     </div>
@@ -1414,8 +1414,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-4 py-2 w-full sm:w-64">
-                      <span className="text-slate-400 font-extrabold text-sm">$</span>
+                    <div className="flex items-center gap-2 bg-surface border border-line rounded-xl px-4 py-2 w-full sm:w-64">
+                      <span className="text-ink-muted font-extrabold text-sm">$</span>
                       <input
                         type="number"
                         min="0"
@@ -1425,7 +1425,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         placeholder="Ej. 49"
                         className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
                       />
-                      <span className="text-slate-500 text-xs uppercase font-bold">USD</span>
+                      <span className="text-ink-muted text-xs uppercase font-bold">USD</span>
                     </div>
 
                     <button
@@ -1440,8 +1440,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
               )}
 
-              <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2d2d44] pb-3">
+              <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-3">
                   <h3 className="font-bold text-base text-white flex items-center gap-2">
                     <Users className="w-5 h-5 text-[#06b6d4]" />
                     <span>Directorio de Usuarios y Moderación</span>
@@ -1450,19 +1450,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   {/* Filtro por Rol y Búsqueda */}
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <div className="relative flex-1 sm:w-56">
-                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5" />
                       <input
                         type="text"
                         placeholder="Buscar por nombre o email..."
                         value={userSearchText}
                         onChange={(e) => setUserSearchText(e.target.value)}
-                        className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
+                        className="w-full bg-surface border border-line text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
                       />
                     </div>
                     <select
                       value={userRoleFilter}
                       onChange={(e) => setUserRoleFilter(e.target.value)}
-                      className="bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
+                      className="bg-surface border border-line text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
                     >
                       <option value="ALL">Todos los roles</option>
                       <option value="ADMIN">Administradores</option>
@@ -1485,9 +1485,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
                 )}
 
-                <div className="overflow-x-auto rounded-xl border border-[#2d2d44]">
-                  <table className="w-full min-w-[720px] text-left text-xs text-slate-300">
-                    <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-semibold text-[11px] border-b border-[#2d2d44]">
+                <div className="overflow-x-auto rounded-xl border border-line">
+                  <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
+                    <thead className="bg-surface text-ink-muted uppercase font-semibold text-[11px] border-b border-line">
                       <tr>
                         <th className="p-3.5">Usuario</th>
                         <th className="p-3.5">Email</th>
@@ -1515,7 +1515,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           );
 
                           return (
-                            <tr key={u.id} className="hover:bg-[#1a1a2e] transition-colors">
+                            <tr key={u.id} className="hover:bg-elevated transition-colors">
                               <td className="p-3.5 flex items-center gap-3">
                                 <img
                                   src={avatarSrc(u.avatarUrl)}
@@ -1529,7 +1529,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                   )}
                                 </div>
                               </td>
-                              <td className="p-3.5 font-mono text-slate-400">{u.email}</td>
+                              <td className="p-3.5 font-mono text-ink-muted">{u.email}</td>
                               <td className="p-3.5">
                                 {u.role === 'ADMIN' && (
                                   <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
@@ -1557,7 +1557,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                   </span>
                                 )}
                                 {u.role === 'EXTERNAL' && (
-                                  <span className="bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 font-medium px-2.5 py-1 rounded-lg text-[10px]">
+                                  <span className="bg-elevated border border-line text-ink-muted font-medium px-2.5 py-1 rounded-lg text-[10px]">
                                     INVITADO
                                   </span>
                                 )}
@@ -1570,7 +1570,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                     className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${
                                       userEnrs.length > 0
                                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                                        : 'bg-slate-800 text-ink-muted border-slate-700'
                                     }`}
                                   >
                                     {userEnrs.length} {userEnrs.length === 1 ? 'curso' : 'cursos'}
@@ -1581,7 +1581,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                       setNewEnrollUserId(u.id);
                                       setShowQuickEnroll(true);
                                     }}
-                                    className="px-2 py-0.5 rounded bg-[#0a0a0f] hover:bg-[#1a1a2e] border border-[#2d2d44] hover:border-brand-cyan text-brand-cyan text-[10px] font-bold transition-all"
+                                    className="px-2 py-0.5 rounded bg-surface hover:bg-elevated border border-line hover:border-brand-cyan text-brand-cyan text-[10px] font-bold transition-all"
                                     title={`Matricular a ${u.name}`}
                                   >
                                     + Matricular
@@ -1602,7 +1602,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
                               <td className="p-3.5">
                                 <div className="flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'
+                                  <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-ink-muted border-slate-700'
                                     }`}>
                                     ⚠️ {strikes} Strikes
                                   </span>
@@ -1660,8 +1660,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* VISTA 2: REGISTRO HISTÓRICO DE MATRÍCULAS */}
           {userSectionView === 'enrollments' && (
-            <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2d2d44] pb-3">
+            <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-3">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-emerald-400" />
                   <span>Matrículas Registradas ({enrollments.length})</span>
@@ -1670,19 +1670,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 {/* Filtros de Matrículas */}
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-56">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                    <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5" />
                     <input
                       type="text"
                       placeholder="Buscar estudiante o curso..."
                       value={enrollmentSearchText}
                       onChange={(e) => setEnrollmentSearchText(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
+                      className="w-full bg-surface border border-line text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
                     />
                   </div>
                   <select
                     value={enrollmentStatusFilter}
                     onChange={(e) => setEnrollmentStatusFilter(e.target.value)}
-                    className="bg-[#0a0a0f] border border-[#2d2d44] text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
+                    className="bg-surface border border-line text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
                   >
                     <option value="ALL">Todos los estados</option>
                     <option value="ACTIVE">ACTIVE (Activas)</option>
@@ -1694,8 +1694,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-xs text-slate-300">
-                  <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
+                <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
+                  <thead className="bg-surface text-ink-muted uppercase font-mono text-[10px] border-b border-line">
                     <tr>
                       <th className="py-3 px-4">Estudiante</th>
                       <th className="py-3 px-4">Curso</th>
@@ -1718,12 +1718,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         return matchesSearch && matchesStatus;
                       })
                       .map((enr) => (
-                        <tr key={enr.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                        <tr key={enr.id} className="hover:bg-elevated/50 transition-colors">
                           <td className="py-3 px-4 font-semibold text-white">
                             {enr.userName || enr.userId}
-                            <span className="block text-[10px] text-slate-500 font-normal">{enr.userEmail}</span>
+                            <span className="block text-[10px] text-ink-muted font-normal">{enr.userEmail}</span>
                           </td>
-                          <td className="py-3 px-4 text-slate-300">{enr.courseTitle || enr.courseId}</td>
+                          <td className="py-3 px-4 text-ink-soft">{enr.courseTitle || enr.courseId}</td>
                           <td className="py-3 px-4">
                             <span
                               className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
@@ -1739,8 +1739,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                               {enr.status}
                             </span>
                           </td>
-                          <td className="py-3 px-4 font-mono text-[10px] text-slate-400">{enr.source}</td>
-                          <td className="py-3 px-4 text-slate-400">
+                          <td className="py-3 px-4 font-mono text-[10px] text-ink-muted">{enr.source}</td>
+                          <td className="py-3 px-4 text-ink-muted">
                             {new Date(enr.createdAt).toLocaleDateString('es-ES')}
                           </td>
                           <td className="py-3 px-4 text-right space-x-1">
@@ -1765,7 +1765,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       ))}
                     {enrollments.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-500">
+                        <td colSpan={6} className="py-8 text-center text-ink-muted">
                           No hay matrículas registradas aún.
                         </td>
                       </tr>
@@ -1786,7 +1786,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* Selector de Herramienta Multimedia (solo en modo moderno unificado) */}
           {uiVersion === 'v0.5-modern' && (
-            <div className="flex items-center gap-2 border-b border-[#2d2d44] pb-3">
+            <div className="flex items-center gap-2 border-b border-line pb-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1796,7 +1796,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                   mediaView === 'resources' || activeTab === 'resources'
                     ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-sm'
-                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                    : 'bg-surface text-ink-muted hover:text-white border border-line'
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -1812,7 +1812,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                   mediaView === 'drive' || activeTab === 'drive'
                     ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/40 shadow-sm'
-                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                    : 'bg-surface text-ink-muted hover:text-white border border-line'
                 }`}
               >
                 <HardDrive className="w-4 h-4" />
@@ -1828,7 +1828,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                   mediaView === 'tts' || activeTab === 'tts'
                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                    : 'bg-surface text-ink-muted hover:text-white border border-line'
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
@@ -1840,12 +1840,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           {/* 1. SECCIÓN RECURSOS DESCARGABLES */}
           {(uiVersion === 'v0.4-classic' ? activeTab === 'resources' : (mediaView === 'resources' || activeTab === 'resources')) && (
             <div className={`space-y-6 ${animClass}`}>
-              <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-cyan-400" />
                   <span>Agregar Recurso Descargable Protegido</span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-ink-muted">
                   Material complementario (guías, PDF, repositorios o archivos ZIP) para
                   «{workCourse.title}». La URL privada queda protegida y sólo será accesible mediante
                   token de sesión autorizado.
@@ -1865,35 +1865,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
                 <form onSubmit={handleAddResource} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Recurso</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Título del Recurso</label>
                     <input
                       type="text"
                       placeholder="Ej. Guía de Arquitectura.pdf"
                       value={resTitle}
                       onChange={(e) => setResTitle(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 block mb-1">URL Privada / Archivo</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">URL Privada / Archivo</label>
                     <input
                       type="url"
                       placeholder="https://drive.google.com/..."
                       value={resPrivateUrl}
                       onChange={(e) => setResPrivateUrl(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Asignar a Módulo</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Asignar a Módulo</label>
                     <select
                       value={resModuleId}
                       onChange={(e) => setResModuleId(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                     >
                       <option value="">General del Curso</option>
                       {workModules.map((m) => (
@@ -1911,7 +1911,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </div>
 
               {/* Lista de Recursos Existentes */}
-              <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#06b6d4]" />
                   <span>Recursos de «{workCourse.title}» ({workResources.length})</span>
@@ -1920,12 +1920,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <div className="space-y-2 max-h-[32rem] overflow-y-auto">
                   {workResources.length > 0 ? (
                     workResources.map(({ resource, moduleTitle }) => (
-                      <div key={resource.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
+                      <div key={resource.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-line">
                         <div className="flex items-center gap-3 min-w-0">
                           <Download className="w-4 h-4 text-cyan-400 shrink-0" />
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-white truncate">{resource.title}</p>
-                            <span className="text-[10px] text-slate-500 font-mono truncate block">
+                            <span className="text-[10px] text-ink-muted font-mono truncate block">
                               {moduleTitle || 'General del Curso'} • {resource.kind} • {resource.downloadUrl}
                             </span>
                           </div>
@@ -1939,7 +1939,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene recursos.</p>
+                    <p className="text-xs text-ink-muted py-4 text-center">Este curso todavía no tiene recursos.</p>
                   )}
                 </div>
               </div>
@@ -1948,25 +1948,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* 2. SECCIÓN VIDEOS GOOGLE DRIVE */}
           {(uiVersion === 'v0.4-classic' ? activeTab === 'drive' : (mediaView === 'drive' || activeTab === 'drive')) && (
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
+          <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line pb-4">
               <div>
                 <h3 className="font-bold text-base text-white flex items-center gap-2">
                   <HardDrive className="w-5 h-5 text-[#06b6d4]" />
                   Enlazar Contenido de Google Drive al Temario
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-ink-muted mt-0.5">
                   Elige el módulo de «{workCourse.title}» y asóciale videos alojados en Google Drive.
                 </p>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <label className="text-xs text-slate-400 font-semibold shrink-0">Módulo Destino:</label>
+                <label className="text-xs text-ink-muted font-semibold shrink-0">Módulo Destino:</label>
                 <select
                   value={selectedModuleId}
                   onChange={(e) => setSelectedModuleId(e.target.value)}
                   disabled={workModules.length === 0}
-                  className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
+                  className="bg-surface border border-line text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
                 >
                   {workModules.length === 0 && <option value="">Sin módulos</option>}
                   {workModules.map((m) => (
@@ -2011,7 +2011,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </p>
               </div>
             ) : (
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-ink-muted">
                 Listando los videos de la carpeta de Drive configurada en el servidor
                 (<code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code>). Si el video vive en otra
                 carpeta, añádelo por enlace.
@@ -2021,7 +2021,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {/* Alta por enlace: el camino que funciona con o sin credenciales. */}
             <form
               onSubmit={handleAddManualVideo}
-              className="bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-4 space-y-3"
+              className="bg-surface border border-line rounded-xl p-4 space-y-3"
             >
               <h4 className="text-xs font-bold text-white flex items-center gap-2">
                 <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
@@ -2029,7 +2029,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
                 <div className="md:col-span-2">
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">
                     Enlace de Drive o URL de reproducción
                   </label>
                   <input
@@ -2037,32 +2037,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     value={manualVideoUrl}
                     onChange={(e) => setManualVideoUrl(e.target.value)}
                     placeholder="https://drive.google.com/file/d/ABC123.../view"
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Título de la clase</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Título de la clase</label>
                   <input
                     type="text"
                     value={manualVideoTitle}
                     onChange={(e) => setManualVideoTitle(e.target.value)}
                     placeholder="Ej. 03. Índices en PostgreSQL"
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Duración</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Duración</label>
                     <input
                       type="text"
                       value={manualVideoDuration}
                       onChange={(e) => setManualVideoDuration(e.target.value)}
                       placeholder="20:00"
-                      className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                      className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                     />
                   </div>
                   <button
@@ -2085,8 +2085,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               }}
               className="flex items-center gap-2"
             >
-              <div className="flex-1 flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3">
-                <Search className="w-4 h-4 text-slate-500 shrink-0" />
+              <div className="flex-1 flex items-center gap-2 bg-surface border border-line rounded-xl px-3">
+                <Search className="w-4 h-4 text-ink-muted shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -2098,14 +2098,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <button
                 type="submit"
                 disabled={loadingDrive}
-                className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> Buscar
               </button>
             </form>
 
             {!loadingDrive && driveVideos.length === 0 && (
-              <p className="text-xs text-slate-500 py-6 text-center">
+              <p className="text-xs text-ink-muted py-6 text-center">
                 No hay videos que mostrar para esa búsqueda.
               </p>
             )}
@@ -2115,17 +2115,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               {driveVideos.map((video) => (
                 <div
                   key={video.id}
-                  className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 flex flex-col justify-between hover:border-[#06b6d4]/50 transition-all shadow-md"
+                  className="bg-elevated border border-line rounded-xl p-4 flex flex-col justify-between hover:border-[#06b6d4]/50 transition-all shadow-md"
                 >
                   <div className="space-y-2">
-                    <div className="aspect-video bg-black rounded-xl overflow-hidden border border-[#2d2d44] relative">
+                    <div className="aspect-video bg-black rounded-xl overflow-hidden border border-line relative">
                       <img
                         src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
                         alt={video.name}
                         className="w-full h-full object-cover"
                       />
                       {video.duration && (
-                        <span className="absolute bottom-1.5 right-1.5 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#2d2d44]">
+                        <span className="absolute bottom-1.5 right-1.5 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-line">
                           {video.duration}
                         </span>
                       )}
@@ -2133,8 +2133,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <h4 className="font-semibold text-xs text-white line-clamp-2">{video.name}</h4>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-[#2d2d44] flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 font-mono">ID: {video.id.substring(0, 12)}...</span>
+                  <div className="mt-4 pt-3 border-t border-line flex items-center justify-between">
+                    <span className="text-[10px] text-ink-muted font-mono">ID: {video.id.substring(0, 12)}...</span>
                     <button
                       onClick={() => handleLinkDriveVideo(video)}
                       disabled={linkingVideo?.id === video.id || workModules.length === 0}
@@ -2160,13 +2160,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="space-y-6">
 
           {/* Form Box */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-            <div className="border-b border-[#2d2d44] pb-4">
+          <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-6">
+            <div className="border-b border-line pb-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#06b6d4]" />
                 <h3 className="font-bold text-base text-white">Gestión de Guías de Mentoría (TTS Gamificado)</h3>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-ink-muted mt-1">
                 Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada lección de
                 «{workCourse.title}» y recompénsalos con XP por escuchar la introducción.
               </p>
@@ -2191,7 +2191,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Title */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
                     Título de la Guía
                   </label>
                   <input
@@ -2200,20 +2200,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     placeholder="Ej. Guía de Orientación: Metodología Giantucchi"
                     value={ttsTitle}
                     onChange={(e) => setTtsTitle(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-surface border border-line rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   />
                 </div>
 
                 {/* Target Lesson/Video Selector */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
                     Asociar a Clase / Lección Destino
                   </label>
                   <select
                     value={ttsTargetVideoId}
                     onChange={(e) => setTtsTargetVideoId(e.target.value)}
                     disabled={workLessonCount === 0}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
+                    className="w-full bg-surface border border-line text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
                   >
                     {workLessonCount === 0 && <option value="">Este curso aún no tiene clases</option>}
                     {workModules.flatMap((m) =>
@@ -2231,7 +2231,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider">
                       Voz Sintética TTS (Multilenguaje)
                     </label>
                     <button
@@ -2245,7 +2245,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <select
                     value={ttsVoice}
                     onChange={(e) => setTtsVoice(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-surface border border-line text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4]"
                   >
                     {SUPPORTED_TTS_VOICES.map((v) => (
                       <option key={v.id} value={v.id}>
@@ -2256,7 +2256,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
                     Velocidad de Lectura (Speed: {ttsSpeed}x)
                   </label>
                   <input
@@ -2272,8 +2272,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </div>
 
               {/* Widget de Pruebas Rápidas de Voz Multilenguaje */}
-              <div className="bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-4 space-y-2">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="bg-surface border border-line rounded-xl p-4 space-y-2">
+                <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">
                   🔊 Banco de Prueba Rápida de Voces por Idioma
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -2287,7 +2287,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       }}
                       className={`p-2 rounded-lg border text-[11px] font-semibold text-left flex items-center justify-between transition-all ${ttsVoice === v.id
                           ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-white shadow-sm'
-                          : 'bg-[#141420] border-[#2d2d44] text-slate-400 hover:text-white hover:border-[#06b6d4]/40'
+                          : 'bg-raised border-line text-ink-muted hover:text-white hover:border-[#06b6d4]/40'
                         }`}
                     >
                       <span className="truncate">{v.flag} {v.name.split('(')[0]}</span>
@@ -2300,7 +2300,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               {/* Script Text with Hybrid AI Generator Button */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider">
                     Guion del Mensaje de Mentoría (Texto para TTS)
                   </label>
 
@@ -2330,7 +2330,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   placeholder="Escribe o genera con IA las instrucciones iniciales que el alumno escuchará antes de ver la lección..."
                   value={ttsScript}
                   onChange={(e) => setTtsScript(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4] transition-all"
+                  className="w-full bg-surface border border-line rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4] transition-all"
                 />
               </div>
 
@@ -2339,7 +2339,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <button
                   type="button"
                   onClick={handlePreviewAudio}
-                  className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] hover:border-[#06b6d4] text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+                  className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
                 >
                   <Volume2 className={`w-4 h-4 ${isPreviewingAudio ? 'text-[#06b6d4] animate-bounce' : ''}`} />
                   {isPreviewingAudio ? 'Reproduciendo Audio de Prueba...' : 'Previsualizar Audio'}
@@ -2358,21 +2358,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           </div>
 
           {/* List of Existing TTS Guides */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-4">
-            <h4 className="font-bold text-sm text-white flex items-center gap-2 border-b border-[#2d2d44] pb-3">
+          <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-4">
+            <h4 className="font-bold text-sm text-white flex items-center gap-2 border-b border-line pb-3">
               <Award className="w-4 h-4 text-[#a855f7]" /> Guías de «{workCourse.title}» ({ttsGuides.length})
             </h4>
 
             {loadingTtsGuides ? (
-              <p className="text-xs text-slate-500 py-4 text-center">Cargando guías...</p>
+              <p className="text-xs text-ink-muted py-4 text-center">Cargando guías...</p>
             ) : ttsGuides.length === 0 ? (
-              <p className="text-xs text-slate-500 py-4 text-center">Este curso todavía no tiene guías TTS.</p>
+              <p className="text-xs text-ink-muted py-4 text-center">Este curso todavía no tiene guías TTS.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {ttsGuides.map((guide) => (
                   <div
                     key={guide.id}
-                    className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3 relative hover:border-[#06b6d4]/40 transition-all"
+                    className="bg-elevated border border-line rounded-xl p-4 space-y-3 relative hover:border-[#06b6d4]/40 transition-all"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -2389,18 +2389,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
                       <button
                         onClick={() => handleDeleteTTSGuide(guide.id)}
-                        className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
+                        className="p-1.5 text-ink-muted hover:text-red-400 rounded-lg hover:bg-raised"
                         title="Eliminar guía"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <p className="text-xs text-slate-300 italic bg-[#0a0a0f] p-2.5 rounded-lg border border-[#2d2d44] line-clamp-3">
+                    <p className="text-xs text-ink-soft italic bg-surface p-2.5 rounded-lg border border-line line-clamp-3">
                       "{guide.scriptText}"
                     </p>
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                    <div className="flex items-center justify-between text-[10px] text-ink-muted pt-1">
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -2435,7 +2435,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         <div className={`space-y-6 ${animClass}`}>
           {/* Selector de Portada / Feedback (solo en modo moderno unificado) */}
           {uiVersion === 'v0.5-modern' && (
-            <div className="flex items-center gap-2 border-b border-[#2d2d44] pb-3">
+            <div className="flex items-center gap-2 border-b border-line pb-3">
               <button
                 type="button"
                 onClick={() => {
@@ -2445,7 +2445,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                   activeTab === 'landing' || portalView === 'landing'
                     ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/40 shadow-sm'
-                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                    : 'bg-surface text-ink-muted hover:text-white border border-line'
                 }`}
               >
                 <Sliders className="w-4 h-4" />
@@ -2461,7 +2461,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                   activeTab === 'listening' || portalView === 'listening'
                     ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40 shadow-sm'
-                    : 'bg-[#0a0a0f] text-slate-400 hover:text-white border border-[#2d2d44]'
+                    : 'bg-surface text-ink-muted hover:text-white border border-line'
                 }`}
               >
                 <HeartHandshake className="w-4 h-4" />
@@ -2484,21 +2484,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
       {/* TAB: CERTIFICADOS (CERTIFICATES) */}
       {activeTab === 'certificates' && (
-        <div className={`bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4 ${animClass}`}>
+        <div className={`bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4 ${animClass}`}>
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-400" />
                 <span>Certificados Oficiales Emitidos ({certificates.length})</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-ink-muted mt-1">
                 Certificados con código alfanumérico persistente y verificación pública contra base de datos.
               </p>
             </div>
             <button
               onClick={loadCertificates}
               disabled={loadingCertificates}
-              className="p-2 bg-[#0a0a0f] hover:bg-[#1a1a2e] text-slate-300 rounded-xl border border-[#2d2d44] transition-all text-xs flex items-center gap-1"
+              className="p-2 bg-surface hover:bg-elevated text-ink-soft rounded-xl border border-line transition-all text-xs flex items-center gap-1"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingCertificates ? 'animate-spin' : ''}`} />
               <span>Actualizar</span>
@@ -2506,8 +2506,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-xs text-slate-300">
-              <thead className="bg-[#0a0a0f] text-slate-400 uppercase font-mono text-[10px] border-b border-[#2d2d44]">
+            <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
+              <thead className="bg-surface text-ink-muted uppercase font-mono text-[10px] border-b border-line">
                 <tr>
                   <th className="py-3 px-4">Código Único</th>
                   <th className="py-3 px-4">Graduado</th>
@@ -2519,16 +2519,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </thead>
               <tbody className="divide-y divide-[#2d2d44]/50">
                 {certificates.map((cert) => (
-                  <tr key={cert.id} className="hover:bg-[#1a1a2e]/50 transition-colors">
+                  <tr key={cert.id} className="hover:bg-elevated/50 transition-colors">
                     <td className="py-3 px-4 font-mono font-bold text-amber-400">
                       {cert.verificationCode}
                     </td>
                     <td className="py-3 px-4 font-semibold text-white">
                       {cert.recipientName}
-                      {cert.userEmail && <span className="block text-[10px] text-slate-500 font-normal">{cert.userEmail}</span>}
+                      {cert.userEmail && <span className="block text-[10px] text-ink-muted font-normal">{cert.userEmail}</span>}
                     </td>
-                    <td className="py-3 px-4 text-slate-300">{cert.courseTitle}</td>
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className="py-3 px-4 text-ink-soft">{cert.courseTitle}</td>
+                    <td className="py-3 px-4 text-ink-muted">
                       {new Date(cert.issuedAt).toLocaleDateString('es-ES')}
                     </td>
                     <td className="py-3 px-4">
@@ -2551,7 +2551,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                               placeholder="Motivo..."
                               value={revokeReason}
                               onChange={(e) => setRevokeReason(e.target.value)}
-                              className="bg-[#0a0a0f] border border-[#2d2d44] px-2 py-1 rounded text-[10px] text-white w-32"
+                              className="bg-surface border border-line px-2 py-1 rounded text-[10px] text-white w-32"
                             />
                             <button
                               onClick={() => handleRevokeCertificate(cert.id)}
@@ -2561,7 +2561,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                             </button>
                             <button
                               onClick={() => setRevokingCertId(null)}
-                              className="px-1 py-1 text-slate-400 hover:text-white text-[10px]"
+                              className="px-1 py-1 text-ink-muted hover:text-white text-[10px]"
                             >
                               ✕
                             </button>
@@ -2583,7 +2583,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 ))}
                 {certificates.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-500">
+                    <td colSpan={6} className="py-8 text-center text-ink-muted">
                       No se han emitido certificados todavía.
                     </td>
                   </tr>
@@ -2798,8 +2798,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             }
           }}
         >
-          <div className="bg-[#0e0e18] border border-[#2d2d44] rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+          <div className="bg-[#0e0e18] border border-line rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-brand-cyan/10 text-brand-cyan flex items-center justify-center">
                   <BookOpen className="w-4 h-4" />
@@ -2808,7 +2808,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <h3 className="font-extrabold text-sm text-white">
                     Cursos Asignados al Mentor
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-ink-muted">
                     {selectedMentorForCourses.name} ({selectedMentorForCourses.email})
                   </p>
                 </div>
@@ -2817,13 +2817,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 type="button"
                 disabled={savingMentorCourses}
                 onClick={() => setSelectedMentorForCourses(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="text-ink-muted hover:text-white p-1 rounded-lg"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-ink-soft">
               Marca los cursos que este mentor puede gestionar. Solo podrá ver, inscribir y tutelar estudiantes en los cursos seleccionados.
             </p>
 
@@ -2834,14 +2834,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             )}
 
             {loadingMentorCourses ? (
-              <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
+              <div className="py-8 flex flex-col items-center justify-center text-ink-muted gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
                 <span className="text-xs">Cargando cursos asignados...</span>
               </div>
             ) : (
               <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                 {allCourses.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">No hay cursos en el catálogo.</p>
+                  <p className="text-xs text-ink-muted py-4 text-center">No hay cursos en el catálogo.</p>
                 ) : (
                   allCourses.map((c) => {
                     const isChecked = mentorAssignedCourseIds.includes(c.id);
@@ -2851,7 +2851,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
                           isChecked
                             ? 'bg-brand-cyan/10 border-brand-cyan/40 text-white'
-                            : 'bg-[#141424] border-[#2d2d44] text-slate-400 hover:text-slate-200'
+                            : 'bg-[#141424] border-line text-ink-muted hover:text-ink'
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -2863,7 +2863,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           />
                           <div className="min-w-0">
                             <p className="text-xs font-bold truncate">{c.title}</p>
-                            <span className="text-[10px] text-slate-500">{c.category}</span>
+                            <span className="text-[10px] text-ink-muted">{c.category}</span>
                           </div>
                         </div>
                         {isChecked && (
@@ -2878,8 +2878,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-[#2d2d44]">
-              <span className="text-xs text-slate-400 font-mono">
+            <div className="flex items-center justify-between pt-3 border-t border-line">
+              <span className="text-xs text-ink-muted font-mono">
                 {mentorAssignedCourseIds.length} curso{mentorAssignedCourseIds.length === 1 ? '' : 's'} asignado{mentorAssignedCourseIds.length === 1 ? '' : 's'}
               </span>
               <div className="flex items-center gap-2">
@@ -2887,7 +2887,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   type="button"
                   disabled={savingMentorCourses}
                   onClick={() => setSelectedMentorForCourses(null)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-ink-muted hover:text-white"
                 >
                   Cancelar
                 </button>

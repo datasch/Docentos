@@ -208,7 +208,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
         aria-labelledby="listening-title"
       >
         <header className="flex items-start gap-4 border-b border-line px-5 py-5 sm:px-7">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-blue text-ink">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-blue text-on-brand">
             <HeartHandshake aria-hidden className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">

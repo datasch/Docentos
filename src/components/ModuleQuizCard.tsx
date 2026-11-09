@@ -347,7 +347,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   // --- Portada: el examen no empieza hasta que el alumno dice que empieza ----
   if (!iniciado) {
     return (
-      <div className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6">
+      <div className="academy-exam flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <div className="flex items-start gap-3">
           <span className="rounded-xl border border-brand-violet/30 bg-brand-violet/10 p-2.5 text-brand-violet-light">
             <CheckSquare aria-hidden className="h-5 w-5" />

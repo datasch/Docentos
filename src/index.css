@@ -37,6 +37,7 @@
      se queda en 3.77:1 y no llega a AA; aqui el escalon util es el 55% (6.28:1)
      y el 40% se reserva a lo decorativo y lo deshabilitado. */
   --color-ink: #ffffff;
+  --color-on-brand: #050505;
   --color-ink-soft: rgb(255 255 255 / 0.70);
   --color-ink-muted: rgb(255 255 255 / 0.55);
   --color-ink-faint: rgb(255 255 255 / 0.40);
@@ -147,7 +148,7 @@
   body {
     color: var(--color-ink, #ffffff);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   :where(input, select, textarea, fieldset) {
@@ -624,6 +625,7 @@ body[data-color-mode="light"],
 
   /* Tipografía Grafito & Tinta Natural de Alto Contraste AAA */
   --color-ink: #0f172a;
+  --color-on-brand: #ffffff;
   --color-ink-soft: #1e293b;
   --color-ink-muted: #475569;
   --color-ink-faint: #64748b;
@@ -989,8 +991,8 @@ body[data-color-mode="light"],
 }
 
 /* Text-white contextual: sólo permanece blanco dentro de botones con fondo sólido o gradientes de acción */
-[data-color-mode="light"] .text-white:not(.btn-brand-primary *):not([class*="bg-brand-"] *):not([class*="bg-cyan-"] *):not([class*="bg-emerald-"] *):not([class*="bg-amber-"] *):not([class*="bg-red-"] *) {
-  color: #0f172a !important;
+:where([data-color-mode="light"]) .text-white:not(:where(.btn-brand-primary, .btn-brand-primary *, .bg-brand-gradient, .bg-brand-gradient *, .text-on-brand, .text-on-brand *, .badge-dark, .badge-dark *, .app-media-surface, .app-media-surface *)) {
+  color: var(--color-ink) !important;
 }
 
 /* ==========================================================================
@@ -1237,31 +1239,23 @@ body[data-color-mode="light"],
    FORMULARIOS, INPUTS Y SELECTORES
    ========================================================================== */
 [data-color-mode="light"] select,
-[data-color-mode="light"] input[type="text"],
-[data-color-mode="light"] input[type="search"],
-[data-color-mode="light"] input[type="email"],
-[data-color-mode="light"] input[type="password"],
+[data-color-mode="light"] input:not(.academy-compound-input)[type="text"],
+[data-color-mode="light"] input:not(.academy-compound-input)[type="search"],
+[data-color-mode="light"] input:not(.academy-compound-input)[type="email"],
+[data-color-mode="light"] input:not(.academy-compound-input)[type="password"],
 [data-color-mode="light"] textarea,
-[data-color-mode="light"] input.bg-\[\#0a0a0f\],
+[data-color-mode="light"] input:not(.academy-compound-input).bg-\[\#0a0a0f\],
 [data-color-mode="light"] select.bg-\[\#0a0a0f\],
-[data-color-mode="light"] input[class*="bg-slate-"],
+[data-color-mode="light"] input:not(.academy-compound-input)[class*="bg-slate-"],
 [data-color-mode="light"] textarea[class*="bg-slate-"],
-[data-color-mode="light"] input[class*="bg-canvas"],
+[data-color-mode="light"] input:not(.academy-compound-input)[class*="bg-canvas"],
 [data-color-mode="light"] textarea[class*="bg-canvas"] {
   background-color: #ffffff !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
-  border-radius: 8px !important;
+  border-radius: 0.75rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
-}
-
-[data-color-mode="light"] select:focus,
-[data-color-mode="light"] input:focus,
-[data-color-mode="light"] textarea:focus {
-  border-color: #0891b2 !important;
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
-  outline: none !important;
 }
 
 [data-color-mode="light"] select option {
@@ -1624,3 +1618,28 @@ html[data-festividad="navidad"] .selection\:bg-\[\#06b6d4\]::selection {
     overflow: visible;
   }
 }
+
+
+/* Los acentos del modo claro siguen la paleta elegida, también en los
+   controles heredados que todavía usan las clases de marca. */
+[data-color-mode="light"] .text-brand-cyan { color: var(--color-brand-cyan) !important; }
+[data-color-mode="light"] .text-brand-blue { color: var(--color-brand-blue) !important; }
+[data-color-mode="light"] .text-brand-purple { color: var(--color-brand-purple) !important; }
+[data-color-mode="light"] .text-brand-gradient {
+  background-image: var(--brand-accent-gradient) !important;
+}
+[data-color-mode="light"] .btn-brand-primary,
+[data-color-mode="light"] .bg-brand-gradient {
+  background: var(--brand-accent-gradient) !important;
+  color: var(--color-on-brand) !important;
+}
+[data-color-mode="light"] .text-on-brand,
+[data-color-mode="light"] .btn-brand-primary :is(span, svg),
+[data-color-mode="light"] .bg-brand-gradient :is(span, svg) {
+  color: var(--color-on-brand) !important;
+}
+
+/* El vídeo conserva su superficie oscura en ambos modos. */
+[data-color-mode="light"] .app-media-surface .text-white { color: #ffffff !important; }
+[data-color-mode="light"] .app-media-surface :is(.text-zinc-300, .text-slate-300) { color: #d4d4d8 !important; }
+[data-color-mode="light"] .app-media-surface :is(.text-zinc-400, .text-slate-400) { color: #a1a1aa !important; }

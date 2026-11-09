@@ -57,7 +57,7 @@ const mockCourses = [
   },
 ] as unknown as Course[];
 
-test('ConstellationNeuralSearch renderiza el select de filtros dinámico basado en las categorías de los cursos', () => {
+test('ConstellationNeuralSearch renderiza el filtro accesible con las categorías oficiales y sus cantidades', () => {
   const html = renderToStaticMarkup(
     <ConstellationNeuralSearch
       courses={mockCourses}
@@ -65,16 +65,11 @@ test('ConstellationNeuralSearch renderiza el select de filtros dinámico basado 
     />
   );
 
-  // Verifica que existe la etiqueta de Filtro y el select accesible
-  assert.match(html, /Filtro:/);
   assert.match(html, /id="neural-search-category-filter"/);
-  assert.match(html, /aria-label="Filtrar por categoría"/);
-
-  // Verifica que las categorías dinámicas de los cursos están presentes como opciones
-  assert.match(html, /Todas las categorías \(3\)/);
-  assert.match(html, /Mentoría Elite \(1\)/);
-  assert.match(html, /Mentoría Especializada \(1\)/);
-  assert.match(html, /Mentoría Premium \(1\)/);
+  assert.match(html, /aria-label="Filtrar por categoría: Todos"/);
+  for (const category of ['Mentoría Elite', 'Mentoría Especializada', 'Mentoría Premium']) {
+    assert.ok(html.includes(`<span>${category}</span><span class="course-category-filter__count">1</span>`));
+  }
 
   // Verifica que los cursos se renderizan en el catálogo
   assert.match(html, /Arquitectura Cloud en AWS/);
@@ -129,7 +124,7 @@ test('ConstellationNeuralSearch excluye cursos con categorías no estandarizadas
   );
 
   // Solo debe contabilizar los 3 cursos estandarizados
-  assert.match(html, /Todas las categorías \(3\)/);
+  assert.match(html, /aria-pressed="true"[^>]*><span[^>]*>Todos<\/span><span[^>]*>3<\/span>/);
   assert.match(html, /3 cursos disponibles/);
   assert.match(html, /CURSOS EN EL CATÁLOGO \(3\)/);
 

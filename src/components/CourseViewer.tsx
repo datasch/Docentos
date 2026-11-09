@@ -1339,7 +1339,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               </div>
             )}
 
-            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
+            <div className="app-media-surface group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
               {/* Indicador de carga visual del reproductor con auxilio ante timeouts (Drive/enlaces caídos) */}
               {showsPlayer && isVideoLoading && (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/95 px-4 text-center backdrop-blur-sm transition-opacity duration-300">
@@ -1453,11 +1453,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 /* Para usuarios con rol MENTEE: se desactiva el modal de pago y se muestra
                    el contacto de su mentor o del mentor asignado a este curso. */
                 <div className="flex h-full flex-col items-center justify-center gap-5 bg-surface px-6 py-8 text-center">
-                  <div className="inline-flex items-center justify-center rounded-2xl bg-purple-500/10 p-3 text-purple-400 border border-purple-500/20 shadow-sm">
+                  <div className="inline-flex items-center justify-center rounded-2xl bg-purple-500/10 p-3 text-brand-violet-light border border-purple-500/20 shadow-sm">
                     <GraduationCap aria-hidden className="h-8 w-8" />
                   </div>
                   <div className="max-w-md">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-violet-light mb-2">
                       Acceso por Mentoría
                     </span>
                     <h2 className="text-section font-bold text-ink sm:text-xl">
@@ -1483,7 +1483,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-400">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-violet-light">
                             {course.assignedMentor?.id === effectiveMentor.id ? 'Tu mentor asignado' : 'Mentor del curso'}
                           </span>
                           <h3 className="truncate text-sm font-bold text-ink">{effectiveMentor.name}</h3>
@@ -2165,7 +2165,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         onWheel={(e) => e.stopPropagation()}
       >
         <div
-          className="app-dialog constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-purple-500/30 bg-white dark:bg-[#0d0a1a] shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
+          className="app-dialog academy-study-player constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
@@ -2173,7 +2173,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           aria-modal="true"
         >
           {/* Cabecera del Modal de Misión */}
-          <header className="flex shrink-0 items-center justify-between border-b border-slate-200/80 dark:border-white/10 px-5 py-4 bg-slate-50/90 dark:bg-[#140e26] transition-colors">
+          <header className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4 bg-raised transition-colors">
             <div className="flex items-center gap-3 min-w-0">
               <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
                 examenActivo
@@ -2229,7 +2229,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   }
 
   return (
-    <div className="animate-fade-in min-h-screen bg-canvas text-ink">
+    <div className="academy-study-player animate-fade-in min-h-screen bg-canvas text-ink">
       <div className="mx-auto w-full max-w-[1800px] lg:px-6 lg:pt-6">
         {viewerBody}
       </div>

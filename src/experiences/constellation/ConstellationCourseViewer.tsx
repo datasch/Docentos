@@ -280,15 +280,12 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           <button
             type="button"
             onClick={onGoHome}
-            className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 text-sm font-semibold text-ink-soft hover:text-ink transition-colors cursor-pointer"
           >
             <Home className="w-3.5 h-3.5" />
-            <span>Inicio</span>
+            <span>Mi aprendizaje</span>
           </button>
-          <span className="text-slate-700">/</span>
-          <span className="text-xs font-bold text-cyan-400 truncate min-w-0 sm:max-w-md">
-            {course.title}
-          </span>
+
         </div>
 
         {/* Acciones del curso */}
@@ -296,7 +293,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           <button
             type="button"
             onClick={handleOpenActiveLesson}
-            className="flex min-h-11 shrink-0 items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap bg-[#1d1633] border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/60 shadow-sm transition-all cursor-pointer"
+            className="academy-button min-h-11 shrink-0 whitespace-nowrap"
           >
             <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
             <span>Ver lección</span>

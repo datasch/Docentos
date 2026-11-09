@@ -71,18 +71,18 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overscroll-contain"
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-[#141420] border border-[#2d2d44] p-6 sm:p-8 shadow-2xl text-white">
+      <div className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface border border-line p-6 sm:p-8 shadow-2xl text-white">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-[#1a1a2e] transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-raised transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
         <div className="text-center space-y-2 mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-gradient text-white mb-1 shadow-lg shadow-[#06b6d4]/20">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-gradient text-on-brand mb-1 shadow-lg shadow-brand-cyan/20">
             <Award className="w-7 h-7" />
           </div>
           <h3 className="text-xl font-extrabold text-white tracking-tight">
@@ -99,7 +99,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
             e.preventDefault();
             handleVerify();
           }}
-          className="flex items-center gap-2 bg-[#0a0a0f] border border-[#2d2d44] focus-within:border-[#06b6d4] rounded-xl px-3 py-2 mb-6 transition-all"
+          className="flex items-center gap-2 bg-canvas border border-line focus-within:border-brand-cyan rounded-xl px-3 py-2 mb-6 transition-all"
         >
           <Search className="w-4 h-4 text-slate-500 shrink-0" />
           <input
@@ -122,8 +122,8 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
         {searchResult && (
           <div className="space-y-4 animate-fade-in">
             {searchResult.valid && searchResult.certificate ? (
-              <div className="bg-[#1a1a2e] border-2 border-emerald-500/40 rounded-xl p-5 space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
+              <div className="bg-raised border-2 border-emerald-500/40 rounded-xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
                     <CheckCircle2 className="w-5 h-5" />
                     <span>CERTIFICADO OFICIAL VÁLIDO</span>
@@ -141,10 +141,10 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
 
                   <div>
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">Programa Académico</span>
-                    <span className="text-sm font-semibold text-[#06b6d4]">{searchResult.certificate.courseTitle}</span>
+                    <span className="text-sm font-semibold text-brand-cyan">{searchResult.certificate.courseTitle}</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#2d2d44]">
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-line">
                     <div>
                       <span className="text-[10px] text-slate-500 block">Fecha de Emisión</span>
                       <span className="text-slate-300 font-medium">
@@ -162,7 +162,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#2d2d44] flex items-center justify-between">
+                <div className="pt-2 border-t border-line flex items-center justify-between">
                   <button
                     onClick={copyVerificationLink}
                     className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"

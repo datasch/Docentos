@@ -201,12 +201,12 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
 
           <div className="lp-nav-right">
             {/* Buscador real: filtra el catalogo mientras se escribe. */}
-            <div className="lp-search-box">
+            <div className="lp-search-box academy-inline-field">
               <Search aria-hidden />
               <input
                 ref={searchRef}
                 type="search"
-                className="lp-search-input"
+                className="lp-search-input academy-compound-input"
                 placeholder="Buscar cursos..."
                 aria-label="Buscar cursos"
                 value={searchQuery}

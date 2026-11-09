@@ -109,7 +109,7 @@ export function CourseOverview({
   }).format(course.price);
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-8 sm:py-14 text-ink">
+    <section className="academy-course-overview mx-auto max-w-6xl px-6 py-8 sm:py-14 text-ink">
       <button
         type="button"
         onClick={onBack}
@@ -121,7 +121,7 @@ export function CourseOverview({
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-12">
         {/* Portada del Curso */}
-        <div className="overflow-hidden rounded-3xl border border-line bg-card">
+        <div className="academy-course-cover overflow-hidden rounded-3xl border border-line bg-card">
           {course.coverImage ? (
             <img src={course.coverImage} alt={course.title} className="aspect-video w-full object-cover" />
           ) : (
@@ -136,8 +136,8 @@ export function CourseOverview({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-brand-cyan">{course.category || 'Formación profesional'}</p>
             {isMentee && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 text-[11px] font-bold text-purple-300 uppercase tracking-wider">
-                <Sparkles className="h-3 w-3 text-purple-300" /> Mentee
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 text-[11px] font-bold text-brand-violet-light uppercase tracking-wider">
+                <Sparkles className="h-3 w-3 text-brand-violet-light" /> Mentee
               </span>
             )}
           </div>
@@ -154,8 +154,8 @@ export function CourseOverview({
           {!allowed && (
             isMentee ? (
               <div className="mt-6 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-1 text-xs font-semibold text-purple-300">
-                  <Sparkles className="h-3.5 w-3.5 text-purple-300" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-1 text-xs font-semibold text-brand-violet-light">
+                  <Sparkles className="h-3.5 w-3.5 text-brand-violet-light" />
                   Acceso gestionado por Mentoría • Sin cobros de matrícula
                 </span>
               </div>
@@ -191,12 +191,12 @@ export function CourseOverview({
                     className="h-12 w-12 rounded-full border border-purple-500/40 object-cover"
                   />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-500/20 font-bold text-purple-300 border border-purple-500/30">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-500/20 font-bold text-brand-violet-light border border-purple-500/30">
                     {effectiveMentor?.name ? effectiveMentor.name.charAt(0).toUpperCase() : 'M'}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-violet-light">
                     {effectiveMentor ? 'Mentor Asignado' : 'Coordinación Académica'}
                   </span>
                   <h3 className="truncate text-base font-bold text-ink">{effectiveMentor?.name || 'Mentor DocentOS'}</h3>
@@ -206,7 +206,7 @@ export function CourseOverview({
 
               {hasPendingRequest ? (
                 <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-purple-500/20">
-                  <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300">
+                  <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-warning-light">
                     <Clock className="h-4 w-4 shrink-0 text-amber-400 mt-0.5 animate-pulse" />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold">Solicitud enviada a tu mentor • En espera de aprobación</p>
@@ -219,7 +219,7 @@ export function CourseOverview({
                     <button
                       type="button"
                       onClick={onContinue}
-                      className="inline-flex items-center gap-1.5 text-purple-300 hover:text-white transition-colors cursor-pointer text-xs font-semibold"
+                      className="inline-flex items-center gap-1.5 text-brand-violet-light hover:text-white transition-colors cursor-pointer text-xs font-semibold"
                     >
                       <span>Ver temario en el visor</span>
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -312,7 +312,7 @@ export function CourseOverview({
           {!allowed && (
             isMentee ? (
               <p className="mt-5 flex items-start gap-2 text-xs text-ink-muted">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-purple-400" />
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-violet-light" />
                 Como Mentee, tu acceso a este curso no requiere compra. Tu mentor asignado habilitará tu acceso en un solo clic desde su panel.
               </p>
             ) : (

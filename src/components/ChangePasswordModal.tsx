@@ -70,7 +70,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[#262626] bg-[#0a0a0f] p-6 shadow-2xl"
+        className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-line bg-canvas p-6 shadow-2xl"
         onMouseDown={(event) => event.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
         role="dialog"
@@ -111,7 +111,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   autoComplete={field.autoComplete}
                   minLength={field.label === 'Contraseña actual' ? 1 : 8}
                   required
-                  className="w-full rounded-xl border border-[#262626] bg-black py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-[#06b6d4]"
+                  className="w-full rounded-xl border border-line bg-canvas py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-brand-cyan"
                 />
               </span>
             </label>

@@ -243,7 +243,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                   </span>
 
                   <span
-                    className={`mt-0.5 block truncate text-section font-semibold ${
+                    className={`mt-0.5 block text-base leading-snug font-semibold ${
                       isUnlocked ? 'text-ink' : 'text-ink-faint'
                     }`}
                   >
@@ -314,7 +314,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             }
                             onClick={() => (hasAccess || userRole === 'MENTEE' ? onSelectLesson(mIdx, vIdx) : onOpenPaywall())}
                             className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg pr-2.5 text-left transition-colors ${
-                              isCurrent ? 'bg-brand-violet/10' : 'hover:bg-brand-violet/5'
+                              isCurrent ? 'bg-raised' : 'hover:bg-raised/60'
                             }`}
                           >
                             <button
@@ -346,9 +346,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             </button>
 
                             <span
-                              className={`min-w-0 flex-1 truncate text-row ${
+                              className={`min-w-0 flex-1 py-1 text-base leading-snug ${
                                 isCurrent
-                                  ? 'font-medium text-brand-violet-light'
+                                  ? 'font-semibold text-ink'
                                   : isDone
                                     ? 'text-ink-muted'
                                     : 'text-ink-soft'

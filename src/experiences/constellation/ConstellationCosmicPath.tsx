@@ -67,7 +67,7 @@ export const CandyCaneIcon: React.FC<{ className?: string; size?: number }> = ({
     height={size} 
     viewBox="0 0 32 32" 
     fill="none" 
-    className={`inline-block filter drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] ${className}`}
+    className={`inline-block filter  ${className}`}
     aria-hidden="true"
   >
     {/* Cuerpo blanco del bastón */}
@@ -101,7 +101,7 @@ export const HalloweenCandyIcon: React.FC<{ className?: string; size?: number }>
     height={size} 
     viewBox="0 0 32 32" 
     fill="none" 
-    className={`inline-block filter drop-shadow-[0_0_8px_rgba(249,115,22,0.9)] ${className}`}
+    className={`inline-block filter  ${className}`}
     aria-hidden="true"
   >
     <polygon points="4,11 10,16 4,21" fill="#a855f7" />
@@ -386,16 +386,13 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
         )}
 
         {/* Tarjeta del encabezado en píldora con z-10 para flotar sobre la línea continua */}
-        <div className="relative z-10 w-full flex items-center justify-between gap-3 px-5 py-3.5 rounded-2xl bg-white/95 dark:bg-[#141224]/90 border border-slate-200/90 dark:border-purple-500/25 shadow-lg dark:shadow-[0_0_30px_rgba(139,92,246,0.14)] backdrop-blur-md transition-colors">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 border border-purple-400/30 dark:border-purple-400/40 flex items-center justify-center text-purple-600 dark:text-purple-300 font-black text-xs shrink-0 shadow-sm">
-              {String(modIdx + 1).padStart(2, '0')}
-            </div>
+        <div className="academy-module-heading relative z-10 w-full flex flex-wrap items-center justify-between gap-3 px-1 py-4 border-b border-line   transition-colors">
+          <div className="flex flex-1 items-center gap-3.5 min-w-0">
             <div className="min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 block">
+              <span className="text-sm font-medium text-purple-600 text-ink-muted block">
                 Módulo {modIdx + 1}
               </span>
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+              <h2 className="text-base font-semibold text-ink leading-snug">
                 {module.title}
               </h2>
             </div>
@@ -403,13 +400,13 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             {isModuleAllCompleted ? (
-              <span className="flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+              <span className="flex items-center gap-1 text-sm px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                 <Check className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                 Completado
               </span>
             ) : (
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
-                {missions.length} {missions.length === 1 ? 'Misión' : 'Misiones'}
+              <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                {missions.length} {missions.length === 1 ? 'lección' : 'lecciones'}
               </span>
             )}
           </div>
@@ -554,7 +551,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                     ) : seasonalTheme === 'christmas' ? (
                       <CandyCaneIcon size={28} className="animate-pulse" />
                     ) : (
-                      <Sparkles className="w-8 h-8 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse" />
+                      <Sparkles className="w-8 h-8 text-cyan-300  animate-pulse" />
                     )
                   ) : (
                     <IconComponent className="w-8 h-8 text-purple-300/70" />
@@ -578,13 +575,13 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                   }}
                 >
                   {isNearBottom ? (
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white dark:bg-[#171328] border-b-2 border-r-2 border-slate-300 dark:border-purple-500/40 rotate-45 pointer-events-none" />
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-surface border-b-2 border-r-2 border-slate-300 dark:border-purple-500/40 rotate-45 pointer-events-none" />
                   ) : (
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white dark:bg-[#171328] border-t-2 border-l-2 border-slate-300 dark:border-purple-500/40 rotate-45 pointer-events-none" />
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-surface border-t-2 border-l-2 border-slate-300 dark:border-purple-500/40 rotate-45 pointer-events-none" />
                   )}
 
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
                       Misión {mission.missionNumber} de {totalMissions}
                     </span>
                     <button
@@ -593,18 +590,18 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                         e.stopPropagation();
                         setSelectedNode(null);
                       }}
-                      className="text-slate-400 dark:text-purple-300/60 hover:text-slate-800 dark:hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
+                      className="text-slate-400 text-ink-soft hover:text-slate-800 dark:hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
                       title="Cerrar"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
+                  <h3 className="font-semibold text-lg text-ink leading-snug">
                     {mission.video.title}
                   </h3>
                   
-                  <p className="text-xs text-slate-600 dark:text-purple-200/70 mt-1 line-clamp-2">
+                  <p className="text-base text-ink-soft leading-relaxed mt-2 line-clamp-2">
                     {mission.module.title}
                   </p>
 
@@ -623,10 +620,10 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                         setSelectedNode(null);
                         onOpenLesson(mission.video, mission.module);
                       }}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all ${
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs uppercase tracking-wider transition-all ${
                         !isUnlocked && !completed
                           ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700/50 cursor-not-allowed opacity-60'
-                          : 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:brightness-110 active:scale-95 shadow-lg shadow-cyan-500/25 cursor-pointer'
+                          : 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:brightness-110 active:scale-95 shadow-none shadow-cyan-500/25 cursor-pointer'
                       }`}
                     >
                       <span>
@@ -662,12 +659,12 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
             {allMissionsCompleted ? (
               /* Cuando todas las misiones están completadas: el orbe celestial cambia al círculo morado con el check blanco radiante de la imagen */
               <div 
-                className="w-full h-full rounded-full flex items-center justify-center border-2 border-white/80 shadow-[0_0_35px_rgba(167,139,250,0.95)] animate-pulse"
+                className="w-full h-full rounded-full flex items-center justify-center border-2 border-white/80  animate-pulse"
                 style={{
                   background: 'linear-gradient(180deg, #c4b5fd 0%, #8b5cf6 45%, #6d28d9 100%)',
                 }}
               >
-                <svg viewBox="0 0 34 34" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-9 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.95)]">
+                <svg viewBox="0 0 34 34" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-9 filter ">
                   <path d="M8 17l6 6 12-13" />
                 </svg>
               </div>
@@ -682,13 +679,13 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
             )}
             {/* Si es Halloween: caramelo mágico flotante coronando el orbe centrado */}
             {seasonalTheme === 'halloween' && (
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 filter drop-shadow-[0_0_10px_rgba(249,115,22,0.95)] animate-bounce select-none pointer-events-none">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 filter  animate-bounce select-none pointer-events-none">
                 <HalloweenCandyIcon size={26} />
               </div>
             )}
             {/* Si es Navidad: bastón festivo coronando el orbe centrado */}
             {seasonalTheme === 'christmas' && (
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 filter drop-shadow-[0_0_10px_rgba(239,68,68,0.95)] animate-bounce select-none pointer-events-none">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 filter  animate-bounce select-none pointer-events-none">
                 <CandyCaneIcon size={26} />
               </div>
             )}
@@ -861,7 +858,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
   const isCourseCompleted = isOrbAtFinalDestination && allQuizzesPassed;
 
   return (
-    <div className="camino-cosmico-fondo relative w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white font-sans select-none overflow-x-hidden pb-44 pt-6">
+    <div className="academy-study-path camino-cosmico-fondo relative w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white font-sans select-none overflow-x-clip pb-44 pt-6">
       
       {/* 1. Astro Celestial / Sol Luminoso Radiante (de TalentHuman) */}
       <div 
@@ -872,76 +869,63 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
       {/* 3. Fondo de Estrellas y Nebulosas de Fondo */}
       <div 
         aria-hidden="true"
-        className="fixed inset-0 pointer-events-none opacity-40 z-0 bg-[radial-gradient(1.5px_1.5px_at_12%_18%,#ffffff_50%,transparent_51%),radial-gradient(1px_1px_at_28%_42%,#ffffff_50%,transparent_51%),radial-gradient(2px_2px_at_71%_12%,#ffffff_50%,transparent_51%),radial-gradient(1px_1px_at_86%_36%,#ffffff_50%,transparent_51%),radial-gradient(1.5px_1.5px_at_54%_26%,#ffffff_50%,transparent_51%),radial-gradient(1px_1px_at_6%_66%,#ffffff_50%,transparent_51%),radial-gradient(1.5px_1.5px_at_93%_70%,#ffffff_50%,transparent_51%)]"
+        className="absolute inset-0 pointer-events-none opacity-20 z-0 bg-[radial-gradient(1.5px_1.5px_at_12%_18%,var(--color-ink-muted)_50%,transparent_51%),radial-gradient(1px_1px_at_28%_42%,var(--color-ink-muted)_50%,transparent_51%),radial-gradient(2px_2px_at_71%_12%,var(--color-ink-muted)_50%,transparent_51%),radial-gradient(1px_1px_at_86%_36%,var(--color-ink-muted)_50%,transparent_51%),radial-gradient(1.5px_1.5px_at_54%_26%,var(--color-ink-muted)_50%,transparent_51%),radial-gradient(1px_1px_at_6%_66%,var(--color-ink-muted)_50%,transparent_51%),radial-gradient(1.5px_1.5px_at_93%_70%,var(--color-ink-muted)_50%,transparent_51%)]"
       />
       <div 
         aria-hidden="true"
-        className="fixed top-1/4 left-1/4 w-[min(500px,75vw)] h-[min(500px,75vw)] bg-purple-600/10 rounded-full blur-3xl pointer-events-none z-0"
+        className="absolute top-1/4 left-1/4 w-[min(500px,75vw)] h-[min(500px,75vw)] bg-purple-600/10 rounded-full blur-3xl pointer-events-none z-0"
       />
       <div 
         aria-hidden="true"
-        className="fixed top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none z-0"
+        className="absolute top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none z-0"
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6">
 
         {/* 3. Banner Superior del Curso (Ruta Oficial de Aprendizaje) */}
-        <div className="mb-10 bg-white/95 dark:bg-[#121020]/90 border border-slate-200/90 dark:border-purple-500/25 rounded-3xl p-5 sm:p-6 shadow-xl dark:shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-5 transition-colors">
+        <div className="academy-course-progress mb-8 border-b border-line pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 transition-colors">
           <div className="flex items-start sm:items-center gap-4 min-w-0 flex-1">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl text-white shadow-lg shrink-0 ${
-              seasonalTheme === 'halloween'
-                ? 'bg-orange-500 border-b-4 border-orange-600 shadow-orange-500/30'
-                : seasonalTheme === 'christmas'
-                  ? 'bg-emerald-600 border-b-4 border-emerald-700 shadow-emerald-500/30'
-                  : 'bg-[#06b6d4] border-b-4 border-[#0891b2] shadow-cyan-500/25'
-            }`}>
-              {seasonalTheme === 'halloween' ? '🎃' : seasonalTheme === 'christmas' ? '🎄' : '💻'}
-            </div>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-[#06b6d4]">
-                  Ruta Oficial de Aprendizaje
-                </span>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/10 text-amber-700 dark:text-amber-500 border border-amber-500/20 shrink-0">
-                  {safeModules.length} Unidades
+              <h1 className="text-2xl sm:text-3xl font-semibold text-ink leading-tight">
+                {course.title}
+              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-normal text-ink-soft">
+                  {safeModules.length} {safeModules.length === 1 ? 'módulo' : 'módulos'}
                 </span>
                 {seasonalTheme === 'halloween' && (
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30 shrink-0 animate-pulse">
+                  <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30 shrink-0 animate-pulse">
                     🎃 Especial Noche de Brujas
                   </span>
                 )}
                 {seasonalTheme === 'christmas' && (
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0 animate-pulse">
+                  <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0 animate-pulse">
                     🎄 Especial Navideño
                   </span>
                 )}
               </div>
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-snug mt-1">
-                {course.title}
-              </h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-1">
-                {course.description || 'Aprende a construir aplicaciones web completas a nivel profesional...'}
-              </p>
+
+
             </div>
           </div>
 
           {/* Progreso General con adaptación festiva a Dulces o Bastón de Caramelo */}
           <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-white/5">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1">
+            <span className="text-sm font-medium text-ink-soft flex items-center gap-1">
               {seasonalTheme === 'halloween' ? (
                 <>Progreso Dulce 🍬</>
               ) : seasonalTheme === 'christmas' ? (
                 <>Progreso Navideño 🎄</>
               ) : (
-                <>Progreso General</>
+                <>Progreso</>
               )}
             </span>
             <div className="flex items-center gap-2.5">
               {seasonalTheme === 'halloween' ? (
                 /* Barra temática de Dulces en Halloween */
-                <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-purple-950/80 border-2 border-orange-500/60 p-0.5 relative shadow-[0_0_15px_rgba(249,115,22,0.25)]">
+                <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-purple-950/80 border-2 border-orange-500/60 p-0.5 relative ">
                   <div 
-                    className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-purple-600 rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(249,115,22,0.6)]"
+                    className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-purple-600 rounded-full transition-all duration-500 "
                     style={{ width: `${progressPct}%` }}
                   />
                   {progressPct > 0 && (
@@ -955,9 +939,9 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 </div>
               ) : seasonalTheme === 'christmas' ? (
                 /* Barra temática de Bastón Festivo en Navidad */
-                <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-slate-900/80 border-2 border-red-500/60 p-0.5 relative shadow-[0_0_15px_rgba(220,38,38,0.25)]">
+                <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-slate-900/80 border-2 border-red-500/60 p-0.5 relative ">
                   <div 
-                    className="h-full rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(239,68,68,0.6)] border border-red-200/50"
+                    className="h-full rounded-full transition-all duration-500  border border-red-200/50"
                     style={{ 
                       width: `${progressPct}%`,
                       backgroundImage: 'repeating-linear-gradient(45deg, #dc2626, #dc2626 9px, #ffffff 9px, #ffffff 18px)'
@@ -982,7 +966,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 </div>
               )}
 
-              <span className={`text-xs font-black ${
+              <span className={`text-xs font-semibold ${
                 seasonalTheme === 'halloween'
                   ? 'text-orange-600 dark:text-orange-400'
                   : seasonalTheme === 'christmas'
@@ -998,12 +982,12 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
         {/* 4. El Sendero de Islas de Aprendizaje - MÓDULO POR MÓDULO CON LÍNEAS CONTINUAS */}
         <div className="space-y-4">
           {modulesWithMissions.length === 0 ? (
-            <div className="py-16 px-6 text-center bg-white/80 dark:bg-[#121020]/70 border border-slate-200/80 dark:border-purple-500/20 rounded-3xl backdrop-blur-md shadow-sm">
+            <div className="py-16 px-6 text-center bg-surface/70 border border-slate-200/80 dark:border-purple-500/20 rounded-3xl  shadow-sm">
               <div className="text-4xl mb-3">🌌</div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white mb-1">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
                 Constelación en estructuración
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
+              <p className="text-xs text-ink-soft max-w-sm mx-auto">
                 Este curso está organizando sus módulos y lecciones prácticas. Vuelve pronto para explorar la ruta cósmica.
               </p>
             </div>
@@ -1117,34 +1101,34 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
               <button
                 type="button"
                 onClick={() => setShowPreviewModal(true)}
-                className="relative p-3.5 rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-amber-500/20 via-amber-950/40 to-black/60 shadow-[0_0_55px_rgba(245,158,11,0.6)] hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+                className="relative p-3.5 rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-amber-500/20 via-amber-950/40 to-black/60  hover:scale-105 active:scale-95 transition-all cursor-pointer group"
                 title="Ver vista previa del certificado"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/50 group-hover:brightness-110 transition-all">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 flex items-center justify-center shadow-none shadow-amber-500/50 group-hover:brightness-110 transition-all">
                   <Award className="w-9 h-9 text-slate-950 stroke-[2.5]" />
                 </div>
               </button>
 
               {/* Banner Oficial de Curso Completado (Diseño Glassmorphism Ultra-Premium) */}
-              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border-2 border-amber-400/50 dark:border-amber-400/40 bg-white/95 dark:bg-[#120e24]/95 p-6 sm:p-7 shadow-2xl dark:shadow-[0_0_50px_rgba(245,158,11,0.22)] backdrop-blur-2xl flex flex-col gap-5 text-left transition-all">
+              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border-2 border-amber-400/50 dark:border-amber-400/40 bg-surface p-6 sm:p-7 shadow-2xl   flex flex-col gap-5 text-left transition-all">
                 <div className="flex items-start sm:items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shrink-0 shadow-none shadow-amber-500/30">
                     <Award className="w-8 h-8 stroke-[2.2]" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      <span className="text-xs font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                         ✨ ¡Meta Alcanzada!
                       </span>
                     </div>
-                    <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight mt-1">
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white leading-tight mt-1">
                       Curso completado con éxito
                     </h2>
                     <p className="mt-1 text-xs text-slate-600 dark:text-amber-100/80 leading-relaxed">
                       Tu diploma oficial de <span className="font-bold text-slate-900 dark:text-white">{course.title}</span> está listo para ser emitido con validez institucional.
                     </p>
                     {certificate?.verificationCode && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-[11px]">
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-sm">
                         <span className="opacity-75">DOC:</span>
                         <span className="font-bold">{certificate.verificationCode}</span>
                       </div>
@@ -1176,7 +1160,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   <button
                     type="button"
                     onClick={() => setShowPreviewModal(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/30 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-slate-950 text-xs font-semibold shadow-none shadow-amber-500/30 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
                   >
                     <Download className="w-4 h-4 stroke-[2.5]" />
                     <span>Descargar Diploma</span>
@@ -1188,10 +1172,10 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
             <div className="relative flex flex-col items-center w-full animate-fade-in">
               {/* Estación Bloqueada */}
               <div
-                className="relative p-3 rounded-3xl border border-slate-300 dark:border-purple-500/30 bg-white/90 dark:bg-[#151126]/90 text-slate-400 dark:text-purple-300/40 flex items-center justify-center shadow-lg"
+                className="relative p-3 rounded-3xl border border-slate-300 dark:border-purple-500/30 bg-surface text-slate-400 text-ink-muted flex items-center justify-center shadow-none"
               >
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-purple-950/60 border border-slate-200 dark:border-purple-500/20 flex items-center justify-center relative">
-                  <Award className="w-8 h-8 text-slate-400 dark:text-purple-400/40" />
+                  <Award className="w-8 h-8 text-slate-400 text-ink-muted/40" />
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-[#0c0916] border border-slate-300 dark:border-purple-400/50 flex items-center justify-center shadow-sm">
                     <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-purple-300" />
                   </div>
@@ -1199,21 +1183,21 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
               </div>
 
               {/* Tarjeta de Certificado Bloqueado Ultra-Elegante */}
-              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border border-slate-200 dark:border-purple-500/25 bg-white/95 dark:bg-[#120f22]/95 p-6 shadow-xl backdrop-blur-2xl flex flex-col gap-4 text-left">
+              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border border-slate-200 dark:border-purple-500/25 bg-surface p-6 shadow-none  flex flex-col gap-4 text-left">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-purple-500/15 border border-slate-200 dark:border-purple-500/25 flex items-center justify-center text-slate-500 dark:text-purple-300 shrink-0">
                     <Lock className="w-6 h-6" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-purple-500/20 text-slate-600 dark:text-purple-300 border border-slate-200 dark:border-purple-500/30">
+                      <span className="text-sm font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-purple-500/20 text-slate-600 dark:text-purple-300 border border-slate-200 dark:border-purple-500/30">
                         🔒 Certificado Bloqueado
                       </span>
                     </div>
-                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-1">
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white mt-1">
                       Acreditación Oficial de Finalización
                     </h3>
-                    <p className="mt-1 text-xs text-slate-600 dark:text-purple-200/70 leading-relaxed">
+                    <p className="mt-1 text-xs text-slate-600 text-ink-soft leading-relaxed">
                       Hasta que el <span className="font-bold text-cyan-600 dark:text-cyan-400">Orbe Celestial</span> no complete la misión final ({lastMission?.video.title || 'Misión Final'}), este diploma permanece protegido.
                     </p>
                   </div>
@@ -1247,7 +1231,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                         onOpenLesson(nextMission.video, nextMission.module);
                       }
                     }}
-                    className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:brightness-110 active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+                    className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:brightness-110 active:scale-95 text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
                   >
                     <span>Continuar Misión Siguiente</span>
                     <ArrowRight className="w-3.5 h-3.5" />

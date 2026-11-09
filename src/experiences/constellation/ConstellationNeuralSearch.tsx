@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Course, VideoDriveLink, Module } from '../../types';
-import { Search, Sparkles, ArrowRight, Play, SlidersHorizontal, ChevronDown, X, RotateCcw } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { SearchField } from '../../components/SearchField';
+import { CourseCategoryFilter } from '../../components/CourseCategoryFilter';
 import {
   isStandardCategory,
   getCanonicalCategory,
-  MENTORSHIP_CATEGORIES,
-  TECHNICAL_CATEGORIES,
 } from '../../lib/courseCategories';
 
 interface ConstellationNeuralSearchProps {
@@ -75,110 +75,35 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
   }, [query, selectedTag, standardCourses]);
 
   return (
-    <section className="relative w-full bg-[#f8fafc] dark:bg-[#050505] py-16 md:py-24 select-none">
-      <div className="max-w-[1280px] mx-auto px-6">
+    <section className="academy-search-page relative w-full bg-transparent py-10 md:py-16 select-none">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
         
         {/* Cabecera de la Sección */}
-        <div className="mb-12">
-          <span className="font-constellation-label text-xs text-[#06b6d4] tracking-[0.2em] uppercase block mb-3 font-semibold">
-            NEURAL SEARCH · CONSULTA DIRECTA
-          </span>
-          <h2 className="font-constellation-display text-[38px] sm:text-[54px] md:text-[68px] leading-[1.05] tracking-[-0.04em] text-slate-900 dark:text-white">
-            Tu academia tiene la respuesta.
+        <div className="mb-8 sm:mb-12">
+          <h2 className="academy-section-title font-constellation-display text-ink">
+            Encuentra lo que quieres aprender.
           </h2>
-          <p className="font-constellation-body text-base sm:text-lg text-slate-600 dark:text-white/60 mt-3 max-w-[620px] font-extralight">
-            Pregunta directamente a la red de conocimiento de DocentOS para localizar lecciones específicas, conceptos técnicos y clases grabadas.
+          <p className="font-constellation-body text-base text-ink-soft mt-3 max-w-[620px] font-extralight">
+            Busca un tema, curso o lección y encuentra el contenido disponible en tu academia.
           </p>
         </div>
 
         {/* Input de Búsqueda Flotante en el Vacío */}
         <div className="relative w-full max-w-3xl mb-8">
-          <div className="relative flex items-center w-full rounded-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.12] hover:border-[#06b6d4]/50 focus-within:border-[#06b6d4] transition-all px-6 py-4 shadow-sm dark:shadow-[0_10px_35px_rgba(0,0,0,0.8)]">
-            <Search className="w-5 h-5 text-[#06b6d4] mr-4 shrink-0" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Escribe un concepto (e.g. React, Arquitectura, TypeScript, APIs)..."
-              className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/35 font-constellation-body text-base outline-none"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                className="text-slate-400 hover:text-slate-700 dark:text-white/40 dark:hover:text-white text-xs px-2 py-1 rounded cursor-pointer"
-              >
-                Limpiar
-              </button>
-            )}
-          </div>
+          <SearchField value={query} onChange={setQuery} label="Buscar cursos y lecciones"
+            placeholder="Buscar cursos y lecciones..." />
 
           {/* Barra de Control de Filtros Limpia y Ordenada */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Selector Desplegable de Categoría */}
-              <div className="relative inline-flex items-center">
-                <label
-                  htmlFor="neural-search-category-filter"
-                  className="font-constellation-label text-xs uppercase tracking-wider text-slate-500 dark:text-white/50 font-semibold flex items-center gap-1.5 mr-2"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#06b6d4]" />
-                  <span>Filtro:</span>
-                </label>
-
-                <div className="relative inline-block">
-                  <select
-                    id="neural-search-category-filter"
-                    aria-label="Filtrar por categoría"
-                    value={selectedTag}
-                    onChange={(e) => setSelectedTag(e.target.value)}
-                    className="appearance-none cursor-pointer pl-3.5 pr-8 py-1.5 rounded-full text-xs font-constellation-body bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 hover:border-[#06b6d4]/60 dark:hover:border-[#06b6d4]/60 focus:border-[#06b6d4] focus:outline-none text-slate-800 dark:text-white transition-all shadow-sm"
-                  >
-                    <option value="todos" className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white font-medium">
-                      Todas las categorías ({standardCourses.length})
-                    </option>
-                    <optgroup label="Modalidades de Mentoría" className="bg-white dark:bg-[#121212] text-slate-500 dark:text-white/60 font-semibold">
-                      {MENTORSHIP_CATEGORIES.map((cat) => {
-                        const count = standardCourses.filter((c) => getCanonicalCategory(c.category) === cat).length;
-                        return (
-                          <option key={cat} value={cat} className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white">
-                            {cat} ({count})
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                    <optgroup label="Áreas Temáticas Técnicas" className="bg-white dark:bg-[#121212] text-slate-500 dark:text-white/60 font-semibold">
-                      {TECHNICAL_CATEGORIES.map((cat) => {
-                        const count = standardCourses.filter((c) => getCanonicalCategory(c.category) === cat).length;
-                        return (
-                          <option key={cat} value={cat} className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white">
-                            {cat} ({count})
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-white/40 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Chip Activo para Categoría Seleccionada */}
-              {selectedTag !== 'todos' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-constellation-label tracking-wide uppercase bg-[#06b6d4]/10 text-[#0891b2] dark:text-[#22d3ee] border border-[#06b6d4]/30 shadow-sm animate-fadeIn">
-                  <span>{selectedTag}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTag('todos')}
-                    aria-label="Quitar filtro de categoría"
-                    className="hover:text-red-500 dark:hover:text-red-400 transition-colors p-0.5 rounded cursor-pointer"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
-            </div>
+          <div className="mt-4 flex flex-col items-stretch justify-between gap-3 md:flex-row md:items-center">
+            <CourseCategoryFilter
+              id="neural-search-category-filter"
+              courses={standardCourses}
+              value={selectedTag}
+              onChange={setSelectedTag}
+            />
 
             {/* Contador de Resultados y Botón de Reset */}
-            <div className="flex items-center gap-3 text-xs font-constellation-label text-slate-500 dark:text-white/50">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-constellation-label text-slate-500 dark:text-white/50">
               <span className="tracking-wide">
                 {results.matchedCourses.length}{' '}
                 {results.matchedCourses.length === 1 ? 'curso disponible' : 'cursos disponibles'}
@@ -192,7 +117,7 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
                     setQuery('');
                     setSelectedTag('todos');
                   }}
-                  className="inline-flex items-center gap-1 text-[#06b6d4] hover:text-[#0891b2] dark:hover:text-[#22d3ee] font-semibold cursor-pointer transition-colors"
+                  className="inline-flex min-h-11 items-center gap-1 text-[#06b6d4] hover:text-[#0891b2] dark:hover:text-[#22d3ee] font-semibold cursor-pointer transition-colors"
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Restablecer</span>
@@ -209,7 +134,7 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="max-w-3xl mb-12 p-6 rounded-[24px] bg-gradient-to-r from-cyan-50 via-purple-50 to-transparent dark:from-cyan-950/20 dark:via-purple-950/20 to-transparent border-l-2 border-[#06b6d4] shadow-sm dark:shadow-none"
+              className="max-w-3xl mb-12 p-6 rounded-2xl bg-gradient-to-r from-cyan-50 via-purple-50 to-transparent dark:from-cyan-950/20 dark:via-purple-950/20 to-transparent rounded-2xl border border-line shadow-sm dark:shadow-none"
             >
               <div className="flex items-center gap-2 mb-2 text-[#06b6d4] font-constellation-label text-xs uppercase tracking-wider font-bold">
                 <Sparkles className="w-3.5 h-3.5 animate-pulse" />
@@ -280,7 +205,7 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
                 <div
                   key={c.id}
                   onClick={() => onSelectCourse(c)}
-                  className="group cursor-pointer flex flex-col justify-between p-6 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.06] border border-slate-200/80 dark:border-white/[0.06] hover:border-[#06b6d4]/40 transition-all shadow-sm dark:shadow-none"
+                  className="group cursor-pointer flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.06] border border-slate-200/80 dark:border-white/[0.06] hover:border-[#06b6d4]/40 transition-all shadow-sm dark:shadow-none"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">

@@ -1,33 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Course } from '../../types';
+import { searchCourseCatalog } from '../../lib/catalogSearch';
+import { SearchField } from '../../components/SearchField';
 import { CourseShareButton } from '../../components/CourseShareButton';
 import {
   Play,
   Layers,
   PlayCircle,
-  Search,
   Sparkles,
   ArrowRight,
   BookOpen,
   LayoutGrid,
   List,
   Flame,
-  ChevronDown,
-  SlidersHorizontal,
-  X,
   RotateCcw,
 } from 'lucide-react';
+import { CourseCategoryFilter } from '../../components/CourseCategoryFilter';
 import {
   isStandardCategory,
-  getCanonicalCategory,
-  MENTORSHIP_CATEGORIES,
-  TECHNICAL_CATEGORIES,
 } from '../../lib/courseCategories';
 
 interface ConstellationCourseCatalogProps {
   courses: Course[];
   onSelectCourse: (course: Course) => void;
   onPrefetchCourse?: (courseId: string) => void;
+  featuredOnly?: boolean;
+  onBrowseCatalog?: () => void;
 }
 
 const FALLBACK_COVERS = [
@@ -73,6 +71,8 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
   courses,
   onSelectCourse,
   onPrefetchCourse,
+  featuredOnly = false,
+  onBrowseCatalog,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -94,22 +94,8 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
     return valid.length > 0 ? valid : courses;
   }, [courses]);
 
-  const filteredCourses = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const isAll = activeCategory === 'todos';
-    const activeLower = activeCategory.toLowerCase();
-
-    return catalogCourses.filter((c) => {
-      const canonical = (getCanonicalCategory(c.category) || c.category || 'General').toLowerCase();
-      const rawCat = (c.category || 'General').toLowerCase();
-      const matchCategory = isAll || canonical === activeLower || rawCat === activeLower;
-      const matchSearch =
-        q === '' ||
-        c.title.toLowerCase().includes(q) ||
-        (c.description || '').toLowerCase().includes(q);
-      return matchCategory && matchSearch;
-    });
-  }, [catalogCourses, activeCategory, searchQuery]);
+  const searchResults = useMemo(() => searchCourseCatalog(catalogCourses, searchQuery, activeCategory), [catalogCourses, searchQuery, activeCategory]);
+  const filteredCourses = searchResults.courses;
 
   const featuredCourse = catalogCourses[0] || null;
   const showFeatured = Boolean(featuredCourse && activeCategory === 'todos' && searchQuery.trim() === '');
@@ -117,55 +103,27 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
     ? filteredCourses.filter((course) => course.id !== featuredCourse?.id)
     : filteredCourses;
 
+  if (featuredOnly && !featuredCourse) return null;
+
   return (
-    <section className="relative w-full bg-transparent pt-4 pb-16 md:py-20 select-none">
+    <section className="academy-catalog relative w-full bg-transparent pt-4 pb-16 md:py-20 select-none">
       <div className="max-w-[1280px] mx-auto flex flex-col px-4 sm:px-6">
         
+        {!featuredOnly && (<>
         {/* Cabecera del Catálogo */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div>
-            <div className="inline-flex items-center gap-2 text-[10px] sm:text-xs font-mono font-medium text-[#eab308] tracking-wider uppercase mb-2">
-              <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-[#eab308] shadow-sm shadow-amber-400/50" />
-              <span>Programas Académicos & Masterclasses</span>
-            </div>
             <h2 className="font-constellation-display text-[36px] sm:text-[48px] md:text-[56px] leading-[1.05] tracking-[-0.035em] text-slate-900 dark:text-white">
-              Catálogo de Especialización
+              Encuentra tu próxima especialización
             </h2>
             <p className="font-constellation-body text-sm sm:text-base text-slate-600 dark:text-white/60 mt-2 max-w-2xl font-extralight">
-              Rutas pedagógicas estructuradas en módulos prácticos con streaming de alta definición e inteligencia artificial.
+              Explora los cursos y revisa su temario para elegir tu siguiente paso.
             </p>
           </div>
 
-          {/* Selector de Modo de Visualización */}
-          <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-full shrink-0 self-start lg:self-auto">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex h-11 w-11 items-center justify-center rounded-full transition-all cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-[#06b6d4] text-[#050505] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
-              }`}
-              title="Vista de Cuadrícula"
-              aria-label="Vista de cuadrícula"
-              aria-pressed={viewMode === 'grid'}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex h-11 w-11 items-center justify-center rounded-full transition-all cursor-pointer ${
-                viewMode === 'list'
-                  ? 'bg-[#06b6d4] text-[#050505] shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
-              }`}
-              title="Vista Expandida"
-              aria-label="Vista de lista"
-              aria-pressed={viewMode === 'list'}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
         </div>
+
+        </>)}
 
         {/* Banner Destacado Spotlight (Si hay cursos) */}
         {featuredCourse && showFeatured && (
@@ -220,8 +178,8 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                   </p>
                 </div>
 
-                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 w-full pt-4 border-t border-amber-600/15 dark:border-amber-400/15">
-                  <div className="flex items-center gap-4 text-xs font-mono text-slate-600 dark:text-slate-300">
+                <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-4 w-full pt-4 border-t border-amber-600/15 dark:border-amber-400/15">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-mono text-slate-600 dark:text-slate-300">
                     <span className="flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-amber-600 dark:text-amber-300" />
                       <span>{featuredCourse.modules?.length || 0} módulos</span>
@@ -249,94 +207,28 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
           </div>
         )}
 
-        {/* Barra de Filtros por Categoría y Búsqueda */}
-        <div className="order-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-5 border-b border-slate-200 dark:border-white/[0.06]">
-          {/* Selector de Filtro de Categoría Ordenado */}
-          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-            <div className="relative inline-flex items-center">
-              <label
-                htmlFor="catalog-category-filter"
-                className="font-constellation-label text-xs uppercase tracking-wider text-slate-500 dark:text-white/50 font-semibold flex items-center gap-1.5 mr-2"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#06b6d4]" />
-                <span>Filtro:</span>
-              </label>
-
-              <div className="relative inline-block">
-                <select
-                  id="catalog-category-filter"
-                  aria-label="Filtrar por categoría"
-                  value={activeCategory}
-                  onChange={(e) => setActiveCategory(e.target.value)}
-                  className="appearance-none cursor-pointer pl-3.5 pr-8 py-2 rounded-full text-xs font-constellation-body bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 hover:border-[#06b6d4]/60 dark:hover:border-[#06b6d4]/60 focus:border-[#06b6d4] focus:outline-none text-slate-800 dark:text-white transition-all shadow-sm"
-                >
-                  <option value="todos" className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white font-medium">
-                    Todas las categorías ({catalogCourses.length})
-                  </option>
-                  <optgroup label="Modalidades de Mentoría" className="bg-white dark:bg-[#121212] text-slate-500 dark:text-white/60 font-semibold">
-                    {MENTORSHIP_CATEGORIES.map((cat) => {
-                      const count = catalogCourses.filter((c) => (getCanonicalCategory(c.category) || c.category) === cat).length;
-                      return (
-                        <option key={cat} value={cat} className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white">
-                          {cat} ({count})
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                  <optgroup label="Áreas Temáticas Técnicas" className="bg-white dark:bg-[#121212] text-slate-500 dark:text-white/60 font-semibold">
-                    {TECHNICAL_CATEGORIES.map((cat) => {
-                      const count = catalogCourses.filter((c) => (getCanonicalCategory(c.category) || c.category) === cat).length;
-                      return (
-                        <option key={cat} value={cat} className="bg-white dark:bg-[#121212] text-slate-900 dark:text-white">
-                          {cat} ({count})
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-white/40 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Chip Activo para Categoría Seleccionada */}
-            {activeCategory !== 'todos' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-constellation-label tracking-wide uppercase bg-[#06b6d4]/10 text-[#0891b2] dark:text-[#22d3ee] border border-[#06b6d4]/30 shadow-sm animate-fadeIn">
-                <span>{activeCategory}</span>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory('todos')}
-                  aria-label="Quitar filtro de categoría"
-                  className="hover:text-red-500 dark:hover:text-red-400 transition-colors p-0.5 rounded cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
+        {featuredOnly && onBrowseCatalog && (
+          <div className="order-2 flex justify-start">
+            <button type="button" className="academy-text-button" onClick={onBrowseCatalog}>
+              Ver catálogo completo <ArrowRight size={18} aria-hidden="true" />
+            </button>
           </div>
+        )}
+        {!featuredOnly && (<>
+        {/* Barra de Filtros por Categoría y Búsqueda */}
+        <div className="order-2 flex flex-col md:flex-row items-stretch md:items-start justify-between gap-3 mb-6 sm:mb-8 pb-5 border-b border-slate-200 dark:border-white/[0.06]">
+          <CourseCategoryFilter
+            id="catalog-category-filter"
+            className="order-2 md:order-1"
+            courses={catalogCourses}
+            value={activeCategory}
+            onChange={setActiveCategory}
+          />
 
           {/* Input de Búsqueda Rápida y Botón Restablecer */}
-          <div className="flex items-center gap-2.5">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 dark:text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="search"
-                aria-label="Buscar cursos"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar cursos..."
-                className="min-h-10 w-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 hover:border-[#06b6d4]/50 focus:border-[#06b6d4] focus:outline-none rounded-full pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/35 font-constellation-body transition-colors shadow-sm"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Limpiar búsqueda"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs p-1 cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+          <div className="order-1 flex min-w-0 items-center gap-2.5 md:order-2 md:w-64 md:shrink-0">
+            <SearchField className="min-w-0 flex-1" value={searchQuery} onChange={setSearchQuery}
+              label="Buscar cursos y lecciones" placeholder="Buscar cursos o lecciones..." />
 
             {(activeCategory !== 'todos' || searchQuery.trim()) && (
               <button
@@ -345,7 +237,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                   setActiveCategory('todos');
                   setSearchQuery('');
                 }}
-                className="shrink-0 inline-flex items-center gap-1 text-xs font-constellation-label text-[#06b6d4] hover:underline px-2 py-1 cursor-pointer transition-colors"
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-constellation-label text-[#06b6d4] hover:underline min-h-11 px-2 py-1 cursor-pointer transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Restablecer</span>
@@ -353,6 +245,58 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
             )}
           </div>
         </div>
+
+        {searchResults.lessons.length > 0 && (
+          <section className="academy-catalog-lessons order-3" aria-label="Lecciones encontradas">
+            <h3>Lecciones encontradas <span>({searchResults.lessons.length})</span></h3>
+            <ul>
+              {searchResults.lessons.slice(0, 6).map(({ course, module, video }) => (
+                <li key={`${course.id}-${video.id}`}>
+                  <button type="button" onClick={() => onSelectCourse(course)}>
+                    <div><strong>{video.title}</strong><span>{course.title} · {module.title}</span></div>
+                    <span className="shrink-0 text-sm text-brand-cyan">Ver curso <ArrowRight size={16} aria-hidden="true" /></span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {listedCourses.length > 0 && (
+          <div className="order-3 mb-4 flex items-center justify-between gap-4">
+            <p className="text-sm text-ink-soft">
+              {listedCourses.length === 1 ? '1 curso' : `${listedCourses.length} cursos`}
+            </p>
+            <div role="group" aria-label="Vista de los cursos" className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-full shrink-0 self-start lg:self-auto">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`flex h-11 w-11 items-center justify-center rounded-full transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-surface text-ink shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
+                }`}
+                title="Vista de Cuadrícula"
+                aria-label="Vista de cuadrícula"
+                aria-pressed={viewMode === 'grid'}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex h-11 w-11 items-center justify-center rounded-full transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-surface text-ink shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
+                }`}
+                title="Vista Expandida"
+                aria-label="Vista de lista"
+                aria-pressed={viewMode === 'list'}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Cuadrícula Visual de Cursos (Visual Grid) */}
         {filteredCourses.length === 0 ? (
@@ -366,7 +310,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
             </p>
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="order-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="academy-course-grid order-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {listedCourses.map((course, idx) => {
                 const totalVideos = (course.modules || []).reduce(
                   (acc, m) => acc + (m.videos || []).length,
@@ -381,7 +325,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     key={course.id}
                     onMouseEnter={() => onPrefetchCourse?.(course.id)}
                     onClick={() => onSelectCourse(course)}
-                    className="flex flex-col rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-lg [content-visibility:auto]"
+                    className="academy-course-card flex flex-col rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-lg [content-visibility:auto]"
                   >
                     {/* Contenedor Visual de la Portada / Imagen */}
                     <div className="relative aspect-video w-full overflow-hidden bg-slate-950">
@@ -428,12 +372,12 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
 
                         <p className="font-constellation-body text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight mb-4">
                           {course.description ||
-                            'Aprende técnicas aplicadas, arquitectura y dominio técnico con evaluación continua.'}
+                            'Consulta el temario y los recursos disponibles de este curso.'}
                         </p>
                       </div>
 
                       {/* Metadatos Inferiores y Botón de Entrada */}
-                      <div className="pt-4 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-xs font-mono text-slate-600 dark:text-slate-300">
+                      <div className="academy-course-meta pt-4 border-t border-slate-100 dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1">
                             <Layers className="w-3.5 h-3.5 text-[#06b6d4]" />
@@ -472,7 +416,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                   key={course.id}
                   onMouseEnter={() => onPrefetchCourse?.(course.id)}
                   onClick={() => onSelectCourse(course)}
-                  className="grid grid-cols-1 md:grid-cols-12 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-none [content-visibility:auto]"
+                  className="academy-course-card grid grid-cols-1 md:grid-cols-12 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-none [content-visibility:auto]"
                 >
                   <div className="md:col-span-4 aspect-video relative overflow-hidden bg-slate-950">
                     <img
@@ -490,9 +434,9 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     </div>
                   </div>
 
-                  <div className="md:col-span-8 p-6 flex flex-col justify-between">
+                  <div className="min-w-0 md:col-span-8 p-5 lg:p-6 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-2 text-xs font-mono">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2 text-xs font-mono">
                         <span className="text-[#06b6d4] uppercase font-semibold">
                           {course.category || 'INGENIERÍA'}
                         </span>
@@ -508,11 +452,11 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
 
                       <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight">
                         {course.description ||
-                          'Domina la teoría y ejecución práctica con retroalimentación automatizada y recursos de estudio sintético.'}
+                          'Consulta el temario y los recursos disponibles de este curso.'}
                       </p>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between">
+                    <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         {course.price > 0 && (
                           <span className="catalog-course-badge">
@@ -522,7 +466,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                         )}
                         <CourseShareButton course={course} iconOnly />
                       </div>
-                      <button className="btn-constellation-pill text-xs">
+                      <button className="academy-button min-h-11 text-xs">
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>Ver Temario</span>
                       </button>
@@ -533,6 +477,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
             })}
           </div>
         )}
+        </>)}
 
       </div>
     </section>

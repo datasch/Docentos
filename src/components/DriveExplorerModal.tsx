@@ -74,10 +74,10 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-fade-in">
       
       {/* Title & Drive API Status Banner */}
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-surface border border-line rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <div className="flex items-center gap-2 text-[#06b6d4] text-xs font-bold uppercase tracking-wider mb-1">
-            <HardDrive className="w-4 h-4 text-[#06b6d4]" /> Integración con Google Drive API v3
+          <div className="flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider mb-1">
+            <HardDrive className="w-4 h-4 text-brand-cyan" /> Integración con Google Drive API v3
           </div>
           <h2 className="text-2xl font-bold text-white">Buscador y Biblioteca de Videos Drive</h2>
           <p className="text-slate-400 text-sm mt-1">
@@ -93,7 +93,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
               placeholder="Buscar en Google Drive..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-[#06b6d4]"
+              className="w-full bg-canvas border border-line rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-brand-cyan"
             />
           </div>
           <button
@@ -123,7 +123,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
         <div className="lg:col-span-2 space-y-3">
           <h3 className="text-sm font-semibold text-slate-400 flex items-center justify-between">
             <span>Resultados de Google Drive ({driveVideos.length})</span>
-            {loading && <RefreshCw className="w-4 h-4 animate-spin text-[#06b6d4]" />}
+            {loading && <RefreshCw className="w-4 h-4 animate-spin text-brand-cyan" />}
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -135,24 +135,24 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                   onClick={() => setSelectedVideo(video)}
                   className={`cursor-pointer rounded-xl border p-4 transition-all flex flex-col justify-between ${
                     isSelected
-                      ? 'bg-[#1a1a2e] border-[#06b6d4] ring-2 ring-[#06b6d4]/30 shadow-lg'
-                      : 'bg-[#141420] border-[#2d2d44] hover:border-[#06b6d4]/50 hover:bg-[#1a1a2e]'
+                      ? 'bg-raised border-brand-cyan ring-2 ring-brand-cyan/30 shadow-lg'
+                      : 'bg-surface border-line hover:border-brand-cyan/50 hover:bg-raised'
                   }`}
                 >
                   <div className="space-y-2">
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-[#2d2d44] group">
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-line group">
                       <img
                         src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
                         alt={video.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
-                        <div className="w-10 h-10 rounded-full bg-brand-gradient text-white flex items-center justify-center shadow-lg">
+                        <div className="w-10 h-10 rounded-full bg-brand-gradient text-on-brand flex items-center justify-center shadow-lg">
                           <Play className="w-5 h-5 fill-white text-white ml-0.5" />
                         </div>
                       </div>
                       {video.duration && (
-                        <span className="absolute bottom-2 right-2 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-[#2d2d44]">
+                        <span className="absolute bottom-2 right-2 bg-black/90 text-brand-cyan text-[10px] font-bold px-2 py-0.5 rounded-lg border border-line">
                           {video.duration}
                         </span>
                       )}
@@ -163,11 +163,11 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                     </h4>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-[#2d2d44] flex items-center justify-between text-xs text-slate-400">
+                  <div className="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs text-slate-400">
                     <span className="flex items-center gap-1 font-mono text-[11px] text-slate-400">
-                      <Film className="w-3.5 h-3.5 text-[#06b6d4]" /> {video.size || 'Google Drive'}
+                      <Film className="w-3.5 h-3.5 text-brand-cyan" /> {video.size || 'Google Drive'}
                     </span>
-                    <span className="text-[#06b6d4] font-semibold text-[11px] hover:underline flex items-center gap-1">
+                    <span className="text-brand-cyan font-semibold text-[11px] hover:underline flex items-center gap-1">
                       Previsualizar <ExternalLink className="w-3 h-3" />
                     </span>
                   </div>
@@ -179,15 +179,15 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
 
         {/* Right Column: Embedded Preview Player & Admin Linking Panel */}
         <div className="space-y-4">
-          <div className="sticky top-20 bg-[#141420] border border-[#2d2d44] rounded-xl p-5 shadow-xl space-y-4">
+          <div className="sticky top-20 bg-surface border border-line rounded-xl p-5 shadow-xl space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Film className="w-5 h-5 text-[#06b6d4]" />
+              <Film className="w-5 h-5 text-brand-cyan" />
               Previsualización de Google Drive
             </h3>
 
             {selectedVideo ? (
               <div className="space-y-4">
-                <div className="aspect-video w-full rounded-xl overflow-hidden bg-black border border-[#2d2d44] shadow-inner">
+                <div className="aspect-video w-full rounded-xl overflow-hidden bg-black border border-line shadow-inner">
                   <iframe
                     src={selectedVideo.embedUrl}
                     title={selectedVideo.name}
@@ -199,13 +199,13 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
 
                 <div>
                   <h4 className="font-bold text-sm text-white">{selectedVideo.name}</h4>
-                  <p className="text-xs text-slate-400 mt-1">ID de Archivo: <code className="text-[#06b6d4] font-mono">{selectedVideo.id}</code></p>
+                  <p className="text-xs text-slate-400 mt-1">ID de Archivo: <code className="text-brand-cyan font-mono">{selectedVideo.id}</code></p>
                 </div>
 
                 {/* Admin Linking Control */}
                 {userRole === 'ADMIN' && (
-                  <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3 mt-4">
-                    <div className="flex items-center gap-1.5 text-[#a855f7] font-bold text-xs">
+                  <div className="bg-raised border border-line rounded-xl p-4 space-y-3 mt-4">
+                    <div className="flex items-center gap-1.5 text-brand-purple font-bold text-xs">
                       <Layers className="w-4 h-4" /> Enlazar a Módulo de Curso (Admin)
                     </div>
 
@@ -214,7 +214,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                       <select
                         value={selectedModuleId}
                         onChange={(e) => setSelectedModuleId(e.target.value)}
-                        className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                        className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                       >
                         {modules.map((m) => (
                           <option key={m.id} value={m.id}>
@@ -227,7 +227,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                     <button
                       onClick={handleLinkVideo}
                       disabled={linking || !selectedModuleId}
-                      className="w-full py-2.5 px-4 rounded-lg bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#a855f7]/25 transition-all disabled:opacity-50"
+                      className="w-full py-2.5 px-4 rounded-lg bg-brand-purple hover:bg-brand-purple/80 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-brand-purple/25 transition-all disabled:opacity-50"
                     >
                       {linking ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -240,7 +240,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                     </button>
 
                     {linkedSuccess && (
-                      <div className="p-2 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] rounded-lg text-xs flex items-center gap-2">
+                      <div className="p-2 bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan rounded-lg text-xs flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4" /> ¡Video enlazado con éxito!
                       </div>
                     )}
@@ -249,7 +249,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
 
               </div>
             ) : (
-              <div className="p-8 text-center border-2 border-dashed border-[#2d2d44] rounded-xl text-slate-500 space-y-2">
+              <div className="p-8 text-center border-2 border-dashed border-line rounded-xl text-slate-500 space-y-2">
                 <HardDrive className="w-10 h-10 mx-auto opacity-40 text-slate-400" />
                 <p className="text-xs">Selecciona un video de la lista para ver la previsualización directa en iframe de Google Drive.</p>
               </div>

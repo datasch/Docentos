@@ -511,10 +511,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       : 0;
 
   return (
-    <div className="min-h-screen bg-[#000000] text-slate-100 p-3 sm:p-8 space-y-6 sm:space-y-8 w-full max-w-7xl mx-auto overflow-x-hidden">
+    <div className="min-h-screen bg-canvas text-ink p-3 sm:p-8 space-y-6 sm:space-y-8 w-full max-w-7xl mx-auto overflow-x-hidden">
 
       {/* Header Banner */}
-      <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-4 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+      <div className="bg-surface border border-line rounded-2xl p-4 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="space-y-2 z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#a855f7] text-xs font-bold">
             <UserCheck className="w-3.5 h-3.5" />
@@ -523,7 +523,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
             Bienvenido, {currentUser.name}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
+          <p className="text-xs sm:text-sm text-ink-muted max-w-2xl">
             Gestiona tus programas académicos, supervisa el avance en tiempo real de tus Mentees asignados y responde a las consultas técnicas de la comunidad.
           </p>
         </div>
@@ -568,16 +568,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         ].map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="bg-[#0a0a0f] border border-[#262626] p-3 sm:p-5 rounded-2xl flex items-center justify-between min-w-0">
+            <div key={idx} className="bg-surface border border-line p-3 sm:p-5 rounded-2xl flex items-center justify-between min-w-0">
               <div className="min-w-0 pr-1">
-                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted uppercase tracking-wider block truncate">
                   {card.title}
                 </span>
                 <span className="text-xl sm:text-2xl font-black text-white mt-1 block">
                   {card.value}
                 </span>
               </div>
-              <div className={`p-2.5 sm:p-3 rounded-xl bg-[#141420] border border-[#262626] ${card.color} shrink-0`}>
+              <div className={`p-2.5 sm:p-3 rounded-xl bg-raised border border-line ${card.color} shrink-0`}>
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </div>
@@ -586,13 +586,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <div className="flex border-b border-[#262626] gap-1 sm:gap-2 overflow-x-auto custom-horizontal-scrollbar scroll-smooth pb-1 pt-0.5">
+      <div className="flex border-b border-line gap-1 sm:gap-2 overflow-x-auto custom-horizontal-scrollbar scroll-smooth pb-1 pt-0.5">
         <button
           onClick={() => setActiveTab('courses')}
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'courses'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-white'
           }`}
         >
           <BookOpen className="w-4 h-4 shrink-0" />
@@ -604,7 +604,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'mentees'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-white'
           }`}
         >
           <Users className="w-4 h-4 shrink-0" />
@@ -621,7 +621,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'qna'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-white'
           }`}
         >
           <MessageSquare className="w-4 h-4 shrink-0" />
@@ -633,7 +633,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'meetings'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-white'
           }`}
         >
           <Video className="w-4 h-4 shrink-0" />
@@ -645,7 +645,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'quizzes'
               ? 'border-purple-500 text-purple-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-white'
           }`}
         >
           <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
@@ -657,7 +657,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
             activeTab === 'youtube-builder'
               ? 'border-red-500 text-red-400'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-white'
           }`}
         >
           <Youtube className="w-4 h-4 text-red-500 shrink-0" />
@@ -675,7 +675,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white">¿Quieres crear un curso rápidamente?</h3>
-                <p className="text-xs text-slate-400">Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.</p>
+                <p className="text-xs text-ink-muted">Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.</p>
               </div>
             </div>
             <button
@@ -687,9 +687,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             </button>
           </div>
           {displayCourses.length === 0 ? (
-            <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-10 text-center space-y-3">
+            <div className="bg-surface border border-line rounded-2xl p-10 text-center space-y-3">
               <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 {currentUser.role === 'MENTOR'
                   ? 'No tienes cursos asignados actualmente. Contacta a un administrador para que te asigne tus programas a cargo.'
                   : 'Todavía no hay programas. Los crea administración, desde Administración › Cursos.'}
@@ -698,7 +698,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {displayCourses.map((course) => (
-                <div key={course.id} className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-5 space-y-4 hover:border-[#06b6d4] transition-all">
+                <div key={course.id} className="bg-surface border border-line rounded-2xl p-5 space-y-4 hover:border-[#06b6d4] transition-all">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg">
                       {course.category}
@@ -736,11 +736,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     {course.title}
                   </h3>
 
-                  <p className="text-xs text-slate-400 line-clamp-2">
+                  <p className="text-xs text-ink-muted line-clamp-2">
                     {course.description}
                   </p>
 
-                  <div className="pt-3 border-t border-[#262626] flex items-center justify-between text-xs font-mono text-slate-400">
+                  <div className="pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
                     <span>{course.modules?.length || 0} Módulos</span>
                     <span>${course.price} USD</span>
                   </div>
@@ -749,7 +749,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       personas, que es como se piensa al planificar un grupo. */}
                   <button
                     onClick={() => openCourseRoster(course)}
-                    className="w-full py-2 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                    className="w-full py-2 bg-raised hover:bg-elevated border border-line hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
                   >
                     <Users className="w-3.5 h-3.5 text-[#06b6d4]" />
                     Mentees asignados ({menteesOfCourse(course.id).length})
@@ -804,7 +804,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         {accessRequests.length}
                       </span>
                     </h3>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-ink-muted">
                       Mentees que solicitaron acceso en 1 clic desde la plataforma
                     </p>
                   </div>
@@ -815,26 +815,26 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 {accessRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-[#262626] hover:border-amber-500/30 transition-all"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-line hover:border-amber-500/30 transition-all"
                   >
                     <div className="flex items-center gap-3">
                       <img
                         src={avatarSrc(req.menteeAvatarUrl)}
                         alt={req.menteeName}
-                        className="w-10 h-10 rounded-xl object-cover border border-[#262626]"
+                        className="w-10 h-10 rounded-xl object-cover border border-line"
                       />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-xs text-white">{req.menteeName}</span>
-                          <span className="text-[10px] text-slate-400">({req.menteeEmail})</span>
+                          <span className="text-[10px] text-ink-muted">({req.menteeEmail})</span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-xs">
-                          <span className="text-slate-400">Solicita acceso a:</span>
+                          <span className="text-ink-muted">Solicita acceso a:</span>
                           <span className="font-semibold text-purple-400 flex items-center gap-1">
                             <GraduationCap className="w-3.5 h-3.5 shrink-0" />
                             {req.courseTitle}
                           </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
+                          <span className="text-[10px] text-ink-muted font-mono">
                             • {formatDate(req.createdAt)}
                           </span>
                         </div>
@@ -859,7 +859,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         type="button"
                         onClick={() => handleRejectRequest(req.id)}
                         disabled={processingRequestId === req.id}
-                        className="px-3 py-1.5 bg-[#141420] hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-[#262626] hover:border-rose-500/30 text-xs font-medium rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                        className="px-3 py-1.5 bg-raised hover:bg-rose-950/40 text-ink-muted hover:text-rose-400 border border-line hover:border-rose-500/30 text-xs font-medium rounded-xl transition-all disabled:opacity-50 cursor-pointer"
                       >
                         Rechazar
                       </button>
@@ -870,34 +870,34 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             </div>
           )}
 
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-[#262626] flex items-center justify-between">
+          <div className="bg-surface border border-line rounded-2xl overflow-hidden">
+            <div className="p-5 border-b border-line flex items-center justify-between">
               {/* El alta y el reparto viven ahora en «Gestión de Cursos»: se
                   asigna desde el curso, que es donde se sabe a que se asigna. */}
               <div>
                 <h3 className="font-bold text-sm text-white">Seguimiento de Mentees</h3>
-                <p className="text-xs text-slate-400">Progreso individual y estado de estudio de alumnos asignados</p>
+                <p className="text-xs text-ink-muted">Progreso individual y estado de estudio de alumnos asignados</p>
               </div>
             </div>
 
             <div className="divide-y divide-[#262626]">
               {loadingMentees && (
-                <p className="p-6 text-center text-xs text-slate-500">Cargando mentees...</p>
+                <p className="p-6 text-center text-xs text-ink-muted">Cargando mentees...</p>
               )}
 
               {!loadingMentees && mentees.length === 0 && (
-                <p className="p-6 text-center text-xs text-slate-500">
+                <p className="p-6 text-center text-xs text-ink-muted">
                   Aún no tienes mentees asignados.
                 </p>
               )}
 
               {mentees.map((m) => (
-                <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#141420]/50 transition-colors">
+                <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-raised/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <img
                       src={avatarSrc(m.avatarUrl)}
                       alt={m.name}
-                      className="w-10 h-10 rounded-xl object-cover border border-[#262626]"
+                      className="w-10 h-10 rounded-xl object-cover border border-line"
                     />
                     <div>
                       <h4 className="font-bold text-xs text-white flex items-center gap-2">
@@ -906,23 +906,23 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           {m.status}
                         </span>
                       </h4>
-                      <span className="text-[11px] text-slate-400">{m.email}</span>
+                      <span className="text-[11px] text-ink-muted">{m.email}</span>
                     </div>
                   </div>
 
                   {/* Progress Bar Column */}
                   <div className="w-full sm:w-64 space-y-1">
                     <div className="flex items-center justify-between text-[10px] font-mono">
-                      <span className="text-slate-400">Progreso en Curso</span>
+                      <span className="text-ink-muted">Progreso en Curso</span>
                       <span className="font-bold text-[#06b6d4]">{m.courseProgress}%</span>
                     </div>
-                    <div className="w-full bg-[#000000] rounded-full h-2 border border-[#262626] overflow-hidden">
+                    <div className="w-full bg-canvas rounded-full h-2 border border-line overflow-hidden">
                       <div
                         className="bg-gradient-to-r from-[#06b6d4] to-[#a855f7] h-full rounded-full transition-all"
                         style={{ width: `${m.courseProgress}%` }}
                       />
                     </div>
-                    <div className="text-[9px] text-slate-500 font-mono text-right">
+                    <div className="text-[9px] text-ink-muted font-mono text-right">
                       {m.completedVideosCount} de {m.totalVideosCount} lecciones • Activo {m.lastActiveDate}
                     </div>
                   </div>
@@ -932,7 +932,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <div className="w-full sm:w-auto sm:max-w-xs space-y-2">
                     <div className="flex flex-wrap gap-1.5">
                       {m.courses.length === 0 ? (
-                        <span className="text-[10px] text-slate-500 italic">Sin cursos asignados</span>
+                        <span className="text-[10px] text-ink-muted italic">Sin cursos asignados</span>
                       ) : (
                         m.courses.map((c) => (
                           <span
@@ -942,7 +942,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           >
                             <GraduationCap className="w-3.5 h-3.5 shrink-0" />
                             <span className="truncate">{c.courseTitle}</span>
-                            <span className="font-mono text-slate-400">{c.courseProgress}%</span>
+                            <span className="font-mono text-ink-muted">{c.courseProgress}%</span>
                           </span>
                         ))
                       )}
@@ -950,7 +950,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
                     <button
                       onClick={() => openMenteeRoster(m)}
-                      className="w-full sm:w-auto px-3 py-1.5 bg-[#141420] hover:bg-[#1a1a2e] border border-[#262626] hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
+                      className="w-full sm:w-auto px-3 py-1.5 bg-raised hover:bg-elevated border border-line hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
                     >
                       Editar cursos
                     </button>
@@ -965,24 +965,24 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {/* Tab Content 3: Mentorship Q&A Center */}
       {activeTab === 'qna' && (
         <div className="space-y-4">
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-5">
+          <div className="bg-surface border border-line rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
               <div>
                 <h3 className="font-extrabold text-sm text-white mb-1">Centro de Consultas de Mentoría</h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-ink-muted">
                   Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 {/* Pendientes primero: es lo único que pide acción. */}
-                <div className="flex bg-[#141420] border border-[#262626] rounded-xl p-1">
+                <div className="flex bg-raised border border-line rounded-xl p-1">
                   {(['pending', 'all'] as const).map((option) => (
                     <button
                       key={option}
                       onClick={() => setQnaFilter(option)}
                       className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                        qnaFilter === option ? 'bg-[#06b6d4] text-black' : 'text-slate-400 hover:text-white'
+                        qnaFilter === option ? 'bg-[#06b6d4] text-black' : 'text-ink-muted hover:text-white'
                       }`}
                     >
                       {option === 'pending' ? `Pendientes (${pendingQuestions.length})` : `Todas (${qnaComments.length})`}
@@ -993,7 +993,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   onClick={loadQnaData}
                   disabled={loadingQna}
-                  className="p-2 bg-[#141420] border border-[#262626] rounded-xl text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                  className="p-2 bg-raised border border-line rounded-xl text-ink-muted hover:text-white transition-colors disabled:opacity-50"
                   title="Actualizar consultas"
                 >
                   <RefreshCw className={`w-4 h-4 ${loadingQna ? 'animate-spin' : ''}`} />
@@ -1009,13 +1009,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <div className="space-y-4">
               {loadingQna && qnaComments.length === 0 && (
-                <p className="py-8 text-center text-xs text-slate-500">Cargando consultas...</p>
+                <p className="py-8 text-center text-xs text-ink-muted">Cargando consultas...</p>
               )}
 
               {!loadingQna && visibleQuestions.length === 0 && (
                 <div className="py-10 text-center space-y-2">
                   <Inbox className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-muted">
                     {qnaFilter === 'pending'
                       ? 'No hay consultas pendientes. Todo respondido.'
                       : 'Todavía no hay consultas publicadas por el alumnado.'}
@@ -1024,7 +1024,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               )}
 
               {visibleQuestions.map((comment) => (
-                <div key={comment.id} className="p-4 bg-[#141420] border border-[#262626] rounded-xl space-y-3">
+                <div key={comment.id} className="p-4 bg-raised border border-line rounded-xl space-y-3">
                   {/* Sin saber de qué clase salió, la pregunta no se puede responder. */}
                   <div className="text-[10px] font-bold text-[#a855f7] uppercase tracking-wider">
                     {questionOrigin(comment)}
@@ -1038,7 +1038,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         className="w-7 h-7 rounded-full object-cover shrink-0"
                       />
                       <span className="font-bold text-xs text-white truncate">{comment.userName}</span>
-                      <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                      <span className="text-[10px] text-ink-muted font-mono shrink-0">
                         {formatDate(comment.createdAt)}
                       </span>
                     </div>
@@ -1050,7 +1050,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-200">{comment.content}</p>
+                  <p className="text-xs text-ink">{comment.content}</p>
 
                   {/* Existing Replies */}
                   {comment.replies && comment.replies.length > 0 && (
@@ -1058,7 +1058,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       {comment.replies.map((r) => (
                         <div key={r.id} className="text-xs space-y-1">
                           <span className="font-bold text-[#06b6d4]">{r.userName}:</span>
-                          <p className="text-slate-300">{r.content}</p>
+                          <p className="text-ink-soft">{r.content}</p>
                         </div>
                       ))}
                     </div>
@@ -1085,7 +1085,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       onChange={(e) =>
                         setReplyTextMap({ ...replyTextMap, [comment.id]: e.target.value })
                       }
-                      className="flex-1 py-2 px-3 bg-[#000000] border border-[#262626] focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none"
+                      className="flex-1 py-2 px-3 bg-canvas border border-line focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none"
                     />
                     <button
                       type="submit"
@@ -1119,8 +1119,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             {/* Tab Content 5: Quizzes & Evaluaciones con IA */}
       {activeTab === 'quizzes' && (
         <div className="space-y-6">
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-4">
+          <div className="bg-surface border border-line rounded-2xl p-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-400">
                   <Sparkles className="w-6 h-6 text-amber-300" />
@@ -1129,7 +1129,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                     Gestor de Evaluaciones & Exámenes con IA
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Crea cuestionarios de validación por módulo o genéralos automáticamente a partir del temario con IA
                   </p>
                 </div>
@@ -1137,7 +1137,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             </div>
 
             {displayCourses.length === 0 ? (
-              <div className="py-12 text-center text-slate-500 text-xs">
+              <div className="py-12 text-center text-ink-muted text-xs">
                 No hay cursos disponibles para gestionar evaluaciones.
               </div>
             ) : (
@@ -1149,11 +1149,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   return (
                     <div
                       key={course.id}
-                      className="bg-[#141420] border border-[#2d2d44] rounded-2xl overflow-hidden transition-all shadow-md"
+                      className="bg-raised border border-line rounded-2xl overflow-hidden transition-all shadow-md"
                     >
                       <div
                         onClick={() => setQuizCourseExpanded(isExpanded ? null : course.id)}
-                        className="p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-[#1a1a2e]/50 transition-colors"
+                        className="p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-elevated/50 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400">
@@ -1161,14 +1161,14 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           </div>
                           <div className="min-w-0">
                             <h4 className="text-sm font-bold text-white truncate">{course.title}</h4>
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-ink-muted">
                               {course.category} • {modules.length} módulo(s) de aprendizaje
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold px-3 py-1 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl text-slate-300">
+                          <span className="text-xs font-semibold px-3 py-1 bg-surface border border-line rounded-xl text-ink-soft">
                             {modules.filter((m) => getModuleQuestions(m.id).length > 0).length} de {modules.length} con examen
                           </span>
                           <span className="text-xs font-bold text-purple-400">
@@ -1178,9 +1178,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       </div>
 
                       {isExpanded && (
-                        <div className="p-4 border-t border-[#2d2d44] bg-[#0a0a0f]/60 space-y-3">
+                        <div className="p-4 border-t border-line bg-surface/60 space-y-3">
                           {modules.length === 0 ? (
-                            <p className="text-xs text-slate-500 py-3 text-center">
+                            <p className="text-xs text-ink-muted py-3 text-center">
                               Este curso aún no tiene módulos configurados.
                             </p>
                           ) : (
@@ -1191,7 +1191,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                               return (
                                 <div
                                   key={module.id}
-                                  className="p-3.5 rounded-xl bg-[#141420] border border-[#2d2d44] flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-purple-500/40 transition-all"
+                                  className="p-3.5 rounded-xl bg-raised border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-purple-500/40 transition-all"
                                 >
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
@@ -1201,7 +1201,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                                       <p className="text-xs font-bold text-white truncate">{module.title}</p>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-[10px] text-slate-400">
+                                      <span className="text-[10px] text-ink-muted">
                                         {module.videos?.length || 0} clase(s)
                                       </span>
                                       <span className="text-slate-600">•</span>
@@ -1273,13 +1273,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           se retira al guardar. */}
       {rosterMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="app-dialog bg-[#0a0a0f] border border-[#262626] rounded-2xl w-full max-w-lg flex flex-col max-h-[calc(100dvh-1.5rem)]">
-            <div className="p-5 border-b border-[#262626] flex items-start justify-between gap-3">
+          <div className="app-dialog bg-surface border border-line rounded-2xl w-full max-w-lg flex flex-col max-h-[calc(100dvh-1.5rem)]">
+            <div className="p-5 border-b border-line flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="font-extrabold text-base text-white">
                   {rosterMode === 'course' ? 'Asignar mentees al curso' : 'Cursos de este mentee'}
                 </h3>
-                <p className="text-xs text-slate-400 truncate">
+                <p className="text-xs text-ink-muted truncate">
                   {rosterMode === 'course' ? rosterCourse?.title : rosterMentee?.name}
                 </p>
               </div>
@@ -1299,7 +1299,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 )}
                 <button
                   onClick={closeRoster}
-                  className="p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-[#141420]"
+                  className="p-1.5 text-ink-muted hover:text-white rounded-lg hover:bg-raised"
                   aria-label="Cerrar"
                 >
                   <X aria-hidden className="w-4 h-4" />
@@ -1315,13 +1315,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <div className="p-5 pb-3">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="search"
                   value={rosterQuery}
                   onChange={(e) => setRosterQuery(e.target.value)}
                   placeholder={rosterMode === 'course' ? 'Buscar mentee por nombre o correo…' : 'Buscar curso…'}
-                  className="w-full py-2 pl-9 pr-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 pl-9 pr-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 />
               </div>
             </div>
@@ -1335,7 +1335,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     });
                     if (filtrados.length === 0) {
                       return (
-                        <p className="py-8 text-center text-xs text-slate-500">
+                        <p className="py-8 text-center text-xs text-ink-muted">
                           {candidates.length === 0
                             ? 'No hay cuentas mentee todavía. Crea una con «Dar de alta», aquí arriba.'
                             : 'Ningún mentee coincide con la búsqueda.'}
@@ -1345,7 +1345,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     return filtrados.map((c) => (
                       <label
                         key={c.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#141420] cursor-pointer"
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-raised cursor-pointer"
                       >
                         <input
                           type="checkbox"
@@ -1356,11 +1356,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         <img
                           src={avatarSrc(c.avatarUrl)}
                           alt=""
-                          className="w-8 h-8 rounded-lg object-cover border border-[#262626]"
+                          className="w-8 h-8 rounded-lg object-cover border border-line"
                         />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white truncate">{c.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{c.email}</p>
+                          <p className="text-[10px] text-ink-muted truncate">{c.email}</p>
                         </div>
                       </label>
                     ));
@@ -1371,12 +1371,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       return !q || course.title.toLowerCase().includes(q);
                     });
                     if (filtrados.length === 0) {
-                      return <p className="py-8 text-center text-xs text-slate-500">Ningún curso coincide.</p>;
+                      return <p className="py-8 text-center text-xs text-ink-muted">Ningún curso coincide.</p>;
                     }
                     return filtrados.map((course) => (
                       <label
                         key={course.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#141420] cursor-pointer"
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-raised cursor-pointer"
                       >
                         <input
                           type="checkbox"
@@ -1386,7 +1386,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-white truncate">{course.title}</p>
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-ink-muted">
                             {course.category} · {course.modules?.length || 0} módulos
                           </p>
                         </div>
@@ -1398,14 +1398,14 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   })()}
             </div>
 
-            <div className="p-5 border-t border-[#262626] flex items-center justify-between gap-3">
-              <span className="text-[11px] text-slate-400">
+            <div className="p-5 border-t border-line flex items-center justify-between gap-3">
+              <span className="text-[11px] text-ink-muted">
                 {rosterSelection.length} seleccionado{rosterSelection.length === 1 ? '' : 's'}
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={closeRoster}
-                  className="px-4 py-2 bg-[#141420] text-slate-400 text-xs font-bold rounded-xl"
+                  className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
                   Cancelar
                 </button>
@@ -1425,9 +1425,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
       {showAssignMenteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-md space-y-4">
             <h3 className="font-extrabold text-base text-white">Asignar Nuevo Mentee</h3>
-            <p className="text-xs text-slate-400">Ingresa los datos del estudiante para asignarle mentoría prioritaria.</p>
+            <p className="text-xs text-ink-muted">Ingresa los datos del estudiante para asignarle mentoría prioritaria.</p>
 
             {assignError && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
@@ -1437,25 +1437,25 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <form onSubmit={handleAssignMenteeSubmit} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nombre</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Nombre</label>
                 <input
                   type="text"
                   value={newMenteeName}
                   onChange={(e) => setNewMenteeName(e.target.value)}
                   placeholder="Ej. Roberto Gómez"
-                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Correo Electrónico</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Correo Electrónico</label>
                 <input
                   type="email"
                   value={newMenteeEmail}
                   onChange={(e) => setNewMenteeEmail(e.target.value)}
                   placeholder="mentee@empresa.com"
-                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   required
                 />
               </div>
@@ -1463,11 +1463,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               {/* Antes entraban siempre al primer curso publicado, fuera el
                   que fuera. Ahora se elige, y se pueden añadir más después. */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Curso inicial</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Curso inicial</label>
                 <select
                   value={newMenteeCourseId}
                   onChange={(e) => setNewMenteeCourseId(e.target.value)}
-                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 >
                   <option value="">Primer curso publicado</option>
                   {displayCourses.map((course) => (
@@ -1482,7 +1482,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAssignMenteeModal(false)}
-                  className="px-4 py-2 bg-[#141420] text-slate-400 text-xs font-bold rounded-xl"
+                  className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
                   Cancelar
                 </button>
@@ -1503,9 +1503,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {/* Create Course Modal */}
       {showCreateCourseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#0a0a0f] border border-[#262626] rounded-2xl p-6 w-full max-w-lg space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-lg space-y-4">
             <h3 className="font-extrabold text-base text-white">Crear Nuevo Programa</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-ink-muted">
               Se crea la ficha del programa. Los módulos y las clases se añaden después desde
               Administración › Cursos o importando una carpeta de Google Drive.
             </p>
@@ -1518,35 +1518,35 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <form onSubmit={handleCreateCourseSubmit} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Título del Programa</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Título del Programa</label>
                 <input
                   type="text"
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
                   placeholder="Ej. Mentoría Elite: Arquitectura Cloud"
-                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Descripción</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Descripción</label>
                 <textarea
                   rows={3}
                   value={newCourseDescription}
                   onChange={(e) => setNewCourseDescription(e.target.value)}
                   placeholder="Qué aprende el alumno y para quién es este programa."
-                  className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Categoría</label>
+                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Categoría</label>
                   <select
                     value={newCourseCategory}
                     onChange={(e) => setNewCourseCategory(e.target.value)}
-                    className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
+                    className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
                   >
                     <optgroup label="Modalidades de Mentoría">
                       {MENTORSHIP_CATEGORIES.map((cat) => (
@@ -1566,18 +1566,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Precio (USD)</label>
+                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Precio (USD)</label>
                   <input
                     type="number"
                     min={0}
                     value={newCoursePrice}
                     onChange={(e) => setNewCoursePrice(Math.max(0, Number(e.target.value) || 0))}
-                    className="w-full py-2 px-3 bg-[#000000] border border-[#262626] rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   />
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-xs text-slate-300">
+              <label className="flex items-center gap-2 text-xs text-ink-soft">
                 <input
                   type="checkbox"
                   checked={newCoursePublished}
@@ -1591,7 +1591,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowCreateCourseModal(false)}
-                  className="px-4 py-2 bg-[#141420] text-slate-400 text-xs font-bold rounded-xl"
+                  className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
                   Cancelar
                 </button>

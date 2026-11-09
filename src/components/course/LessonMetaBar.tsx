@@ -46,24 +46,24 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 lg:px-0">
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-meta text-ink-muted">
+        <p className="text-sm leading-relaxed text-ink-soft">
           {/^m[óo]dulo\s/i.test(moduleTitle) ? moduleTitle : `Módulo ${moduleIndex + 1} · ${moduleTitle}`}
         </p>
         {isLive && (meetingType === 'meet' || meetingType === 'jitsi') && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2 py-0.5 text-micro font-bold uppercase text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2 py-0.5 text-micro font-medium uppercase text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-cyan)] animate-ping" />
             ¡CLASE EN VIVO!
           </span>
         )}
         {meetingType === 'async_record' && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-micro font-bold text-success-light border border-success/30">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-micro font-medium text-success-light border border-success/30">
             <PlaySquare className="h-2.5 w-2.5" />
             Grabación Asincrónica
           </span>
         )}
       </div>
-      <h1 className="mt-1 text-title font-semibold text-ink">{lessonTitle}</h1>
-      <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-ink-muted">
+      <h1 className="academy-lesson-heading mt-2 text-2xl font-semibold leading-snug text-ink">{lessonTitle}</h1>
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-relaxed text-ink-soft">
         <span className="tabular-nums">
           Lección {lessonNumber} de {totalLessons}
         </span>
@@ -105,7 +105,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
                   : 'Desmarcar misión completada'
                 : 'Marcar misión como completada'
           }
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-bold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium transition-all ${
             isCompleted
               ? !canUncomplete
                 ? 'bg-purple-100/70 dark:bg-purple-950/30 text-purple-700/60 dark:text-purple-300/50 border border-purple-200 dark:border-purple-500/20 cursor-not-allowed'

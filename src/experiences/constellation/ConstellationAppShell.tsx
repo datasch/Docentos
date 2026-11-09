@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { User, Course } from '../../types';
+import '../../styles/academy.css';
+import '../../styles/academy-layout.css';
 import { api } from '../../lib/api';
 import { CourseOverview } from '../../components/CourseOverview';
 import { ConstellationNavbar, ConstellationTab } from './ConstellationNavbar';
@@ -15,10 +17,10 @@ import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { SeasonalGlobalOverlay } from '../../components/SeasonalGlobalOverlay';
 
 const ConstellationCanvas = lazy(() =>
-  import('./ConstellationCanvas').then((m) => ({ default: m.ConstellationCanvas }))
+  import('./ConstellationCanvas').then(module => ({ default: module.ConstellationCanvas }))
 );
-const ConstellationNeuralSearch = lazy(() =>
-  import('./ConstellationNeuralSearch').then((m) => ({ default: m.ConstellationNeuralSearch }))
+const ConstellationMyLearning = lazy(() =>
+  import('./ConstellationMyLearning').then(module => ({ default: module.ConstellationMyLearning }))
 );
 const ConstellationCourseViewer = lazy(() =>
   import('./ConstellationCourseViewer').then((m) => ({ default: m.ConstellationCourseViewer }))
@@ -69,7 +71,7 @@ interface ConstellationAppShellProps {
   onPaymentSuccess?: () => void;
   onVipActivated?: () => void;
   onRestartTour?: () => void;
-  onOpenVerifyModal?: () => void;
+  onOpenVerifyModal?: (code?: string) => void;
   onOpenListening?: () => void;
   onChangePassword?: () => void;
   unreadListening?: number;
@@ -104,10 +106,20 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
     if (tab === 'admin' || tab === 'plugins') return 'admin';
     if (tab === 'mentor') return 'mentor';
     if (tab === 'courses' || tab === 'vip') return 'courses';
-    if (tab === 'search') return 'search';
+    if (tab === 'search') return 'courses';
+    if (tab === 'learning') return 'learning';
     if (tab === 'viewer') return 'viewer';
     return 'explore';
   };
+
+  const [showDesktopBrand, setShowDesktopBrand] = useState(false);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const update = () => setShowDesktopBrand(desktop.matches);
+    update();
+    desktop.addEventListener('change', update);
+    return () => desktop.removeEventListener('change', update);
+  }, []);
 
   const [selectedCourseForViewer, setSelectedCourseForViewer] = useState<Course | null>(activeCourse || null);
   const courseCacheRef = useRef<Map<string, Course>>(new Map());
@@ -180,8 +192,9 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
 
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col font-sans selection:bg-[#06b6d4] selection:text-[#050505] relative overflow-x-hidden w-full max-w-full">
+    <div className="academy-experience min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col font-sans selection:bg-[#06b6d4] selection:text-[#050505] relative overflow-x-clip w-full max-w-full">
       
+
       {/* Ambientación Festiva Global de DocentOS (Halloween & Navidad) */}
       <SeasonalGlobalOverlay />
       
@@ -200,6 +213,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
           setConstellationTab(tab);
           if (tab === 'explore') onNavigate('landing');
           else if (tab === 'courses') onNavigate('courses');
+          else if (tab === 'learning') onNavigate('learning');
           else if (tab === 'mentor') onNavigate('mentor');
           else if (tab === 'admin') onNavigate('admin');
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
@@ -213,29 +227,13 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
         unreadListening={unreadListening}
       />
 
-      {/* Resplandor ambiental atmosférico en móvil (puro CSS, 0 JS / 0 GPU) */}
-      <div
-        aria-hidden="true"
-        className="md:hidden fixed top-20 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full blur-[100px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[#06b6d4] via-[#a855f7] to-[#eab308]"
-      />
-
-      {/* Lienzo 3D de Constelación Neural: solo en pantallas medianas y escritorio (>= md) */}
-      <div
-        className={`hidden md:block fixed inset-0 pointer-events-none z-0 transition-opacity duration-300 ${
-          constellationTab === 'explore' ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          visibility: constellationTab === 'explore' ? 'visible' : 'hidden',
-        }}
-        aria-hidden={constellationTab !== 'explore'}
-      >
-        <Suspense fallback={null}>
-          <ConstellationCanvas
-            fullScreen
-            paused={constellationTab !== 'explore'}
-          />
-        </Suspense>
-      </div>
+      {showDesktopBrand && constellationTab === 'explore' && !sharedCourseId && (
+        <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
+          <Suspense fallback={null}>
+            <ConstellationCanvas fullScreen />
+          </Suspense>
+        </div>
+      )}
 
       {/* Contenido Dinámico con Transiciones Fluidas sin saltos de layout */}
       <main className="flex-1 w-full relative z-10">
@@ -270,20 +268,27 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
               >
                 <ConstellationHero
                   currentUser={currentUser}
+                  showInlineBrand={!showDesktopBrand}
                   onExploreCourses={() => {
                     setConstellationTab('courses');
                     onNavigate('courses');
                     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
                   }}
                   onOpenSearch={() => {
-                    setConstellationTab('search');
-                    onNavigate('search');
+                    setConstellationTab('courses');
+                    onNavigate('courses');
                     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
                   }}
                   totalCoursesCount={courses.length}
                 />
 
                 <ConstellationCourseCatalog
+                  featuredOnly
+                  onBrowseCatalog={() => {
+                    setConstellationTab('courses');
+                    onNavigate('courses');
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+                  }}
                   courses={courses}
                   onSelectCourse={handleSelectCourse}
                   onPrefetchCourse={handlePrefetchCourse}
@@ -296,21 +301,12 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
               </motion.div>
             )}
 
-            {/* 2. Vista Búsqueda Sináptica Inmersiva */}
-            {constellationTab === 'search' && (
-              <motion.div
-                key="view-search"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full"
-              >
-                <ConstellationNeuralSearch
-                  courses={courses}
-                  onSelectCourse={handleSelectCourse}
-                  onOpenLesson={(selected) => handleSelectCourse(selected)}
-                />
+            {constellationTab === 'learning' && (
+              <motion.div key="view-learning" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit" className="w-full">
+                <ConstellationMyLearning user={currentUser} courses={courses} accessReady={courseAccessReady}
+                  onContinue={handleSelectCourse}
+                  onBrowse={() => { setConstellationTab('courses'); onNavigate('courses'); }}
+                  onLogin={onOpenAuth} onVerifyCertificate={onOpenVerifyModal} />
               </motion.div>
             )}
 
@@ -328,11 +324,6 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   courses={courses}
                   onSelectCourse={handleSelectCourse}
                   onPrefetchCourse={handlePrefetchCourse}
-                />
-                <ConstellationPillars />
-                <ConstellationTestimonials
-                  currentUser={currentUser}
-                  onOpenAuth={onOpenAuth}
                 />
               </motion.div>
             )}
@@ -357,8 +348,8 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   hasAccess={viewerCourse?.hasAccess === true}
                   onOpenPaywall={currentUser?.role === 'MENTEE' ? () => {} : onOpenPaywall}
                   onGoHome={() => {
-                    setConstellationTab('courses');
-                    onNavigate('courses');
+                    setConstellationTab('learning');
+                    onNavigate('learning');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   onSelectCourse={handleSelectCourse}

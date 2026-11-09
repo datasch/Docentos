@@ -20,11 +20,11 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
   const githubUrl = siteConfig.poweredByLink || 'https://github.com/datasch/Docentos';
 
   return (
-    <footer className="w-full bg-transparent border-t border-slate-200 dark:border-white/[0.08] pt-8 sm:pt-12 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-24 select-none">
+    <footer className="w-full bg-transparent border-t border-slate-200 dark:border-white/[0.08] pt-8 sm:pt-12 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] sm:pb-24 select-none">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
         
         {/* Grilla Principal del Footer de DocentOS */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 pb-6 sm:pb-8 border-b border-slate-200 dark:border-white/[0.06]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 sm:gap-8 pb-6 sm:pb-8 border-b border-slate-200 dark:border-white/[0.06]">
           
           {/* Columna Izquierda: Logo, Nombre y Motto de DocentOS */}
           <div className="lg:col-span-5 flex flex-col items-start gap-3">
@@ -61,14 +61,14 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
 
           {/* Columna Derecha: Enlaces Rápidos */}
           <nav aria-label="Enlaces del pie de página" className="lg:col-span-7 grid grid-cols-[minmax(0,1fr)_44px] items-start gap-4 text-xs text-slate-700 dark:text-slate-300">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap lg:justify-end gap-x-6 [&>a]:min-h-11 [&>button]:min-h-11 [&_svg]:shrink-0">
+            <div className="flex min-w-0 flex-col sm:flex-row sm:flex-wrap lg:justify-end gap-x-6 [&>a]:min-h-11 [&>button]:min-h-11 [&_svg]:shrink-0">
               <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">
                 <Github aria-hidden className="h-4 w-4" />
                 <span>GitHub</span>
               </a>
               <button type="button" onClick={() => setShowTermsModal(true)} className="flex items-center gap-2 text-left hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
                 <ShieldCheck aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                <span>Términos y privacidad</span>
+                <span className="min-w-0 break-words">Términos y privacidad</span>
               </button>
               {siteConfig.complaintsBookUrl && (
                 <a href={siteConfig.complaintsBookUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">

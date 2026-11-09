@@ -6,6 +6,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { api } from './lib/api';
+import { TAB_PATHS, tabFromPath, type ActiveTab } from './lib/appRoutes';
 import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
 import { RefreshCw } from 'lucide-react';
@@ -27,27 +28,6 @@ import { ListeningFloatingButton } from './components/ListeningFloatingButton';
 // Inicializar tema y festividad inmediatamente para evitar parpadeos
 initSavedTheme();
 applySeasonalTheme();
-
-type ActiveTab = 'landing' | 'courses' | 'viewer' | 'mentor' | 'admin' | 'plugins' | 'vip';
-
-const TAB_PATHS: Record<ActiveTab, string> = {
-  landing: '/',
-  courses: '/courses',
-  viewer: '/courses',
-  mentor: '/mentor/dashboard',
-  admin: '/admin',
-  plugins: '/admin/plugins',
-  vip: '/vip',
-};
-
-function tabFromPath(pathname: string): ActiveTab {
-  if (pathname.startsWith('/admin/plugins')) return 'plugins';
-  if (pathname.startsWith('/admin')) return 'admin';
-  if (pathname.startsWith('/mentor')) return 'mentor';
-  if (pathname.startsWith('/courses')) return 'courses';
-  if (pathname.startsWith('/vip')) return 'vip';
-  return 'landing';
-}
 
 const LAST_COURSE_KEY = 'docentos_last_course_id';
 
@@ -384,8 +364,8 @@ export default function App() {
         onPaymentSuccess={handlePaymentSuccess}
         onVipActivated={handleVipActivated}
         onRestartTour={() => setShowTour(true)}
-        onOpenVerifyModal={() => {
-          setVerifyCode('');
+        onOpenVerifyModal={(code) => {
+          setVerifyCode(code || '');
           setShowVerifyModal(true);
         }}
         onOpenListening={handleOpenListening}

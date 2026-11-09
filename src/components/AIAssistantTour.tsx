@@ -120,27 +120,27 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
     <div className="pointer-events-auto fixed inset-x-3 bottom-3 z-50 flex flex-col items-stretch animate-fade-in sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-md sm:items-end">
       
       {/* JARVIS STYLE FLOATING DIALOG CARD */}
-      <div className="bg-[#141420]/95 backdrop-blur-xl border border-[#06b6d4]/40 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-[#06b6d4]/20 text-white space-y-4 w-full relative max-h-[80dvh] overflow-y-auto overscroll-contain">
+      <div className="bg-surface/95 backdrop-blur-xl border border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-brand-cyan/20 text-white space-y-4 w-full relative max-h-[80dvh] overflow-y-auto overscroll-contain">
         
         {/* Glow Ring & Close Button */}
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#06b6d4]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-brand-cyan/20 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="flex items-center justify-between gap-2 border-b border-[#2d2d44] pb-3">
+        <div className="flex items-center justify-between gap-2 border-b border-line pb-3">
           <div className="flex min-w-0 items-center gap-2.5">
             {/* Glowing Assistant Avatar */}
             <div className="relative">
-              <div className={`w-9 h-9 rounded-full bg-brand-gradient p-0.5 shadow-lg ${isPlayingAudio ? 'ring-2 ring-[#06b6d4] animate-pulse' : ''}`}>
-                <div className="w-full h-full bg-[#0a0a0f] rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-[#06b6d4]" />
+              <div className={`w-9 h-9 rounded-full bg-brand-gradient p-0.5 shadow-lg ${isPlayingAudio ? 'ring-2 ring-brand-cyan animate-pulse' : ''}`}>
+                <div className="w-full h-full bg-canvas rounded-full flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-brand-cyan" />
                 </div>
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#06b6d4] rounded-full border-2 border-[#141420]" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-brand-cyan rounded-full border-2 border-[#141420]" />
             </div>
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 <h4 className="font-extrabold text-xs text-white uppercase tracking-wider">{assistantName} AI</h4>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#06b6d4]/10 text-[#06b6d4] border border-[#06b6d4]/30">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30">
                   ONBOARDING
                 </span>
               </div>
@@ -150,7 +150,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
 
           <button
             onClick={handleCloseTour}
-            className="shrink-0 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#1a1a2e] transition-all"
+            className="shrink-0 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-raised transition-all"
             title={t('tour.skipTour')}
           >
             <X className="w-4 h-4" />
@@ -174,14 +174,14 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
             </div>
 
             {/* Audio Waveform Equalizer */}
-            <div className="bg-[#0a0a0f] p-2.5 rounded-xl border border-[#2d2d44] flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="bg-canvas p-2.5 rounded-xl border border-line flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex min-w-0 items-center gap-2 text-slate-400">
-                <Volume2 className={`w-4 h-4 ${isPlayingAudio ? 'text-[#06b6d4] animate-bounce' : ''}`} />
+                <Volume2 className={`w-4 h-4 ${isPlayingAudio ? 'text-brand-cyan animate-bounce' : ''}`} />
                 <span className="text-[11px] font-mono">{isPlayingAudio ? 'Hablando...' : 'Audio Pausado'}</span>
               </div>
               <button
                 onClick={() => playStepVoice(currentStep)}
-                className="shrink-0 text-[10px] font-bold text-[#06b6d4] hover:underline"
+                className="shrink-0 text-[10px] font-bold text-brand-cyan hover:underline"
               >
                 Replay Audio
               </button>
@@ -194,7 +194,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                   <div
                     key={paso.id}
                     className={`h-1.5 rounded-full transition-all ${
-                      idx === currentStep ? 'w-6 bg-[#06b6d4]' : 'w-2 bg-[#2d2d44]'
+                      idx === currentStep ? 'w-6 bg-brand-cyan' : 'w-2 bg-line'
                     }`}
                   />
                 ))}
@@ -220,7 +220,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
           /* STEP 4: FEEDBACK MODAL */
           <div className="space-y-3">
             {feedbackSubmitted ? (
-              <div className="p-4 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 font-bold animate-fade-in">
+              <div className="p-4 bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs rounded-xl flex items-center gap-2 font-bold animate-fade-in">
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
                 <span>¡Muchas gracias! Tu opinión ha sido guardada con éxito.</span>
               </div>
@@ -228,7 +228,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
               <form onSubmit={handleSubmitFeedback} className="space-y-3">
                 <div>
                   <h5 className="font-bold text-sm text-white flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-[#06b6d4]" />
+                    <Compass className="w-4 h-4 text-brand-cyan" />
                     {t('tour.feedbackTitle')}
                   </h5>
                   <p className="text-xs text-slate-400 mt-0.5">
@@ -260,13 +260,13 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                   placeholder={t('tour.feedbackPlaceholder')}
                   value={feedbackComment}
                   onChange={(e) => setFeedbackComment(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-2.5 text-base sm:text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full bg-canvas border border-line rounded-xl p-2.5 text-base sm:text-xs text-white focus:outline-none focus:border-brand-cyan"
                 />
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full btn-brand-primary py-2 text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-[#06b6d4]/20"
+                  className="w-full btn-brand-primary py-2 text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-brand-cyan/20"
                 >
                   <Send className="w-3.5 h-3.5" />
                   {isSubmitting ? t('common.loading') : t('tour.feedbackSubmit')}
