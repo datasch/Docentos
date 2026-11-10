@@ -199,14 +199,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="bg-[#141420] border border-[#2d2d44] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain"
+        className="app-dialog bg-surface border border-line rounded-2xl w-full max-w-4xl max-h-[calc(100dvh-1.5rem)] flex flex-col shadow-2xl overflow-hidden overscroll-contain"
         onWheel={(e) => e.stopPropagation()}
       >
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[#2d2d44] bg-[#0f0f18]">
+        <div className="flex items-center justify-between p-5 border-b border-line bg-[#0f0f18]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#06b6d4]/10 border border-[#06b6d4]/30 rounded-xl text-[#06b6d4]">
+            <div className="p-2.5 bg-brand-cyan/10 border border-brand-cyan/30 rounded-xl text-brand-cyan">
               <CheckSquare className="w-5 h-5" />
             </div>
             <div>
@@ -220,14 +220,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-[#1a1a2e] transition-colors"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-raised transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Toolbar */}
-        <div className="p-4 border-b border-[#2d2d44] bg-[#1a1a2e]/50 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 border-b border-line bg-raised/50 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -243,15 +243,15 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               type="button"
               onClick={handleAddQuestion}
               disabled={generatingAi || saving}
-              className="px-3.5 py-2 bg-[#232338] hover:bg-[#2d2d44] border border-[#3b3b5c] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 bg-[#232338] hover:bg-line border border-[#3b3b5c] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-[#06b6d4]" />
+              <Plus className="w-4 h-4 text-brand-cyan" />
               <span>Añadir Pregunta</span>
             </button>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-400 bg-[#0f0f18] px-3 py-1.5 rounded-lg border border-[#2d2d44]">
+            <span className="text-xs font-semibold text-slate-400 bg-[#0f0f18] px-3 py-1.5 rounded-lg border border-line">
               {questions.length} {questions.length === 1 ? 'pregunta configurada' : 'preguntas configuradas'}
             </span>
           </div>
@@ -273,14 +273,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
         )}
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-[#06b6d4]" />
+              <Loader2 className="w-8 h-8 animate-spin text-brand-cyan" />
               <p className="text-xs">Cargando datos de evaluación...</p>
             </div>
           ) : questions.length === 0 ? (
-            <div className="text-center py-12 px-4 border-2 border-dashed border-[#2d2d44] rounded-2xl space-y-3">
+            <div className="text-center py-12 px-4 border-2 border-dashed border-line rounded-2xl space-y-3">
               <BookOpen className="w-10 h-10 text-slate-500 mx-auto" />
               <h3 className="text-sm font-bold text-white">Este módulo aún no tiene examen configurado</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
@@ -299,9 +299,9 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                 <button
                   type="button"
                   onClick={handleAddQuestion}
-                  className="px-4 py-2 bg-[#1a1a2e] border border-[#2d2d44] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-[#2d2d44]"
+                  className="px-4 py-2 bg-raised border border-line text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-line"
                 >
-                  <Plus className="w-4 h-4 text-[#06b6d4]" />
+                  <Plus className="w-4 h-4 text-brand-cyan" />
                   <span>Crear Manualmente</span>
                 </button>
               </div>
@@ -310,12 +310,12 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
             questions.map((q, qIdx) => (
               <div
                 key={q.id || qIdx}
-                className="bg-[#0f0f18] border border-[#2d2d44] rounded-xl p-4 space-y-4 hover:border-[#3b3b5c] transition-all"
+                className="bg-[#0f0f18] border border-line rounded-xl p-4 space-y-4 hover:border-[#3b3b5c] transition-all"
               >
                 {/* Question Header */}
                 <div className="flex items-center justify-between gap-2 border-b border-[#232338] pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/20 px-2 py-0.5 rounded-md">
+                    <span className="font-mono text-xs font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded-md">
                       Pregunta #{qIdx + 1}
                     </span>
                     <span className="text-[11px] text-slate-400">
@@ -328,7 +328,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                       type="button"
                       onClick={() => handleMoveQuestion(qIdx, -1)}
                       disabled={qIdx === 0}
-                      className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-[#1a1a2e]"
+                      className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-raised"
                       title="Mover arriba"
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -337,7 +337,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                       type="button"
                       onClick={() => handleMoveQuestion(qIdx, 1)}
                       disabled={qIdx === questions.length - 1}
-                      className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-[#1a1a2e]"
+                      className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-raised"
                       title="Mover abajo"
                     >
                       <ChevronDown className="w-4 h-4" />
@@ -361,7 +361,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                     value={q.text}
                     onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
                     placeholder="Ej: ¿Cuál es el concepto central de esta lección?"
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan"
                   />
                 </div>
 
@@ -378,14 +378,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                           className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all cursor-pointer ${
                             isCorrect
                               ? 'bg-emerald-950/20 border-emerald-500/50 text-emerald-300 ring-1 ring-emerald-500/30'
-                              : 'bg-[#141420] border-[#2d2d44] text-slate-300 hover:border-[#3b3b5c]'
+                              : 'bg-surface border-line text-slate-300 hover:border-[#3b3b5c]'
                           }`}
                         >
                           <div
                             className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border shrink-0 ${
                               isCorrect
                                 ? 'bg-emerald-500 border-emerald-400 text-black'
-                                : 'bg-[#1a1a2e] border-[#3b3b5c] text-slate-400'
+                                : 'bg-raised border-[#3b3b5c] text-slate-400'
                             }`}
                           >
                             {String.fromCharCode(65 + optIdx)}
@@ -420,7 +420,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                     value={q.explanation}
                     onChange={(e) => handleUpdateExplanation(qIdx, e.target.value)}
                     placeholder="Explica por qué la respuesta seleccionada es la correcta..."
-                    className="w-full bg-[#141420] border border-[#2d2d44] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 resize-none"
+                    className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 resize-none"
                   />
                 </div>
               </div>
@@ -429,7 +429,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#2d2d44] bg-[#0f0f18] flex items-center justify-between gap-3">
+        <div className="p-4 border-t border-line bg-[#0f0f18] flex items-center justify-between gap-3">
           <div>
             {questions.length > 0 && (
               <button
@@ -448,7 +448,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 bg-[#1a1a2e] hover:bg-[#2d2d44] text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all"
+              className="px-4 py-2 bg-raised hover:bg-line text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all"
             >
               Cancelar
             </button>

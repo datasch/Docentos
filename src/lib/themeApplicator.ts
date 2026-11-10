@@ -55,6 +55,22 @@ const STORAGE_THEME_KEY = 'docentos_color_theme';
 const STORAGE_DENSITY_KEY = 'docentos_density';
 const STORAGE_COLOR_MODE_KEY = 'docentos_color_mode';
 
+const LIGHT_ACCENTS: Record<ColorTheme, [string, string, string]> = {
+  cyan: ['#0e7490', '#1d4ed8', '#6b21a8'],
+  violet: ['#7e22ce', '#4338ca', '#6d28d9'],
+  emerald: ['#047857', '#0e7490', '#0f766e'],
+  amber: ['#b45309', '#9a3412', '#b91c1c'],
+};
+
+export function getThemePalette(theme: ColorTheme, mode: ColorMode): ThemePalette {
+  const palette = THEME_PALETTES[theme] || THEME_PALETTES.cyan;
+  if (mode !== 'light') return palette;
+  const [brandCyan, brandBlue, brandPurple] = LIGHT_ACCENTS[theme] || LIGHT_ACCENTS.cyan;
+  const accentRgb = [1, 3, 5].map(index => parseInt(brandCyan.slice(index, index + 2), 16)).join(', ');
+  return { ...palette, brandCyan, brandBlue, brandPurple, accentRgb,
+    gradient: `linear-gradient(135deg, ${brandCyan} 0%, ${brandBlue} 50%, ${brandPurple} 100%)` };
+}
+
 export function applyPlatformTheme(
   theme: ColorTheme = 'cyan',
   density: Density = 'comfortable',
@@ -63,19 +79,11 @@ export function applyPlatformTheme(
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
-  const palette = THEME_PALETTES[theme] || THEME_PALETTES.cyan;
+  const palette = getThemePalette(theme, colorMode);
 
-  // En modo claro se calibran los acentos hacia tonos joya profundos para garantizar legibilidad AAA
-  const isLight = colorMode === 'light';
-  const resolvedBrandCyan = isLight
-    ? (theme === 'cyan' ? '#0e7490' : theme === 'emerald' ? '#047857' : theme === 'amber' ? '#b45309' : '#7e22ce')
-    : palette.brandCyan;
-  const resolvedBrandBlue = isLight
-    ? (theme === 'cyan' ? '#1d4ed8' : palette.brandBlue)
-    : palette.brandBlue;
-  const resolvedBrandPurple = isLight
-    ? (theme === 'cyan' ? '#6b21a8' : palette.brandPurple)
-    : palette.brandPurple;
+  const resolvedBrandCyan = palette.brandCyan;
+  const resolvedBrandBlue = palette.brandBlue;
+  const resolvedBrandPurple = palette.brandPurple;
 
   // Actualizar variables CSS de acento y marca en :root
   root.style.setProperty('--color-brand-cyan', resolvedBrandCyan);

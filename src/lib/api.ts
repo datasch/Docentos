@@ -12,6 +12,7 @@ import {
   CourseAccessStatus,
   MenteeStudent,
   MenteeCandidate,
+  CourseAccessRequest,
   UserRole,
   TTSGuide,
   LandingConfig,
@@ -46,8 +47,7 @@ import type {
   StaffListeningEntry,
 } from './listeningTypes';
 
-const fetch: typeof globalThis.fetch = (input, init) =>
-  globalThis.fetch(input, { ...init, credentials: 'include' });
+import { apiRequest as fetch, ApiRequestError } from './apiRequest';
 
 function listeningQuery(filter: ListeningAdminFilter): string {
   const params = new URLSearchParams();
@@ -212,7 +212,8 @@ export const api = {
     sessionExpiresAt?: string;
   }> {
     const res = await fetch('/api/auth/me');
-    if (!res.ok) throw new Error('Error al restaurar la sesión');
+    if (res.status === 401) return { authenticated: false, user: null, hasAccess: false };
+    if (!res.ok) throw new ApiRequestError('No se pudo comprobar la sesión. Inténtalo de nuevo.', res.status);
     return res.json();
   },
 
@@ -274,6 +275,26 @@ export const api = {
   async getCourseAccess(courseId: string): Promise<CourseAccessStatus> {
     const res = await fetch(`/api/courses/${courseId}/access`);
     if (!res.ok) throw new Error('Error al consultar acceso');
+    return res.json();
+  },
+
+  async getMyMentor(courseId?: string): Promise<{ success: boolean; mentor: any; assignedMentor?: any; courseMentor?: any; hasPendingRequest?: boolean }> {
+    const url = courseId ? `/api/mentee/my-mentor?courseId=${encodeURIComponent(courseId)}` : '/api/mentee/my-mentor';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Error al consultar datos de mentoría');
+    return res.json();
+  },
+
+  async requestCourseAccess(courseId: string): Promise<{ success: boolean; status: string; message: string; assignmentId?: string }> {
+    const res = await fetch('/api/mentee/request-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al solicitar acceso al curso');
+    }
     return res.json();
   },
 
@@ -735,7 +756,7 @@ export const api = {
 
   async getQuizAttemptStatus(moduleId: string): Promise<QuizAttemptStatus> {
     const res = await fetch(`/api/modules/${moduleId}/quiz/attempt-status`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('No se pudo verificar la disponibilidad del examen.');
+    if (!res.ok) throw new ApiRequestError('No se pudo verificar la disponibilidad del examen.', res.status);
     const status = await res.json();
     // Validate the replacement endpoint before the exam uses its counters or clock.
     if (!status || !Number.isInteger(status.attemptsUsed) || status.attemptsUsed < 0 ||
@@ -898,9 +919,86 @@ export const api = {
   },
 
   // Mentor Dashboard API
+  /** Cursos asignados específicamente al mentor autenticado (o todos si es ADMIN). */
+  async getMentorCourses(): Promise<{ success: boolean; courses: Course[] }> {
+    const res = await fetch('/api/mentor/courses');
+    if (!res.ok) throw new Error('Error al obtener los cursos asignados al mentor');
+    return res.json();
+  },
+
+  /** Cursos asignados a un mentor específico (Admin). */
+  async getAdminMentorCourses(mentorId: string): Promise<{ success: boolean; courseIds: string[]; mentor: any }> {
+    const res = await fetch(`/api/admin/mentors/${mentorId}/courses`);
+    if (!res.ok) throw new Error('Error al obtener los cursos del mentor');
+    return res.json();
+  },
+
+  /** Actualiza los cursos asignados a un mentor (Admin). */
+  async setAdminMentorCourses(mentorId: string, courseIds: string[]): Promise<{ success: boolean; courseIds: string[] }> {
+    const res = await fetch(`/api/admin/mentors/${mentorId}/courses`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseIds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar cursos del mentor');
+    }
+    return res.json();
+  },
+
+  /** Mentores asignados a un curso específico (Admin). */
+  async getAdminCourseMentors(courseId: string): Promise<{ success: boolean; mentorIds: string[]; mentors: any[] }> {
+    const res = await fetch(`/api/admin/courses/${courseId}/mentors`);
+    if (!res.ok) throw new Error('Error al obtener los mentores del curso');
+    return res.json();
+  },
+
+  /** Actualiza los mentores asignados a un curso (Admin). */
+  async setAdminCourseMentors(courseId: string, mentorIds: string[]): Promise<{ success: boolean; mentorIds: string[] }> {
+    const res = await fetch(`/api/admin/courses/${courseId}/mentors`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mentorIds }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar mentores del curso');
+    }
+    return res.json();
+  },
+
   async getMentorMentees(): Promise<{ success: boolean; mentees: any[] }> {
     const res = await fetch('/api/mentor/mentees');
     if (!res.ok) throw new Error('Error al obtener mentees');
+    return res.json();
+  },
+
+  async getMentorAccessRequests(): Promise<{ success: boolean; requests: CourseAccessRequest[] }> {
+    const res = await fetch('/api/mentor/access-requests');
+    if (!res.ok) throw new Error('Error al obtener solicitudes de acceso');
+    return res.json();
+  },
+
+  async approveCourseAccessRequest(requestId: string): Promise<{ success: boolean; message: string; assignment: any }> {
+    const res = await fetch(`/api/mentor/access-requests/${requestId}/approve`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al aprobar solicitud de acceso');
+    }
+    return res.json();
+  },
+
+  async rejectCourseAccessRequest(requestId: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`/api/mentor/access-requests/${requestId}/reject`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al rechazar solicitud de acceso');
+    }
     return res.json();
   },
 

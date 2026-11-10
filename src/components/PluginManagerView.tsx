@@ -386,9 +386,9 @@ export const PluginManagerView: React.FC = () => {
           aria-modal="true"
         >
           <div
-            className={`bg-raised border border-line rounded-2xl w-full ${
+            className={`app-dialog bg-raised border border-line rounded-2xl w-full ${
               configModalPlugin.id === 'docentos-customizer' ? 'max-w-3xl' : 'max-w-xl'
-            } max-h-[85vh] flex flex-col shadow-2xl overflow-hidden overscroll-contain`}
+            } max-h-[calc(100dvh-1.5rem)] flex flex-col shadow-2xl overflow-hidden overscroll-contain`}
             onMouseDown={(e) => e.stopPropagation()}
             onWheel={(e) => e.stopPropagation()}
           >

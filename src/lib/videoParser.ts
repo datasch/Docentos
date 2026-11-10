@@ -17,6 +17,7 @@ export interface VideoLike {
   driveFileId?: string | null;
   embedUrl?: string | null;
   playbackUrl?: string | null;
+  mimeType?: string | null;
 }
 
 /**
@@ -24,11 +25,13 @@ export interface VideoLike {
  */
 export function isDriveVideo(video?: VideoLike | null): boolean {
   if (!video) return false;
+  if (video.source === 'YOUTUBE' || video.provider === 'youtube') return false;
+  const url = `${video.embedUrl || ''} ${video.playbackUrl || ''}`.toLowerCase();
+  if (url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com')) return false;
   if (video.source === 'GOOGLE_DRIVE') return true;
   if (video.provider === 'drive') return true;
-  if (Boolean(video.driveFileId && video.driveFileId.trim())) return true;
-  const url = `${video.embedUrl || ''} ${video.playbackUrl || ''}`;
   if (url.includes('drive.google.com') || url.includes('/file/d/')) return true;
+  if (Boolean(video.driveFileId && video.driveFileId.trim()) && video.mimeType !== 'video/youtube') return true;
   return false;
 }
 

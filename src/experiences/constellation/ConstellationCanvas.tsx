@@ -297,8 +297,13 @@ export const ConstellationCanvas: React.FC<{
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = window.innerWidth;
-    let height = window.innerHeight;
+    const container = canvas.parentElement;
+    let width = fullScreen ? window.innerWidth : Math.max(1, container?.clientWidth || 400);
+    let height = fullScreen ? window.innerHeight : Math.max(1, container?.clientHeight || 320);
+    const sceneSize = Math.min(width, height);
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let isInView = true;
+    let disposed = false;
     let isTabVisible = !document.hidden;
     let isCanvasPaused = false;
 
@@ -312,16 +317,16 @@ export const ConstellationCanvas: React.FC<{
     let currentRotX = 0;
 
     // Scroll Animation Tracking (Interpolación con inercia continua)
-    let targetScrollY = window.scrollY;
-    let currentScrollY = window.scrollY;
-    let lastScrollY = window.scrollY;
+    let targetScrollY = fullScreen ? window.scrollY : 0;
+    let currentScrollY = targetScrollY;
+    let lastScrollY = targetScrollY;
     let scrollVelocity = 0;
 
     // Intro animación de ensamblaje inicial
     let introProgress = 0;
 
     const handleScroll = () => {
-      if (window.innerWidth < 768) return;
+      if (!fullScreen || window.innerWidth < 768 || motionPreference.matches) return;
       if (isBodyScrollLocked()) return;
       targetScrollY = window.scrollY;
       const cutoffY = 1400;
@@ -341,7 +346,7 @@ export const ConstellationCanvas: React.FC<{
     let pendingMouseY = 0;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (window.innerWidth < 768) return;
+      if (!fullScreen || window.innerWidth < 768 || motionPreference.matches) return;
       if (isBodyScrollLocked()) return;
       pendingMouseX = e.clientX;
       pendingMouseY = e.clientY;
@@ -359,8 +364,8 @@ export const ConstellationCanvas: React.FC<{
     const resize = () => {
       const isMobile = window.innerWidth < 768;
       const dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.25);
-      width = window.innerWidth;
-      height = window.innerHeight;
+      width = fullScreen ? window.innerWidth : Math.max(1, container?.clientWidth || 400);
+      height = fullScreen ? window.innerHeight : Math.max(1, container?.clientHeight || 320);
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = `${width}px`;
@@ -382,6 +387,10 @@ export const ConstellationCanvas: React.FC<{
         document.documentElement.getAttribute('data-color-mode') === 'light' ||
         document.documentElement.classList.contains('mode-light') ||
         !document.documentElement.classList.contains('dark');
+      if (motionPreference.matches && isInView) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(render);
+      }
     };
 
     window.addEventListener('docentos-theme-change', handleThemeChange);
@@ -395,7 +404,7 @@ export const ConstellationCanvas: React.FC<{
     const particles: Particle3D[] = [];
     const isMobileInitial = width < 768;
     // Densidad balanceada en el punto óptimo (360 en PC, 120 en móvil para 60 FPS garantizados)
-    const actualParticleCount = particleCount ?? (isMobileInitial ? 120 : 360);
+    const actualParticleCount = particleCount ?? (fullScreen ? (isMobileInitial ? 120 : 360) : (window.innerWidth < 640 ? 180 : 360));
     // Escala del logo y cerebro: incrementada en móvil para mayor presencia e impacto visual
     const brainScale = isMobileInitial
       ? Math.min(width * 0.48, height * 0.38)
@@ -602,6 +611,10 @@ export const ConstellationCanvas: React.FC<{
         } catch (e) {
           console.warn('Fallback al muestreo de logo:', e);
         }
+        if (motionPreference.matches && isInView) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = requestAnimationFrame(render);
+        }
       };
 
       logoImg.onerror = () => {
@@ -668,7 +681,8 @@ export const ConstellationCanvas: React.FC<{
 
     const handleVisibilityChange = () => {
       isTabVisible = !document.hidden;
-      if (isTabVisible) {
+      cancelAnimationFrame(animationFrameId);
+      if (isTabVisible && isInView) {
         animationFrameId = requestAnimationFrame(render);
       }
     };
@@ -725,7 +739,7 @@ export const ConstellationCanvas: React.FC<{
     };
 
     const render = () => {
-      if (!isTabVisible || pausedRef.current || width < 768) return;
+      if (disposed || !isTabVisible || !isInView || pausedRef.current || (fullScreen && width < 768)) return;
 
       const isMobileNow = width < 768;
 
@@ -772,7 +786,7 @@ export const ConstellationCanvas: React.FC<{
       const morphProgress = currentScrollY <= (isMobileNow ? 25 : 5)
         ? 0
         : Math.min(currentScrollY / morphThreshold, 1.0);
-      const logoWeight = currentScrollY <= (isMobileNow ? 25 : 5)
+      const logoWeight = !fullScreen ? 1 : currentScrollY <= (isMobileNow ? 25 : 5)
         ? 1.0
         : Math.max(0, 1.0 - Math.pow(morphProgress, 1.25)) * introEase;
 
@@ -795,8 +809,8 @@ export const ConstellationCanvas: React.FC<{
 
       // Posicionamiento dinámico del centro focal
       const isDesktop = width >= 1024;
-      const heroCenterX = isDesktop ? width * 0.72 : width * 0.5;
-      const heroCenterY = isDesktop ? Math.min(height * 0.46, 440) : height * 0.42;
+      const heroCenterX = fullScreen && isDesktop ? width * 0.72 : width * 0.5;
+      const heroCenterY = !fullScreen ? height * 0.5 : isDesktop ? Math.min(height * 0.46, 440) : height * 0.42;
 
       const centerTransition = Math.min(currentScrollY / 500, 1.0);
       const cx = heroCenterX + (width * 0.5 - heroCenterX) * centerTransition;
@@ -805,7 +819,7 @@ export const ConstellationCanvas: React.FC<{
       const fov = 440 + dispersionEase * 80;
 
       // Partículas ambientales de fondo: solo activas en escritorio para máximo rendimiento
-      if (!isMobileNow) {
+      if (fullScreen && !isMobileNow) {
         for (let i = 0; i < ambientParticles.length; i++) {
           const ap = ambientParticles[i];
           ap.x += ap.vx;
@@ -822,7 +836,7 @@ export const ConstellationCanvas: React.FC<{
       }
 
       // Impulsos sinápticos: exclusivos de escritorio para garantizar 60 FPS ininterrumpidos en móviles
-      if (!isMobileNow) {
+      if (fullScreen && !isMobileNow) {
         const scrollActivity = Math.min(Math.abs(scrollVelocity) * 0.04, 1);
         const synapseChance = 0.05 + Math.min(scrollActivity * 0.03, 0.3);
         if (Math.random() < synapseChance) spawnSynapse(scrollActivity);
@@ -930,7 +944,8 @@ export const ConstellationCanvas: React.FC<{
         const dist = fov + z2;
         if (dist <= 10) continue;
 
-        const scale = fov / dist;
+        const sceneScale = fullScreen ? 1 : Math.min(width, height) / sceneSize;
+        const scale = fov / dist * sceneScale;
         const x2d = cx + x1 * scale;
         const y2d = cy + y2 * scale;
 
@@ -949,19 +964,19 @@ export const ConstellationCanvas: React.FC<{
 
         // En modo logo, dar un boost de escala generoso (1.45x en móvil) para que los triángulos se toquen y formen un mosaico nítido y continuo
         const logoBoost = logoWeight * (isMobileNow ? 1.45 : 1.35);
-        const dynamicSize = p.baseSize * (1 + dispersionEase * 0.35 + logoBoost);
+        const dynamicSize = p.baseSize * (1 + dispersionEase * 0.35 + logoBoost) * sceneScale;
 
         // Todos los elementos (logo + sombrero festivo) se dibujan exclusivamente como micro-triángulos 3D
         drawFastTriangle(ctx, x2d, y2d, dynamicSize, p.rotation, displayColor, alpha, skipParticleStroke);
       }
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!motionPreference.matches) animationFrameId = requestAnimationFrame(render);
     };
 
     const resumeLoop = () => {
-      if (window.innerWidth < 768) return;
-      targetScrollY = window.scrollY;
-      currentScrollY = window.scrollY;
+      if ((fullScreen && window.innerWidth < 768) || !isInView) return;
+      targetScrollY = fullScreen ? window.scrollY : 0;
+      currentScrollY = targetScrollY;
       // Al volver a la vista explorar en escritorio, el logo debe estar 100% ensamblado al instante
       introProgress = 1.0;
       isCanvasPaused = false;
@@ -977,15 +992,30 @@ export const ConstellationCanvas: React.FC<{
     resumeLoopRef.current = resumeLoop;
     pauseLoopRef.current = pauseLoop;
 
+    const handleMotionChange = () => resumeLoop();
+    motionPreference.addEventListener('change', handleMotionChange);
+    const resizeObserver = !fullScreen && container ? new ResizeObserver(() => {
+      resize();
+      resumeLoop();
+    }) : null;
+    if (container) resizeObserver?.observe(container);
+    const visibilityObserver = !fullScreen ? new IntersectionObserver(entries => {
+      isInView = entries[0]?.isIntersecting ?? false;
+      if (isInView) resumeLoop();
+      else pauseLoop();
+    }) : null;
+    visibilityObserver?.observe(canvas);
+
     // Iniciar el bucle de renderizado solo si no está pausado y estamos en escritorio (>= md)
     let startTimer: number | null = null;
-    if (!pausedRef.current && window.innerWidth >= 768) {
+    if (!pausedRef.current && fullScreen && window.innerWidth >= 768) {
       startTimer = window.setTimeout(() => {
         animationFrameId = requestAnimationFrame(render);
       }, 50);
     }
 
     return () => {
+      disposed = true;
       if (startTimer) window.clearTimeout(startTimer);
       cancelAnimationFrame(animationFrameId);
       resumeLoopRef.current = null;
@@ -999,8 +1029,11 @@ export const ConstellationCanvas: React.FC<{
       window.removeEventListener(SEASONAL_EVENT_NAME, handleSeasonalUpdate);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       themeObserver.disconnect();
+      resizeObserver?.disconnect();
+      visibilityObserver?.disconnect();
+      motionPreference.removeEventListener('change', handleMotionChange);
     };
-  }, [particleCount]);
+  }, [particleCount, fullScreen]);
 
   if (fullScreen) {
     return (
@@ -1020,11 +1053,11 @@ export const ConstellationCanvas: React.FC<{
   }
 
   return (
-    <div className={`relative w-full h-full flex items-center justify-center select-none ${className}`}>
+    <div className={`relative w-full h-full flex items-center justify-center select-none pointer-events-none ${className}`}>
       <canvas
         ref={canvasRef}
         className="w-full h-full block cursor-crosshair"
-        style={{ minHeight: '400px', touchAction: 'none' }}
+        style={{ touchAction: 'pan-y' }}
       />
     </div>
   );

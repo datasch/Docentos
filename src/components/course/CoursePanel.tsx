@@ -55,7 +55,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
   const activeTab = tabs.find((tab) => tab.id === active) ?? tabs[0];
 
   return (
-    <section className="flex h-full flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
+    <section className="academy-course-panel flex h-full flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
       <div className="flex shrink-0 items-stretch border-b border-line">
         <div role="tablist" aria-label="Paneles del curso" className="flex min-w-0 flex-1">
           {tabs.map((tab) => {
@@ -76,7 +76,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => onChange(tab.id)}
                 onKeyDown={handleKeyDown}
-                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3.5 text-meta transition-colors ${
+                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3.5 text-sm transition-colors ${
                   isActive ? 'text-ink' : 'text-ink-muted hover:text-ink-soft'
                 }`}
               >

@@ -1,0 +1,319 @@
+:root,
+body.academy-ui {
+  --academy-font-display: 'Manrope', 'Segoe UI', sans-serif;
+  --academy-font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-sans: var(--academy-font-body);
+  --font-mono: var(--academy-font-body);
+  --default-mono-font-family: var(--academy-font-body);
+  --color-canvas: #09090b;
+  --color-surface: #121214;
+  --color-raised: #1c1c20;
+  --color-elevated: #26262b;
+  --color-card: #121214;
+  --color-line: #303035;
+  --color-line-strong: #52525b;
+  --color-ink: #f4f4f5;
+  --color-ink-soft: #c4c4cb;
+  --color-ink-muted: #a5a5af;
+  --color-ink-faint: #85858f;
+  --academy-panel-shadow: 0 24px 64px rgb(0 0 0 / 28%);
+  --academy-reading-width: 72ch;
+  --th-display: var(--academy-font-display);
+  --th-fondo: var(--color-canvas);
+  --th-superficie: var(--color-surface);
+  --th-elevada: var(--color-raised);
+  --th-overlay: var(--color-elevated);
+  --th-linea: var(--color-line);
+  --th-linea-fuerte: var(--color-line-strong);
+  --th-tinta: var(--color-ink);
+  --th-tinta-suave: var(--color-ink-soft);
+  --th-tinta-muda: var(--color-ink-muted);
+}
+
+:root[data-color-mode='light'],
+body.academy-ui[data-color-mode='light'] {
+  --color-canvas: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-raised: #edf1f7;
+  --color-elevated: #e5ebf4;
+  --color-card: #ffffff;
+  --color-line: #d8e0ed;
+  --color-line-strong: #a1afc5;
+  --color-ink: #182235;
+  --color-ink-soft: #47576e;
+  --color-ink-muted: #526079;
+  --color-ink-faint: #64748b;
+  --academy-panel-shadow: 0 24px 64px rgb(24 34 53 / 14%);
+  color-scheme: light;
+}
+:root[data-color-mode='dark'] { color-scheme: dark; }
+
+body.academy-ui {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--academy-font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.academy-ui :is(button, input, select, textarea) { font-family: inherit; }
+.academy-ui :is(.font-sans, .font-mono, .font-constellation-body, .lp-root, code, pre, kbd, samp) { font-family: var(--academy-font-body); }
+.academy-ui :is(h1, h2, h3, .font-constellation-display, .lp-logo) {
+  font-family: var(--academy-font-display);
+}
+.academy-ui :is(h1, h2, h3) { overflow-wrap: break-word; }
+.academy-ui h1 { letter-spacing: -0.04em; }
+.academy-ui :is(h2, h3) { letter-spacing: -0.025em; }
+.academy-ui :is(.font-constellation-label, .lp-header) { font-family: var(--academy-font-body); }
+.academy-ui :is(.academy-experience, .constellation-viewer-root) {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+.academy-ui .academy-hero__title { font-weight: 700; }
+.academy-ui .academy-hero__intro > p:first-child { font-size: 1.125rem; }
+.academy-ui .academy-hero__availability { font-size: 0.875rem; }
+
+.academy-ui .lp-header,
+.academy-ui .lp-listening-floating-btn {
+  --lp-bg-main: var(--color-canvas);
+  --lp-bg-surface: var(--color-surface);
+  --lp-bg-elevated: var(--color-raised);
+  --lp-text-strong: var(--color-ink);
+  --lp-text-primary: var(--color-ink);
+  --lp-text-secondary: var(--color-ink-soft);
+  --lp-text-muted: var(--color-ink-muted);
+  --lp-border: var(--color-line);
+  --lp-cyan: var(--color-brand-cyan);
+}
+.academy-ui .lp-header {
+  background: var(--color-surface);
+  border-bottom-color: var(--color-line);
+  backdrop-filter: none;
+}
+.academy-ui .lp-logo-text {
+  background: none;
+  color: var(--color-ink);
+  -webkit-text-fill-color: currentColor;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+.academy-ui :is(.lp-icon-btn, .lp-user-profile) {
+  background: transparent;
+  border-color: var(--color-line);
+  color: var(--color-ink-soft);
+}
+.academy-ui :is(.lp-icon-btn, .lp-user-profile):hover { background: var(--color-raised); }
+.academy-ui .lp-nav-link { font-size: 0.9375rem; font-weight: 600; }
+.academy-ui .lp-menu { background: var(--color-surface); box-shadow: var(--academy-panel-shadow); }
+.academy-ui .lp-mobile-panel { background: var(--color-surface); }
+.academy-ui :is(.lp-mobile-links a, .lp-mobile-links button) { color: var(--color-ink-soft); }
+.academy-ui .lp-search-box { background: var(--color-raised); border-color: var(--color-line); }
+
+.academy-ui :is(.btn-brand-primary, .lp-btn-primary) {
+  background: var(--color-brand-cyan) !important;
+  color: var(--color-on-brand) !important;
+  box-shadow: none;
+  border-radius: 0.75rem;
+  min-height: 2.75rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.academy-ui :is(.btn-brand-primary, .academy-button, .lp-btn-primary):disabled { cursor: not-allowed; }
+.academy-ui :is(button, a, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--color-brand-cyan);
+  outline-offset: 3px;
+}
+.academy-ui :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']), select, textarea) {
+  border-radius: 0.75rem;
+  min-height: 2.75rem;
+}
+.academy-ui :is(input, textarea)::placeholder { opacity: 1; }
+.academy-ui :is(input, textarea) { caret-color: var(--color-brand-cyan); }
+
+.academy-ui .academy-search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 3rem;
+  padding-inline: 0.875rem 0.25rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  transition: border-color 150ms ease;
+}
+.academy-ui .academy-search-field:focus-within { border-color: var(--color-brand-cyan); }
+.academy-ui .academy-search-field:has(input:focus-visible) {
+  outline: 2px solid var(--color-brand-cyan);
+  outline-offset: 3px;
+}
+.academy-ui .academy-search-field > svg { flex-shrink: 0; color: var(--color-ink-muted); }
+.academy-ui .academy-search-field .academy-compound-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 1rem;
+  line-height: 1.5;
+  outline: none;
+  box-shadow: none;
+}
+.academy-ui .academy-search-field .academy-compound-input::placeholder { color: var(--color-ink-muted); }
+.academy-ui .academy-search-field .academy-compound-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.academy-ui .academy-search-field > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+.academy-ui .academy-search-field > button:hover { background: var(--color-raised); }
+.academy-ui .academy-inline-field { min-height: 3rem; }
+.academy-ui .academy-inline-field .academy-compound-input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  outline: none;
+  box-shadow: none;
+}
+.academy-ui .academy-inline-field:has(input:focus-visible) {
+  outline: 2px solid var(--color-brand-cyan);
+  outline-offset: 3px;
+}
+.academy-ui .lp-search-box:focus-within { box-shadow: none; background: var(--color-raised); }
+
+.academy-ui .app-dialog {
+  border-radius: 1.5rem;
+  border-color: var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--academy-panel-shadow);
+}
+.academy-ui .app-dialog > header { background: var(--color-surface); border-bottom-color: var(--color-line); }
+.academy-ui .app-dialog :is(h1, h2) { font-weight: 700; }
+.academy-ui .app-dialog :is(input, textarea, select) { line-height: 1.5; }
+
+.academy-ui .academy-catalog { padding-top: 1.5rem; }
+.academy-ui .academy-course-card h3 { font-size: 1.125rem; line-height: 1.45; }
+.academy-ui .academy-course-card p { font-size: 1rem; line-height: 1.6; }
+.academy-ui .academy-course-card .academy-course-meta { font-family: var(--academy-font-body); }
+.academy-ui .academy-course-card .academy-course-meta > span { color: var(--color-brand-cyan); }
+.academy-ui .academy-course-card img { transition: transform 220ms ease-out; }
+.academy-ui .catalog-featured-glow h3 { font-family: var(--academy-font-display); }
+.academy-ui .course-category-filter { font-family: var(--academy-font-body); font-size: 1rem; }
+.academy-ui .course-category-filter > summary { min-height: 3rem; }
+.academy-ui .course-category-filter__options button { min-height: 3rem; }
+.academy-ui input[aria-label='Buscar cursos'] { min-height: 3rem; border-radius: 0.75rem; font-size: 1rem; }
+.academy-ui .academy-testimonial-card p { font-size: 1rem; font-style: normal; }
+.academy-ui .academy-method__item h3 { font-family: var(--academy-font-display); }
+.academy-ui .academy-method__item p { font-size: 1rem; }
+
+.academy-ui .academy-course-overview { padding-block: 2rem 4rem; }
+.academy-ui .academy-course-overview h1 { font-size: clamp(2rem, 4vw, 3.25rem); font-weight: 700; line-height: 1.2; }
+.academy-ui .academy-course-cover { border-radius: 1.5rem; background: var(--color-surface); }
+.academy-ui .academy-course-overview > button { min-height: 2.75rem; }
+.academy-ui .constellation-mission-modal { border-radius: 1.5rem; }
+.academy-ui .constellation-mission-modal > header { background: var(--color-raised); }
+.academy-ui .academy-exam { border-radius: 1rem; }
+.academy-ui .academy-exam h2 { font-size: 1.25rem; line-height: 1.4; }
+.academy-ui .academy-exam dt { font-size: 0.8125rem; }
+.academy-ui .academy-exam dd { font-size: 1rem; }
+.academy-ui .academy-exam > p { font-size: 0.9375rem; }
+.academy-ui .academy-exam button { min-height: 2.75rem; }
+
+.academy-ui .constellation-viewer-root {
+  --th-rotulo: var(--color-surface);
+  --text-title: 1.5rem;
+  --text-section: 1.125rem;
+  --text-row: 1rem;
+  --text-meta: 0.875rem;
+  --text-micro: 0.8125rem;
+}
+.academy-ui .constellation-viewer-root .isla .rotulo {
+  font-family: var(--academy-font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-ink);
+  border-color: var(--color-line);
+  background: var(--color-surface);
+  padding: 0.5rem 0.75rem;
+  backdrop-filter: none;
+}
+.academy-ui .constellation-viewer-root .mision-popover {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-ink);
+  box-shadow: var(--academy-panel-shadow);
+}
+.academy-ui .constellation-viewer-root .mision-popover h3 { font-size: 1.125rem; line-height: 1.45; }
+.academy-ui .constellation-viewer-root .mision-popover p { color: var(--color-ink-soft); line-height: 1.6; }
+.academy-ui .constellation-mission-modal {
+  --text-title: 1.5rem;
+  --text-section: 1.125rem;
+  --text-row: 1rem;
+  --text-meta: 0.875rem;
+  --text-micro: 0.8125rem;
+}
+
+.academy-ui :is(.academy-study-path, .academy-study-player) {
+  font-family: var(--academy-font-body);
+  font-size: 1rem;
+  line-height: 1.65;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+.academy-ui .academy-study-path .astro { position: absolute; opacity: 0.45; }
+.academy-ui .academy-course-progress,
+.academy-ui .academy-module-heading {
+  background: transparent;
+  border-color: var(--color-line);
+  box-shadow: none;
+}
+.academy-ui .academy-course-progress h1 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 600; letter-spacing: -0.02em; }
+.academy-ui .academy-course-progress p { max-width: 65ch; font-size: 1rem; line-height: 1.65; color: var(--color-ink-soft); }
+.academy-ui .academy-module-heading h2 { font-size: 1.125rem; font-weight: 600; line-height: 1.45; }
+.academy-ui .academy-study-path .isla .rotulo {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-weight: 500;
+  text-shadow: none;
+  box-shadow: none;
+}
+.academy-ui .academy-study-path .isla.actual .rotulo { border-color: var(--color-brand-cyan); font-weight: 600; }
+.academy-ui .academy-study-player .academy-lesson-heading { font-size: 1.5rem; line-height: 1.4; font-weight: 600; letter-spacing: -0.015em; }
+.academy-ui .academy-study-player .academy-course-panel { background: var(--color-surface); }
+.academy-ui .academy-study-player [role='tab'] { font-size: 0.9375rem; line-height: 1.5; font-weight: 500; letter-spacing: 0; min-height: 3rem; }
+.academy-ui .academy-study-player [role='tab'][aria-selected='true'] { font-weight: 600; color: var(--color-ink); }
+.academy-ui .academy-study-player [role='treeitem'] { line-height: 1.5; }
+.academy-ui .academy-study-player [role='treeitem'][aria-current='true'] { background: var(--color-raised); color: var(--color-ink); }
+.academy-ui .academy-study-player :is(.text-meta, .text-micro) { line-height: 1.55; }
+.academy-ui .academy-study-player textarea { font-size: 1rem; line-height: 1.65; }
+
+@media (min-width: 640px) {
+  .academy-ui .course-category-filter { border-radius: 0.75rem; }
+  .academy-ui .course-category-filter[open] { border-radius: 0.75rem; }
+}
+@media (max-width: 639px) {
+  .academy-ui :is(input:not([type='checkbox']):not([type='radio']), textarea, select) { font-size: 1rem; }
+  .academy-ui .academy-hero__title { font-size: clamp(2.125rem, 9vw, 3rem); }
+  .academy-ui .app-dialog { border-radius: 1.125rem; }
+}
+@media (hover: none) {
+  .academy-ui .academy-course-card img { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .academy-ui .academy-course-card img { transition: none; }
+}

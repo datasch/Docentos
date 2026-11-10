@@ -315,4 +315,12 @@ test('AI Course Builder: Persistencia de Curso BORRADOR y Publicación', async (
     assert.equal(published.published, true, 'El curso debe estar publicado tras la confirmación del mentor');
     assert.ok(published.publishedAt, 'Debe registrar la fecha de publicación');
   });
+
+  t.after(async () => {
+    if (createdCourseId) {
+      await prisma.course.deleteMany({
+        where: { id: createdCourseId },
+      });
+    }
+  });
 });

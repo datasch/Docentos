@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import {
   Award,
@@ -32,6 +33,13 @@ import {
   X,
   Loader2,
   RefreshCw,
+  GraduationCap,
+  Mail,
+  Copy,
+  Check,
+  UserCheck,
+  Clock,
+  Send,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
@@ -55,6 +63,7 @@ import { getCustomBrandName } from '../lib/logoConfig';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
 import { CoursePanel, PanelTabId } from './course/CoursePanel';
+import { DocentOSPlayer } from './course/DocentOSPlayer';
 import { SyllabusTree } from './course/SyllabusTree';
 import { NotesPanel } from './course/NotesPanel';
 import { MentorshipPanel } from './course/MentorshipPanel';
@@ -143,6 +152,22 @@ export function certificateForCourse(
   return certificate && certificate.courseId === courseId ? certificate : null;
 }
 
+/**
+ * Decide si un clic en el fondo del modal debe cerrarlo.
+ *
+ * Durante una evaluación (examenActivo = true), el cierre por clic externo
+ * queda estrictamente deshabilitado para evitar que el alumno pierda sus
+ * respuestas por un clic accidental fuera del modal. El único modo de salir
+ * es mediante la tecla Escape o el botón de cierre (X).
+ */
+export function canCloseOnBackdropClick(
+  examenActivo: boolean,
+  isTargetCurrentTarget: boolean,
+): boolean {
+  if (examenActivo) return false;
+  return isTargetCurrentTarget;
+}
+
 export const CourseViewer: React.FC<CourseViewerProps> = ({
   course,
   currentUser,
@@ -163,6 +188,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   onLessonCompletedAndAdvance,
   onQuizPassed,
 }) => {
+  const { t } = useTranslation();
   const [activeModuleIndex, setActiveModuleIndex] = useState(initialModuleIndex ?? 0);
   const [activeVideoIndex, setActiveVideoIndex] = useState(initialVideoIndex ?? 0);
   // Mientras nadie elija lección a mano, el curso se abre por donde se dejó.
@@ -177,6 +203,59 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       setActivePanel('sessions');
     }
   }, [hideSyllabus, activePanel]);
+
+  const [effectiveMentor, setEffectiveMentor] = useState<{ id: string; name: string; email: string; avatarUrl?: string | null } | null>(
+    course.assignedMentor || (course.mentors && course.mentors.length > 0 ? course.mentors[0] : null) || null,
+  );
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState<boolean>(Boolean(course.hasPendingRequest));
+  const [isRequestingAccess, setIsRequestingAccess] = useState<boolean>(false);
+  const [requestNotice, setRequestNotice] = useState<string>('');
+
+  useEffect(() => {
+    const directMentor = course.assignedMentor || (course.mentors && course.mentors.length > 0 ? course.mentors[0] : null);
+    if (directMentor) {
+      setEffectiveMentor(directMentor);
+    }
+    if (currentUser?.role === 'MENTEE' && !hasAccess) {
+      api
+        .getMyMentor(course.id)
+        .then((res) => {
+          if (res?.mentor) {
+            setEffectiveMentor(res.mentor);
+          }
+          if (typeof res?.hasPendingRequest === 'boolean') {
+            setHasPendingRequest(res.hasPendingRequest);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [course.id, course.assignedMentor, course.mentors, currentUser?.role, hasAccess]);
+
+  const handleRequestAccess = async () => {
+    if (!course.id || isRequestingAccess) return;
+    setIsRequestingAccess(true);
+    try {
+      const res = await api.requestCourseAccess(course.id);
+      setHasPendingRequest(true);
+      setRequestNotice(res.message || 'Solicitud de acceso enviada correctamente a tu mentor.');
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo enviar la solicitud de acceso.');
+    } finally {
+      setIsRequestingAccess(false);
+    }
+  };
+
+  const handleCopyEmail = () => {
+    if (!effectiveMentor?.email) return;
+    navigator.clipboard
+      .writeText(effectiveMentor.email)
+      .then(() => {
+        setCopiedEmail(true);
+        setTimeout(() => setCopiedEmail(false), 2000);
+      })
+      .catch(() => {});
+  };
 
   useBodyScrollLock(Boolean(isModal));
 
@@ -1263,98 +1342,55 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               </div>
             )}
 
-            <div className="group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
-              {/* Indicador de carga visual del reproductor con auxilio ante timeouts (Drive/enlaces caídos) */}
-              {showsPlayer && isVideoLoading && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/95 px-4 text-center backdrop-blur-sm transition-opacity duration-300">
-                  {!hasLoadTimedOut ? (
-                    <div className="pointer-events-none flex flex-col items-center">
-                      <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 border border-cyan-500/20 shadow-inner">
-                        <Loader2 className="h-6 w-6 text-cyan-400 animate-spin" />
-                      </div>
-                      <p className="text-section font-semibold text-white">
-                        {providerLabel === 'Google Drive' ? 'Cargando clase desde Google Drive...' : 'Cargando reproductor...'}
-                      </p>
-                      <p className="mt-1 text-meta text-zinc-400">
-                        {providerLabel === 'Google Drive' ? 'Conectando con el visor de Google Workspace' : 'Preparando el contenido audiovisual'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex max-w-md flex-col items-center animate-fade-in">
-                      <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                        <AlertCircle className="h-6 w-6" />
-                      </div>
-                      <p className="text-section font-semibold text-white">
-                        ¿Tarda demasiado en cargar?
-                      </p>
-                      <p className="mt-1 text-meta leading-relaxed text-zinc-400">
-                        {providerLabel === 'Google Drive'
-                          ? 'Google Drive puede tardar si la conexión es lenta o si el archivo tiene permisos restringidos en Drive.'
-                          : 'El reproductor está tardando más de lo habitual en responder.'}
-                      </p>
-                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
-                        {videoSource?.embedUrl && (
-                          <a
-                            href={videoSource.embedUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-3.5 py-2 text-micro font-bold text-cyan-300 hover:bg-cyan-500/30 transition-colors"
-                          >
-                            <span>Abrir en pestaña nueva</span>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsVideoLoading(true);
-                            setHasLoadTimedOut(false);
-                            const ifr = document.getElementById('docentos-video-iframe') as HTMLIFrameElement | null;
-                            if (ifr) ifr.src = ifr.src;
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 border border-zinc-700 px-3.5 py-2 text-micro font-bold text-zinc-200 hover:bg-zinc-700 transition-colors"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          <span>Reintentar</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Acceso directo a Google Drive para navegadores con protecciones estrictas (Brave Shields, cookies de terceros bloqueadas) */}
-              {showsPlayer && currentVideo && isDriveVideo(currentVideo) && (
-                <a
-                  href={resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Abrir video directamente en Google Drive"
-                  className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-lg bg-black/75 backdrop-blur-md border border-white/10 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 hover:text-white hover:bg-black/90 transition-all opacity-80 hover:opacity-100 shadow-lg"
-                >
-                  <ExternalLink className="h-3 w-3 text-cyan-400" />
-                  <span>Abrir en Google Drive</span>
-                </a>
-              )}
-
-              {showsPlayer && videoSource && Boolean(videoSource.embedUrl) ? (
-                <iframe
-                  id="docentos-video-iframe"
-                  /* La clave estable por lección evita que React destruya y vuelva a montar el iframe cuando se resuelven URLs secundarias */
-                  key={selectedMeetingPlayback ? `meeting-${selectedMeetingPlayback.id}` : `video-${currentVideo?.id || videoSource.embedUrl}`}
-                  src={videoSource.embedUrl}
-                  onLoad={() => {
-                    setIsVideoLoading(false);
-                    setHasLoadTimedOut(false);
-                  }}
-                  title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
-                  className="h-full w-full border-0 bg-black"
-                  style={{ backgroundColor: '#000000' }}
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              ) : hasAccess ? (
+            <div className="app-media-surface group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
+              {showsPlayer && (currentVideo || selectedMeetingPlayback) ? (
+              <DocentOSPlayer
+                key={selectedMeetingPlayback ? `meeting-${selectedMeetingPlayback.id}` : `video-${currentVideo?.id}`}
+                video={
+                  selectedMeetingPlayback
+                    ? {
+                        id: selectedMeetingPlayback.id,
+                        title: selectedMeetingPlayback.title,
+                        embedUrl: selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl,
+                        playbackUrl: selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl,
+                        driveFileId: '',
+                        mimeType: 'video/mp4',
+                        order: 0,
+                      }
+                    : currentVideo
+                }
+                title={selectedMeetingPlayback ? selectedMeetingPlayback.title : currentVideo?.title}
+                resolvedUrl={currentVideo ? resolvedPlaybackUrls[currentVideo.id] : undefined}
+                initialTime={savedVideoTime}
+                theaterMode={theaterMode}
+                onToggleTheater={() => setTheaterMode(!theaterMode)}
+                autoPlay={false}
+                onTimeUpdate={(currentTime, duration) => {
+                  if (currentVideo && currentUser?.id) {
+                    if (currentTime > 0) {
+                      localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(currentTime)));
+                    }
+                    if (duration > 0 && currentTime >= duration - 2) {
+                      setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+                      localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+                    }
+                  }
+                }}
+                onEnded={() => {
+                  if (currentVideo && currentUser?.id) {
+                    setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+                    localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+                  }
+                }}
+                hasNextLesson={Boolean(nextLesson)}
+                onNextLesson={() => {
+                  if (nextLesson) {
+                    setActiveModuleIndex(nextLesson.moduleIndex);
+                    setActiveVideoIndex(nextLesson.videoIndex);
+                  }
+                }}
+              />
+            ) : hasAccess ? (
                 /* Con acceso concedido y sin clase que reproducir, el curso
                    esta vacio o la leccion no tiene video utilizable. Antes
                    estos casos caian en el panel del candado y el alumno leia
@@ -1372,6 +1408,155 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         : 'Tu acceso está activo. Aún no se ha publicado ningún módulo en este curso.'}
                     </p>
                   </div>
+                </div>
+              ) : currentUser?.role === 'MENTEE' ? (
+                /* Para usuarios con rol MENTEE: se desactiva el modal de pago y se muestra
+                   el contacto de su mentor o del mentor asignado a este curso. */
+                <div className="flex h-full flex-col items-center justify-center gap-5 bg-surface px-6 py-8 text-center">
+                  <div className="inline-flex items-center justify-center rounded-2xl bg-purple-500/10 p-3 text-brand-violet-light border border-purple-500/20 shadow-sm">
+                    <GraduationCap aria-hidden className="h-8 w-8" />
+                  </div>
+                  <div className="max-w-md">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-violet-light mb-2">
+                      Acceso por Mentoría
+                    </span>
+                    <h2 className="text-section font-bold text-ink sm:text-xl">
+                      Aún no tienes acceso a este curso
+                    </h2>
+                    <p className="mt-2 text-meta leading-relaxed text-ink-muted">
+                      Como usuario con rol de Mentee, los cursos se habilitan directamente a través de tu mentor asignado sin requerir pagos en la plataforma.
+                    </p>
+                  </div>
+
+                  {effectiveMentor ? (
+                    <div className="w-full max-w-md rounded-2xl border border-line-subtle bg-canvas/70 p-4 text-left shadow-lg backdrop-blur-sm sm:p-5">
+                      <div className="flex items-center gap-3.5">
+                        {effectiveMentor.avatarUrl ? (
+                          <img
+                            src={effectiveMentor.avatarUrl}
+                            alt={effectiveMentor.name}
+                            className="h-12 w-12 rounded-full border border-line-subtle object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-violet/20 font-bold text-brand-violet border border-brand-violet/30">
+                            {effectiveMentor.name ? effectiveMentor.name.charAt(0).toUpperCase() : 'M'}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-violet-light">
+                            {course.assignedMentor?.id === effectiveMentor.id ? 'Tu mentor asignado' : 'Mentor del curso'}
+                          </span>
+                          <h3 className="truncate text-sm font-bold text-ink">{effectiveMentor.name}</h3>
+                          <p className="truncate text-xs text-ink-muted">{effectiveMentor.email}</p>
+                        </div>
+                      </div>
+
+                      {hasPendingRequest ? (
+                        <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-line-subtle">
+                          <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300">
+                            <Clock aria-hidden className="h-4 w-4 shrink-0 text-amber-400 mt-0.5 animate-pulse" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold">Solicitud enviada a tu mentor</p>
+                              <p className="text-[11px] font-normal text-amber-200/80 mt-0.5">
+                                Tu solicitud está en espera de aprobación. Tu mentor tiene la notificación en su panel para autorizar tu acceso en 1 clic.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-micro text-ink-muted pt-1">
+                            <a
+                              href={`mailto:${effectiveMentor.email}?subject=${encodeURIComponent(`Seguimiento: Solicitud de acceso al curso ${course.title}`)}&body=${encodeURIComponent(`Hola ${effectiveMentor.name},\n\nSoy ${currentUser.name} (${currentUser.email}). Te envié una solicitud en la plataforma para acceder al curso "${course.title}".\n\n¡Quedo atento!`)}`}
+                              className="hover:text-ink transition-colors flex items-center gap-1"
+                            >
+                              <Mail aria-hidden className="h-3 w-3" />
+                              <span>Enviar recordatorio por correo</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={handleCopyEmail}
+                              className="hover:text-ink transition-colors flex items-center gap-1 font-mono"
+                            >
+                              {copiedEmail ? <span className="text-emerald-400 font-bold">¡Copiado!</span> : <span>Copiar correo</span>}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-line-subtle">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleRequestAccess}
+                              disabled={isRequestingAccess}
+                              className="btn-brand-primary flex flex-1 items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold shadow-md disabled:opacity-50 cursor-pointer"
+                            >
+                              {isRequestingAccess ? (
+                                <>
+                                  <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin" />
+                                  <span>Enviando solicitud...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send aria-hidden className="h-3.5 w-3.5" />
+                                  <span>Solicitar acceso a mi mentor</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopyEmail}
+                              className="flex items-center justify-center gap-1.5 rounded-lg border border-line-subtle bg-surface px-3 py-2.5 text-xs font-medium text-ink hover:bg-canvas transition-colors cursor-pointer"
+                              title="Copiar correo electrónico"
+                            >
+                              {copiedEmail ? (
+                                <>
+                                  <Check aria-hidden className="h-3.5 w-3.5 text-emerald-400" />
+                                  <span className="text-emerald-400 font-semibold">¡Copiado!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
+                                  <span>Copiar correo</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-ink-muted text-center">
+                            Envía una solicitud interna en 1 clic para que tu mentor la autorice desde su panel.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-md rounded-2xl border border-line-subtle bg-canvas/70 p-4 text-center shadow-lg backdrop-blur-sm sm:p-5">
+                      <p className="text-xs text-ink-muted mb-3">
+                        Ponte en contacto con la coordinación académica o envía una solicitud para que habiliten este curso en tu perfil.
+                      </p>
+                      {hasPendingRequest ? (
+                        <div className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs font-semibold text-amber-300">
+                          <Clock aria-hidden className="h-4 w-4 animate-pulse text-amber-400" />
+                          <span>Solicitud de acceso enviada • En espera</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleRequestAccess}
+                          disabled={isRequestingAccess}
+                          className="btn-brand-primary inline-flex items-center justify-center gap-2 py-2 px-4 text-xs font-semibold shadow-md disabled:opacity-50 cursor-pointer"
+                        >
+                          {isRequestingAccess ? (
+                            <>
+                              <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin" />
+                              <span>Enviando solicitud...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send aria-hidden className="h-3.5 w-3.5" />
+                              <span>Solicitar acceso al curso</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
@@ -1407,7 +1592,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     <button
                       type="button"
                       onClick={() => goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
-                      aria-label="Lección anterior"
+                      aria-label={t('viewer.previousLesson', 'Lección anterior')}
                       className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
                     >
                       <ChevronLeft aria-hidden className="h-5 w-5" />
@@ -1419,7 +1604,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     <button
                       type="button"
                       onClick={() => goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
-                      aria-label="Lección siguiente"
+                      aria-label={t('viewer.nextLesson', 'Lección siguiente')}
                       className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
                     >
                       <ChevronRight aria-hidden className="h-5 w-5" />
@@ -1441,7 +1626,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider text-success-light border border-success/30">
                           <PlaySquare className="h-3 w-3" />
-                          Grabación Asincrónica
+                          {t('viewer.asyncRecording', 'Grabación Asincrónica')}
                         </span>
                         <span className="text-micro text-ink-muted font-medium">
                           {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
@@ -1464,7 +1649,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-lg bg-raised hover:bg-elevated border border-line text-xs font-semibold text-ink-soft hover:text-ink flex items-center gap-1.5 transition-colors"
                     >
-                      <span>Abrir enlace externo</span>
+                      <span>{t('viewer.openExternalLink', 'Abrir enlace externo')}</span>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                     <button
@@ -1472,7 +1657,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       onClick={() => setSelectedMeetingPlayback(null)}
                       className="btn-brand-primary px-3.5 py-1.5 rounded-lg text-xs font-bold"
                     >
-                      Volver al Temario
+                      {t('viewer.backToSyllabus', 'Volver al Temario')}
                     </button>
                   </div>
                 </div>
@@ -1576,13 +1761,14 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     ? [
                         {
                           id: 'syllabus' as const,
-                          label: 'Temario',
+                          label: t('viewer.syllabusTab', 'Temario'),
                           icon: ListTree,
                           content: (
                             <div className="min-h-0 flex-1 overflow-y-auto">
                               <SyllabusTree
                                 course={course}
                                 hasAccess={hasAccess}
+                                userRole={currentUser?.role}
                                 completedVideos={completedVideos}
                                 activeModuleIndex={activeModuleIndex}
                                 activeVideoIndex={activeVideoIndex}
@@ -1594,7 +1780,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                 onOpenQuiz={abrirExamen}
                                 quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
                                 onToggleComplete={toggleVideoCompletion}
-                                onOpenPaywall={onOpenPaywall}
+                                onOpenPaywall={currentUser?.role === 'MENTEE' ? () => {} : onOpenPaywall}
                               />
                             </div>
                           ),
@@ -1603,7 +1789,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     : []),
                   {
                     id: 'sessions',
-                    label: 'Sesiones',
+                    label: t('viewer.sessionsTab', 'Sesiones'),
                     icon: Radio,
                     count: courseMeetings.length,
                     content: (
@@ -1612,10 +1798,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           <div>
                             <h3 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
                               <Radio className="h-3.5 w-3.5 text-brand-cyan" />
-                              Clases Sincrónicas & Grabaciones
+                              {t('viewer.syncSessionsTitle', 'Clases Sincrónicas & Grabaciones')}
                             </h3>
                             <p className="text-micro text-ink-muted mt-0.5">
-                              Sesiones en vivo y clases grabadas bajo demanda del curso.
+                              {t('viewer.syncSessionsSubtitle', 'Sesiones en vivo y clases grabadas bajo demanda del curso.')}
                             </p>
                           </div>
                         </div>
@@ -1623,9 +1809,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         {courseMeetings.length === 0 ? (
                           <div className="py-8 text-center space-y-2 bg-card rounded-xl border border-line p-4">
                             <Video className="h-8 w-8 mx-auto text-ink-faint" />
-                            <p className="text-xs font-semibold text-ink">No hay sesiones programadas aún</p>
+                            <p className="text-xs font-semibold text-ink">{t('viewer.noSessionsScheduled', 'No hay sesiones programadas aún')}</p>
                             <p className="text-micro text-ink-muted">
-                              Tu mentor programará clases sincrónicas y grabaciones en este espacio.
+                              {t('viewer.mentorWillSchedule', 'Tu mentor programará clases sincrónicas y grabaciones en este espacio.')}
                             </p>
                           </div>
                         ) : (
@@ -1789,7 +1975,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   },
                   {
                     id: 'notes',
-                    label: 'Notas',
+                    label: t('viewer.notesTab', 'Notas'),
                     icon: Bookmark,
                     count: videoNotes.length,
                     content: (
@@ -1806,7 +1992,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   },
                   {
                     id: 'mentorship',
-                    label: 'Mentoría',
+                    label: t('nav.mentorship', 'Mentoría'),
                     icon: MessageSquare,
                     count: comments.length,
                     content: (
@@ -1921,21 +2107,33 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   );
 
   if (isModal) {
+    const handleBackdropClose = (e: React.MouseEvent<HTMLDivElement>) => {
+      // Si el examen está activo, se deshabilita el cierre al hacer clic fuera del modal
+      // para evitar la pérdida involuntaria del progreso en la evaluación.
+      // El alumno solo podrá salir mediante la tecla Escape o el botón de cierre (X).
+      if (!canCloseOnBackdropClick(examenActivo, e.target === e.currentTarget)) return;
+      if (onCloseModal) {
+        onCloseModal();
+      }
+    };
+
     return createPortal(
       <div
         className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/85 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in overscroll-contain"
-        onMouseDown={onCloseModal}
+        onMouseDown={handleBackdropClose}
+        onClick={handleBackdropClose}
         onWheel={(e) => e.stopPropagation()}
       >
         <div
-          className="constellation-mission-modal relative flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-purple-500/30 bg-white dark:bg-[#0d0a1a] shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
+          className="app-dialog academy-study-player constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
           onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
         >
           {/* Cabecera del Modal de Misión */}
-          <header className="flex shrink-0 items-center justify-between border-b border-slate-200/80 dark:border-white/10 px-5 py-4 bg-slate-50/90 dark:bg-[#140e26] transition-colors">
+          <header className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4 bg-raised transition-colors">
             <div className="flex items-center gap-3 min-w-0">
               <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
                 examenActivo
@@ -1945,7 +2143,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 {examenActivo ? <Award className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
               </span>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
                     {moduloDelExamen?.title || currentModule?.title || 'Misión'}
                   </span>
@@ -1974,7 +2172,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           </header>
 
           {/* Contenido scrolleable del modal */}
-          <div ref={modalScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent overscroll-contain">
+          <div ref={modalScrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/40 dark:bg-transparent overscroll-contain">
             {viewerBody}
           </div>
         </div>
@@ -1991,7 +2189,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   }
 
   return (
-    <div className="animate-fade-in min-h-screen bg-canvas text-ink">
+    <div className="academy-study-player animate-fade-in min-h-screen bg-canvas text-ink">
       <div className="mx-auto w-full max-w-[1800px] lg:px-6 lg:pt-6">
         {viewerBody}
       </div>

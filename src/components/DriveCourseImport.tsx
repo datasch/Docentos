@@ -541,7 +541,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <div>
               <label className="text-[11px] font-bold text-slate-400 block mb-1">Precio</label>
               <input

@@ -1,7 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Course, VideoDriveLink, Module } from '../../types';
-import { Search, Sparkles, ArrowRight, Play } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { SearchField } from '../../components/SearchField';
+import { CourseCategoryFilter } from '../../components/CourseCategoryFilter';
+import {
+  isStandardCategory,
+  getCanonicalCategory,
+} from '../../lib/courseCategories';
 
 interface ConstellationNeuralSearchProps {
   courses: Course[];
@@ -17,38 +23,33 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
   const [query, setQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('todos');
 
-  const suggestedTags = [
-    'todos',
-    'desarrollo',
-    'arquitectura',
-    'inteligencia artificial',
-    'typescript',
-    'frontend',
-    'backend',
-  ];
+  // Solo consideramos cursos dentro del estándar oficial de DocentOS (excluye cursos de prueba o categorías obsoletas)
+  const standardCourses = useMemo(() => {
+    return courses.filter((c) => isStandardCategory(c.category));
+  }, [courses]);
 
   // Buscar resultados en vivo en cursos, módulos y lecciones
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q && selectedTag === 'todos') {
-      return {
-        matchedCourses: courses.slice(0, 4),
-        matchedLessons: [] as { course: Course; module: Module; video: VideoDriveLink }[],
-        aiSummary: null,
-      };
-    }
+    const isAll = selectedTag === 'todos';
+    const tagLower = selectedTag.toLowerCase();
 
-    const matchedCourses = courses.filter((c) => {
+    const matchedCourses = standardCourses.filter((c) => {
       const titleMatch = c.title.toLowerCase().includes(q);
       const descMatch = (c.description || '').toLowerCase().includes(q);
-      const tagMatch = selectedTag === 'todos' || (c.category || '').toLowerCase().includes(selectedTag);
+      const courseCat = (getCanonicalCategory(c.category) || c.category || '').trim().toLowerCase();
+      const tagMatch = isAll || courseCat === tagLower || courseCat.includes(tagLower);
       return (q === '' || titleMatch || descMatch) && tagMatch;
     });
 
     const matchedLessons: { course: Course; module: Module; video: VideoDriveLink }[] = [];
 
     if (q.length >= 2) {
-      courses.forEach((c) => {
+      standardCourses.forEach((c) => {
+        const courseCat = (getCanonicalCategory(c.category) || c.category || '').trim().toLowerCase();
+        const tagMatch = isAll || courseCat === tagLower || courseCat.includes(tagLower);
+        if (!tagMatch) return;
+
         (c.modules || []).forEach((m) => {
           (m.videos || []).forEach((v) => {
             if (v.title.toLowerCase().includes(q) || (v.description || '').toLowerCase().includes(q)) {
@@ -61,72 +62,68 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
 
     let aiSummary: string | null = null;
     if (q.length >= 3) {
-      aiSummary = `La red sináptica de DocentOS localizó ${matchedCourses.length} cursos y ${matchedLessons.length} lecciones directamente vinculadas con "${query}". Los módulos prioritarios profundizan en diseño de software moderno, optimización de pipelines y casos de aplicación en producción.`;
+      const categoryHint = isAll ? '' : ` en la categoría "${selectedTag}"`;
+      aiSummary = `La red sináptica de DocentOS localizó ${matchedCourses.length} cursos y ${matchedLessons.length} lecciones directamente vinculadas con "${query}"${categoryHint}. Los módulos prioritarios profundizan en diseño de software moderno, optimización de pipelines y casos de aplicación en producción.`;
     }
 
     return {
-      matchedCourses,
+      matchedCourses: !q && isAll ? standardCourses.slice(0, 6) : matchedCourses,
+      totalMatchedCourses: matchedCourses.length,
       matchedLessons: matchedLessons.slice(0, 6),
       aiSummary,
     };
-  }, [query, selectedTag, courses]);
+  }, [query, selectedTag, standardCourses]);
 
   return (
-    <section className="relative w-full bg-[#f8fafc] dark:bg-[#050505] py-16 md:py-24 select-none">
-      <div className="max-w-[1280px] mx-auto px-6">
+    <section className="academy-search-page relative w-full bg-transparent py-10 md:py-16 select-none">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
         
         {/* Cabecera de la Sección */}
-        <div className="mb-12">
-          <span className="font-constellation-label text-xs text-[#06b6d4] tracking-[0.2em] uppercase block mb-3 font-semibold">
-            NEURAL SEARCH · CONSULTA DIRECTA
-          </span>
-          <h2 className="font-constellation-display text-[38px] sm:text-[54px] md:text-[68px] leading-[1.05] tracking-[-0.04em] text-slate-900 dark:text-white">
-            Tu academia tiene la respuesta.
+        <div className="mb-8 sm:mb-12">
+          <h2 className="academy-section-title font-constellation-display text-ink">
+            Encuentra lo que quieres aprender.
           </h2>
-          <p className="font-constellation-body text-base sm:text-lg text-slate-600 dark:text-white/60 mt-3 max-w-[620px] font-extralight">
-            Pregunta directamente a la red de conocimiento de DocentOS para localizar lecciones específicas, conceptos técnicos y clases grabadas.
+          <p className="font-constellation-body text-base text-ink-soft mt-3 max-w-[620px] font-extralight">
+            Busca un tema, curso o lección y encuentra el contenido disponible en tu academia.
           </p>
         </div>
 
         {/* Input de Búsqueda Flotante en el Vacío */}
         <div className="relative w-full max-w-3xl mb-8">
-          <div className="relative flex items-center w-full rounded-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.12] hover:border-[#06b6d4]/50 focus-within:border-[#06b6d4] transition-all px-6 py-4 shadow-sm dark:shadow-[0_10px_35px_rgba(0,0,0,0.8)]">
-            <Search className="w-5 h-5 text-[#06b6d4] mr-4 shrink-0" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Escribe un concepto (e.g. React, Arquitectura, TypeScript, APIs)..."
-              className="w-full bg-transparent text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/35 font-constellation-body text-base outline-none"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery('')}
-                className="text-slate-400 hover:text-slate-700 dark:text-white/40 dark:hover:text-white text-xs px-2 py-1 rounded cursor-pointer"
-              >
-                Limpiar
-              </button>
-            )}
-          </div>
+          <SearchField value={query} onChange={setQuery} label="Buscar cursos y lecciones"
+            placeholder="Buscar cursos y lecciones..." />
 
-          {/* Sugerencias Rápidas / Tags */}
-          <div className="flex flex-wrap items-center gap-2 mt-4">
-            <span className="font-constellation-label text-[11px] text-slate-500 dark:text-white/40 mr-1 uppercase">
-              Filtros:
-            </span>
-            {suggestedTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setSelectedTag(tag)}
-                className={`font-constellation-label text-[11px] uppercase tracking-wider px-3.5 py-1 rounded-full transition-all cursor-pointer ${
-                  selectedTag === tag
-                    ? 'bg-[#06b6d4] text-[#050505] font-bold'
-                    : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 hover:text-slate-900 border border-slate-200/60 dark:bg-white/[0.03] dark:text-white/60 dark:hover:text-white dark:hover:bg-white/[0.08]'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
+          {/* Barra de Control de Filtros Limpia y Ordenada */}
+          <div className="mt-4 flex flex-col items-stretch justify-between gap-3 md:flex-row md:items-center">
+            <CourseCategoryFilter
+              id="neural-search-category-filter"
+              courses={standardCourses}
+              value={selectedTag}
+              onChange={setSelectedTag}
+            />
+
+            {/* Contador de Resultados y Botón de Reset */}
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-constellation-label text-slate-500 dark:text-white/50">
+              <span className="tracking-wide">
+                {results.matchedCourses.length}{' '}
+                {results.matchedCourses.length === 1 ? 'curso disponible' : 'cursos disponibles'}
+                {results.matchedLessons.length > 0 && ` · ${results.matchedLessons.length} lecciones`}
+              </span>
+
+              {(query.trim() || selectedTag !== 'todos') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    setSelectedTag('todos');
+                  }}
+                  className="inline-flex min-h-11 items-center gap-1 text-[#06b6d4] hover:text-[#0891b2] dark:hover:text-[#22d3ee] font-semibold cursor-pointer transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Restablecer</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -137,7 +134,7 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="max-w-3xl mb-12 p-6 rounded-[24px] bg-gradient-to-r from-cyan-50 via-purple-50 to-transparent dark:from-cyan-950/20 dark:via-purple-950/20 to-transparent border-l-2 border-[#06b6d4] shadow-sm dark:shadow-none"
+              className="max-w-3xl mb-12 p-6 rounded-2xl bg-gradient-to-r from-cyan-50 via-purple-50 to-transparent dark:from-cyan-950/20 dark:via-purple-950/20 to-transparent rounded-2xl border border-line shadow-sm dark:shadow-none"
             >
               <div className="flex items-center gap-2 mb-2 text-[#06b6d4] font-constellation-label text-xs uppercase tracking-wider font-bold">
                 <Sparkles className="w-3.5 h-3.5 animate-pulse" />
@@ -198,7 +195,9 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
 
           {results.matchedCourses.length === 0 ? (
             <div className="py-12 text-center text-slate-400 dark:text-white/40 font-constellation-body">
-              No se encontraron cursos con el término "{query}". Intenta con otra palabra clave.
+              {query
+                ? `No se encontraron cursos con el término "${query}". Intenta con otra palabra clave o restablece los filtros.`
+                : 'No se encontraron cursos en la categoría seleccionada.'}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -206,7 +205,7 @@ export const ConstellationNeuralSearch: React.FC<ConstellationNeuralSearchProps>
                 <div
                   key={c.id}
                   onClick={() => onSelectCourse(c)}
-                  className="group cursor-pointer flex flex-col justify-between p-6 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.06] border border-slate-200/80 dark:border-white/[0.06] hover:border-[#06b6d4]/40 transition-all shadow-sm dark:shadow-none"
+                  className="group cursor-pointer flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.06] border border-slate-200/80 dark:border-white/[0.06] hover:border-[#06b6d4]/40 transition-all shadow-sm dark:shadow-none"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">

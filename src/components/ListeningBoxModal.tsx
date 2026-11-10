@@ -200,7 +200,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
       onWheel={(e) => e.stopPropagation()}
     >
       <div
-        className="relative flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-2xl overscroll-contain"
+        className="app-dialog relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-2xl overscroll-contain"
         onMouseDown={(event) => event.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
         role="dialog"
@@ -208,7 +208,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
         aria-labelledby="listening-title"
       >
         <header className="flex items-start gap-4 border-b border-line px-5 py-5 sm:px-7">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-blue text-ink">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-blue text-on-brand">
             <HeartHandshake aria-hidden className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">
@@ -239,7 +239,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
               role="tab"
               aria-selected={tab === item.id}
               onClick={() => setTab(item.id)}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-3 text-xs font-bold transition-colors ${
+              className={`-mb-px flex min-w-0 flex-1 items-center justify-center gap-2 border-b-2 px-2 sm:px-3 py-3 text-xs font-bold transition-colors ${
                 tab === item.id ? 'border-brand-cyan text-brand-cyan' : 'border-transparent text-ink-muted hover:text-ink'
               }`}
             >
@@ -258,7 +258,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
           {tab === 'new' && sentNotice && (
             <div className="mb-5 flex items-start gap-3 rounded-2xl border border-success-light/30 bg-success-light/10 p-4 text-sm text-success-light">
               <CheckCircle2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0" />
@@ -280,7 +280,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
             <form onSubmit={handleSubmit} className="space-y-6">
               <fieldset>
                 <legend className={labelClass}>¿Cómo te sientes en este momento?</legend>
-                <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label="Cómo te sientes">
+                <div className="grid grid-cols-2 min-[360px]:grid-cols-3 sm:grid-cols-5 gap-2" role="radiogroup" aria-label="Cómo te sientes">
                   {MOODS.map((item) => (
                     <button
                       key={item.value}

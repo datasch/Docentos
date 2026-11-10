@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Circle, Download, Lock, Play } from 'lucide-react';
-import { Course } from '../../types';
+import { Course, UserRole } from '../../types';
 import { getModuleQuestionCount } from '../../plugins/QuizzesPlugin';
 import { pluginManager } from '../../plugins/PluginManager';
 import { Sparkles } from 'lucide-react';
@@ -10,6 +10,7 @@ import { ProgressMeter } from './ProgressMeter';
 interface SyllabusTreeProps {
   course: Course;
   hasAccess: boolean;
+  userRole?: UserRole;
   completedVideos: Record<string, boolean>;
   activeModuleIndex: number;
   activeVideoIndex: number;
@@ -44,6 +45,7 @@ type Row =
 export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   course,
   hasAccess,
+  userRole,
   completedVideos,
   activeModuleIndex,
   activeVideoIndex,
@@ -117,7 +119,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
       case ' ':
         event.preventDefault();
         if (row.kind === 'lesson') {
-          if (hasAccess) onSelectLesson(row.moduleIndex, row.videoIndex);
+          if (hasAccess || userRole === 'MENTEE') onSelectLesson(row.moduleIndex, row.videoIndex);
           else onOpenPaywall();
         } else if (unlocked[row.moduleIndex]) {
           toggleModule(row.moduleIndex);
@@ -241,7 +243,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                   </span>
 
                   <span
-                    className={`mt-0.5 block truncate text-section font-semibold ${
+                    className={`mt-0.5 block text-base leading-snug font-semibold ${
                       isUnlocked ? 'text-ink' : 'text-ink-faint'
                     }`}
                   >
@@ -310,9 +312,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             onKeyDown={(event) =>
                               handleKeyDown(event, { key: lessonKey, kind: 'lesson', moduleIndex: mIdx, videoIndex: vIdx })
                             }
-                            onClick={() => (hasAccess ? onSelectLesson(mIdx, vIdx) : onOpenPaywall())}
+                            onClick={() => (hasAccess || userRole === 'MENTEE' ? onSelectLesson(mIdx, vIdx) : onOpenPaywall())}
                             className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg pr-2.5 text-left transition-colors ${
-                              isCurrent ? 'bg-brand-violet/10' : 'hover:bg-brand-violet/5'
+                              isCurrent ? 'bg-raised' : 'hover:bg-raised/60'
                             }`}
                           >
                             <button
@@ -344,9 +346,9 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             </button>
 
                             <span
-                              className={`min-w-0 flex-1 truncate text-row ${
+                              className={`min-w-0 flex-1 py-1 text-base leading-snug ${
                                 isCurrent
-                                  ? 'font-medium text-brand-violet-light'
+                                  ? 'font-semibold text-ink'
                                   : isDone
                                     ? 'text-ink-muted'
                                     : 'text-ink-soft'

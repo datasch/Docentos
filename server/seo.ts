@@ -83,3 +83,24 @@ ${heroImage ? `<meta property="og:image" content="${escapeHtml(heroImage)}">` : 
 ${courses.map((course) => `<article><h2>${escapeHtml(course.title)}</h2><p>${escapeHtml(course.description)}</p><p>Precio: $${escapeHtml(course.price)} USD</p></article>`).join('')}
 <footer>${escapeHtml(landing.footerText)}</footer></body></html>`;
 }
+
+export function renderSeoCourseHtml(course: SeoCourse & { id: string; currency?: string; coverImage?: string }, baseUrl: string): string {
+  const url = new URL(`/courses/${encodeURIComponent(course.id)}`, baseUrl).toString();
+  let image = '';
+  try { image = safeHttpUrl(new URL(course.coverImage || '/logo.avif', baseUrl).toString()); }
+  catch { image = safeHttpUrl(new URL('/logo.avif', baseUrl).toString()); }
+  const title = escapeHtml(course.title);
+  const description = escapeHtml(course.description);
+  return `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} | DocentOS</title><meta name="description" content="${description}">
+<link rel="canonical" href="${escapeHtml(url)}"><meta property="og:type" content="website">
+<meta property="og:title" content="${title}"><meta property="og:description" content="${description}">
+<meta property="og:url" content="${escapeHtml(url)}"><meta property="og:site_name" content="DocentOS">
+${image ? `<meta property="og:image" content="${escapeHtml(image)}">` : ''}
+<meta name="twitter:card" content="summary_large_image">
+</head><body><main><h1>${title}</h1><p>${description}</p>
+<p>${escapeHtml(course.price)} ${escapeHtml(course.currency || 'USD')}</p>
+<a href="${escapeHtml(url)}">Ver curso</a><a href="/courses">Explorar catálogo</a>
+</main></body></html>`;
+}

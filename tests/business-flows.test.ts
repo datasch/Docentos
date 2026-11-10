@@ -62,6 +62,7 @@ test('Flujo de Negocio: Pagos, Webhooks e Idempotencia', async (t) => {
       data: {
         object: {
           id: stripeSessionId,
+          payment_status: 'paid',
           payment_intent: `pi_test_${Date.now()}`,
           client_reference_id: TEST_USER_ID,
           metadata: {
@@ -103,6 +104,7 @@ test('Flujo de Negocio: Pagos, Webhooks e Idempotencia', async (t) => {
       data: {
         object: {
           id: stripeSessionId,
+          payment_status: 'paid',
         },
       },
     };
@@ -348,12 +350,12 @@ test('Acceso: un curso gratuito ya no se abre solo', async (t) => {
     assert.equal(decision.reason, 'not_authorized');
   });
 
-  await t.test('2. Con «Todos los registrados» encendido sí se entra, y se dice por qué', async () => {
+  await t.test('2. El acceso para miembros no abre un curso a estudiantes externos', async () => {
     await prisma.course.update({ where: { id: CURSO_ID }, data: { openToAllRegistered: true } });
     const decision = await getCourseAccessDecision(recienRegistrado, CURSO_ID);
-    assert.equal(decision.allowed, true);
-    assert.equal(decision.reason, 'open_to_all_registered');
-    assert.equal(decision.hasEnrollment, false, 'Se abre sin matrícula: la bandera es la concesión');
+    assert.equal(decision.allowed, false);
+    assert.equal(decision.reason, 'not_authorized');
+    assert.equal(decision.hasEnrollment, false, 'La bandera no crea una matrícula');
   });
 
   await t.test('3. Abierto no significa público: sin cuenta no se entra', async () => {

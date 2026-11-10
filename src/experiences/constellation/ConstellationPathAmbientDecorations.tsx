@@ -21,7 +21,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
       <div aria-hidden="true" className="pointer-events-none select-none absolute inset-0 z-0 overflow-visible hidden md:block">
         {/* Decoración Izquierda */}
         <div
-          className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_6s_ease-in-out_infinite] opacity-95 transition-transform duration-300 hover:scale-110"
+          className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_6s_ease-in-out_infinite] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
           style={{ top: `${leftY}px` }}
         >
           {variant === 0 && (
@@ -103,7 +103,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
 
         {/* Decoración Derecha */}
         <div
-          className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_7s_ease-in-out_infinite_1.5s] opacity-95 transition-transform duration-300 hover:scale-110"
+          className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_7s_ease-in-out_infinite_1.5s] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
           style={{ top: `${rightY}px` }}
         >
           {variant === 0 && (
@@ -183,7 +183,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
       <div aria-hidden="true" className="pointer-events-none select-none absolute inset-0 z-0 overflow-visible hidden md:block">
         {/* Decoración Izquierda */}
         <div
-          className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_6.5s_ease-in-out_infinite] opacity-95 transition-transform duration-300 hover:scale-110"
+          className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_6.5s_ease-in-out_infinite] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
           style={{ top: `${leftY}px` }}
         >
           {variant === 0 && (
@@ -256,7 +256,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
 
         {/* Decoración Derecha */}
         <div
-          className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_7s_ease-in-out_infinite_1.2s] opacity-95 transition-transform duration-300 hover:scale-110"
+          className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_7s_ease-in-out_infinite_1.2s] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
           style={{ top: `${rightY}px` }}
         >
           {variant === 0 && (
@@ -321,7 +321,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
     <div aria-hidden="true" className="pointer-events-none select-none absolute inset-0 z-0 overflow-visible hidden md:block">
       {/* Decoración Izquierda */}
       <div
-        className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_7s_ease-in-out_infinite] opacity-95 transition-transform duration-300 hover:scale-110"
+        className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_7s_ease-in-out_infinite] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
         style={{ top: `${leftY}px` }}
       >
         {variant === 0 && (
@@ -381,7 +381,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
 
       {/* Decoración Derecha */}
       <div
-        className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_6.5s_ease-in-out_infinite_1.4s] opacity-95 transition-transform duration-300 hover:scale-110"
+        className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_6.5s_ease-in-out_infinite_1.4s] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
         style={{ top: `${rightY}px` }}
       >
         {variant === 0 && (

@@ -33,10 +33,12 @@ test('MENTEE: per-course access and explicit reassignments preserve scope and pr
   t.after(async () => {
     await new Promise<void>(resolve => server.close(() => resolve()));
     await prisma.auditLog.deleteMany({ where: { actorUserId: { in: users } } });
+    await prisma.courseMentor.deleteMany({ where: { OR: [{ mentorId: { in: users } }, { courseId: { in: courses } }] } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
     await prisma.course.deleteMany({ where: { id: { in: courses } } });
     await prisma.$disconnect();
   });
+  await prisma.courseMentor.create({ data: { mentorId: mentor.id, courseId: courses[0] } });
   const assignment = await prisma.menteeAssignment.create({ data: { menteeId: mentee.id, mentorId: mentor.id, courseId: courses[0], status: 'ACTIVE', courseProgress: 42, completedVideosCount: 3, totalVideosCount: 7 } });
   const call = async (path: string, cookie: string, body?: unknown, method = 'PUT') => {
     const res = await fetch(base + path, { method: body ? method : 'GET', headers: { cookie, 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });

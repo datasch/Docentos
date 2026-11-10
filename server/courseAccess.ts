@@ -5,7 +5,7 @@ import { parseVideoSource } from '../src/lib/videoParser.js';
 export type CourseAccessReason =
   | 'admin'
   | 'vip_membership'
-  | 'open_to_all_registered'
+  | 'member_access'
   | 'confirmed_payment'
   | 'active_enrollment'
   | 'mentorship_assignment'
@@ -71,9 +71,12 @@ function resolveStaticDecision(
   if (user?.role === 'ADMIN') return decision(true, 'admin');
   // Sin cuenta no se entra a ningun curso. El precio ya no abre nada por si
   // solo: un curso a 0 sigue necesitando que administracion lo conceda, salvo
-  // que este marcado como abierto a todo el mundo.
+  // que la cuenta sea miembro y el curso tenga acceso para miembros.
   if (!user) return decision(false, 'not_authenticated');
-  if (course.published && course.openToAllRegistered) return decision(true, 'open_to_all_registered');
+  // La bandera existente se conserva en la BD; solo abre cursos para miembros.
+  if (course.published && course.openToAllRegistered && ['MENTEE', 'MENTOR'].includes(user.role)) {
+    return decision(true, 'member_access');
+  }
   if (user.role === 'VIP' && course.published) return decision(true, 'vip_membership');
   return null;
 }
@@ -241,6 +244,20 @@ export async function userHasResourceAccess(user: AuthenticatedUser | undefined,
   return resource ? userHasCourseAccess(user, resource.courseId) : false;
 }
 
+export async function getVideoForAccess(user: AuthenticatedUser | undefined, videoId: string) {
+  const video = await prisma.videoDriveLink.findUnique({
+    where: { id: videoId },
+    include: { module: { select: { courseId: true } } },
+  });
+  if (!video) return { status: 404, error: 'Video no encontrado.', video: null };
+
+  const hasAccess = await userHasCourseAccess(user, video.module.courseId);
+  if (!hasAccess) {
+    return { status: 403, error: 'No tienes autorización para ver este video.', video: null };
+  }
+  return { status: 200, error: null, video };
+}
+
 function serializeResource(resource: any) {
   return {
     id: resource.id,
@@ -260,6 +277,13 @@ function serializeResource(resource: any) {
 }
 
 function serializeVideo(video: any) {
+  const parsed = parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '');
+  const provider = parsed.provider;
+  const youtubeVideoId =
+    provider === 'youtube'
+      ? parsed.videoId || (video.source === 'YOUTUBE' ? video.driveFileId : undefined)
+      : undefined;
+
   return {
     id: video.id,
     title: video.title,
@@ -272,13 +296,15 @@ function serializeVideo(video: any) {
     // ella, y `source` no basta: hay clases guardadas como EXTERNAL_URL cuya
     // URL es un `preview` de Drive. El reproductor necesita el dato porque cada
     // proveedor pide un alto minimo distinto, y sin el se maquetaba a ciegas.
-    provider: parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '').provider,
+    provider,
+    youtubeVideoId,
     order: video.order,
     meetingType: video.meetingType || null,
     meetingUrl: video.meetingUrl || null,
     scheduledAt: video.scheduledAt ? (video.scheduledAt instanceof Date ? video.scheduledAt.toISOString() : video.scheduledAt) : null,
     isLive: Boolean(video.isLive),
     playbackUrl: `/api/content/videos/${encodeURIComponent(video.id)}`,
+    streamUrl: provider === 'drive' ? `/api/content/videos/${encodeURIComponent(video.id)}/stream` : undefined,
     createdAt: video.createdAt,
     updatedAt: video.updatedAt,
   };
@@ -301,6 +327,13 @@ export function serializeCourseForViewer(course: any, hasAccess: boolean) {
     sequentialUnlock: Boolean(course.sequentialUnlock),
     // El panel pinta con esto el estado del boton "Todos los registrados".
     openToAllRegistered: Boolean(course.openToAllRegistered),
+    mentors: (course.mentors || []).map((m: any) => ({
+      id: m.mentor?.id || m.id || m.mentorId,
+      name: m.mentor?.name || m.name || 'Mentor',
+      email: m.mentor?.email || m.email || '',
+      avatarUrl: m.mentor?.avatarUrl || m.avatarUrl || null,
+    })),
+    assignedMentor: course.assignedMentor || null,
     createdAt: course.createdAt,
     updatedAt: course.updatedAt,
   };

@@ -6,6 +6,8 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { api } from './lib/api';
+import { TAB_PATHS, tabFromPath, type ActiveTab } from './lib/appRoutes';
+import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
 import { RefreshCw } from 'lucide-react';
 import { initSavedTheme } from './lib/themeApplicator';
@@ -26,26 +28,6 @@ import { ListeningFloatingButton } from './components/ListeningFloatingButton';
 // Inicializar tema y festividad inmediatamente para evitar parpadeos
 initSavedTheme();
 applySeasonalTheme();
-
-type ActiveTab = 'landing' | 'courses' | 'mentor' | 'admin' | 'plugins' | 'vip';
-
-const TAB_PATHS: Record<ActiveTab, string> = {
-  landing: '/',
-  courses: '/courses',
-  mentor: '/mentor/dashboard',
-  admin: '/admin',
-  plugins: '/admin/plugins',
-  vip: '/vip',
-};
-
-function tabFromPath(pathname: string): ActiveTab {
-  if (pathname.startsWith('/admin/plugins')) return 'plugins';
-  if (pathname.startsWith('/admin')) return 'admin';
-  if (pathname.startsWith('/mentor')) return 'mentor';
-  if (pathname.startsWith('/courses')) return 'courses';
-  if (pathname.startsWith('/vip')) return 'vip';
-  return 'landing';
-}
 
 const LAST_COURSE_KEY = 'docentos_last_course_id';
 
@@ -114,11 +96,13 @@ export default function App() {
     return null;
   });
   const [accessVerified, setAccessVerified] = useState(false);
+  const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(() => readCachedCourses().length === 0);
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
 
   const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromPath(window.location.pathname));
+  const [sharedCourseId, setSharedCourseId] = useState(() => courseIdFromPath(window.location.pathname));
   const [showPaywallModal, setShowPaywallModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
@@ -137,6 +121,7 @@ export default function App() {
       if (options?.replace) window.history.replaceState({}, '', path);
       else window.history.pushState({}, '', path);
     }
+    setSharedCourseId(null);
     setActiveTabState(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -175,6 +160,8 @@ export default function App() {
       }
 
       let authUser: User | null = null;
+      setConnectionNotice(authResult.status === 'rejected' || coursesResult.status === 'rejected'
+        ? 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.' : null);
       if (authResult.status === 'fulfilled' && authResult.value?.authenticated) {
         authUser = authResult.value?.user ?? null;
         setCurrentUser(authUser);
@@ -195,7 +182,7 @@ export default function App() {
             // Silencioso
           }
         }
-      } else {
+      } else if (authResult.status === 'fulfilled') {
         setCurrentUser(null);
         writeCachedUser(null);
         setPendingContract(null);
@@ -230,8 +217,9 @@ export default function App() {
             } catch {}
           }
 
-          const preferred = lastStudiedId
-            ? coursesRes.courses.find((c) => c.id === lastStudiedId)
+          const preferredId = courseIdFromPath(window.location.pathname) || lastStudiedId;
+          const preferred = preferredId
+            ? coursesRes.courses.find((c) => c.id === preferredId)
             : null;
           setCourse(preferred ?? coursesRes.courses[0]);
         } else {
@@ -251,7 +239,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handlePopState = () => setActiveTabState(tabFromPath(window.location.pathname));
+    const handlePopState = () => {
+      setSharedCourseId(courseIdFromPath(window.location.pathname));
+      setActiveTabState(tabFromPath(window.location.pathname));
+    };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -328,6 +319,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[#06b6d4] selection:text-[#050505] font-sans">
+      {connectionNotice && (
+        <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+          <p>{connectionNotice}</p>
+          <button type="button" disabled={loading} onClick={() => loadData()} className="font-semibold underline underline-offset-4 disabled:opacity-50">Reintentar</button>
+        </div>
+      )}
       
       {/* Experiencia Principal Oficial: DocentOS Constellation */}
       <ConstellationAppShell
@@ -336,6 +333,17 @@ export default function App() {
         activeCourse={course}
         activeTab={activeTab === 'landing' ? 'explore' : activeTab}
         hasAccess={hasAccess}
+        sharedCourseId={sharedCourseId}
+        courseAccessReady={accessVerified}
+        onOpenCourseOverview={(selected) => {
+          selectCourse(selected);
+          window.history.pushState({}, '', coursePath(selected.id));
+          setSharedCourseId(selected.id);
+          setActiveTabState('courses');
+          window.scrollTo({ top: 0 });
+        }}
+        onContinueCourse={(selected) => { selectCourse(selected); navigateTo('viewer'); }}
+        onRegister={() => { setAuthMode('register'); setAuthNotice(null); setShowAuthModal(true); }}
         onNavigate={(tab) => navigateTo(tab)}
         onSelectCourse={(selected) => {
           selectCourse(selected);
@@ -347,13 +355,17 @@ export default function App() {
           setShowAuthModal(true);
         }}
         onLogout={handleLogout}
-        onOpenPaywall={() => setShowPaywallModal(true)}
+        onOpenPaywall={() => {
+          if (currentUser?.role !== 'MENTEE') {
+            setShowPaywallModal(true);
+          }
+        }}
         onRefreshData={() => loadData(true)}
         onPaymentSuccess={handlePaymentSuccess}
         onVipActivated={handleVipActivated}
         onRestartTour={() => setShowTour(true)}
-        onOpenVerifyModal={() => {
-          setVerifyCode('');
+        onOpenVerifyModal={(code) => {
+          setVerifyCode(code || '');
           setShowVerifyModal(true);
         }}
         onOpenListening={handleOpenListening}
@@ -374,8 +386,8 @@ export default function App() {
               writeCachedUser(user);
               setAuthNotice(null);
               loadData();
-              navigateTo(tabFromPath(redirectPath));
-              if (!localStorage.getItem('giantucchi_tour_completed')) {
+              if (!sharedCourseId) navigateTo(tabFromPath(redirectPath));
+              if (!sharedCourseId && !localStorage.getItem('giantucchi_tour_completed')) {
                 setShowTour(true);
               }
             }}
@@ -399,7 +411,7 @@ export default function App() {
           />
         )}
 
-        {showPaywallModal && currentUser && course && (
+        {showPaywallModal && currentUser && course && currentUser.role !== 'MENTEE' && (
           <div
             className="fixed inset-0 z-50 bg-[#07070b]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in overscroll-contain"
             onWheel={(e) => e.stopPropagation()}

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Home, Play } from 'lucide-react';
 import { Course, User, Module, VideoDriveLink, CertificateRecord } from '../../types';
 import { CourseViewer } from '../../components/CourseViewer';
 import { ConstellationCosmicPath } from './ConstellationCosmicPath';
 import { api } from '../../lib/api';
+import { CourseShareButton } from '../../components/CourseShareButton';
 import { syncModuleQuizCounts, quizzesPluginEngine } from '../../plugins/QuizzesPlugin';
 
 interface ConstellationCourseViewerProps {
@@ -25,6 +27,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   onSelectCourse,
   courses = [],
 }) => {
+  const { t } = useTranslation();
   const [course, setCourse] = useState<Course>(initialCourse);
   const [loadingCourse, setLoadingCourse] = useState<boolean>(
     !initialCourse.modules || initialCourse.modules.length === 0
@@ -218,7 +221,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     return pending ?? allVideoIds[allVideoIds.length - 1];
   }, [allVideoIds, completedVideoIds]);
 
-  // Al entrar al curso: animación suave que desciende en la ruta cósmica hasta donde está el orbe celestial,
+  // Al entrar al curso: guía suavemente al alumno directamente a donde se quedó (orbe celestial)
   // y al enfocarlo abre automáticamente la lección correspondiente.
   useEffect(() => {
     if (loadingCourse || !progressLoaded) return;
@@ -232,13 +235,16 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         document.getElementById('celestial-orb-island');
 
       if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const rect = targetEl.getBoundingClientRect();
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const targetY = Math.max(0, scrollTop + rect.top - (window.innerHeight / 2) + (rect.height / 2));
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
       }
 
       openTimer = setTimeout(() => {
         handleOpenActiveLesson();
-      }, 1050);
-    }, 300);
+      }, 750);
+    }, 200);
 
     return () => {
       clearTimeout(scrollTimer);
@@ -262,7 +268,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         </div>
 
         <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-wide mb-2 text-center">
-          Trazando la Ruta Estelar de Aprendizaje...
+          {t('viewer.tracingRoute', 'Trazando la Ruta Estelar de Aprendizaje...')}
         </h2>
         <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md text-center line-clamp-2">
           {course.title}
@@ -274,31 +280,31 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   return (
     <div className="constellation-viewer-root w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white">
       {/* Barra superior de contexto en Constellation */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 pb-2 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex w-full min-w-0 flex-1 items-center gap-2">
           <button
             type="button"
             onClick={onGoHome}
-            className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 text-sm font-semibold text-ink-soft hover:text-ink transition-colors cursor-pointer"
           >
             <Home className="w-3.5 h-3.5" />
-            <span>Inicio</span>
+            <span>{t('viewer.myLearning', 'Mi aprendizaje')}</span>
           </button>
-          <span className="text-slate-700">/</span>
-          <span className="text-xs font-bold text-cyan-400 truncate max-w-[200px] sm:max-w-md">
-            {course.title}
-          </span>
+
         </div>
 
-        {/* Botón de acceso directo a la misión activa */}
-        <button
-          type="button"
-          onClick={handleOpenActiveLesson}
-          className="flex shrink-0 items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-[#1d1633] border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/60 shadow-sm transition-all cursor-pointer"
-        >
-          <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
-          <span>Ver Lección</span>
-        </button>
+        {/* Acciones del curso */}
+        <div className="flex w-full sm:w-auto sm:ml-auto shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleOpenActiveLesson}
+            className="academy-button min-h-11 shrink-0 whitespace-nowrap"
+          >
+            <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
+            <span>{t('viewer.viewLesson', 'Ver lección')}</span>
+          </button>
+          <CourseShareButton course={course} />
+        </div>
       </div>
 
       {/* Ruta de Misiones Cósmicas (Separada por módulos con Certificado Final) */}

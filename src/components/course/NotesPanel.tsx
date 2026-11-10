@@ -66,7 +66,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
 
       <form onSubmit={onSubmit} className="shrink-0 border-t border-line p-3">
         <div className="flex items-center gap-2">
-          <label className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-canvas px-2.5 py-2 focus-within:border-brand-cyan">
+          <label className="academy-inline-field flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-canvas px-2.5">
             <Clock aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
             <span className="sr-only">Minuto de la nota</span>
             <input
@@ -74,7 +74,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
               value={timestamp}
               onChange={(event) => onTimestampChange(event.target.value)}
               placeholder="01:30"
-              className="w-11 bg-transparent text-meta text-ink tabular-nums focus:outline-none"
+              className="academy-compound-input w-11 bg-transparent text-meta text-ink tabular-nums"
             />
           </label>
 

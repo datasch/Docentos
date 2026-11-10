@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import Stripe from 'stripe';
+import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from './prisma.js';
 import { config } from './config.js';
 
@@ -18,6 +19,16 @@ const zeroDecimalCurrencies = new Set([
 
 function currencyScale(currency: string): number {
   return zeroDecimalCurrencies.has(currency.toUpperCase()) ? 1 : 100;
+}
+
+async function promotePaidGuest(tx: Prisma.TransactionClient, userId: string, paymentId: string) {
+  const promoted = await tx.user.updateMany({ where: { id: userId, role: 'EXTERNAL' }, data: { role: 'PUBLIC_USER' } });
+  if (promoted.count) {
+    await tx.auditLog.create({ data: {
+      actorUserId: userId, action: 'user.role_changed', targetType: 'User', targetId: userId,
+      metadataJson: JSON.stringify({ previousRole: 'EXTERNAL', role: 'PUBLIC_USER', source: 'confirmed_payment', paymentId }),
+    } });
+  }
 }
 
 export interface CreateCheckoutParams {
@@ -216,6 +227,7 @@ export async function handleStripeWebhook(
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        if (session.payment_status !== 'paid') break;
         const paymentId = (session.client_reference_id || session.metadata?.paymentId) as string | undefined;
         const sessionId = session.id;
 
@@ -243,22 +255,25 @@ export async function handleStripeWebhook(
             },
           });
 
-          if (updated.count) await tx.courseEnrollment.upsert({
-            where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
-            create: {
-              id: `enr_${randomBytes(12).toString('hex')}`,
-              userId: payment.userId,
-              courseId: payment.courseId,
-              status: 'ACTIVE',
-              source: 'PAYMENT',
-              createdAt: now,
-            },
-            update: {
-              status: 'ACTIVE',
-              source: 'PAYMENT',
-              updatedAt: now,
-            },
-          });
+          if (updated.count) {
+            await promotePaidGuest(tx, payment.userId, payment.id);
+            await tx.courseEnrollment.upsert({
+              where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
+              create: {
+                id: `enr_${randomBytes(12).toString('hex')}`,
+                userId: payment.userId,
+                courseId: payment.courseId,
+                status: 'ACTIVE',
+                source: 'PAYMENT',
+                createdAt: now,
+              },
+              update: {
+                status: 'ACTIVE',
+                source: 'PAYMENT',
+                updatedAt: now,
+              },
+            });
+          }
         }
         break;
       }
@@ -286,22 +301,25 @@ export async function handleStripeWebhook(
             },
           });
 
-          if (updated.count) await tx.courseEnrollment.upsert({
-            where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
-            create: {
-              id: `enr_${randomBytes(12).toString('hex')}`,
-              userId: payment.userId,
-              courseId: payment.courseId,
-              status: 'ACTIVE',
-              source: 'PAYMENT',
-              createdAt: now,
-            },
-            update: {
-              status: 'ACTIVE',
-              source: 'PAYMENT',
-              updatedAt: now,
-            },
-          });
+          if (updated.count) {
+            await promotePaidGuest(tx, payment.userId, payment.id);
+            await tx.courseEnrollment.upsert({
+              where: { userId_courseId: { userId: payment.userId, courseId: payment.courseId } },
+              create: {
+                id: `enr_${randomBytes(12).toString('hex')}`,
+                userId: payment.userId,
+                courseId: payment.courseId,
+                status: 'ACTIVE',
+                source: 'PAYMENT',
+                createdAt: now,
+              },
+              update: {
+                status: 'ACTIVE',
+                source: 'PAYMENT',
+                updatedAt: now,
+              },
+            });
+          }
         }
         break;
       }
@@ -412,6 +430,7 @@ export async function simulateDevPaymentSuccess(paymentId: string, requestingUse
       object: {
         id: payment.stripeSessionId || `cs_sim_${payment.id}`,
         client_reference_id: payment.id,
+        payment_status: 'paid',
         payment_intent: `pi_sim_${randomBytes(8).toString('hex')}`,
         metadata: {
           paymentId: payment.id,

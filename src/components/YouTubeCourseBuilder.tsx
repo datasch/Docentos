@@ -50,6 +50,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { ApiRequestError } from '../lib/apiRequest';
 import {
   User,
   YouTubeConnectionStatus,
@@ -68,18 +69,13 @@ interface YouTubeCourseBuilderProps {
   onCancel?: () => void;
 }
 
-const COURSE_CATEGORIES = [
-  'Mentoría Especializada',
-  'Mentoría Premium',
-  'Mentoría Elite',
-  'Desarrollo Web',
-  'Inteligencia Artificial',
-  'Tecnología e Ingeniería',
-  'Negocios y Emprendimiento',
-  'Diseño y Creatividad',
-  'YouTube Masterclass',
-  'General',
-];
+import {
+  MENTORSHIP_CATEGORIES,
+  TECHNICAL_CATEGORIES,
+  STANDARD_COURSE_CATEGORIES,
+} from '../lib/courseCategories';
+
+const COURSE_CATEGORIES = STANDARD_COURSE_CATEGORIES;
 
 export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   currentUser,
@@ -396,16 +392,22 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => () => {
     if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
   }, []);
 
   const pollJobStatus = (jobId: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let consecutiveErrors = 0;
     const MAX_CONSECUTIVE_ERRORS = 4;
+    let inFlight = false;
+    let nextAttemptAt = 0;
 
     const interval = setInterval(async () => {
+      if (inFlight || Date.now() < nextAttemptAt || document.visibilityState === 'hidden') return;
+      inFlight = true;
       try {
         const job = await api.youtube.getJobStatus(jobId);
+        if (pollRef.current !== interval) return;
         consecutiveErrors = 0;
         setJobProgress(job.progress || 50);
 
@@ -435,12 +437,17 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           setGenerationError(job.errorMessage || 'Falló la generación del curso por IA.');
         }
       } catch (err: any) {
+        if (pollRef.current !== interval) return;
+        if (err instanceof ApiRequestError && err.retryAfterSeconds) {
+          nextAttemptAt = Date.now() + err.retryAfterSeconds * 1000;
+          return;
+        }
         consecutiveErrors += 1;
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           clearInterval(interval);
           setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
         }
-      }
+      } finally { inFlight = false; }
     }, 2000);
     pollRef.current = interval;
   };
@@ -535,7 +542,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         </div>
 
         {/* Wizard Progress Steps */}
-        <div className="grid grid-cols-4 gap-2 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
           <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 1 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
             <span>Buscar / Importar</span>
@@ -1214,14 +1221,23 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     }
                     className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500 cursor-pointer"
                   >
-                    {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category) && (
+                    {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category as any) && (
                       <option value={draftCourse.course.category}>{draftCourse.course.category}</option>
                     )}
-                    {COURSE_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
+                    <optgroup label="Modalidades de Mentoría">
+                      {MENTORSHIP_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Áreas Temáticas Técnicas">
+                      {TECHNICAL_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>

@@ -641,15 +641,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       {/* Programar / Editar Clase Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-raised border border-line rounded-2xl w-full max-w-xl p-6 sm:p-7 space-y-6 shadow-2xl relative my-8">
+          <div className="app-dialog bg-raised border border-line rounded-2xl w-full max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-7 space-y-6 shadow-2xl relative my-auto">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 text-ink-muted hover:text-ink p-1 rounded-lg hover:bg-elevated"
+              className="absolute top-3 right-3 flex h-11 w-11 items-center justify-center text-ink-muted hover:text-ink rounded-lg hover:bg-elevated"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="space-y-1">
+            <div className="space-y-1 pr-10">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-micro font-bold">
                 <Video className="w-3 h-3" />
                 <span>LiveMeetings · Programador de Sesiones</span>

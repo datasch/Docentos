@@ -6,6 +6,9 @@ import {HelmetProvider} from 'react-helmet-async';
 import './index.css';
 import './styles/landing.css';
 import App from './App.tsx';
+import './styles/academy-fonts.css';
+import './styles/academy-system.css';
+import './styles/my-learning.css';
 import './i18n/index.ts';
 
 createRoot(document.getElementById('root')!).render(

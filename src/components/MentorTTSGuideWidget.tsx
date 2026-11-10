@@ -62,11 +62,11 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
   };
 
   return (
-    <div className="bg-[#141420] border border-[#2d2d44] hover:border-[#06b6d4]/40 rounded-2xl p-4 sm:p-5 shadow-xl transition-all space-y-3 relative overflow-hidden">
+    <div className="bg-surface border border-line hover:border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-xl transition-all space-y-3 relative overflow-hidden">
       
       {/* Background Subtle Gradient Glow */}
-      <div className="absolute -right-12 -top-12 w-48 h-48 bg-[#06b6d4]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-[#a855f7]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -right-12 -top-12 w-48 h-48 bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-brand-purple/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -78,13 +78,13 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
               src={guide.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
               alt={guide.mentorName}
               className={`w-11 h-11 rounded-full object-cover ring-2 transition-all ${
-                isPlaying ? 'ring-[#06b6d4] scale-105 shadow-lg shadow-[#06b6d4]/30' : 'ring-[#2d2d44]'
+                isPlaying ? 'ring-brand-cyan scale-105 shadow-lg shadow-brand-cyan/30' : 'ring-[#2d2d44]'
               }`}
             />
             {isPlaying && (
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#06b6d4] rounded-full border-2 border-[#141420] flex items-center justify-center animate-ping" />
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-cyan rounded-full border-2 border-[#141420] flex items-center justify-center animate-ping" />
             )}
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#06b6d4] rounded-full border-2 border-[#141420] flex items-center justify-center text-[8px] font-bold text-black">
+            <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-cyan rounded-full border-2 border-[#141420] flex items-center justify-center text-[8px] font-bold text-black">
               AI
             </span>
           </div>
@@ -92,12 +92,12 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-white">{guide.title}</span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-gradient text-white uppercase tracking-wider shadow-sm flex items-center gap-1">
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-gradient text-on-brand uppercase tracking-wider shadow-sm flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-[#eab308]" /> Guía TTS
               </span>
             </div>
             <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-              <Shield className="w-3 h-3 text-[#06b6d4]" /> Mentor: <strong className="text-slate-200">{guide.mentorName}</strong>
+              <Shield className="w-3 h-3 text-brand-cyan" /> Mentor: <strong className="text-slate-200">{guide.mentorName}</strong>
             </p>
           </div>
         </div>
@@ -108,8 +108,8 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             onClick={handlePlayTTS}
             className={`flex-1 justify-center sm:flex-none px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all shadow-md ${
               isPlaying
-                ? 'bg-[#a855f7] text-white shadow-[#a855f7]/30 ring-2 ring-[#a855f7]/50'
-                : 'btn-brand-primary shadow-[#06b6d4]/20'
+                ? 'bg-brand-purple text-white shadow-brand-purple/30 ring-2 ring-brand-purple/50'
+                : 'btn-brand-primary shadow-brand-cyan/20'
             }`}
           >
             {isPlaying ? (
@@ -127,7 +127,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
 
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="shrink-0 p-2 rounded-xl bg-[#1a1a2e] border border-[#2d2d44] text-slate-400 hover:text-white"
+            className="shrink-0 p-2 rounded-xl bg-raised border border-line text-slate-400 hover:text-white"
           >
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -136,15 +136,15 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
 
       {/* Expanded Content & Script Caption Box */}
       {isExpanded && (
-        <div className="space-y-3 pt-2 border-t border-[#2d2d44]/60 animate-fade-in">
+        <div className="space-y-3 pt-2 border-t border-line/60 animate-fade-in">
           
           {/* Animated Equalizer Waveform & Progress */}
-          <div className="bg-[#0a0a0f] p-3 rounded-xl border border-[#2d2d44] flex items-center justify-between gap-3">
+          <div className="bg-canvas p-3 rounded-xl border border-line flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 h-4 shrink-0">
               {[0.4, 0.8, 0.3, 0.9, 0.5, 0.7, 0.2, 0.8].map((val, idx) => (
                 <div
                   key={idx}
-                  className={`w-1 bg-[#06b6d4] rounded-full transition-all duration-300 ${
+                  className={`w-1 bg-brand-cyan rounded-full transition-all duration-300 ${
                     isPlaying ? 'animate-pulse' : 'opacity-40'
                   }`}
                   style={{
@@ -156,7 +156,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             </div>
 
             {/* Audio Progress Bar */}
-            <div className="flex-1 bg-[#1a1a2e] h-2 rounded-full overflow-hidden border border-[#2d2d44] relative">
+            <div className="flex-1 bg-raised h-2 rounded-full overflow-hidden border border-line relative">
               <div
                 className="bg-brand-gradient h-full transition-all duration-300 rounded-full"
                 style={{ width: `${speechProgress}%` }}
@@ -169,22 +169,22 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
           </div>
 
           {/* Script Text Display */}
-          <div className="bg-[#0a0a0f] p-3.5 rounded-xl border border-[#2d2d44] text-xs text-slate-200 leading-relaxed font-sans relative">
+          <div className="bg-canvas p-3.5 rounded-xl border border-line text-xs text-slate-200 leading-relaxed font-sans relative">
             <p className="italic text-slate-300">
               "{guide.scriptText}"
             </p>
           </div>
 
           {/* Gamified Reward Banner */}
-          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[#1a1a2e] border border-[#2d2d44] text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-raised border border-line text-xs">
             <div className="flex min-w-0 items-center gap-2">
               <Award className="w-4 h-4 text-[#eab308]" />
               <span className="text-slate-300">Recompensa Gamificada de Lección:</span>
-              <strong className="text-[#06b6d4]">+{guide.xpReward || 50} XP</strong>
+              <strong className="text-brand-cyan">+{guide.xpReward || 50} XP</strong>
             </div>
 
             {claimedReward ? (
-              <span className="text-[11px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-1 rounded-lg flex items-center gap-1">
+              <span className="text-[11px] font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-2.5 py-1 rounded-lg flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> ¡+50 XP Reclamados!
               </span>
             ) : (

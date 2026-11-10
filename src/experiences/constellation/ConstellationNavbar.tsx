@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Course } from '../../types';
 import {
-  Command,
+  GraduationCap,
+  BookOpen,
+  Users,
   Search,
   LogOut,
   Shield,
@@ -22,7 +24,7 @@ import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { avatarSrc } from '../../lib/avatar';
 import { usePlatformBrand, DEFAULT_LOGO_URL } from '../../lib/logoConfig';
 
-export type ConstellationTab = 'explore' | 'search' | 'courses' | 'viewer' | 'mentor' | 'admin';
+export type ConstellationTab = 'explore' | 'learning' | 'courses' | 'viewer' | 'mentor' | 'admin';
 
 const LANGUAGES = [
   { code: 'es', label: 'Español', flag: '🇪🇸' },
@@ -158,26 +160,32 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
   const isStaff = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR');
   const isAdmin = currentUser && currentUser.role === 'ADMIN';
 
+  const getRoleLabel = (role: string) => {
+    if (role === 'PUBLIC_USER') return t('nav.roles.student', 'ESTUDIANTE');
+    if (role === 'EXTERNAL') return t('nav.roles.guest', 'INVITADO');
+    return ROLE_LABELS[role] || role;
+  };
+
   const accessNote = isAdmin
-    ? { label: 'Acceso total', tone: 'lp-tone-accent' }
+    ? { label: t('nav.accessTotal', 'Acceso total'), tone: 'lp-tone-accent' }
     : currentUser?.role === 'VIP'
-      ? { label: '¡Ilimitado!', tone: 'lp-tone-gold' }
+      ? { label: t('nav.accessUnlimited', '¡Ilimitado!'), tone: 'lp-tone-gold' }
       : isStaff
-        ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
+        ? { label: t('nav.accessMentor', 'Acceso de mentor'), tone: 'lp-tone-cyan' }
         : hasAccess
-          ? { label: 'Cursos habilitados', tone: 'lp-tone-green' }
-          : { label: 'Sin acceso', tone: 'lp-tone-warn' };
+          ? { label: t('nav.accessActive', 'Acceso activo'), tone: 'lp-tone-green' }
+          : { label: currentUser?.role === 'EXTERNAL' ? t('nav.noCoursesPurchased', 'Sin cursos adquiridos') : t('nav.noAccess', 'Sin acceso'), tone: 'lp-tone-warn' };
 
   const { logoUrl: customLogoUrl, brandName } = usePlatformBrand();
 
   return (
     <header
-      className={`lp-header sticky top-0 z-50 w-full transition-all duration-300 select-none ${isScrolled
-        ? 'bg-white/95 dark:bg-[#07070b]/90 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.06] shadow-sm py-2 sm:py-3.5'
-        : 'bg-white/80 dark:bg-[#07070b]/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-b border-slate-200/60 dark:border-white/[0.06] md:border-transparent py-2.5 sm:py-5'
+      className={`lp-header constellation-navbar sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow] duration-200 select-none py-3 sm:py-3.5 ${isScrolled
+        ? 'bg-surface border-b border-line shadow-sm'
+        : 'bg-surface border-b border-line'
         }`}
     >
-      <div className="max-w-[1280px] w-full mx-auto px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-6 min-w-0">
+      <div className="academy-nav-layout max-w-[1280px] w-full mx-auto px-3 sm:px-6 flex min-h-11 items-center justify-between gap-2 sm:gap-6 min-w-0">
 
         {/* 1. Logo Lockup con soporte para logo personalizado y adorno festivo */}
         <button
@@ -185,7 +193,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             onSelectTab('explore');
             if (activeTab === 'explore') window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="flex items-center gap-2 sm:gap-3 group text-left cursor-pointer select-none bg-transparent border-0 p-0 min-w-0 shrink relative"
+          className="academy-nav-brand flex items-center gap-2 sm:gap-3 group text-left cursor-pointer select-none bg-transparent border-0 p-0 min-w-0 shrink relative"
         >
           {/* Logo Mark Oficial o Personalizado del Campus */}
           <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 relative">
@@ -214,13 +222,8 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             )}
           </div>
 
-          {/* Wordmark tipográfico que colapsa suavemente al hacer scroll o trunca con elegancia si el nombre es largo */}
-          <div
-            className={`overflow-hidden transition-all duration-500 ease-out flex items-center min-w-0 ${isScrolled
-              ? 'max-w-0 opacity-0 -translate-x-3 pointer-events-none'
-              : 'max-w-[120px] xs:max-w-[170px] sm:max-w-[280px] md:max-w-[400px] opacity-100 translate-x-0'
-              }`}
-          >
+          {/* Wordmark tipográfico estable sin reflow en scroll */}
+          <div className="academy-nav-wordmark flex items-center min-w-0">
             <span
               title={brandName}
               className="font-constellation-display text-base sm:text-[22px] tracking-[-0.03em] text-slate-900 dark:text-white font-normal truncate block"
@@ -231,18 +234,19 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
         </button>
 
         {/* 2. Navegación Principal Fantasma (Mayúsculas 13px weight 600, tracking 0.05em estilo Dala) */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-8 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
+        <nav aria-label="Navegación principal" className="academy-navigation hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
           <button
             onClick={() => {
               onSelectTab('explore');
               if (activeTab === 'explore') window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
+            aria-current={activeTab === 'explore' ? 'page' : undefined}
             className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'explore'
               ? 'text-slate-900 dark:text-white font-bold'
               : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
               }`}
           >
-            Explorar
+            <Home size={18} aria-hidden="true" /><span>{t('nav.home', 'Inicio')}</span>
           </button>
 
           <button
@@ -250,97 +254,87 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               onSelectTab('courses');
               if (activeTab === 'courses') window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
+            aria-current={activeTab === 'courses' ? 'page' : undefined}
             className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'courses'
               ? 'text-slate-900 dark:text-white font-bold'
               : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
               }`}
           >
-            Catálogo
+            <BookOpen size={18} aria-hidden="true" /><span>{t('nav.catalog', 'Catálogo')}</span>
           </button>
 
           <button
             onClick={() => {
-              onSelectTab('search');
-              if (activeTab === 'search') window.scrollTo({ top: 0, behavior: 'smooth' });
+              onSelectTab('learning');
+              if ((activeTab === 'learning' || activeTab === 'viewer')) window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className={`transition-colors duration-200 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'search'
+            aria-current={(activeTab === 'learning' || activeTab === 'viewer') ? 'page' : undefined}
+            className={`transition-colors duration-200 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${(activeTab === 'learning' || activeTab === 'viewer')
               ? 'text-slate-900 dark:text-white font-bold'
               : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
               }`}
           >
-            <span>Búsqueda</span>
+            <GraduationCap size={18} aria-hidden="true" /><span>{t('nav.myLearning', 'Mi aprendizaje')}</span>
           </button>
-
-          {activeCourse && (
-            <button
-              onClick={() => onSelectTab('viewer')}
-              title={activeCourse.title}
-              className={`transition-colors duration-200 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'viewer'
-                ? 'text-cyan-700 dark:text-white font-bold'
-                : 'text-cyan-600 dark:text-[#06b6d4] hover:text-cyan-800 dark:hover:text-cyan-300'
-                }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-[#06b6d4] animate-ping" />
-              <span>En Curso</span>
-            </button>
-          )}
 
           {isStaff && (
             <button
               onClick={() => onSelectTab('mentor')}
-              className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'mentor'
+              aria-current={activeTab === 'mentor' ? 'page' : undefined}
+            className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'mentor'
                 ? 'text-slate-900 dark:text-white font-bold'
                 : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
                 }`}
             >
-              Mentoría
+              <Users size={18} aria-hidden="true" /><span>{t('nav.mentorship', 'Mentoría')}</span>
             </button>
           )}
 
           {isAdmin && (
             <button
               onClick={() => onSelectTab('admin')}
-              className={`transition-colors duration-200 cursor-pointer flex items-center gap-1 whitespace-nowrap ${activeTab === 'admin'
+              aria-current={activeTab === 'admin' ? 'page' : undefined}
+            className={`transition-colors duration-200 cursor-pointer flex items-center gap-1 whitespace-nowrap ${activeTab === 'admin'
                 ? 'text-slate-900 dark:text-white font-bold'
                 : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
                 }`}
             >
               <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-[#eab308]" />
-              <span>Admin</span>
+              <span>{t('nav.admin', 'Admin')}</span>
             </button>
           )}
         </nav>
 
         {/* 3. Acciones Derechas: Idioma + Modo Claro/Oscuro + Command Palette + Perfil con Desplegable */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <div className="academy-nav-actions flex items-center gap-1.5 sm:gap-3 shrink-0">
 
           {/* Selector de idioma */}
           <div className="lp-menu-anchor" ref={langRef}>
             <button
               type="button"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white text-xs transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+              className="flex items-center justify-center gap-1.5 min-h-11 min-w-11 px-2 sm:px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white text-xs transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
               onClick={() => {
                 setLangOpen((open) => !open);
                 setProfileOpen(false);
               }}
               aria-haspopup="menu"
               aria-expanded={langOpen}
-              title="Idioma"
+              title={t('nav.language', 'Idioma')}
             >
               <Globe className="w-3.5 h-3.5 text-slate-500 dark:text-white/50" />
-              <span className="font-semibold text-[11px]">{currentLangCode}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <span className="hidden sm:inline font-semibold text-[11px]">{currentLangCode}</span>
+              <ChevronDown className="hidden sm:block w-3 h-3 text-slate-400" />
             </button>
 
             {langOpen && (
-              <div className="lp-menu !bg-white dark:!bg-[#111119] !border-slate-200 dark:!border-white/10 !shadow-2xl" role="menu">
+              <div className="lp-menu" role="menu">
                 {LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
                     type="button"
                     role="menuitem"
                     onClick={() => handleLanguageSelect(lang.code)}
-                    className={`lp-menu-item${i18n.language.startsWith(lang.code) ? ' is-active' : ''}`}
+                    className={`lp-menu-item${(i18n.language || 'es').startsWith(lang.code) ? ' is-active' : ''}`}
                   >
                     <span className="lp-menu-item-left">
                       <span aria-hidden>{lang.flag}</span>
@@ -355,8 +349,8 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           {/* Botón Selector Modo Claro / Modo Oscuro */}
           <button
             onClick={handleToggleTheme}
-            title={colorMode === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+            title={colorMode === 'dark' ? t('nav.themeLight', 'Modo Blanco / Claro') : t('nav.themeDark', 'Modo Oscuro')}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
           >
             {colorMode === 'dark' ? (
               <Sun className="w-4 h-4 text-amber-400" />
@@ -370,14 +364,14 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             <div className="lp-menu-anchor" ref={profileRef}>
               <button
                 type="button"
-                className="lp-user-profile flex items-center gap-1.5 p-0.5 rounded-full hover:opacity-90 transition-all cursor-pointer border-0 bg-transparent"
+                className="lp-user-profile flex min-h-11 items-center gap-1.5 p-0.5 rounded-full hover:opacity-90 transition-all cursor-pointer border-0 bg-transparent"
                 onClick={() => {
                   setProfileOpen((prev) => !prev);
                   setLangOpen(false);
                 }}
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
-                aria-label="Menú de cuenta"
+                aria-label={t('nav.accountMenu', 'Menú de cuenta')}
               >
                 <span className="lp-avatar-wrapper relative w-9 h-9 shrink-0 rounded-full block">
                   {currentUser.avatarUrl ? (
@@ -385,7 +379,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                   ) : (
                     <span className="lp-avatar-fallback w-full h-full rounded-full flex items-center justify-center">{initialsOf(currentUser.name || currentUser.email)}</span>
                   )}
-                  <span className="lp-status-badge" title="En línea" />
+                  <span className="lp-status-badge" title={t('nav.online', 'En línea')} />
                 </span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 text-slate-400 dark:text-white/50 transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''
@@ -394,14 +388,14 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               </button>
 
               {profileOpen && (
-                <div className="lp-menu !bg-white dark:!bg-[#111119] !border-slate-200 dark:!border-white/10 !shadow-2xl" role="menu">
+                <div className="lp-menu" role="menu">
                   <div className="lp-menu-head">
                     <span className="lp-menu-name">{currentUser.name || currentUser.email}</span>
-                    <span className="lp-menu-role">{ROLE_LABELS[currentUser.role] || currentUser.role}</span>
+                    <span className="lp-menu-role">{getRoleLabel(currentUser.role)}</span>
                   </div>
 
                   {/* Secciones de navegación en móviles dentro del menú */}
-                  <div className="md:hidden py-1 border-b border-slate-100 dark:border-white/[0.06]">
+                  <div className="xl:hidden py-1 border-b border-slate-100 dark:border-white/[0.06]">
                     <button
                       type="button"
                       role="menuitem"
@@ -414,7 +408,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <Home className="w-4 h-4 text-[#06b6d4]" />
-                        <span>Explorar</span>
+                        <span>{t('nav.home', 'Inicio')}</span>
                       </span>
                     </button>
 
@@ -430,43 +424,25 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <Search className="w-4 h-4 text-[#06b6d4]" />
-                        <span>Catálogo</span>
+                        <span>{t('nav.catalog', 'Catálogo')}</span>
                       </span>
                     </button>
 
                     <button
                       type="button"
                       role="menuitem"
-                      className={`lp-menu-item ${activeTab === 'search' ? 'is-active text-[#06b6d4] font-bold' : ''}`}
+                      className={`lp-menu-item ${(activeTab === 'learning' || activeTab === 'viewer') ? 'is-active text-[#06b6d4] font-bold' : ''}`}
                       onClick={() => {
                         setProfileOpen(false);
-                        onSelectTab('search');
-                        if (activeTab === 'search') window.scrollTo({ top: 0, behavior: 'smooth' });
+                        onSelectTab('learning');
+                        if ((activeTab === 'learning' || activeTab === 'viewer')) window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                     >
                       <span className="lp-menu-item-left">
-                        <Command className="w-4 h-4 text-[#06b6d4]" />
-                        <span>Búsqueda</span>
+                        <GraduationCap className="w-4 h-4 text-brand-cyan" />
+                        <span>{t('nav.myLearning', 'Mi aprendizaje')}</span>
                       </span>
                     </button>
-
-                    {activeCourse && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={`lp-menu-item ${activeTab === 'viewer' ? 'is-active text-cyan-400 font-bold' : ''}`}
-                        onClick={() => {
-                          setProfileOpen(false);
-                          onSelectTab('viewer');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <span className="lp-menu-item-left">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />
-                          <span>En Curso</span>
-                        </span>
-                      </button>
-                    )}
 
                     {isStaff && (
                       <button
@@ -481,7 +457,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                       >
                         <span className="lp-menu-item-left">
                           <Sparkles className="w-4 h-4 text-[#a855f7]" />
-                          <span>Mentoría</span>
+                          <span>{t('nav.mentorship', 'Mentoría')}</span>
                         </span>
                       </button>
                     )}
@@ -499,7 +475,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                       >
                         <span className="lp-menu-item-left">
                           <Shield className="w-4 h-4 text-[#eab308]" />
-                          <span>Administración</span>
+                          <span>{t('nav.administration', 'Administración')}</span>
                         </span>
                       </button>
                     )}
@@ -517,7 +493,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <Bot className="w-4 h-4" />
-                        Asistente Ian (Tour)
+                        {t('nav.restartTour', 'Asistente Ian (Tour)')}
                       </span>
                     </button>
                   )}
@@ -534,7 +510,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <Award className="w-4 h-4" />
-                        Verificar diploma
+                        {t('nav.verifyDiploma', 'Verificar diploma')}
                       </span>
                     </button>
                   )}
@@ -551,7 +527,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <HeartHandshake className="w-4 h-4" />
-                        Buzón de escucha
+                        {t('nav.listeningBox', 'Buzón de escucha')}
                       </span>
                       {unreadListening > 0 && (
                         <span className="lp-badge-premium" title="Tienes respuestas nuevas">
@@ -573,7 +549,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <KeyRound className="w-4 h-4" />
-                        Seguridad de la cuenta
+                        {t('nav.accountSecurity', 'Seguridad de la cuenta')}
                       </span>
                     </button>
                   )}
@@ -590,22 +566,22 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                       {colorMode === 'dark' ? (
                         <>
                           <Sun className="w-4 h-4 text-amber-400" />
-                          <span>Modo Blanco / Claro</span>
+                          <span>{t('nav.themeLight', 'Modo Blanco / Claro')}</span>
                         </>
                       ) : (
                         <>
                           <Moon className="w-4 h-4 text-cyan-500" />
-                          <span>Modo Oscuro</span>
+                          <span>{t('nav.themeDark', 'Modo Oscuro')}</span>
                         </>
                       )}
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/70">
-                      {colorMode === 'dark' ? 'Oscuro' : 'Claro'}
+                      {colorMode === 'dark' ? t('nav.dark', 'Oscuro') : t('nav.light', 'Claro')}
                     </span>
                   </button>
 
                   <p className="lp-menu-note">
-                    <span>Estado de Acceso</span>
+                    <span>{t('nav.accessStatus', 'Estado de Acceso')}</span>
                     <strong className={accessNote.tone}>{accessNote.label}</strong>
                   </p>
 
@@ -620,7 +596,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                   >
                     <span className="lp-menu-item-left">
                       <LogOut className="w-4 h-4" />
-                      Cerrar Sesión
+                      {t('nav.logout', 'Cerrar Sesión')}
                     </span>
                   </button>
                 </div>
@@ -629,9 +605,9 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="cursor-pointer px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs sm:text-[13px] font-semibold tracking-[0.05em] uppercase transition-all shadow-[0_0_20px_rgba(128,82,255,0.35)] hover:shadow-[0_0_30px_rgba(128,82,255,0.55)] active:scale-95"
+              className="academy-button px-3 sm:px-6"
             >
-              <span>Acceder</span>
+              <span>{t('nav.loginButton', 'Acceder')}</span>
             </button>
           )}
 
@@ -639,99 +615,6 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
 
       </div>
 
-      {/* 4. Barra de Navegación Rápida Móvil (Visible únicamente en móviles < md) */}
-      <nav
-        aria-label="Navegación principal móvil"
-        className="md:hidden w-full border-t border-slate-200/80 dark:border-white/[0.06] bg-slate-50/90 dark:bg-[#07070b]/95 backdrop-blur-md px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-xs"
-      >
-        <button
-          onClick={() => {
-            onSelectTab('explore');
-            if (activeTab === 'explore') window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer ${activeTab === 'explore'
-            ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-sm shadow-cyan-500/25'
-            : 'text-slate-600 dark:text-white/60 bg-slate-200/60 dark:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
-            }`}
-        >
-          Explorar
-        </button>
-
-        <button
-          onClick={() => {
-            onSelectTab('courses');
-            if (activeTab === 'courses') window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer ${activeTab === 'courses'
-            ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-sm shadow-cyan-500/25'
-            : 'text-slate-600 dark:text-white/60 bg-slate-200/60 dark:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
-            }`}
-        >
-          Catálogo
-        </button>
-
-        <button
-          onClick={() => {
-            onSelectTab('search');
-            if (activeTab === 'search') window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'search'
-            ? 'bg-[#06b6d4] text-[#050505] font-bold shadow-sm shadow-cyan-500/25'
-            : 'text-slate-600 dark:text-white/60 bg-slate-200/60 dark:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white'
-            }`}
-        >
-          <Search className="w-3 h-3" />
-          <span>Búsqueda</span>
-        </button>
-
-        {activeCourse && (
-          <button
-            onClick={() => {
-              onSelectTab('viewer');
-              if (activeTab === 'viewer') window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'viewer'
-              ? 'bg-cyan-500 text-[#050505] font-bold shadow-sm shadow-cyan-500/30'
-              : 'text-cyan-600 dark:text-[#06b6d4] bg-cyan-500/10 border border-cyan-500/30'
-              }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            <span>En Curso</span>
-          </button>
-        )}
-
-        {isStaff && (
-          <button
-            onClick={() => {
-              onSelectTab('mentor');
-              if (activeTab === 'mentor') window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'mentor'
-              ? 'bg-[#a855f7] text-white font-bold shadow-sm shadow-purple-500/30'
-              : 'text-purple-600 dark:text-[#a855f7] bg-purple-500/10 border border-purple-500/30'
-              }`}
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>Mentoría</span>
-          </button>
-        )}
-
-        {isAdmin && (
-          <button
-            onClick={() => {
-              onSelectTab('admin');
-              if (activeTab === 'admin') window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`shrink-0 px-3 py-1 rounded-full font-constellation-label text-[11px] tracking-wider uppercase font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'admin'
-              ? 'bg-[#eab308] text-black font-bold shadow-sm shadow-amber-500/30'
-              : 'text-amber-600 dark:text-[#eab308] bg-amber-500/10 border border-amber-500/30'
-              }`}
-          >
-            <Shield className="w-3 h-3" />
-            <span>Admin</span>
-          </button>
-        )}
-      </nav>
     </header>
   );
 };
