@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { getCanonicalCategory, STANDARD_COURSE_CATEGORIES } from '../lib/courseCategories';
 
@@ -11,6 +12,7 @@ interface CourseCategoryFilterProps {
 }
 
 export function CourseCategoryFilter({ id, courses, value, onChange, className = '' }: CourseCategoryFilterProps) {
+  const { t } = useTranslation();
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const counts = new Map<string, number>();
   for (const course of courses) {
@@ -19,6 +21,11 @@ export function CourseCategoryFilter({ id, courses, value, onChange, className =
   }
   const options = ['todos', ...STANDARD_COURSE_CATEGORIES.filter((category) => counts.has(category) || category === value)];
   const countFor = (category: string) => category === 'todos' ? courses.length : counts.get(category) ?? 0;
+
+  const getCategoryLabel = (cat: string) => {
+    if (cat === 'todos') return t('categories.todos', 'Todos');
+    return t(`categories.${cat}`, cat);
+  };
 
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
@@ -48,8 +55,8 @@ export function CourseCategoryFilter({ id, courses, value, onChange, className =
         }
       }}
     >
-      <summary id={id} aria-label={`Filtrar por categoría: ${value === 'todos' ? 'Todos' : value}`}>
-        <span className="course-category-filter__label">{value === 'todos' ? 'Todas las categorías' : value}</span>
+      <summary id={id} aria-label={`${t('catalog.filterByCategory', 'Filtrar por categoría')}: ${getCategoryLabel(value)}`}>
+        <span className="course-category-filter__label">{value === 'todos' ? t('categories.all', 'Todas las categorías') : getCategoryLabel(value)}</span>
         <ChevronDown size={16} className="course-category-filter__chevron" aria-hidden="true" />
       </summary>
       <div className="course-category-filter__options" role="group" aria-labelledby={id}>
@@ -63,13 +70,13 @@ export function CourseCategoryFilter({ id, courses, value, onChange, className =
               detailsRef.current?.querySelector('summary')?.focus();
             }}
           >
-            <span>{category === 'todos' ? 'Todos' : category}</span>
+            <span>{getCategoryLabel(category)}</span>
             <span className="course-category-filter__count">{countFor(category)}</span>
           </button>
         ))}
       </div>
     </details>
-    <div role="group" aria-label="Filtrar por categoría" className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">
+    <div role="group" aria-label={t('catalog.filterByCategory', 'Filtrar por categoría')} className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">
       {options.map((category) => (
         <button key={category} type="button" onClick={() => onChange(category)}
           aria-pressed={category === value}
@@ -77,7 +84,7 @@ export function CourseCategoryFilter({ id, courses, value, onChange, className =
             ? 'bg-brand-cyan text-on-brand font-bold'
             : 'bg-slate-100 text-slate-600 border border-slate-200/60 hover:bg-slate-200/80 hover:text-slate-900 dark:bg-white/[0.03] dark:text-white/60 dark:border-white/[0.05] dark:hover:bg-white/[0.07] dark:hover:text-white'}`}
         >
-          <span className="min-w-0 break-words text-left">{category === 'todos' ? 'Todos' : category}</span>
+          <span className="min-w-0 break-words text-left">{getCategoryLabel(category)}</span>
           <span className={`shrink-0 rounded-full px-1.5 text-[10px] tabular-nums ${category === value ? 'bg-black/10' : 'bg-slate-200/70 dark:bg-white/10'}`}>{countFor(category)}</span>
         </button>
       ))}

@@ -244,6 +244,20 @@ export async function userHasResourceAccess(user: AuthenticatedUser | undefined,
   return resource ? userHasCourseAccess(user, resource.courseId) : false;
 }
 
+export async function getVideoForAccess(user: AuthenticatedUser | undefined, videoId: string) {
+  const video = await prisma.videoDriveLink.findUnique({
+    where: { id: videoId },
+    include: { module: { select: { courseId: true } } },
+  });
+  if (!video) return { status: 404, error: 'Video no encontrado.', video: null };
+
+  const hasAccess = await userHasCourseAccess(user, video.module.courseId);
+  if (!hasAccess) {
+    return { status: 403, error: 'No tienes autorización para ver este video.', video: null };
+  }
+  return { status: 200, error: null, video };
+}
+
 function serializeResource(resource: any) {
   return {
     id: resource.id,
@@ -263,6 +277,13 @@ function serializeResource(resource: any) {
 }
 
 function serializeVideo(video: any) {
+  const parsed = parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '');
+  const provider = parsed.provider;
+  const youtubeVideoId =
+    provider === 'youtube'
+      ? parsed.videoId || (video.source === 'YOUTUBE' ? video.driveFileId : undefined)
+      : undefined;
+
   return {
     id: video.id,
     title: video.title,
@@ -275,13 +296,15 @@ function serializeVideo(video: any) {
     // ella, y `source` no basta: hay clases guardadas como EXTERNAL_URL cuya
     // URL es un `preview` de Drive. El reproductor necesita el dato porque cada
     // proveedor pide un alto minimo distinto, y sin el se maquetaba a ciegas.
-    provider: parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '').provider,
+    provider,
+    youtubeVideoId,
     order: video.order,
     meetingType: video.meetingType || null,
     meetingUrl: video.meetingUrl || null,
     scheduledAt: video.scheduledAt ? (video.scheduledAt instanceof Date ? video.scheduledAt.toISOString() : video.scheduledAt) : null,
     isLive: Boolean(video.isLive),
     playbackUrl: `/api/content/videos/${encodeURIComponent(video.id)}`,
+    streamUrl: provider === 'drive' ? `/api/content/videos/${encodeURIComponent(video.id)}/stream` : undefined,
     createdAt: video.createdAt,
     updatedAt: video.updatedAt,
   };

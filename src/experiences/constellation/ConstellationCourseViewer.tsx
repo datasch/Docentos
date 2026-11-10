@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Home, Play } from 'lucide-react';
 import { Course, User, Module, VideoDriveLink, CertificateRecord } from '../../types';
 import { CourseViewer } from '../../components/CourseViewer';
@@ -26,6 +27,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   onSelectCourse,
   courses = [],
 }) => {
+  const { t } = useTranslation();
   const [course, setCourse] = useState<Course>(initialCourse);
   const [loadingCourse, setLoadingCourse] = useState<boolean>(
     !initialCourse.modules || initialCourse.modules.length === 0
@@ -219,7 +221,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     return pending ?? allVideoIds[allVideoIds.length - 1];
   }, [allVideoIds, completedVideoIds]);
 
-  // Al entrar al curso: animación suave que desciende en la ruta cósmica hasta donde está el orbe celestial,
+  // Al entrar al curso: guía suavemente al alumno directamente a donde se quedó (orbe celestial)
   // y al enfocarlo abre automáticamente la lección correspondiente.
   useEffect(() => {
     if (loadingCourse || !progressLoaded) return;
@@ -233,13 +235,16 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         document.getElementById('celestial-orb-island');
 
       if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const rect = targetEl.getBoundingClientRect();
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const targetY = Math.max(0, scrollTop + rect.top - (window.innerHeight / 2) + (rect.height / 2));
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
       }
 
       openTimer = setTimeout(() => {
         handleOpenActiveLesson();
-      }, 1050);
-    }, 300);
+      }, 750);
+    }, 200);
 
     return () => {
       clearTimeout(scrollTimer);
@@ -263,7 +268,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         </div>
 
         <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-wide mb-2 text-center">
-          Trazando la Ruta Estelar de Aprendizaje...
+          {t('viewer.tracingRoute', 'Trazando la Ruta Estelar de Aprendizaje...')}
         </h2>
         <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md text-center line-clamp-2">
           {course.title}
@@ -283,7 +288,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
             className="flex min-h-11 shrink-0 items-center gap-1.5 text-sm font-semibold text-ink-soft hover:text-ink transition-colors cursor-pointer"
           >
             <Home className="w-3.5 h-3.5" />
-            <span>Mi aprendizaje</span>
+            <span>{t('viewer.myLearning', 'Mi aprendizaje')}</span>
           </button>
 
         </div>
@@ -296,7 +301,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
             className="academy-button min-h-11 shrink-0 whitespace-nowrap"
           >
             <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
-            <span>Ver lección</span>
+            <span>{t('viewer.viewLesson', 'Ver lección')}</span>
           </button>
           <CourseShareButton course={course} />
         </div>

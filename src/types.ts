@@ -246,7 +246,10 @@ export interface VideoDriveLink {
   duration?: string;
   mimeType: string;
   embedUrl: string;
+  previewUrl?: string | null;
   playbackUrl?: string;
+  streamUrl?: string;
+  youtubeVideoId?: string;
   source?: 'GOOGLE_DRIVE' | 'EXTERNAL_URL' | 'DEMO' | 'YOUTUBE' | string;
   /** Quien reproduce, resuelto en el servidor a partir de la URL real. */
   provider?: 'youtube' | 'drive' | 'embed';

@@ -7,6 +7,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, RefreshCw, AlertCircle, BookOpen, GraduationCap } from 'lucide-react';
 import { siteConfig } from '../config/theme';
 import { api } from '../lib/api';
@@ -29,6 +30,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   price,
   onPaymentSuccess,
 }) => {
+  const { t } = useTranslation();
   useBodyScrollLock(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -42,18 +44,18 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         </div>
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-brand-violet-light text-xs font-bold uppercase tracking-wider mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-brand-violet-light" /> Cuenta Mentee • Sin Cobros
+            <Sparkles className="w-3.5 h-3.5 text-brand-violet-light" /> {t('paywall.menteeTag', 'Cuenta Mentee • Sin Cobros')}
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold text-ink tracking-tight">
-            Acceso gestionado por mentoría
+            {t('paywall.menteeTitle', 'Acceso gestionado por mentoría')}
           </h2>
           <p className="text-ink-muted text-sm md:text-base mt-2 max-w-xl mx-auto">
-            Los usuarios con rol de Mentee no requieren pagar matrículas en la plataforma. Tu acceso al programa <strong className="text-ink">"{courseTitle}"</strong> es habilitado directamente por tu mentor asignado o la administración.
+            {t('paywall.menteeDesc', { title: courseTitle, defaultValue: `Los usuarios con rol de Mentee no requieren pagar matrículas en la plataforma. Tu acceso al programa "${courseTitle}" es habilitado directamente por tu mentor asignado o la administración.` })}
           </p>
         </div>
         <div className="p-4 bg-raised rounded-xl border border-line max-w-md mx-auto text-sm text-ink-soft flex items-center justify-center gap-2">
           <ShieldCheck className="w-5 h-5 text-brand-violet-light shrink-0" />
-          <span>Comunícate con tu mentor para activar este curso en tu plan.</span>
+          <span>{t('paywall.menteeContact', 'Comunícate con tu mentor para activar este curso en tu plan.')}</span>
         </div>
       </div>
     );
@@ -114,14 +116,13 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-raised border border-line text-brand-cyan text-xs font-bold uppercase tracking-wider mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-brand-cyan" /> Contenido Protegido - Matrícula Requerida
+            <Sparkles className="w-3.5 h-3.5 text-brand-cyan" /> {t('paywall.protectedContent', 'Contenido Protegido - Matrícula Requerida')}
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            Acceso a {courseTitle}
+            {t('paywall.accessTo', { title: courseTitle, defaultValue: `Acceso a ${courseTitle}` })}
           </h2>
           <p className="text-slate-400 text-sm md:text-base mt-2 max-w-2xl mx-auto">
-            Adquiere tu matrícula individual para desbloquear todas las lecciones en alta definición,
-            descarga de recursos exclusivos y emisión de certificado oficial al completar el programa.
+            {t('paywall.paywallDesc', 'Adquiere tu matrícula individual para desbloquear todas las lecciones en alta definición, descarga de recursos exclusivos y emisión de certificado oficial al completar el programa.')}
           </p>
         </div>
 
@@ -137,29 +138,29 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           <div className="flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-brand-cyan shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Streaming Protegido HD</p>
-              <p className="text-xs text-slate-400">Videos de alta resolución con enlaces seguros y reproductor sin interrupciones.</p>
+              <p className="text-sm font-semibold text-white">{t('paywall.benefit1Title', 'Streaming Protegido HD')}</p>
+              <p className="text-xs text-slate-400">{t('paywall.benefit1Desc', 'Videos de alta resolución con enlaces seguros y reproductor sin interrupciones.')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-brand-cyan shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Material y Recursos Descargables</p>
-              <p className="text-xs text-slate-400">Guías, plantillas de código y archivos complementarios protegidos.</p>
+              <p className="text-sm font-semibold text-white">{t('paywall.benefit2Title', 'Material y Recursos Descargables')}</p>
+              <p className="text-xs text-slate-400">{t('paywall.benefit2Desc', 'Guías, plantillas de código y archivos complementarios protegidos.')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-brand-cyan shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Certificado Oficial Verificable</p>
-              <p className="text-xs text-slate-400">Diploma persistente con código público de validación para tu currículum.</p>
+              <p className="text-sm font-semibold text-white">{t('paywall.benefit3Title', 'Certificado Oficial Verificable')}</p>
+              <p className="text-xs text-slate-400">{t('paywall.benefit3Desc', 'Diploma persistente con código público de validación para tu currículum.')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-brand-cyan shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Bandeja de Mentoría Directa</p>
-              <p className="text-xs text-slate-400">Consultas prioritarias respondidas directamente por el equipo docente.</p>
+              <p className="text-sm font-semibold text-white">{t('paywall.benefit4Title', 'Bandeja de Mentoría Directa')}</p>
+              <p className="text-xs text-slate-400">{t('paywall.benefit4Desc', 'Consultas prioritarias respondidas directamente por el equipo docente.')}</p>
             </div>
           </div>
         </div>
@@ -205,13 +206,13 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <div className="bg-raised border border-line rounded-xl p-5 flex flex-col justify-between hover:border-brand-cyan transition-all text-left shadow-lg">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Matrícula Completa</span>
-                  <span className="text-xs bg-brand-blue/20 text-brand-blue px-2 py-0.5 rounded-lg font-bold border border-brand-blue/30">Pago Único</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('paywall.fullTuition', 'Matrícula Completa')}</span>
+                  <span className="text-xs bg-brand-blue/20 text-brand-blue px-2 py-0.5 rounded-lg font-bold border border-brand-blue/30">{t('paywall.oneTimePayment', 'Pago Único')}</span>
                 </div>
                 <div className="text-3xl font-black text-white mb-1">
                   ${price} <span className="text-xs text-slate-400 font-normal">USD</span>
                 </div>
-                <p className="text-xs text-slate-400 mb-4">Acceso inmediato con pasarela segura Stripe Checkout.</p>
+                <p className="text-xs text-slate-400 mb-4">{t('paywall.immediateAccess', 'Acceso inmediato con pasarela segura Stripe Checkout.')}</p>
               </div>
 
               <button
@@ -224,7 +225,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                 ) : (
                   <>
                     <CreditCard className="w-4 h-4" />
-                    Pagar con Stripe (${price} USD)
+                    {t('paywall.payWithStripe', { price, defaultValue: `Pagar con Stripe ($${price} USD)` })}
                   </>
                 )}
               </button>
@@ -233,23 +234,23 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             {/* Option 2: VIP / Institutional Access */}
             <div className="bg-raised border border-brand-purple/50 rounded-xl p-5 flex flex-col justify-between text-left relative overflow-hidden shadow-lg">
               <div className="absolute top-2 right-2 bg-brand-gradient text-on-brand font-extrabold text-[10px] px-2.5 py-0.5 rounded-lg shadow-sm">
-                INSTITUCIONAL
+                {t('paywall.institutional', 'INSTITUCIONAL')}
               </div>
               <div>
                 <div className="flex items-center gap-1.5 text-[#eab308] text-xs font-bold mb-2">
-                  <Crown className="w-4 h-4" /> PASE MENTEE O ASIGNACIÓN
+                  <Crown className="w-4 h-4" /> {t('paywall.menteePassOrAssigment', 'PASE MENTEE O ASIGNACIÓN')}
                 </div>
                 <div className="text-xl font-bold text-white mb-1">
-                  Membresía Institucional
+                  {t('paywall.institutionalMembership', 'Membresía Institucional')}
                 </div>
                 <p className="text-xs text-slate-300 mb-4">
-                  Las becas, pases VIP y cuentas corporativas se asignan de forma directa por el director o administrador desde el panel institucional.
+                  {t('paywall.institutionalDesc', 'Las becas, pases VIP y cuentas corporativas se asignan de forma directa por el director o administrador desde el panel institucional.')}
                 </p>
               </div>
 
               <div className="p-3 bg-canvas rounded-lg border border-line text-[11px] text-slate-400 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-brand-purple shrink-0" />
-                <span>Si tienes un código o asignación pendiente, contacta al soporte docente.</span>
+                <span>{t('paywall.institutionalSupport', 'Si tienes un código o asignación pendiente, contacta al soporte docente.')}</span>
               </div>
             </div>
           </div>
@@ -257,7 +258,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
         <div className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          Encriptación SSL de 256 bits • Pasarela verificada Stripe
+          {t('paywall.sslEncryption', 'Encriptación SSL de 256 bits • Pasarela verificada Stripe')}
         </div>
 
         {siteConfig.complaintsBookUrl && (
@@ -268,7 +269,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             className="inline-flex items-center justify-center gap-1.5 text-xs text-slate-400 underline-offset-4 hover:text-white hover:underline"
           >
             <BookOpen aria-hidden className="w-3.5 h-3.5" />
-            Libro de Reclamaciones
+            {t('paywall.complaintsBook', 'Libro de Reclamaciones')}
           </a>
         )}
       </div>

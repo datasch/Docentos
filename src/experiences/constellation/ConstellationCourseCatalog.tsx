@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Course } from '../../types';
 import { searchCourseCatalog } from '../../lib/catalogSearch';
 import { SearchField } from '../../components/SearchField';
@@ -74,6 +75,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
   featuredOnly = false,
   onBrowseCatalog,
 }) => {
+  const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -114,10 +116,10 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div>
             <h2 className="font-constellation-display text-[36px] sm:text-[48px] md:text-[56px] leading-[1.05] tracking-[-0.035em] text-slate-900 dark:text-white">
-              Encuentra tu próxima especialización
+              {t('catalog.title', 'Encuentra tu próxima especialización')}
             </h2>
             <p className="font-constellation-body text-sm sm:text-base text-slate-600 dark:text-white/60 mt-2 max-w-2xl font-extralight">
-              Explora los cursos y revisa su temario para elegir tu siguiente paso.
+              {t('catalog.subtitle', 'Explora los cursos y revisa su temario para elegir tu siguiente paso.')}
             </p>
           </div>
 
@@ -128,13 +130,22 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
         {/* Banner Destacado Spotlight (Si hay cursos) */}
         {featuredCourse && showFeatured && (
           <div
-            className="catalog-featured-glow order-1 mb-8 sm:mb-12 relative rounded-[28px] overflow-hidden transition-all duration-300 group cursor-pointer bg-gradient-to-br from-amber-50/50 via-white to-white dark:from-amber-950/15 dark:via-[#0b0b12] dark:to-[#08080f]"
+            tabIndex={0}
+            role="button"
+            aria-label={`${featuredCourse.title} - ${t('catalog.featuredProgram', 'Programa destacado')}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectCourse(featuredCourse);
+              }
+            }}
+            className="catalog-featured-glow order-1 mb-8 sm:mb-12 relative rounded-[28px] overflow-hidden transition-all duration-300 group cursor-pointer bg-gradient-to-br from-amber-50/50 via-white to-white dark:from-amber-950/15 dark:via-[#0b0b12] dark:to-[#08080f] focus-visible:outline-2 focus-visible:outline-amber-400 focus-visible:outline-offset-2"
             onClick={() => onSelectCourse(featuredCourse)}
           >
             <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 bg-amber-500/5 px-4 py-3 sm:px-8">
               <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-amber-400 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-950">
                 <Flame aria-hidden className="lp-streak-flame h-4 w-4 shrink-0 text-orange-800 fill-orange-600/25" />
-                Programa destacado
+                {t('catalog.featuredProgram', 'Programa destacado')}
               </span>
               <CourseShareButton course={featuredCourse} variant="featured" iconOnly />
             </div>
@@ -164,7 +175,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                 <div>
                   <div className="mb-3 sm:mb-4">
                     <span className="text-amber-700 dark:text-amber-300 text-[11px] sm:text-xs font-mono font-semibold uppercase">
-                      {featuredCourse.category || 'INGENIERÍA'}
+                      {featuredCourse.category ? t(`categories.${featuredCourse.category}`, featuredCourse.category) : t('categories.INGENIERÍA', 'Ingeniería')}
                     </span>
                   </div>
 
@@ -174,7 +185,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
 
                   <p className="font-constellation-body text-sm lg:text-base text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 sm:line-clamp-3 mb-5 sm:mb-6 font-extralight max-w-xl">
                     {featuredCourse.description ||
-                      'Domina arquitectura avanzada, buenas prácticas y despliegues empresariales guiados por mentores técnicos.'}
+                      t('catalog.defaultDescription', 'Domina arquitectura avanzada, buenas prácticas y despliegues empresariales guiados por mentores técnicos.')}
                   </p>
                 </div>
 
@@ -182,7 +193,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-mono text-slate-600 dark:text-slate-300">
                     <span className="flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-amber-600 dark:text-amber-300" />
-                      <span>{featuredCourse.modules?.length || 0} módulos</span>
+                      <span>{featuredCourse.modules?.length || 0} {t('catalog.modules', 'módulos')}</span>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <PlayCircle className="w-4 h-4 text-orange-600 dark:text-orange-300" />
@@ -191,14 +202,14 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                           (acc, m) => acc + (m.videos || []).length,
                           0
                         )}{' '}
-                        lecciones
+                        {t('catalog.lessons', 'lecciones')}
                       </span>
                     </span>
                   </div>
 
                   <button className="inline-flex min-h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-sm shadow-amber-500/20 transition-colors hover:bg-amber-300 cursor-pointer">
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Iniciar Ahora</span>
+                    <span>{t('catalog.startNow', 'Iniciar Ahora')}</span>
                   </button>
                 </div>
               </div>
@@ -210,7 +221,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
         {featuredOnly && onBrowseCatalog && (
           <div className="order-2 flex justify-start">
             <button type="button" className="academy-text-button" onClick={onBrowseCatalog}>
-              Ver catálogo completo <ArrowRight size={18} aria-hidden="true" />
+              {t('catalog.fullCatalog', 'Ver catálogo completo')} <ArrowRight size={18} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -228,7 +239,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
           {/* Input de Búsqueda Rápida y Botón Restablecer */}
           <div className="order-1 flex min-w-0 items-center gap-2.5 md:order-2 md:w-64 md:shrink-0">
             <SearchField className="min-w-0 flex-1" value={searchQuery} onChange={setSearchQuery}
-              label="Buscar cursos y lecciones" placeholder="Buscar cursos o lecciones..." />
+              label={t('catalog.searchLabel', 'Buscar cursos y lecciones')} placeholder={t('catalog.searchPlaceholder', 'Buscar cursos o lecciones...')} />
 
             {(activeCategory !== 'todos' || searchQuery.trim()) && (
               <button
@@ -240,21 +251,21 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                 className="shrink-0 inline-flex items-center gap-1 text-xs font-constellation-label text-[#06b6d4] hover:underline min-h-11 px-2 py-1 cursor-pointer transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Restablecer</span>
+                <span>{t('catalog.reset', 'Restablecer')}</span>
               </button>
             )}
           </div>
         </div>
 
         {searchResults.lessons.length > 0 && (
-          <section className="academy-catalog-lessons order-3" aria-label="Lecciones encontradas">
-            <h3>Lecciones encontradas <span>({searchResults.lessons.length})</span></h3>
+          <section className="academy-catalog-lessons order-3" aria-label={t('catalog.lessonsFound', 'Lecciones encontradas')}>
+            <h3>{t('catalog.lessonsFound', 'Lecciones encontradas')} <span>({searchResults.lessons.length})</span></h3>
             <ul>
               {searchResults.lessons.slice(0, 6).map(({ course, module, video }) => (
                 <li key={`${course.id}-${video.id}`}>
                   <button type="button" onClick={() => onSelectCourse(course)}>
                     <div><strong>{video.title}</strong><span>{course.title} · {module.title}</span></div>
-                    <span className="shrink-0 text-sm text-brand-cyan">Ver curso <ArrowRight size={16} aria-hidden="true" /></span>
+                    <span className="shrink-0 text-sm text-brand-cyan">{t('catalog.viewCourse', 'Ver curso')} <ArrowRight size={16} aria-hidden="true" /></span>
                   </button>
                 </li>
               ))}
@@ -265,9 +276,11 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
         {listedCourses.length > 0 && (
           <div className="order-3 mb-4 flex items-center justify-between gap-4">
             <p className="text-sm text-ink-soft">
-              {listedCourses.length === 1 ? '1 curso' : `${listedCourses.length} cursos`}
+              {listedCourses.length === 1
+                ? t('catalog.courseCount_one', '1 curso')
+                : t('catalog.courseCount_other', { count: listedCourses.length, defaultValue: `${listedCourses.length} cursos` })}
             </p>
-            <div role="group" aria-label="Vista de los cursos" className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-full shrink-0 self-start lg:self-auto">
+            <div role="group" aria-label={t('catalog.viewMode', 'Vista de los cursos')} className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-full shrink-0 self-start lg:self-auto">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`flex h-11 w-11 items-center justify-center rounded-full transition-all cursor-pointer ${
@@ -275,8 +288,8 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     ? 'bg-surface text-ink shadow-sm'
                     : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
                 }`}
-                title="Vista de Cuadrícula"
-                aria-label="Vista de cuadrícula"
+                title={t('catalog.gridView', 'Vista de Cuadrícula')}
+                aria-label={t('catalog.gridView', 'Vista de cuadrícula')}
                 aria-pressed={viewMode === 'grid'}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -288,8 +301,8 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     ? 'bg-surface text-ink shadow-sm'
                     : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
                 }`}
-                title="Vista Expandida"
-                aria-label="Vista de lista"
+                title={t('catalog.listView', 'Vista Expandida')}
+                aria-label={t('catalog.listView', 'Vista de lista')}
                 aria-pressed={viewMode === 'list'}
               >
                 <List className="w-4 h-4" />
@@ -303,10 +316,10 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
           <div className="order-3 py-20 text-center">
             <Sparkles className="w-8 h-8 text-[#06b6d4] mx-auto mb-3 opacity-60" />
             <p className="font-constellation-display text-lg text-slate-900 dark:text-white">
-              No se encontraron cursos en esta categoría
+              {t('catalog.noCoursesTitle', 'No se encontraron cursos en esta categoría')}
             </p>
             <p className="font-constellation-body text-xs text-slate-500 dark:text-white/40 mt-1">
-              Prueba cambiando los filtros o borrando el término de búsqueda.
+              {t('catalog.noCoursesDesc', 'Prueba cambiando los filtros o borrando el término de búsqueda.')}
             </p>
           </div>
         ) : viewMode === 'grid' ? (
@@ -323,9 +336,18 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                 return (
                   <article
                     key={course.id}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={course.title}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectCourse(course);
+                      }
+                    }}
                     onMouseEnter={() => onPrefetchCourse?.(course.id)}
                     onClick={() => onSelectCourse(course)}
-                    className="academy-course-card flex flex-col rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-lg [content-visibility:auto]"
+                    className="academy-course-card flex flex-col rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-lg focus-visible:outline-2 focus-visible:outline-[#06b6d4] focus-visible:outline-offset-2 [content-visibility:auto]"
                   >
                     {/* Contenedor Visual de la Portada / Imagen */}
                     <div className="relative aspect-video w-full overflow-hidden bg-slate-950">
@@ -341,7 +363,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                       {/* Badges de Categoría y Precio (Optimizados sin backdrop-blur para scroll a 60+ FPS) */}
                       <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2 z-10">
                         <span className="min-w-0 truncate px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-black/80 border border-white/10 text-[#06b6d4]">
-                          {course.category || 'INGENIERÍA'}
+                          {course.category ? t(`categories.${course.category}`, course.category) : t('categories.INGENIERÍA', 'Ingeniería')}
                         </span>
 
                         <div className="flex shrink-0 items-center gap-2">
@@ -372,7 +394,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
 
                         <p className="font-constellation-body text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight mb-4">
                           {course.description ||
-                            'Consulta el temario y los recursos disponibles de este curso.'}
+                            t('catalog.defaultCardDescription', 'Consulta el temario y los recursos disponibles de este curso.')}
                         </p>
                       </div>
 
@@ -381,16 +403,16 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1">
                             <Layers className="w-3.5 h-3.5 text-[#06b6d4]" />
-                            <span>{course.modules?.length || 0} mod</span>
+                            <span>{course.modules?.length || 0} {t('catalog.modShort', 'mod')}</span>
                           </span>
                           <span className="flex items-center gap-1">
                             <PlayCircle className="w-3.5 h-3.5 text-[#a855f7]" />
-                            <span>{totalVideos} lec</span>
+                            <span>{totalVideos} {t('catalog.lecShort', 'lec')}</span>
                           </span>
                         </div>
 
                         <span className="text-[#06b6d4] font-semibold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                          <span>Entrar</span>
+                          <span>{t('catalog.enterCourse', 'Entrar')}</span>
                           <ArrowRight className="w-3 h-3" />
                         </span>
                       </div>
@@ -414,9 +436,18 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
               return (
                 <article
                   key={course.id}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={course.title}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectCourse(course);
+                    }
+                  }}
                   onMouseEnter={() => onPrefetchCourse?.(course.id)}
                   onClick={() => onSelectCourse(course)}
-                  className="academy-course-card grid grid-cols-1 md:grid-cols-12 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-none [content-visibility:auto]"
+                  className="academy-course-card grid grid-cols-1 md:grid-cols-12 rounded-[24px] bg-white dark:bg-white/[0.02] hover:bg-slate-50/80 dark:hover:bg-white/[0.05] hover:-translate-y-1 border border-slate-200/80 dark:border-white/[0.07] hover:border-[#06b6d4]/40 overflow-hidden transition-all duration-300 group cursor-pointer shadow-sm hover:shadow-md dark:shadow-none focus-visible:outline-2 focus-visible:outline-[#06b6d4] focus-visible:outline-offset-2 [content-visibility:auto]"
                 >
                   <div className="md:col-span-4 aspect-video relative overflow-hidden bg-slate-950">
                     <img
@@ -438,11 +469,11 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     <div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2 text-xs font-mono">
                         <span className="text-[#06b6d4] uppercase font-semibold">
-                          {course.category || 'INGENIERÍA'}
+                          {course.category ? t(`categories.${course.category}`, course.category) : t('categories.INGENIERÍA', 'Ingeniería')}
                         </span>
                         <span className="text-slate-500 dark:text-slate-400">·</span>
                         <span className="text-slate-600 dark:text-slate-300">
-                          {course.modules?.length || 0} módulos / {totalVideos} lecciones
+                          {t('catalog.modulesLecCount', { modules: course.modules?.length || 0, videos: totalVideos, defaultValue: `${course.modules?.length || 0} módulos / ${totalVideos} lecciones` })}
                         </span>
                       </div>
 
@@ -452,7 +483,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
 
                       <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight">
                         {course.description ||
-                          'Consulta el temario y los recursos disponibles de este curso.'}
+                          t('catalog.defaultCardDescription', 'Consulta el temario y los recursos disponibles de este curso.')}
                       </p>
                     </div>
 
@@ -468,7 +499,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                       </div>
                       <button className="academy-button min-h-11 text-xs">
                         <BookOpen className="w-3.5 h-3.5" />
-                        <span>Ver Temario</span>
+                        <span>{t('catalog.viewSyllabus', 'Ver Temario')}</span>
                       </button>
                     </div>
                   </div>

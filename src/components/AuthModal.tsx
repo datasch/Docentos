@@ -10,6 +10,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { Lock, Mail, User as UserIcon, Sparkles, X, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
@@ -34,6 +35,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   useBodyScrollLock(isOpen);
   const { logoUrl, brandName } = usePlatformBrand();
@@ -252,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Iniciar Sesión
+            {t('auth.loginTab', 'Iniciar Sesión')}
           </button>
           <button
             type="button"
@@ -263,7 +265,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Registrarse
+            {t('auth.registerTab', 'Registrarse')}
           </button>
         </div>}
 
@@ -291,14 +293,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             className="w-full py-3 bg-surface hover:bg-raised border border-line text-white font-bold rounded-xl transition-all"
           >
-            Volver a iniciar sesión
+            {t('auth.backToLogin', 'Volver a iniciar sesión')}
           </button>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {!recoveryMode && !twoFactorChallenge && mode === 'register' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                Nombre Completo
+                {t('auth.fullName', 'Nombre Completo')}
               </label>
               <div className="relative">
                 <UserIcon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -306,7 +308,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej. Carlos Mendoza"
+                  placeholder={t('auth.fullNamePlaceholder', 'Ej. Carlos Mendoza')}
                   className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-[#000000] border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
                   autoComplete="name"
                   required={mode === 'register'}
@@ -317,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {recoveryMode !== 'reset' && !twoFactorChallenge && <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-              Correo Electrónico
+              {t('auth.email', 'Correo Electrónico')}
             </label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -335,7 +337,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {recoveryMode !== 'request' && !twoFactorChallenge && <div>
             <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-              {recoveryMode === 'reset' ? 'Nueva Contraseña' : 'Contraseña'}
+              {recoveryMode === 'reset' ? t('auth.newPassword', 'Nueva Contraseña') : t('auth.password', 'Contraseña')}
             </label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -360,7 +362,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 }}
                 className="mt-2 text-[11px] font-semibold text-brand-cyan hover:text-cyan-300"
               >
-                ¿Olvidaste tu contraseña?
+                {t('auth.forgotPassword', '¿Olvidaste tu contraseña?')}
               </button>
             )}
           </div>}
@@ -368,7 +370,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {recoveryMode === 'reset' && (
             <div>
               <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                Confirmar Nueva Contraseña
+                {t('auth.confirmPassword', 'Confirmar Nueva Contraseña')}
               </label>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -392,7 +394,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 htmlFor="auth-two-factor-code"
                 className="block text-[11px] font-bold text-ink-soft uppercase tracking-wider mb-1"
               >
-                Código de verificación
+                {t('auth.twoFactorCode', 'Código de verificación')}
               </label>
               <div className="relative">
                 <ShieldCheck aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint" />
@@ -413,7 +415,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </div>
               <p id="auth-two-factor-ayuda" className="mt-2 text-[11px] text-ink-muted">
-                ¿Sin el teléfono a mano? Escribe aquí uno de tus códigos de recuperación.
+                {t('auth.twoFactorHint', '¿Sin el teléfono a mano? Escribe aquí uno de tus códigos de recuperación.')}
               </p>
             </div>
           )}
@@ -424,21 +426,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             className="w-full py-3 bg-gradient-to-r from-brand-cyan to-brand-purple hover:opacity-90 text-on-brand font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2"
           >
             {loading ? (
-              <span className="animate-pulse">Procesando...</span>
+              <span className="animate-pulse">{t('auth.processing', 'Procesando...')}</span>
             ) : retrySeconds > 0 ? (
               <span>Reintentar en {Math.floor(retrySeconds / 60)}:{String(retrySeconds % 60).padStart(2, '0')}</span>
             ) : (
               <>
                 <span>
                   {twoFactorChallenge
-                    ? 'Verificar y entrar'
+                    ? t('auth.verifyAndEnter', 'Verificar y entrar')
                     : recoveryMode === 'request'
-                    ? 'Enviar Enlace de Recuperación'
+                    ? t('auth.sendResetLink', 'Enviar Enlace de Recuperación')
                     : recoveryMode === 'reset'
-                      ? 'Guardar Nueva Contraseña'
+                      ? t('auth.saveNewPassword', 'Guardar Nueva Contraseña')
                       : mode === 'login'
-                        ? 'Entrar a la Academia'
-                        : 'Completar Registro'}
+                        ? t('auth.enterAcademy', 'Entrar a la Academia')
+                        : t('auth.completeRegister', 'Completar Registro')}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>

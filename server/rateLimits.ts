@@ -106,7 +106,8 @@ export function createSecurityLimits(options: {
     // Estas operaciones tienen su propia protección, independiente de navegar.
     if ((req.method === 'POST' && ['/auth/login', '/auth/register', '/auth/logout', '/auth/2fa/verify', '/auth/2fa/setup', '/auth/2fa/activate', '/auth/2fa/recovery-codes', '/auth/password/forgot', '/auth/password/reset'].includes(req.path))
       || (req.method === 'PUT' && req.path === '/auth/password') || (req.method === 'DELETE' && req.path === '/auth/2fa')
-      || req.path.startsWith('/integrations/') || req.path === '/payments/webhook') return next();
+      || req.path.startsWith('/integrations/') || req.path === '/payments/webhook'
+      || req.path.endsWith('/stream')) return next();
     const authenticated = Boolean(req.user && req.authSession);
     const reading = ['GET', 'HEAD'].includes(req.method);
     const policy = reading ? 'api-read' : 'api-write';

@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   UserCheck,
   BookOpen,
@@ -71,6 +72,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   courses,
   onRefreshCourses,
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>('courses');
   const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
   const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
@@ -518,13 +520,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         <div className="space-y-2 z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#a855f7] text-xs font-bold">
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Panel Especializado para Mentores</span>
+            <span>{t('mentor.headerBadge', 'Panel Especializado para Mentores')}</span>
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Bienvenido, {currentUser.name}
+            {t('mentor.welcome', { name: currentUser.name, defaultValue: `Bienvenido, ${currentUser.name}` })}
           </h1>
           <p className="text-xs sm:text-sm text-ink-muted max-w-2xl">
-            Gestiona tus programas académicos, supervisa el avance en tiempo real de tus Mentees asignados y responde a las consultas técnicas de la comunidad.
+            {t('mentor.headerDesc', 'Gestiona tus programas académicos, supervisa el avance en tiempo real de tus Mentees asignados y responde a las consultas técnicas de la comunidad.')}
           </p>
         </div>
 
@@ -551,16 +553,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { title: currentUser.role === 'MENTOR' ? 'Programas Asignados' : 'Programas del Catálogo', value: displayCourses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
-          { title: 'Mentees Asignados', value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
+          { title: currentUser.role === 'MENTOR' ? t('mentor.assignedPrograms', 'Programas Asignados') : t('mentor.catalogPrograms', 'Programas del Catálogo'), value: displayCourses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
+          { title: t('mentor.assignedMentees', 'Mentees Asignados'), value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
           {
-            title: 'Consultas Respondidas',
+            title: t('mentor.answeredQuestions', 'Consultas Respondidas'),
             value: qnaComments.length > 0 ? `${answeredPct}%` : '—',
             icon: CheckCircle2,
             color: 'text-emerald-400',
           },
           {
-            title: 'Consultas Pendientes',
+            title: t('mentor.pendingQuestions', 'Consultas Pendientes'),
             value: pendingQuestions.length,
             icon: Clock,
             color: 'text-amber-400',
@@ -596,7 +598,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <BookOpen className="w-4 h-4 shrink-0" />
-          <span>Gestión de Cursos ({displayCourses.length})</span>
+          <span>{t('mentor.tabCourses', 'Gestión de Cursos')} ({displayCourses.length})</span>
         </button>
 
         <button
@@ -608,10 +610,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <Users className="w-4 h-4 shrink-0" />
-          <span>Mentees Asignados ({mentees.length})</span>
+          <span>{t('mentor.tabMentees', 'Mentees Asignados')} ({mentees.length})</span>
           {accessRequests.length > 0 && (
             <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
-              {accessRequests.length} {accessRequests.length === 1 ? 'solicitud' : 'solicitudes'}
+              {accessRequests.length} {accessRequests.length === 1 ? t('mentor.requestSingular', 'solicitud') : t('mentor.requestPlural', 'solicitudes')}
             </span>
           )}
         </button>
@@ -625,7 +627,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <MessageSquare className="w-4 h-4 shrink-0" />
-          <span>Consultas Q&A ({pendingQuestions.length})</span>
+          <span>{t('mentor.tabQna', 'Consultas Q&A')} ({pendingQuestions.length})</span>
         </button>
 
         <button
@@ -637,7 +639,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <Video className="w-4 h-4 shrink-0" />
-          <span>Clases en Vivo</span>
+          <span>{t('mentor.tabMeetings', 'Clases en Vivo')}</span>
         </button>
 
         <button
@@ -649,7 +651,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
-          <span>Evaluaciones & Quizzes IA</span>
+          <span>{t('mentor.tabQuizzes', 'Evaluaciones & Quizzes IA')}</span>
         </button>
 
         <button
@@ -661,7 +663,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <Youtube className="w-4 h-4 text-red-500 shrink-0" />
-          <span>AI YouTube Course Builder</span>
+          <span>{t('mentor.tabYoutubeBuilder', 'AI YouTube Course Builder')}</span>
         </button>
       </div>
 
@@ -674,8 +676,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <Youtube className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">¿Quieres crear un curso rápidamente?</h3>
-                <p className="text-xs text-ink-muted">Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.</p>
+                <h3 className="text-sm font-bold text-white">{t('mentor.aiPromoTitle', '¿Quieres crear un curso rápidamente?')}</h3>
+                <p className="text-xs text-ink-muted">{t('mentor.aiPromoDesc', 'Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.')}</p>
               </div>
             </div>
             <button
@@ -683,7 +685,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-md shadow-red-600/20 self-stretch sm:self-auto justify-center"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Crear con IA desde YouTube</span>
+              <span>{t('mentor.aiPromoBtn', 'Crear con IA desde YouTube')}</span>
             </button>
           </div>
           {displayCourses.length === 0 ? (
@@ -691,8 +693,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
               <p className="text-xs text-ink-muted">
                 {currentUser.role === 'MENTOR'
-                  ? 'No tienes cursos asignados actualmente. Contacta a un administrador para que te asigne tus programas a cargo.'
-                  : 'Todavía no hay programas. Los crea administración, desde Administración › Cursos.'}
+                  ? t('mentor.noCoursesMentor', 'No tienes cursos asignados actualmente. Contacta a un administrador para que te asigne tus programas a cargo.')
+                  : t('mentor.noCoursesAdmin', 'Todavía no hay programas. Los crea administración, desde Administración › Cursos.')}
               </p>
             </div>
           ) : (
@@ -711,7 +713,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           course.published ? 'text-emerald-400' : 'text-amber-400'
                         }`}
                       >
-                        {course.published ? 'Publicado' : 'Borrador'}
+                        {course.published ? t('mentor.published', 'Publicado') : t('mentor.draft', 'Borrador')}
                       </span>
                       {!course.published && (
                         <button
@@ -726,7 +728,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           ) : (
                             <Globe className="w-3 h-3" />
                           )}
-                          Publicar
+                          {t('mentor.publish', 'Publicar')}
                         </button>
                       )}
                     </div>
@@ -741,7 +743,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   </p>
 
                   <div className="pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
-                    <span>{course.modules?.length || 0} Módulos</span>
+                    <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} Módulos` })}</span>
                     <span>${course.price} USD</span>
                   </div>
 
@@ -752,7 +754,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     className="w-full py-2 bg-raised hover:bg-elevated border border-line hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
                   >
                     <Users className="w-3.5 h-3.5 text-[#06b6d4]" />
-                    Mentees asignados ({menteesOfCourse(course.id).length})
+                    {t('mentor.assignedMenteesBtn', { count: menteesOfCourse(course.id).length, defaultValue: `Mentees asignados (${menteesOfCourse(course.id).length})` })}
                   </button>
 
                   {/* La excepción, dicha en voz alta. Mientras esté apagado, a
@@ -777,7 +779,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       ) : (
                         <Lock className="w-3.5 h-3.5 text-ink-faint" />
                       )}
-                      {course.openToAllRegistered ? 'Acceso para miembros' : 'Solo asignados'}
+                      {course.openToAllRegistered ? t('mentor.membersAccess', 'Acceso para miembros') : t('mentor.onlyAssigned', 'Solo asignados')}
                     </button>
                   )}
                 </div>
@@ -799,13 +801,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                      Solicitudes de Acceso a Cursos Pendientes
+                      {t('mentor.pendingRequestsTitle', 'Solicitudes de Acceso a Cursos Pendientes')}
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
                         {accessRequests.length}
                       </span>
                     </h3>
                     <p className="text-xs text-ink-muted">
-                      Mentees que solicitaron acceso en 1 clic desde la plataforma
+                      {t('mentor.pendingRequestsDesc', 'Mentees que solicitaron acceso en 1 clic desde la plataforma')}
                     </p>
                   </div>
                 </div>
@@ -853,7 +855,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         ) : (
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         )}
-                        <span>Aprobar Acceso</span>
+                        <span>{t('mentor.approve', 'Aprobar Acceso')}</span>
                       </button>
                       <button
                         type="button"
@@ -861,7 +863,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         disabled={processingRequestId === req.id}
                         className="px-3 py-1.5 bg-raised hover:bg-rose-950/40 text-ink-muted hover:text-rose-400 border border-line hover:border-rose-500/30 text-xs font-medium rounded-xl transition-all disabled:opacity-50 cursor-pointer"
                       >
-                        Rechazar
+                        {t('mentor.reject', 'Rechazar')}
                       </button>
                     </div>
                   </div>
@@ -968,9 +970,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <div className="bg-surface border border-line rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
               <div>
-                <h3 className="font-extrabold text-sm text-white mb-1">Centro de Consultas de Mentoría</h3>
+                <h3 className="font-extrabold text-sm text-white mb-1">{t('mentor.qnaTitle', 'Centro de Consultas de Mentoría')}</h3>
                 <p className="text-xs text-ink-muted">
-                  Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.
+                  {t('mentor.qnaSubtitle', 'Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.')}
                 </p>
               </div>
 
@@ -985,7 +987,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         qnaFilter === option ? 'bg-[#06b6d4] text-black' : 'text-ink-muted hover:text-white'
                       }`}
                     >
-                      {option === 'pending' ? `Pendientes (${pendingQuestions.length})` : `Todas (${qnaComments.length})`}
+                      {option === 'pending'
+                        ? `${t('mentor.qnaPending', 'Pendientes')} (${pendingQuestions.length})`
+                        : `${t('mentor.qnaAll', 'Todas')} (${qnaComments.length})`}
                     </button>
                   ))}
                 </div>

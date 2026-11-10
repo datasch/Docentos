@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Award, Download, Eye, Loader2 } from 'lucide-react';
 import type { CertificateRecord } from '../../types';
 
@@ -9,6 +10,7 @@ export function LearningCertificates({ certificates, studentName, onVerify }: {
   studentName: string;
   onVerify?: (code: string) => void;
 }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<CertificateRecord | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -29,29 +31,29 @@ export function LearningCertificates({ certificates, studentName, onVerify }: {
         issuedAt: certificate.issuedAt,
       }));
     } catch {
-      setError('No pudimos descargar el certificado. Vuelve a intentarlo.');
+      setError(t('certificates.downloadError', 'No pudimos descargar el certificado. Vuelve a intentarlo.'));
     } finally {
       setDownloading(null);
     }
   }
 
   return <section className="academy-learning-section">
-    <h2>Certificados obtenidos</h2>
+    <h2>{t('certificates.title', 'Certificados obtenidos')}</h2>
     {error && <p role="alert" className="academy-learning-notice">{error}</p>}
     <ul className="academy-learning-certificates">
       {valid.map(certificate => <li key={certificate.id}>
         <Award size={24} aria-hidden="true" />
         <div className="academy-learning-certificate__info"><h3>{certificate.courseTitle}</h3>
-          <p>Emitido el {new Date(certificate.issuedAt).toLocaleDateString('es-PE')}</p></div>
+          <p>{t('certificates.issuedOn', { date: new Date(certificate.issuedAt).toLocaleDateString(), defaultValue: `Emitido el ${new Date(certificate.issuedAt).toLocaleDateString()}` })}</p></div>
         <div className="academy-learning-certificate__actions">
-          <button type="button" className="academy-text-button" onClick={() => setSelected(certificate)} aria-label={`Ver certificado de ${certificate.courseTitle}`}><Eye size={17} aria-hidden="true" />Ver certificado</button>
-          <button type="button" className="academy-text-button" disabled={Boolean(downloading)} onClick={() => download(certificate)} aria-label={`Descargar certificado de ${certificate.courseTitle}`}>
-            {downloading === certificate.id ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : <Download size={17} aria-hidden="true" />}Descargar
+          <button type="button" className="academy-text-button" onClick={() => setSelected(certificate)} aria-label={`${t('certificates.view', 'Ver certificado')} - ${certificate.courseTitle}`}><Eye size={17} aria-hidden="true" />{t('certificates.view', 'Ver certificado')}</button>
+          <button type="button" className="academy-text-button" disabled={Boolean(downloading)} onClick={() => download(certificate)} aria-label={`${t('certificates.download', 'Descargar')} - ${certificate.courseTitle}`}>
+            {downloading === certificate.id ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : <Download size={17} aria-hidden="true" />}{t('certificates.download', 'Descargar')}
           </button>
         </div>
       </li>)}
     </ul>
-    {selected && <Suspense fallback={<p role="status">Cargando certificado…</p>}><Preview
+    {selected && <Suspense fallback={<p role="status">{t('certificates.loading', 'Cargando certificado…')}</p>}><Preview
       key={selected.id} isOpen onClose={() => setSelected(null)} courseTitle={selected.courseTitle}
       studentName={selected.recipientName || studentName} verificationCode={selected.verificationCode} issuedAt={selected.issuedAt}
       onOpenVerifyModal={onVerify ? () => onVerify(selected.verificationCode) : undefined}

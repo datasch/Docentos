@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import {
   Award,
@@ -62,6 +63,7 @@ import { getCustomBrandName } from '../lib/logoConfig';
 import { ModuleQuizCard } from './ModuleQuizCard';
 import { CertificateVerifyModal } from './CertificateVerifyModal';
 import { CoursePanel, PanelTabId } from './course/CoursePanel';
+import { DocentOSPlayer } from './course/DocentOSPlayer';
 import { SyllabusTree } from './course/SyllabusTree';
 import { NotesPanel } from './course/NotesPanel';
 import { MentorshipPanel } from './course/MentorshipPanel';
@@ -186,6 +188,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   onLessonCompletedAndAdvance,
   onQuizPassed,
 }) => {
+  const { t } = useTranslation();
   const [activeModuleIndex, setActiveModuleIndex] = useState(initialModuleIndex ?? 0);
   const [activeVideoIndex, setActiveVideoIndex] = useState(initialVideoIndex ?? 0);
   // Mientras nadie elija lección a mano, el curso se abre por donde se dejó.
@@ -1340,97 +1343,54 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
             )}
 
             <div className="app-media-surface group relative mx-auto aspect-video w-full overflow-hidden bg-black lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl">
-              {/* Indicador de carga visual del reproductor con auxilio ante timeouts (Drive/enlaces caídos) */}
-              {showsPlayer && isVideoLoading && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/95 px-4 text-center backdrop-blur-sm transition-opacity duration-300">
-                  {!hasLoadTimedOut ? (
-                    <div className="pointer-events-none flex flex-col items-center">
-                      <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 border border-cyan-500/20 shadow-inner">
-                        <Loader2 className="h-6 w-6 text-cyan-400 animate-spin" />
-                      </div>
-                      <p className="text-section font-semibold text-white">
-                        {providerLabel === 'Google Drive' ? 'Cargando clase desde Google Drive...' : 'Cargando reproductor...'}
-                      </p>
-                      <p className="mt-1 text-meta text-zinc-400">
-                        {providerLabel === 'Google Drive' ? 'Conectando con el visor de Google Workspace' : 'Preparando el contenido audiovisual'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex max-w-md flex-col items-center animate-fade-in">
-                      <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                        <AlertCircle className="h-6 w-6" />
-                      </div>
-                      <p className="text-section font-semibold text-white">
-                        ¿Tarda demasiado en cargar?
-                      </p>
-                      <p className="mt-1 text-meta leading-relaxed text-zinc-400">
-                        {providerLabel === 'Google Drive'
-                          ? 'Google Drive puede tardar si la conexión es lenta o si el archivo tiene permisos restringidos en Drive.'
-                          : 'El reproductor está tardando más de lo habitual en responder.'}
-                      </p>
-                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
-                        {videoSource?.embedUrl && (
-                          <a
-                            href={videoSource.embedUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-3.5 py-2 text-micro font-bold text-cyan-300 hover:bg-cyan-500/30 transition-colors"
-                          >
-                            <span>Abrir en pestaña nueva</span>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsVideoLoading(true);
-                            setHasLoadTimedOut(false);
-                            const ifr = document.getElementById('docentos-video-iframe') as HTMLIFrameElement | null;
-                            if (ifr) ifr.src = ifr.src;
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 border border-zinc-700 px-3.5 py-2 text-micro font-bold text-zinc-200 hover:bg-zinc-700 transition-colors"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          <span>Reintentar</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Acceso directo a Google Drive para navegadores con protecciones estrictas (Brave Shields, cookies de terceros bloqueadas) */}
-              {showsPlayer && currentVideo && isDriveVideo(currentVideo) && (
-                <a
-                  href={resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Abrir video directamente en Google Drive"
-                  className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-lg bg-black/75 backdrop-blur-md border border-white/10 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 hover:text-white hover:bg-black/90 transition-all opacity-80 hover:opacity-100 shadow-lg"
-                >
-                  <ExternalLink className="h-3 w-3 text-cyan-400" />
-                  <span>Abrir en Google Drive</span>
-                </a>
-              )}
-
-              {showsPlayer && videoSource && Boolean(videoSource.embedUrl) ? (
-                <iframe
-                  id="docentos-video-iframe"
-                  /* La clave estable por lección evita que React destruya y vuelva a montar el iframe cuando se resuelven URLs secundarias */
-                  key={selectedMeetingPlayback ? `meeting-${selectedMeetingPlayback.id}` : `video-${currentVideo?.id || videoSource.embedUrl}`}
-                  src={videoSource.embedUrl}
-                  onLoad={() => {
-                    setIsVideoLoading(false);
-                    setHasLoadTimedOut(false);
-                  }}
-                  title={selectedMeetingPlayback ? selectedMeetingPlayback.title : (currentVideo?.title || 'Video')}
-                  className="h-full w-full border-0 bg-black"
-                  style={{ backgroundColor: '#000000' }}
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; fullscreen; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              ) : hasAccess ? (
+              {showsPlayer && (currentVideo || selectedMeetingPlayback) ? (
+              <DocentOSPlayer
+                key={selectedMeetingPlayback ? `meeting-${selectedMeetingPlayback.id}` : `video-${currentVideo?.id}`}
+                video={
+                  selectedMeetingPlayback
+                    ? {
+                        id: selectedMeetingPlayback.id,
+                        title: selectedMeetingPlayback.title,
+                        embedUrl: selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl,
+                        playbackUrl: selectedMeetingPlayback.recordingUrl || selectedMeetingPlayback.meetingUrl,
+                        driveFileId: '',
+                        mimeType: 'video/mp4',
+                        order: 0,
+                      }
+                    : currentVideo
+                }
+                title={selectedMeetingPlayback ? selectedMeetingPlayback.title : currentVideo?.title}
+                resolvedUrl={currentVideo ? resolvedPlaybackUrls[currentVideo.id] : undefined}
+                initialTime={savedVideoTime}
+                theaterMode={theaterMode}
+                onToggleTheater={() => setTheaterMode(!theaterMode)}
+                autoPlay={false}
+                onTimeUpdate={(currentTime, duration) => {
+                  if (currentVideo && currentUser?.id) {
+                    if (currentTime > 0) {
+                      localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(currentTime)));
+                    }
+                    if (duration > 0 && currentTime >= duration - 2) {
+                      setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+                      localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+                    }
+                  }
+                }}
+                onEnded={() => {
+                  if (currentVideo && currentUser?.id) {
+                    setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+                    localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
+                  }
+                }}
+                hasNextLesson={Boolean(nextLesson)}
+                onNextLesson={() => {
+                  if (nextLesson) {
+                    setActiveModuleIndex(nextLesson.moduleIndex);
+                    setActiveVideoIndex(nextLesson.videoIndex);
+                  }
+                }}
+              />
+            ) : hasAccess ? (
                 /* Con acceso concedido y sin clase que reproducir, el curso
                    esta vacio o la leccion no tiene video utilizable. Antes
                    estos casos caian en el panel del candado y el alumno leia
@@ -1632,7 +1592,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     <button
                       type="button"
                       onClick={() => goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
-                      aria-label="Lección anterior"
+                      aria-label={t('viewer.previousLesson', 'Lección anterior')}
                       className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
                     >
                       <ChevronLeft aria-hidden className="h-5 w-5" />
@@ -1644,7 +1604,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     <button
                       type="button"
                       onClick={() => goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
-                      aria-label="Lección siguiente"
+                      aria-label={t('viewer.nextLesson', 'Lección siguiente')}
                       className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
                     >
                       <ChevronRight aria-hidden className="h-5 w-5" />
@@ -1666,7 +1626,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider text-success-light border border-success/30">
                           <PlaySquare className="h-3 w-3" />
-                          Grabación Asincrónica
+                          {t('viewer.asyncRecording', 'Grabación Asincrónica')}
                         </span>
                         <span className="text-micro text-ink-muted font-medium">
                           {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
@@ -1689,7 +1649,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-lg bg-raised hover:bg-elevated border border-line text-xs font-semibold text-ink-soft hover:text-ink flex items-center gap-1.5 transition-colors"
                     >
-                      <span>Abrir enlace externo</span>
+                      <span>{t('viewer.openExternalLink', 'Abrir enlace externo')}</span>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                     <button
@@ -1697,7 +1657,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       onClick={() => setSelectedMeetingPlayback(null)}
                       className="btn-brand-primary px-3.5 py-1.5 rounded-lg text-xs font-bold"
                     >
-                      Volver al Temario
+                      {t('viewer.backToSyllabus', 'Volver al Temario')}
                     </button>
                   </div>
                 </div>
@@ -1801,7 +1761,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     ? [
                         {
                           id: 'syllabus' as const,
-                          label: 'Temario',
+                          label: t('viewer.syllabusTab', 'Temario'),
                           icon: ListTree,
                           content: (
                             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -1829,7 +1789,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     : []),
                   {
                     id: 'sessions',
-                    label: 'Sesiones',
+                    label: t('viewer.sessionsTab', 'Sesiones'),
                     icon: Radio,
                     count: courseMeetings.length,
                     content: (
@@ -1838,10 +1798,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           <div>
                             <h3 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
                               <Radio className="h-3.5 w-3.5 text-brand-cyan" />
-                              Clases Sincrónicas & Grabaciones
+                              {t('viewer.syncSessionsTitle', 'Clases Sincrónicas & Grabaciones')}
                             </h3>
                             <p className="text-micro text-ink-muted mt-0.5">
-                              Sesiones en vivo y clases grabadas bajo demanda del curso.
+                              {t('viewer.syncSessionsSubtitle', 'Sesiones en vivo y clases grabadas bajo demanda del curso.')}
                             </p>
                           </div>
                         </div>
@@ -1849,9 +1809,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         {courseMeetings.length === 0 ? (
                           <div className="py-8 text-center space-y-2 bg-card rounded-xl border border-line p-4">
                             <Video className="h-8 w-8 mx-auto text-ink-faint" />
-                            <p className="text-xs font-semibold text-ink">No hay sesiones programadas aún</p>
+                            <p className="text-xs font-semibold text-ink">{t('viewer.noSessionsScheduled', 'No hay sesiones programadas aún')}</p>
                             <p className="text-micro text-ink-muted">
-                              Tu mentor programará clases sincrónicas y grabaciones en este espacio.
+                              {t('viewer.mentorWillSchedule', 'Tu mentor programará clases sincrónicas y grabaciones en este espacio.')}
                             </p>
                           </div>
                         ) : (
@@ -2015,7 +1975,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   },
                   {
                     id: 'notes',
-                    label: 'Notas',
+                    label: t('viewer.notesTab', 'Notas'),
                     icon: Bookmark,
                     count: videoNotes.length,
                     content: (
@@ -2032,7 +1992,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   },
                   {
                     id: 'mentorship',
-                    label: 'Mentoría',
+                    label: t('nav.mentorship', 'Mentoría'),
                     icon: MessageSquare,
                     count: comments.length,
                     content: (

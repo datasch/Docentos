@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../../config/theme';
 import { usePlatformBrand, DEFAULT_LOGO_URL } from '../../lib/logoConfig';
 import { FestiveHatOverlay } from '../../components/FestiveHatOverlay';
@@ -15,6 +16,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
   onOpenListening,
   unreadListening = 0,
 }) => {
+  const { t } = useTranslation();
   const { brandName: appName, logoUrl, logoInitial } = usePlatformBrand();
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const githubUrl = siteConfig.poweredByLink || 'https://github.com/datasch/Docentos';
@@ -68,16 +70,16 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
               </a>
               <button type="button" onClick={() => setShowTermsModal(true)} className="flex items-center gap-2 text-left hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
                 <ShieldCheck aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                <span className="min-w-0 break-words">Términos y privacidad</span>
+                <span className="min-w-0 break-words">{t('footer.termsAndPrivacy', 'Términos y privacidad')}</span>
               </button>
               {siteConfig.complaintsBookUrl && (
                 <a href={siteConfig.complaintsBookUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">
                   <BookOpen aria-hidden className="h-4 w-4" />
-                  <span>Libro de Reclamaciones</span>
+                  <span>{t('footer.complaintsBook', 'Libro de Reclamaciones')}</span>
                 </a>
               )}
             </div>
-            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Volver arriba" title="Volver arriba" className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-cyan-500 hover:text-cyan-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-cyan-300">
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label={t('footer.backToTop', 'Volver arriba')} title={t('footer.backToTop', 'Volver arriba')} className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-cyan-500 hover:text-cyan-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-cyan-300">
               <ArrowUp aria-hidden className="h-4 w-4" />
             </button>
           </nav>
@@ -85,8 +87,8 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
           {onOpenListening && (
             <button type="button" onClick={onOpenListening} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-3 text-sm font-semibold text-cyan-700 dark:text-cyan-300 sm:hidden">
               <HeartHandshake aria-hidden className="h-5 w-5 shrink-0" />
-              <span>Buzón de escucha</span>
-              {unreadListening > 0 && <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-xs text-white">{unreadListening}<span className="sr-only"> respuestas sin leer</span></span>}
+              <span>{t('footer.listeningBox', 'Buzón de escucha')}</span>
+              {unreadListening > 0 && <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-xs text-white">{unreadListening}<span className="sr-only"> {t('footer.unreadResponses', 'respuestas sin leer')}</span></span>}
             </button>
           )}
 
@@ -95,7 +97,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
         {/* Barra Inferior del Footer con Copyright y Versión */}
         <div className="flex flex-col lg:flex-row items-start justify-between gap-5 pt-5 sm:pt-6 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
           <div className="flex min-w-0 flex-col items-start gap-1.5">
-            <span>© {new Date().getFullYear()} {appName}. Todos los derechos reservados.</span>
+            <span>© {new Date().getFullYear()} {appName}. {t('footer.rightsReserved', 'Todos los derechos reservados.')}</span>
           </div>
 
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-slate-600 dark:text-slate-300">

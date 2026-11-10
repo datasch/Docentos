@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   ArrowRight,
@@ -34,6 +35,7 @@ export function CourseOverview({
   onPurchase: () => void;
   onContinue: () => void;
 }) {
+  const { t } = useTranslation();
   const isMentee = user?.role === 'MENTEE';
   const allowed = ready && course?.hasAccess === true;
 
@@ -116,7 +118,7 @@ export function CourseOverview({
         className="mb-8 inline-flex items-center gap-2 text-sm text-ink-soft hover:text-ink transition-colors cursor-pointer"
       >
         <ArrowLeft className="h-4 w-4" />
-        Volver al catálogo
+        {t('overview.backToCatalog', 'Volver al catálogo')}
       </button>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-12">
@@ -134,10 +136,10 @@ export function CourseOverview({
         {/* Información y Acciones del Curso */}
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-brand-cyan">{course.category || 'Formación profesional'}</p>
+            <p className="text-sm font-medium text-brand-cyan">{course.category || t('overview.professionalTraining', 'Formación profesional')}</p>
             {isMentee && (
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 text-[11px] font-bold text-brand-violet-light uppercase tracking-wider">
-                <Sparkles className="h-3 w-3 text-brand-violet-light" /> Mentee
+                <Sparkles className="h-3 w-3 text-brand-violet-light" /> {t('overview.menteeBadge', 'Mentee')}
               </span>
             )}
           </div>
@@ -156,7 +158,7 @@ export function CourseOverview({
               <div className="mt-6 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-1 text-xs font-semibold text-brand-violet-light">
                   <Sparkles className="h-3.5 w-3.5 text-brand-violet-light" />
-                  Acceso gestionado por Mentoría • Sin cobros de matrícula
+                  {t('overview.menteeNotice', 'Acceso gestionado por Mentoría • Sin cobros de matrícula')}
                 </span>
               </div>
             ) : (
@@ -176,7 +178,7 @@ export function CourseOverview({
                 onClick={onContinue}
                 className="btn-brand-primary flex items-center gap-2 px-5 py-3 text-sm cursor-pointer disabled:opacity-50"
               >
-                {!ready ? 'Verificando acceso…' : 'Continuar aprendiendo'}
+                {!ready ? t('overview.verifyingAccess', 'Verificando acceso…') : t('overview.continueLearning', 'Continuar aprendiendo')}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <CourseShareButton course={course} />
@@ -289,7 +291,7 @@ export function CourseOverview({
                 onClick={user ? onPurchase : onRegister}
                 className="btn-brand-primary flex items-center gap-2 px-5 py-3 text-sm cursor-pointer disabled:opacity-50"
               >
-                {!ready ? 'Verificando acceso…' : user ? 'Ver opciones de acceso' : 'Crear cuenta para continuar'}
+                {!ready ? t('overview.verifyingAccess', 'Verificando acceso…') : user ? t('overview.buyCourse', 'Ver opciones de acceso') : t('overview.createAccount', 'Crear cuenta para continuar')}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <CourseShareButton course={course} />
@@ -298,13 +300,13 @@ export function CourseOverview({
 
           {!user && (
             <p className="mt-4 text-sm text-ink-muted">
-              ¿Ya tienes cuenta?{' '}
+              {t('overview.alreadyHaveAccount', '¿Ya tienes cuenta?')}{' '}
               <button
                 type="button"
                 onClick={onLogin}
                 className="text-brand-cyan underline underline-offset-4 cursor-pointer"
               >
-                Inicia sesión
+                {t('overview.loginAction', 'Inicia sesión')}
               </button>
             </p>
           )}

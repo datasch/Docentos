@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Star, MessageSquare, Plus, Edit3, Clock, CheckCircle2, AlertCircle, X, Sparkles, Loader2 } from 'lucide-react';
 import { User, LandingTestimonial, ModeratedTestimonial } from '../../types';
 import { api } from '../../lib/api';
@@ -51,6 +52,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
   currentUser,
   onOpenAuth,
 }) => {
+  const { t } = useTranslation();
   const [testimonials, setTestimonials] = useState<LandingTestimonial[]>([]);
   const [myTestimonial, setMyTestimonial] = useState<ModeratedTestimonial | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -210,10 +212,10 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div className="flex flex-col items-start gap-1">
             <h2 className="font-constellation-display text-[32px] sm:text-[44px] md:text-[52px] leading-tight text-slate-900 dark:text-white tracking-[-0.035em]">
-              Lo que opinan nuestros mentees
+              {t('testimonials.title', 'Lo que opinan nuestros mentees')}
             </h2>
             <p className="font-constellation-body text-sm sm:text-base text-slate-600 dark:text-white/60 mt-1 max-w-2xl leading-relaxed font-extralight">
-              Experiencias compartidas por quienes estudian en DocentOS.
+              {t('testimonials.subtitle', 'Experiencias compartidas por quienes estudian en DocentOS.')}
             </p>
           </div>
 
@@ -224,19 +226,19 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                 {myTestimonial.status === 'PENDING' && (
                   <>
                     <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                    <span className="text-amber-600 dark:text-amber-400">En revisión</span>
+                    <span className="text-amber-600 dark:text-amber-400">{t('testimonials.statusPending', 'En revisión')}</span>
                   </>
                 )}
                 {myTestimonial.status === 'APPROVED' && (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-emerald-600 dark:text-emerald-400">Publicado</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">{t('testimonials.statusApproved', 'Publicado')}</span>
                   </>
                 )}
                 {myTestimonial.status === 'REJECTED' && (
                   <>
                     <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="text-rose-600 dark:text-rose-400">Requiere cambios</span>
+                    <span className="text-rose-600 dark:text-rose-400">{t('testimonials.statusRejected', 'Requiere cambios')}</span>
                   </>
                 )}
               </div>
@@ -251,18 +253,18 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                 myTestimonial ? (
                   <>
                     <Edit3 className="w-4 h-4" />
-                    <span>Editar mi opinión</span>
+                    <span>{t('testimonials.editReview', 'Editar mi opinión')}</span>
                   </>
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
-                    <span>Compartir mi experiencia</span>
+                    <span>{t('testimonials.leaveReview', 'Compartir mi experiencia')}</span>
                   </>
                 )
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Dejar mi testimonio</span>
+                  <span>{t('testimonials.leaveReview', 'Dejar mi testimonio')}</span>
                 </>
               )}
             </button>

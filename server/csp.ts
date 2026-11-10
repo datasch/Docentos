@@ -7,7 +7,7 @@ export const cspDirectives = {
   objectSrc: ["'none'"],
   frameAncestors: ["'self'"],
   formAction: ["'self'"],
-  scriptSrc: ["'self'"],
+  scriptSrc: ["'self'", 'https://www.youtube.com', 'https://s.ytimg.com'],
   styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
   fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
   imgSrc: ["'self'", 'https://images.unsplash.com', 'https:', 'data:', 'blob:'],

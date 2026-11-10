@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Check, 
   Lock, 
@@ -237,6 +238,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   allMissionsCompleted,
   canAccessMission,
 }) => {
+  const { t } = useTranslation();
   const baseRef = useRef<SVGPathElement>(null);
   const estelaRef = useRef<SVGPathElement>(null);
   const tramosRef = useRef<number[] | null>(null);
@@ -390,7 +392,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
           <div className="flex flex-1 items-center gap-3.5 min-w-0">
             <div className="min-w-0">
               <span className="text-sm font-medium text-purple-600 text-ink-muted block">
-                Módulo {modIdx + 1}
+                {t('path.moduleNumber', { number: modIdx + 1, defaultValue: `Módulo ${modIdx + 1}` })}
               </span>
               <h2 className="text-base font-semibold text-ink leading-snug">
                 {module.title}
@@ -402,11 +404,13 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
             {isModuleAllCompleted ? (
               <span className="flex items-center gap-1 text-sm px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
                 <Check className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
-                Completado
+                {t('path.completed', 'Completado')}
               </span>
             ) : (
               <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
-                {missions.length} {missions.length === 1 ? 'lección' : 'lecciones'}
+                {missions.length === 1
+                  ? t('path.lessonsCount_one', '1 lección')
+                  : t('path.lessonsCount_other', { count: missions.length, defaultValue: `${missions.length} lecciones` })}
               </span>
             )}
           </div>
@@ -582,7 +586,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
 
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
-                      Misión {mission.missionNumber} de {totalMissions}
+                      {t('path.missionNumber', { current: mission.missionNumber, total: totalMissions, defaultValue: `Misión ${mission.missionNumber} de ${totalMissions}` })}
                     </span>
                     <button
                       type="button"
@@ -591,7 +595,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                         setSelectedNode(null);
                       }}
                       className="text-slate-400 text-ink-soft hover:text-slate-800 dark:hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
-                      title="Cerrar"
+                      title={t('common.close', 'Cerrar')}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -607,7 +611,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
 
                   {!isUnlocked && !completed && (
                     <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-300 font-medium leading-relaxed">
-                      🔒 Misión Bloqueada. Para desbloquearla debes completar la misión anterior: <strong className="text-slate-900 dark:text-white block mt-0.5">{allMissions[mission.globalIndex - 1]?.video.title}</strong>
+                      {t('path.unlockPrerequisite', '🔒 Misión Bloqueada. Para desbloquearla debes completar la misión anterior:')} <strong className="text-slate-900 dark:text-white block mt-0.5">{allMissions[mission.globalIndex - 1]?.video.title}</strong>
                     </div>
                   )}
 
@@ -628,10 +632,10 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                     >
                       <span>
                         {!isUnlocked && !completed
-                          ? 'Misión Bloqueada'
+                          ? t('path.missionLocked', 'Misión Bloqueada')
                           : completed
-                            ? 'Repasar Misión'
-                            : 'Iniciar Misión'}
+                            ? t('path.reviewMission', 'Repasar Misión')
+                            : t('path.startMission', 'Iniciar Misión')}
                       </span>
                       {isUnlocked || completed ? (
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -704,6 +708,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
   certificate,
   activeVideoId: preferredActiveVideoId,
 }) => {
+  const { t } = useTranslation();
   const [selectedNode, setSelectedNode] = useState<{
     video: VideoDriveLink;
     module: Module;
@@ -891,16 +896,18 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
               </h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-normal text-ink-soft">
-                  {safeModules.length} {safeModules.length === 1 ? 'módulo' : 'módulos'}
+                  {safeModules.length === 1
+                    ? t('path.modulesCount_one', '1 módulo')
+                    : t('path.modulesCount_other', { count: safeModules.length, defaultValue: `${safeModules.length} módulos` })}
                 </span>
                 {seasonalTheme === 'halloween' && (
                   <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30 shrink-0 animate-pulse">
-                    🎃 Especial Noche de Brujas
+                    {t('path.halloweenSpecial', '🎃 Especial Noche de Brujas')}
                   </span>
                 )}
                 {seasonalTheme === 'christmas' && (
                   <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0 animate-pulse">
-                    🎄 Especial Navideño
+                    {t('path.christmasSpecial', '🎄 Especial Navideño')}
                   </span>
                 )}
               </div>
@@ -913,11 +920,11 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
           <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-white/5">
             <span className="text-sm font-medium text-ink-soft flex items-center gap-1">
               {seasonalTheme === 'halloween' ? (
-                <>Progreso Dulce 🍬</>
+                <>{t('path.progressSweet', 'Progreso Dulce 🍬')}</>
               ) : seasonalTheme === 'christmas' ? (
-                <>Progreso Navideño 🎄</>
+                <>{t('path.progressChristmas', 'Progreso Navideño 🎄')}</>
               ) : (
-                <>Progreso</>
+                <>{t('path.progress', 'Progreso')}</>
               )}
             </span>
             <div className="flex items-center gap-2.5">
@@ -985,10 +992,10 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
             <div className="py-16 px-6 text-center bg-surface/70 border border-slate-200/80 dark:border-purple-500/20 rounded-3xl  shadow-sm">
               <div className="text-4xl mb-3">🌌</div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
-                Constelación en estructuración
+                {t('path.emptyTitle', 'Constelación en estructuración')}
               </h3>
               <p className="text-xs text-ink-soft max-w-sm mx-auto">
-                Este curso está organizando sus módulos y lecciones prácticas. Vuelve pronto para explorar la ruta cósmica.
+                {t('path.emptyDesc', 'Este curso está organizando sus módulos y lecciones prácticas. Vuelve pronto para explorar la ruta cósmica.')}
               </p>
             </div>
           ) : (
@@ -1118,14 +1125,14 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                        ✨ ¡Meta Alcanzada!
+                        {t('path.goalReached', '✨ ¡Meta Alcanzada!')}
                       </span>
                     </div>
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white leading-tight mt-1">
-                      Curso completado con éxito
+                      {t('path.courseCompletedTitle', 'Curso completado con éxito')}
                     </h2>
                     <p className="mt-1 text-xs text-slate-600 dark:text-amber-100/80 leading-relaxed">
-                      Tu diploma oficial de <span className="font-bold text-slate-900 dark:text-white">{course.title}</span> está listo para ser emitido con validez institucional.
+                      {t('path.courseCompletedDesc', { title: course.title, defaultValue: `Tu diploma oficial de ${course.title} está listo para ser emitido con validez institucional.` })}
                     </p>
                     {certificate?.verificationCode && (
                       <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-sm">
@@ -1143,7 +1150,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer"
                   >
                     <Eye className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>Ver Diploma</span>
+                    <span>{t('path.viewDiploma', 'Ver Diploma')}</span>
                   </button>
 
                   {certificate?.verificationCode && (
@@ -1153,7 +1160,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                       className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-xs font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
                     >
                       <ShieldCheck className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      <span>Verificar</span>
+                      <span>{t('path.verifyDiploma', 'Verificar')}</span>
                     </button>
                   )}
 
@@ -1163,7 +1170,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-slate-950 text-xs font-semibold shadow-none shadow-amber-500/30 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
                   >
                     <Download className="w-4 h-4 stroke-[2.5]" />
-                    <span>Descargar Diploma</span>
+                    <span>{t('path.downloadDiploma', 'Descargar Diploma')}</span>
                   </button>
                 </div>
               </div>
@@ -1191,14 +1198,14 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-purple-500/20 text-slate-600 dark:text-purple-300 border border-slate-200 dark:border-purple-500/30">
-                        🔒 Certificado Bloqueado
+                        {t('path.lockedCertTitle', '🔒 Certificado Bloqueado')}
                       </span>
                     </div>
                     <h3 className="text-base font-semibold text-slate-900 dark:text-white mt-1">
-                      Acreditación Oficial de Finalización
+                      {t('path.officialAccreditation', 'Acreditación Oficial de Finalización')}
                     </h3>
                     <p className="mt-1 text-xs text-slate-600 text-ink-soft leading-relaxed">
-                      Hasta que el <span className="font-bold text-cyan-600 dark:text-cyan-400">Orbe Celestial</span> no complete la misión final ({lastMission?.video.title || 'Misión Final'}), este diploma permanece protegido.
+                      {t('path.lockedCertDesc', { mission: lastMission?.video.title || t('path.finalMission', 'Misión Final'), defaultValue: `Hasta que el Orbe Celestial no complete la misión final (${lastMission?.video.title || 'Misión Final'}), este diploma permanece protegido.` })}
                     </p>
                   </div>
                 </div>
@@ -1207,7 +1214,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-600 dark:text-purple-200/80">
-                      Misiones completadas: <span className="font-bold text-slate-900 dark:text-white">{completedCount} de {totalMissions}</span>
+                      {t('path.missionsCompletedCount', { completed: completedCount, total: totalMissions, defaultValue: `Misiones completadas: ${completedCount} de ${totalMissions}` })}
                     </span>
                     <span className="font-bold text-cyan-600 dark:text-cyan-400">
                       {progressPct}%
@@ -1233,7 +1240,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                     }}
                     className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:brightness-110 active:scale-95 text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
                   >
-                    <span>Continuar Misión Siguiente</span>
+                    <span>{t('path.continueNextMission', 'Continuar Misión Siguiente')}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
 
@@ -1245,7 +1252,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                       title="Debes completar la última misión con el orbe para habilitar este botón"
                     >
                       <Lock className="w-3 h-3" />
-                      <span>Ver Diploma</span>
+                      <span>{t('path.viewDiploma', 'Ver Diploma')}</span>
                     </button>
                     <button
                       type="button"
@@ -1254,7 +1261,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                       title="Debes completar la última misión con el orbe para habilitar este botón"
                     >
                       <Lock className="w-3 h-3" />
-                      <span>Descargar</span>
+                      <span>{t('certificates.download', 'Descargar')}</span>
                     </button>
                   </div>
                 </div>

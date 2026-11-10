@@ -9,6 +9,21 @@
   border: 1px solid var(--color-line);
   border-radius: 0.875rem;
   background: var(--color-surface);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  user-select: none;
+}
+.academy-learning-course:hover {
+  border-color: var(--color-brand-cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 0 15px -3px rgba(6, 182, 212, 0.15);
+}
+.academy-learning-course:active {
+  transform: translateY(0);
+}
+.academy-learning-course:focus-visible {
+  outline: 2px solid var(--color-brand-cyan);
+  outline-offset: 2px;
 }
 .academy-learning-course__cover { position: relative; overflow: hidden; display: grid; place-items: center; flex-shrink: 0; aspect-ratio: 16 / 9; background: var(--color-raised); color: var(--color-ink-soft); }
 .academy-learning-course__cover img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }

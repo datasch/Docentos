@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
@@ -62,6 +63,7 @@ export type SubTab =
   | 'listening';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, course, onRefreshData }) => {
+  const { t } = useTranslation();
   const [masterSection, setMasterSection] = useState<MasterSection>('courses');
   const [activeTab, setActiveTab] = useState<SubTab>('courses');
 
@@ -941,13 +943,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold mb-2">
                   <Shield className="w-3.5 h-3.5" />
-                  <span>Panel de Control & Administración Global RBAC</span>
+                  <span>{t('admin.badge', 'Panel de Control & Administración Global RBAC')}</span>
                 </div>
                 <h2 className="text-2xl font-extrabold text-ink tracking-tight">
                   {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Command Center`}
                 </h2>
                 <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
-                  Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.
+                  {t('admin.desc', 'Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.')}
                 </p>
               </div>
             </div>
@@ -956,10 +958,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <button
                 onClick={refreshEverything}
                 className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
-                title="Recargar todos los datos"
+                title={t('admin.syncTitle', 'Recargar todos los datos')}
               >
                 <RefreshCw className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>Sincronizar Panel</span>
+                <span>{t('admin.syncBtn', 'Sincronizar Panel')}</span>
               </button>
             </div>
           </div>
@@ -993,8 +995,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">Cursos & Contenidos</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">Temarios, recursos y videos</div>
+            <div className="text-sm font-bold text-ink">{t('admin.coursesTitle', 'Cursos & Contenidos')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.coursesSubtitle', 'Temarios, recursos y videos')}</div>
           </div>
         </button>
 
@@ -1023,8 +1025,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">Usuarios & Matrículas</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">Directorio RBAC, pases y admisiones</div>
+            <div className="text-sm font-bold text-ink">{t('admin.usersTitle', 'Usuarios & Matrículas')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.usersSubtitle', 'Directorio RBAC, pases y admisiones')}</div>
           </div>
         </button>
 
@@ -1055,8 +1057,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">Certificación & Legal</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">Diplomas y auditoría forense</div>
+            <div className="text-sm font-bold text-ink">{t('admin.legalTitle', 'Certificación & Legal')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.legalSubtitle', 'Diplomas y auditoría forense')}</div>
           </div>
         </button>
 
@@ -1087,8 +1089,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">Configuración & Portal</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">Plugins, portada y escucha</div>
+            <div className="text-sm font-bold text-ink">{t('admin.systemTitle', 'Configuración & Portal')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.systemSubtitle', 'Plugins, portada y escucha')}</div>
           </div>
         </button>
       </div>
@@ -1108,7 +1110,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Catálogo y Temarios ({allCourses.length})</span>
+                <span>{t('admin.tabCourses', 'Catálogo y Temarios')} ({allCourses.length})</span>
               </button>
               <button
                 type="button"
@@ -1122,7 +1124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Estudio de Medios y Recursos</span>
+                <span>{t('admin.tabResources', 'Estudio de Medios y Recursos')}</span>
               </button>
             </div>
           )}
@@ -1142,7 +1144,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>Directorio & Roles RBAC ({users.length})</span>
+                <span>{t('admin.tabUsers', 'Directorio & Roles RBAC')} ({users.length})</span>
               </button>
               <button
                 type="button"
@@ -1157,7 +1159,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Registro de Matrículas ({enrollments.length})</span>
+                <span>{t('admin.tabEnrollments', 'Registro de Matrículas')} ({enrollments.length})</span>
               </button>
             </div>
           )}
@@ -1177,7 +1179,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Award className="w-3.5 h-3.5 text-amber-400" />
-                <span>Certificados Oficiales ({certificates.length})</span>
+                <span>{t('admin.tabCertificates', 'Certificados Oficiales')} ({certificates.length})</span>
               </button>
               <button
                 type="button"
@@ -1192,7 +1194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <FileCheck className="w-3.5 h-3.5 text-brand-blue" />
-                <span>Auditoría Forense de Contratos ({contractSignatures.length})</span>
+                <span>{t('admin.tabContracts', 'Auditoría Forense de Contratos')} ({contractSignatures.length})</span>
               </button>
             </div>
           )}
@@ -1209,7 +1211,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Layers className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>Plugins y Extensiones</span>
+                <span>{t('admin.tabPlugins', 'Plugins y Extensiones')}</span>
               </button>
               <button
                 type="button"
@@ -1223,7 +1225,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5 text-brand-purple" />
-                <span>Portal Web y Feedback Alumnos</span>
+                <span>{t('admin.tabLanding', 'Portal Web y Feedback Alumnos')}</span>
               </button>
             </div>
           )}

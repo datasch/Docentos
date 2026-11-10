@@ -706,6 +706,7 @@ body[data-festividad="halloween"] .camino svg.ruta .ruta-viva {
   /* Transición fluida y elástica para mostrar el viaje del orbe celestial entrando a la siguiente lección */
   transition: left 1.25s cubic-bezier(0.34, 1.2, 0.64, 1), top 1.25s cubic-bezier(0.34, 1.2, 0.64, 1), filter 0.6s, transform 0.6s;
   animation: th-orbe-flota 4s ease-in-out infinite;
+  will-change: transform;
 }
 
 .ser-en-camino::after {
@@ -752,8 +753,9 @@ body[data-festividad="halloween"] .camino svg.ruta .ruta-viva {
   right: 28px;
   top: 60px;
   background: radial-gradient(circle at 40% 38%, var(--th-sol-1), var(--th-sol-2) 55%, var(--th-sol-3));
-  box-shadow: 0 0 95px 28px var(--th-sol-brillo);
-  transition: top 1.8s cubic-bezier(.5, 0, .2, 1), background 1.8s, box-shadow 1.8s;
+  box-shadow: 0 0 45px 12px var(--th-sol-brillo);
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 @media (max-width: 760px) {

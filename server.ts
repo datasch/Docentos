@@ -8,6 +8,7 @@ import { QUIZ_POLICY_DEFAULTS, validateQuizPolicy, loadQuizSettings, getQuizAtte
 
 import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
+import { Readable } from 'node:stream';
 import express, { NextFunction, Request, Response } from 'express';
 import compression from 'compression';
 import path from 'path';
@@ -96,6 +97,7 @@ import {
   userHasModuleAccess,
   userHasVideoAccess,
   userHasResourceAccess,
+  getVideoForAccess,
   serializeCourseForViewer,
   serializeCourseForAdmin,
 } from './server/courseAccess.js';
@@ -1254,15 +1256,9 @@ app.post(
 app.get(
   '/api/content/videos/:videoId',
   asyncRoute(async (req, res) => {
-    const video = await prisma.videoDriveLink.findUnique({
-      where: { id: req.params.videoId },
-      include: { module: { select: { courseId: true } } },
-    });
-    if (!video) return res.status(404).json({ error: 'Video no encontrado.' });
-
-    const hasAccess = await userHasCourseAccess(req.user, video.module.courseId);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'No tienes autorización para ver este video.' });
+    const { status, error, video } = await getVideoForAccess(req.user, req.params.videoId);
+    if (status !== 200 || !video) {
+      return res.status(status).json({ error });
     }
 
     const targetUrl = video.embedUrl || video.previewUrl;
@@ -1302,6 +1298,110 @@ app.get(
 
     res.setHeader('Cache-Control', 'private, max-age=3600');
     return res.redirect(finalUrl);
+  }),
+);
+
+// Protected video stream delivery: serves native media chunks directly from storage via HTTP 206
+app.all(
+  '/api/content/videos/:videoId/stream',
+  asyncRoute(async (req, res) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.setHeader('Allow', 'GET, HEAD');
+      return res.status(405).json({ error: 'Método no permitido.' });
+    }
+
+    const { status, error, video } = await getVideoForAccess(req.user, req.params.videoId);
+    if (status !== 200 || !video) {
+      return res.status(status).json({ error });
+    }
+
+    let fileId = video.driveFileId?.trim();
+    if (!fileId) {
+      const targetUrl = video.embedUrl || video.previewUrl || '';
+      const match = targetUrl.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i);
+      if (match) fileId = match[1];
+    }
+
+    if (!fileId) {
+      const targetUrl = video.embedUrl || video.previewUrl;
+      if (!targetUrl) return res.status(404).json({ error: 'URL del video no disponible.' });
+      return res.redirect(targetUrl);
+    }
+
+    const upstreamUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`;
+
+    const forwardHeaders: Record<string, string> = {
+      'User-Agent': (req.headers['user-agent'] as string) || 'DocentOS-MediaStreamer/1.0',
+    };
+    if (req.headers.range) {
+      forwardHeaders['Range'] = req.headers.range as string;
+    }
+
+    const abortController = new AbortController();
+    req.on('close', () => {
+      abortController.abort();
+    });
+
+    let upstreamRes: globalThis.Response;
+    try {
+      upstreamRes = await fetch(upstreamUrl, {
+        method: req.method,
+        headers: forwardHeaders,
+        signal: abortController.signal,
+      });
+    } catch (err: any) {
+      if (abortController.signal.aborted) {
+        return;
+      }
+      logger.warn('drive_stream.upstream_fetch_failed', { videoId: video.id, error: err?.message });
+      return res.status(502).json({ error: 'No se pudo conectar con el origen de video.' });
+    }
+
+    const contentType = upstreamRes.headers.get('content-type') || '';
+    if (contentType.includes('text/html') || (!upstreamRes.ok && upstreamRes.status !== 206)) {
+      logger.warn('drive_stream.upstream_invalid_content', {
+        videoId: video.id,
+        status: upstreamRes.status,
+        contentType,
+      });
+      return res.status(502).json({
+        error: 'El video no está disponible para reproducción directa desde el origen.',
+      });
+    }
+
+    res.status(upstreamRes.status);
+    res.setHeader('Accept-Ranges', upstreamRes.headers.get('accept-ranges') || 'bytes');
+    res.setHeader('Content-Type', contentType || 'video/mp4');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+
+    const contentRange = upstreamRes.headers.get('content-range');
+    if (contentRange) {
+      res.setHeader('Content-Range', contentRange);
+    }
+    const contentLength = upstreamRes.headers.get('content-length');
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+
+    if (req.method === 'HEAD' || !upstreamRes.body) {
+      return res.end();
+    }
+
+    try {
+      const nodeStream = Readable.fromWeb(upstreamRes.body as any);
+      nodeStream.on('error', (err: any) => {
+        logger.warn('drive_stream.pipe_error', { videoId: video.id, error: err?.message });
+        res.destroy();
+      });
+      nodeStream.pipe(res);
+    } catch (err: any) {
+      logger.warn('drive_stream.stream_conversion_error', { videoId: video.id, error: err?.message });
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'Error al transmitir el flujo de video.' });
+      } else {
+        res.destroy();
+      }
+    }
   }),
 );
 

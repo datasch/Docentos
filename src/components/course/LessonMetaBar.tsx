@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronLeft, ChevronRight, ExternalLink, PlaySquare, Lock, Unlock } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, PlaySquare, Lock, Unlock } from 'lucide-react';
 
 interface LessonMetaBarProps {
   lessonTitle: string;
@@ -69,20 +69,6 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
         </span>
         <span aria-hidden>·</span>
         <span>{providerLabel}</span>
-        {playbackUrl && (
-          <>
-            <span aria-hidden>·</span>
-            <a
-              href={playbackUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-brand-cyan hover:underline"
-            >
-              Abrir el video aparte
-              <ExternalLink aria-hidden className="h-3 w-3" />
-            </a>
-          </>
-        )}
       </p>
     </div>
 
