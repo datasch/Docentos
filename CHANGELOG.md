@@ -10,9 +10,56 @@ cuando alcance su primera versión estable.
 ### Planned
 
 - Entrega real de correo para recuperación de contraseña.
-- Publicación de la primera versión estable v1.0.0.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
+
+## [1.0.0] - 2026-11-10
+
+**Esta versión migra el esquema de la base de datos.** Añade la tabla `CourseMentor`
+para la gestión y asignación granular de cursos a mentores con aislamiento estricto.
+Se recomienda realizar backup antes de desplegar. Las migraciones se aplican
+automáticamente al arrancar.
+
+### Added
+
+- **Soporte multilingüe integral (i18n)**: Localización completa en 5 idiomas
+  (Español, Inglés, Portugués, Francés e Italiano) abarcando navegación,
+  catálogo, visor estelar de lecciones, paneles de administración, paneles de
+  mentoría, modales de términos y contratos de aprendizaje.
+- **Asignación granular y aislamiento de cursos para mentores**: Nueva entidad
+  `CourseMentor` que permite asignar formalmente cursos a mentores específicos,
+  aislando estrictamente la visibilidad de estudiantes, progreso y evaluaciones
+  entre distintos mentores.
+- **Acceso para invitados y compartición social de cursos**: Capacidad de compartir
+  cursos mediante enlaces directos con vista previa para visitantes no registrados
+  y botón de solicitud directa de mentoría en un clic.
+- **Estandarización de categorías y búsqueda neuronal**: Sistema oficial de
+  categorización con filtros interactivos y búsqueda semántica de cursos.
+- **Blindaje de seguridad y estrangulamiento de tasa (Rate Limiting)**: Protección
+  reforzada contra ataques de fuerza bruta en inicio de sesión por IP y cuenta,
+  con almacenamiento de intentos y cabeceras de respuesta estándar.
+
+### Changed
+
+- **Interactividad total en tarjetas de cursos**: Las tarjetas en el catálogo y en
+  la sección de aprendizaje ahora responden al clic en cualquier área (portada,
+  título, progreso o contenedor) con soporte accesible de teclado.
+- **Auto-navegación al orbe y apertura automática de lección**: Al acceder a un
+  curso, la interfaz guía suavemente al estudiante hasta la lección en curso y abre
+  el reproductor para continuar el aprendizaje sin interrupciones.
+- **Fondo cósmico activo en toda la academia**: El lienzo de partículas y
+  resplandores atmosféricos se mantiene continuo entre las vistas de catálogo,
+  exploración y aprendizaje personal.
+
+### Fixed
+
+- **Fluidez absoluta de scroll y eliminación de tirones**: Se fijó la geometría del
+  navbar superior y se optimizó en GPU el astro solar, eliminando recalcular
+  el diseño (reflows) y logrando scroll a 60+ FPS tanto al bajar como al subir.
+- **Prevención de cursos duplicados**: Saneamiento de registros duplicados en base
+  de datos y aislamiento en suites de prueba con limpieza automática tras la ejecución.
+- **Acceso fluido para alumnos con rol Mentee**: Corrección de comprobaciones de
+  rol estáticas para garantizar acceso directo a los cursos asignados.
 
 ## 0.5.0-beta.21 - 2026-11-05
 

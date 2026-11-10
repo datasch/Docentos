@@ -2,11 +2,11 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 0.5.0-beta.21](https://img.shields.io/badge/Version-0.5.0--beta.21-a855f7.svg)
-![Status: Beta](https://img.shields.io/badge/Status-Beta-emerald400.svg)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-a855f7.svg)
+![Status: Stable](https://img.shields.io/badge/Status-Stable-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
-> **Estado actual:** beta funcional con pagos verificables Stripe, eventos idempotentes,
+> **Estado actual:** versión oficial estable con soporte multilingüe completo (i18n), pagos verificables Stripe,
 > protección estricta de contenidos, streaming protegido, recursos descargables,
 > emisión de certificados persistentes con código público y suite de pruebas de negocio.
 > Antes de exponerla a Internet revisa `TRUST_PROXY` en la
@@ -131,7 +131,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v0.5.0-beta.21.
+* **Versión actual:** v1.0.0.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -139,9 +139,9 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 * **Historial de cambios:** [CHANGELOG.md](CHANGELOG.md).
 
 Las Fases 0 a 5 del plan funcional están implementadas, más la importación de
-cursos desde Google Drive (sección 5.2 del plan). Esta versión sigue siendo
-beta; antes de exponerla configura HTTPS, `STRIPE_WEBHOOK_SECRET`, entrega de
-recuperación de contraseña, almacenamiento S3 y alertas.
+cursos desde Google Drive (sección 5.2 del plan). Esta versión es la primera
+entrega oficial estable; antes de exponerla configura HTTPS, `STRIPE_WEBHOOK_SECRET`,
+entrega de recuperación de contraseña, almacenamiento S3 y alertas.
 
 `CSP_MODE` acepta `report` y `enforce`: por defecto usa `report` en
 `DOCENTOS_ENV=development` y `enforce` en staging y producción. La política
@@ -192,10 +192,10 @@ en lugar de un nombre móvil.
 
 ```bash
 # Después de publicar la etiqueta y de que Release termine en verde
-docker pull ghcr.io/datasch/docentos:0.5.0-beta.21
+docker pull ghcr.io/datasch/docentos:1.0.0
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/datasch/docentos:0.5.0-beta.21 \
+cosign verify ghcr.io/datasch/docentos:1.0.0 \
   --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -203,8 +203,8 @@ cosign verify ghcr.io/datasch/docentos:0.5.0-beta.21 \
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/datasch/docentos:0.5.0-beta.21 \
-DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:0.5.0-beta.21 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:1.0.0 \
+DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:1.0.0 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -239,10 +239,10 @@ Coolify si está configurado `COOLIFY_WEBHOOK_URL`.
 npm run verify                       # versión consistente, tipado y compilación
 npm test
 ./scripts/verificar-diseno.sh HEAD    # verificador local, si está instalado
-git commit -m "chore(release): 0.5.0-beta.21"
+git commit -m "chore(release): 1.0.0"
 git push datasch main
-git tag -a v0.5.0-beta.21 -m "DocentOS 0.5.0-beta.21"
-git push datasch v0.5.0-beta.21    # el remoto de este repositorio
+git tag -a v1.0.0 -m "DocentOS 1.0.0"
+git push datasch v1.0.0    # el remoto de este repositorio
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,
@@ -252,8 +252,8 @@ Espera a que **Release termine en verde** antes de configurar las imágenes de
 aplicación y respaldo. En Coolify se actualizan `DOCENTOS_IMAGE` y
 `DOCENTOS_BACKUP_IMAGE` y se pulsa **Restart (pull latest)**.
 
-> **0.5.0-beta.21 sí migra el esquema** (agrega columna `cooldownUntil` a la tabla
-> `QuizAttempt`). Haz backup antes de desplegar. Las migraciones se aplican
+> **1.0.0 sí migra el esquema** (agrega tabla `CourseMentor` para asignación y
+> aislamiento de cursos a mentores). Haz backup antes de desplegar. Las migraciones se aplican
 > automáticamente al arrancar.
 >
 > La publicación usa actualmente `linux/amd64`. Recuperar `arm64` sobre runners
