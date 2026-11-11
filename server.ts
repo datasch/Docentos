@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { GoogleGenAI } from '@google/genai';
 import {
   AuthenticatedUser,
+  createPrivatePageGuard,
   requireAuthenticated,
   requireRole,
   UserRole,
@@ -815,6 +816,10 @@ app.post(
 );
 
 app.use(createSetupGuard(isSetupComplete));
+
+// Las páginas privadas deben autorizarse antes de que Vite o el fallback SPA
+// puedan entregar el documento HTML. Las API mantienen sus propios permisos.
+app.use(createPrivatePageGuard());
 
 // Resolve an optional, independent user session for every API request.
 app.use(
