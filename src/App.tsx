@@ -372,18 +372,18 @@ export default function App() {
       privateRouteStatus === 'unavailable' ? 'unavailable' : 'unauthorized',
     );
     return (
-      <div className="min-h-screen bg-[#0b0d14] text-[#eef0f5] flex items-center justify-center px-5">
-        <main className="w-full max-w-2xl rounded-[20px] border border-white/10 bg-[#11141c] px-8 py-12 text-center shadow-[0_16px_48px_rgba(0,0,0,0.24)] sm:px-16 sm:py-16">
-          <p className="text-sm font-medium text-[#a3a9b8]">DocentOS</p>
+      <div className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex items-center justify-center px-5">
+        <main className="w-full max-w-2xl rounded-[20px] border border-white/10 bg-[#121214] px-8 py-12 text-center shadow-[0_16px_48px_rgba(0,0,0,0.24)] sm:px-16 sm:py-16">
+          <p className="text-sm font-medium text-[#a5a5af]">DocentOS</p>
           <div
             aria-hidden="true"
-            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-cyan-300/55"
+            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-cyan-500/55"
           />
-          <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-[#eef0f5]">
+          <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-[#f4f4f5]">
             404
           </p>
           <h1 className="mt-6 text-[clamp(1.5rem,4vw,2rem)] font-medium">{privateView.title}</h1>
-          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#a3a9b8]">{privateView.description}</p>
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#a5a5af]">{privateView.description}</p>
           <button
             type="button"
             onClick={() => {
@@ -393,7 +393,7 @@ export default function App() {
                 navigateTo('landing');
               }
             }}
-            className="mt-7 rounded-[10px] border border-white/10 bg-[#eef0f5] px-[18px] py-3 text-sm font-medium text-[#0b0d14] transition-colors hover:border-cyan-300 hover:bg-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300"
+            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-cyan-500 hover:bg-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-500"
           >
             {privateRouteStatus === 'unavailable' ? 'Reintentar' : 'Volver al inicio'}
           </button>

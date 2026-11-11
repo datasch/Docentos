@@ -27,61 +27,61 @@ const PRIVATE_NOT_FOUND_PAGE = `<!doctype html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0b0d14">
+    <meta name="theme-color" content="#09090b">
     <title>DocentOS · Página no encontrada</title>
     <style>
       :root {
         color-scheme: dark;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #0b0d14;
-        color: #eef0f5;
+        font-family: 'Manrope', 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #09090b;
+        color: #f4f4f5;
       }
       * { box-sizing: border-box; }
-      body { min-width: 320px; min-height: 100vh; margin: 0; background: #0b0d14; }
+      body { min-width: 320px; min-height: 100vh; margin: 0; background: #09090b; }
       main { display: grid; min-height: 100vh; place-items: center; padding: 32px 20px; }
       .shell {
         width: min(100%, 640px);
         padding: clamp(32px, 7vw, 64px);
-        border: 1px solid rgba(238,240,245,.1);
+        border: 1px solid rgba(244,244,245,.1);
         border-radius: 20px;
-        background: #11141c;
+        background: #121214;
         box-shadow: 0 16px 48px rgba(0,0,0,.24);
         text-align: center;
       }
-      .brand { color: #a3a9b8; font-size: 14px; font-weight: 500; }
+      .brand { color: #a5a5af; font-size: 14px; font-weight: 500; }
       .orbit-line {
         width: 128px;
         height: 32px;
         margin: 28px auto 20px;
-        border: 1px solid rgba(103,232,249,.55);
+        border: 1px solid rgba(6,182,212,.55);
         border-radius: 50%;
         transform: rotate(-8deg);
       }
       .code {
         margin: -52px 0 0;
-        color: #eef0f5;
+        color: #f4f4f5;
         font-size: clamp(88px, 18vw, 144px);
         font-weight: 500;
         letter-spacing: -.03em;
         line-height: .9;
       }
-      h1 { margin: 24px 0 0; color: #eef0f5; font-size: clamp(24px, 4vw, 32px); font-weight: 500; }
-      p { max-width: 400px; margin: 12px auto 0; color: #a3a9b8; font-size: 15px; line-height: 1.6; }
+      h1 { margin: 24px 0 0; color: #f4f4f5; font-size: clamp(24px, 4vw, 32px); font-weight: 500; }
+      p { max-width: 400px; margin: 12px auto 0; color: #a5a5af; font-size: 15px; line-height: 1.6; }
       a {
         display: inline-flex;
         margin-top: 28px;
         padding: 12px 18px;
-        border: 1px solid rgba(238,240,245,.12);
+        border: 1px solid rgba(244,244,245,.12);
         border-radius: 10px;
-        background: #eef0f5;
-        color: #0b0d14;
+        background: #f4f4f5;
+        color: #09090b;
         font-size: 14px;
         font-weight: 500;
         text-decoration: none;
         transition: background .16s ease, border-color .16s ease;
       }
-      a:hover { border-color: #67e8f9; background: #cffafe; }
-      a:focus-visible { outline: 3px solid rgba(103,232,249,.7); outline-offset: 4px; }
+      a:hover { border-color: #06b6d4; background: #cffafe; }
+      a:focus-visible { outline: 3px solid rgba(6,182,212,.7); outline-offset: 4px; }
     </style>
   </head>
   <body>
