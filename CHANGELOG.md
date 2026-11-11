@@ -13,6 +13,23 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [1.0.2] - 2026-11-11
+
+**Esta versión no migra el esquema de la base de datos.**
+
+### Fixed
+
+- **Endurecimiento de rutas privadas (admin/mentor):** el acceso no autorizado a `/admin`, `/admin/plugins` y `/mentor/dashboard` ahora recibe un 404 que no revela la existencia de la página (en lugar de 401/403). Las páginas privadas se sirven con `Cache-Control: no-store` y, si la validación de sesión falla por infraestructura, se responde 503 sin filtrar detalles internos. El cliente bloquea además la renderización de vistas privadas hasta verificar el rol.
+
+### Added
+
+- **Rediseño de los paneles de administración y mentoría** con el sistema de estilos «academy»: `AdminDashboard`, `MentorDashboard` y el gestor de plugins adoptan los tokens de color (canvas, superficie, tinta, acento cian) y la tipografía Manrope/Source Sans 3.
+- **Navegación modular del panel de administración** (`adminNavigation`) y **configuración del personalizador** (`customizerConfig`), con refinamiento del aplicador de temas.
+
+### Changed
+
+- **Página 404 de rutas privadas alineada al sistema academy** (mismo motivo `orbit-line`, paleta y tipografía del rediseño) para que el error no se vea distinto al resto de la interfaz.
+
 ## [1.0.1] - 2026-11-11
 
 **Esta versión no migra el esquema de la base de datos.**
