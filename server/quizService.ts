@@ -233,6 +233,310 @@ export function shuffleQuestionOptions(question: QuizQuestion): QuizQuestion {
   };
 }
 
+function normalizeText(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const STOP_WORDS = new Set([
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+  'de', 'del', 'en', 'y', 'o', 'a', 'que', 'para', 'por', 'con', 'es', 'son',
+  'al', 'se', 'su', 'sus', 'como', 'sobre', 'este', 'esta', 'estos', 'estas',
+  'the', 'an', 'in', 'on', 'and', 'or', 'to', 'for', 'with', 'is', 'are',
+]);
+
+/**
+ * Calcula una puntuación de similitud semántica y léxica (0.0 a 1.0) entre una opción de respuesta
+ * y la justificación pedagógica de la pregunta.
+ */
+export function computeOptionExplanationScore(option: string, explanation: string): number {
+  const normOpt = normalizeText(option);
+  const normExp = normalizeText(explanation);
+  if (!normOpt || !normExp) return 0;
+
+  // Substring directo o frase inicial extensa
+  if (normOpt.length >= 10 && normExp.includes(normOpt)) {
+    return 1.0;
+  }
+  const prefix25 = normOpt.slice(0, 25);
+  if (prefix25.length >= 12 && normExp.includes(prefix25)) {
+    return 0.95;
+  }
+
+  const optWords = normOpt.split(' ').filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+  if (optWords.length === 0) return 0;
+
+  let matchedWords = 0;
+  for (const word of optWords) {
+    if (normExp.includes(word)) {
+      matchedWords++;
+    }
+  }
+
+  const wordRatio = matchedWords / optWords.length;
+
+  // Bonus por n-gramas / frases consecutivas de 2 palabras
+  let bigramBonus = 0;
+  if (optWords.length >= 2) {
+    let matchedBigrams = 0;
+    for (let i = 0; i < optWords.length - 1; i++) {
+      const bigram = `${optWords[i]} ${optWords[i + 1]}`;
+      if (normExp.includes(bigram)) matchedBigrams++;
+    }
+    bigramBonus = (matchedBigrams / (optWords.length - 1)) * 0.3;
+  }
+
+  return Math.min(1.0, wordRatio * 0.7 + bigramBonus);
+}
+
+export interface ReconcileResult {
+  question: QuizQuestion;
+  changed: boolean;
+  oldIndex: number;
+  newIndex: number;
+  reason?: string;
+}
+
+/**
+ * Concilia y asegura la consistencia semántica entre las opciones y la justificación pedagógica.
+ * Si la opción marcada tiene baja coincidencia con la explicación pero otra opción tiene una
+ * correspondencia evidente (como cuando el LLM alucina el índice numérico), reubica el índice correcto.
+ */
+export function reconcileQuestionCorrectIndex(question: QuizQuestion): ReconcileResult {
+  const options = question.options || [];
+  if (options.length < 2 || !question.explanation || !question.explanation.trim()) {
+    return {
+      question,
+      changed: false,
+      oldIndex: typeof question.correctIndex === 'number' ? question.correctIndex : 0,
+      newIndex: typeof question.correctIndex === 'number' ? question.correctIndex : 0,
+    };
+  }
+
+  const currentIdx =
+    typeof question.correctIndex === 'number' && question.correctIndex >= 0 && question.correctIndex < options.length
+      ? question.correctIndex
+      : 0;
+
+  const scores = options.map((opt) => computeOptionExplanationScore(opt, question.explanation));
+  const currentScore = scores[currentIdx] ?? 0;
+
+  let bestIdx = currentIdx;
+  let bestScore = currentScore;
+
+  for (let i = 0; i < scores.length; i++) {
+    if (scores[i] > bestScore) {
+      bestScore = scores[i];
+      bestIdx = i;
+    }
+  }
+
+  // Criterio de reconciliación seguro:
+  // 1. Debe haber un candidato distinto al actual.
+  // 2. La puntuación del candidato debe ser alta (>= 0.60).
+  // 3. El margen de ventaja sobre la opción actualmente marcada debe ser contundente (>= 0.35).
+  if (bestIdx !== currentIdx && bestScore >= 0.6 && (bestScore - currentScore) >= 0.35) {
+    return {
+      question: {
+        ...question,
+        correctIndex: bestIdx,
+      },
+      changed: true,
+      oldIndex: currentIdx,
+      newIndex: bestIdx,
+      reason: `La justificación pedagógica describe la opción [${String.fromCharCode(65 + bestIdx)}] en lugar de [${String.fromCharCode(65 + currentIdx)}].`,
+    };
+  }
+
+  return { question, changed: false, oldIndex: currentIdx, newIndex: currentIdx };
+}
+
+/**
+ * Normaliza y valida una pregunta devuelta por la IA, admitiendo tanto el nuevo formato semántico
+ * `{ text, correctAnswer, distractors, explanation }` como el formato legado `{ options, correctIndex }`.
+ * Garantiza barajado determinista y consistencia semántica absoluta.
+ */
+export function normalizeAiQuestion(raw: any, fallbackModuleTitle: string, index: number): QuizQuestion {
+  const text = String(raw.text || raw.question || `Pregunta ${index + 1} sobre ${fallbackModuleTitle}`).trim();
+  const explanation = String(
+    raw.explanation || raw.justification || raw.feedback || 'Respuesta verificada en las clases del módulo.'
+  ).trim();
+
+  // Caso 1: Nuevo formato semántico seguro: { text, correctAnswer, distractors: [3 items], explanation }
+  if (raw.correctAnswer && Array.isArray(raw.distractors) && raw.distractors.length >= 2) {
+    const correctText = String(raw.correctAnswer).trim();
+    const cleanDistractors = raw.distractors
+      .map((d: any) => String(d).trim())
+      .filter((d: string) => d.length > 0 && d !== correctText)
+      .slice(0, 3);
+
+    while (cleanDistractors.length < 3) {
+      cleanDistractors.push(`Alternativa ${cleanDistractors.length + 1}`);
+    }
+
+    const rawOptions = [correctText, ...cleanDistractors];
+
+    // Barajado Fisher-Yates en Node.js
+    const shuffled = [...rawOptions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const correctIdx = shuffled.indexOf(correctText);
+
+    const question: QuizQuestion = {
+      id: `ai_q_${Date.now()}_${index + 1}`,
+      text,
+      options: shuffled,
+      correctIndex: correctIdx >= 0 ? correctIdx : 0,
+      explanation,
+    };
+
+    return reconcileQuestionCorrectIndex(question).question;
+  }
+
+  // Caso 2: Formato legado o alternativo con options [...]
+  let options =
+    Array.isArray(raw.options) && raw.options.length >= 2
+      ? raw.options.map((o: any) => String(o).trim()).filter(Boolean).slice(0, 4)
+      : ['Opción A', 'Opción B', 'Opción C', 'Opción D'];
+
+  while (options.length < 4) {
+    options.push(`Opción ${String.fromCharCode(65 + options.length)}`);
+  }
+
+  // Resolver índice correcto desde múltiples posibilidades de LLMs
+  let resolvedIndex = 0;
+  const rawCorrect =
+    raw.correctIndex ??
+    raw.correct_index ??
+    raw.correctAnswer ??
+    raw.correct_answer ??
+    raw.correctOption ??
+    raw.answer;
+
+  if (typeof rawCorrect === 'number' && rawCorrect >= 0 && rawCorrect < options.length) {
+    resolvedIndex = rawCorrect;
+  } else if (typeof rawCorrect === 'string') {
+    const trimmed = rawCorrect.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const parsedNum = parseInt(trimmed, 10);
+      if (parsedNum >= 0 && parsedNum < options.length) resolvedIndex = parsedNum;
+    } else if (/^[A-Da-d]$/.test(trimmed)) {
+      const letterIdx = trimmed.toUpperCase().charCodeAt(0) - 65;
+      if (letterIdx >= 0 && letterIdx < options.length) resolvedIndex = letterIdx;
+    } else {
+      const matchIdx = options.findIndex((opt) => opt.toLowerCase() === trimmed.toLowerCase());
+      if (matchIdx >= 0) resolvedIndex = matchIdx;
+    }
+  }
+
+  const baseQuestion: QuizQuestion = {
+    id: `ai_q_${Date.now()}_${index + 1}`,
+    text,
+    options,
+    correctIndex: resolvedIndex,
+    explanation,
+  };
+
+  // Reconciliación semántica previa por si el LLM emitió un índice desfasado
+  const reconciled = reconcileQuestionCorrectIndex(baseQuestion);
+
+  // Barajado determinista
+  return shuffleQuestionOptions(reconciled.question);
+}
+
+export interface AuditRepairSummary {
+  scannedModules: number;
+  totalQuestions: number;
+  inconsistentQuestionsCount: number;
+  repairedModulesCount: number;
+  repairedQuestions: Array<{
+    moduleId: string;
+    moduleTitle?: string;
+    courseTitle?: string;
+    questionText: string;
+    oldCorrectIndex: number;
+    newCorrectIndex: number;
+    oldOptionText: string;
+    newOptionText: string;
+    explanation: string;
+    reason: string;
+  }>;
+  dryRun: boolean;
+}
+
+/**
+ * Audita y repara discrepancias entre respuestas correctas y justificaciones pedagógicas
+ * en todos los exámenes almacenados en la base de datos de producción.
+ */
+export async function auditAndRepairAllQuizzes(options?: { dryRun?: boolean }): Promise<AuditRepairSummary> {
+  const dryRun = options?.dryRun ?? false;
+  const rows = await prisma.moduleQuiz.findMany({
+    include: {
+      module: {
+        include: {
+          course: { select: { title: true } },
+        },
+      },
+    },
+  });
+
+  const summary: AuditRepairSummary = {
+    scannedModules: rows.length,
+    totalQuestions: 0,
+    inconsistentQuestionsCount: 0,
+    repairedModulesCount: 0,
+    repairedQuestions: [],
+    dryRun,
+  };
+
+  for (const row of rows) {
+    const questions = parsearPreguntas(row.questionsJson, row.moduleId);
+    summary.totalQuestions += questions.length;
+    let moduleHasChanges = false;
+    const updatedQuestions: QuizQuestion[] = [];
+
+    for (const q of questions) {
+      const reconcile = reconcileQuestionCorrectIndex(q);
+      if (reconcile.changed) {
+        moduleHasChanges = true;
+        summary.inconsistentQuestionsCount++;
+        summary.repairedQuestions.push({
+          moduleId: row.moduleId,
+          moduleTitle: row.module?.title,
+          courseTitle: row.module?.course?.title,
+          questionText: q.text,
+          oldCorrectIndex: reconcile.oldIndex,
+          newCorrectIndex: reconcile.newIndex,
+          oldOptionText: q.options[reconcile.oldIndex] || '',
+          newOptionText: q.options[reconcile.newIndex] || '',
+          explanation: q.explanation,
+          reason: reconcile.reason || 'Discrepancia entre la opción seleccionada y la justificación pedagógica.',
+        });
+        updatedQuestions.push(reconcile.question);
+      } else {
+        updatedQuestions.push(q);
+      }
+    }
+
+    if (moduleHasChanges) {
+      summary.repairedModulesCount++;
+      if (!dryRun) {
+        await saveQuizForModule(row.moduleId, updatedQuestions);
+      }
+    }
+  }
+
+  return summary;
+}
+
 /**
  * Genera un examen inteligente con IA a partir de los títulos y descripciones de las clases del módulo.
  */
@@ -269,11 +573,14 @@ Módulo: "${moduleTitle}"
 Lecciones y clases del módulo:
 ${lessonsSummary}
 
-REGLAS ESTRICTAS:
+REGLAS ESTRICTAS DE CALIDAD PEDAGÓGICA:
 - Genera exactamente ${count} preguntas relevantes, variadas y desafiantes sobre estos temas.
-- Cada pregunta debe tener exactamente 4 opciones de respuesta coherentes.
-- 'correctIndex' debe ser el índice numérico (0, 1, 2 o 3) de la opción correcta. IMPORTANTE: Distribuye la respuesta correcta aleatoriamente entre las 4 posiciones (no pongas siempre la opción 0 o 'A').
-- 'explanation' debe explicar con claridad pedagógica por qué la respuesta es correcta.
+- Cada pregunta DEBE incluir:
+  * "text": el enunciado claro de la pregunta.
+  * "correctAnswer": el texto EXACTO y completo de la respuesta correcta.
+  * "distractors": un arreglo con exactamente 3 opciones incorrectas pero creíbles.
+  * "explanation": justificación pedagógica explicando con claridad por qué "correctAnswer" es la respuesta correcta.
+- NUNCA devuelvas índices numéricos ni letras (A, B, C, D) para la opción correcta; devuelve el texto exacto en "correctAnswer". El sistema se encargará de barajar las opciones de forma equitativa.
 - Devuelve ÚNICAMENTE un objeto JSON válido con la propiedad "questions" conteniendo el arreglo de preguntas.
 
 Semilla de aleatoriedad: ${Date.now()}_${Math.random()}
@@ -283,9 +590,13 @@ Formato esperado:
   "questions": [
     {
       "text": "¿Pregunta sobre el contenido?",
-      "options": ["Opción A", "Opción B", "Opción C", "Opción D"],
-      "correctIndex": 2,
-      "explanation": "Explicación clara del porqué."
+      "correctAnswer": "Texto exacto de la respuesta correcta",
+      "distractors": [
+        "Opción incorrecta 1",
+        "Opción incorrecta 2",
+        "Opción incorrecta 3"
+      ],
+      "explanation": "Explicación clara y detallada del porqué."
     }
   ]
 }`;
@@ -320,14 +631,7 @@ Formato esperado:
       // responseText obtained from cascade
       const parsed = extractJsonObject(responseText) as { questions?: any[] };
       if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
-        const rawList = parsed.questions.map((q, idx) => ({
-          id: `ai_q_${Date.now()}_${idx + 1}`,
-          text: String(q.text || `Pregunta ${idx + 1} sobre ${moduleTitle}`),
-          options: Array.isArray(q.options) && q.options.length === 4 ? q.options.map(String) : ['Opción A', 'Opción B', 'Opción C', 'Opción D'],
-          correctIndex: typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex <= 3 ? q.correctIndex : 0,
-          explanation: String(q.explanation || 'Respuesta verificada en las clases del módulo.'),
-        }));
-        return rawList.map(shuffleQuestionOptions);
+        return parsed.questions.map((q, idx) => normalizeAiQuestion(q, moduleTitle, idx));
       }
     } catch (geminiError) {
       logger.warn('Fallo en generación con Gemini GenAI, probando proveedor secundario', { error: String(geminiError) });
@@ -338,27 +642,30 @@ Formato esperado:
   if (isAiEnabled()) {
     try {
       const result = await requestAiJson({
-        system: 'Eres un diseñador pedagógico y evaluador para DocentOS. Devuelve únicamente un JSON con la lista de preguntas de opción múltiple estructuradas con respuestas correctas distribuidas aleatoriamente entre las 4 opciones.',
+        system:
+          'Eres un diseñador pedagógico y evaluador para DocentOS. Devuelve únicamente un JSON con la lista de preguntas estructuradas con "text", "correctAnswer" (texto completo), "distractors" (3 opciones incorrectas) y "explanation".',
         user: `Genera ${count} preguntas de opción múltiple variadas sobre el módulo "${moduleTitle}" del curso "${courseTitle}".
 Lecciones:
 ${lessonsSummary}
 
-IMPORTANTE: Distribuye aleatoriamente el índice correctIndex (0, 1, 2 o 3) para que no todas las respuestas correctas sean la primera opción.
 Semilla aleatoria: ${Date.now()}
 
-Devuelve el JSON con { "questions": [ { "text": "...", "options": ["...", "...", "...", "..."], "correctIndex": 1, "explanation": "..." } ] }`,
+Devuelve el JSON con:
+{
+  "questions": [
+    {
+      "text": "¿Pregunta sobre el contenido?",
+      "correctAnswer": "Texto exacto de la respuesta correcta",
+      "distractors": ["Opción incorrecta 1", "Opción incorrecta 2", "Opción incorrecta 3"],
+      "explanation": "Explicación pedagógica clara del porqué."
+    }
+  ]
+}`,
       });
 
       const parsed = result.data as { questions?: any[] } | undefined;
       if (parsed?.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
-        const rawList = parsed.questions.map((q, idx) => ({
-          id: `ai_q_${Date.now()}_${idx + 1}`,
-          text: String(q.text || `Pregunta ${idx + 1}`),
-          options: Array.isArray(q.options) && q.options.length === 4 ? q.options.map(String) : ['Opción A', 'Opción B', 'Opción C', 'Opción D'],
-          correctIndex: typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex <= 3 ? q.correctIndex : 0,
-          explanation: String(q.explanation || 'Respuesta correcta según el contenido del módulo.'),
-        }));
-        return rawList.map(shuffleQuestionOptions);
+        return parsed.questions.map((q, idx) => normalizeAiQuestion(q, moduleTitle, idx));
       }
     } catch (aiError) {
       logger.warn('Fallo en requestAiJson para examen, usando generador heurístico contextual', { error: String(aiError) });

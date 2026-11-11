@@ -125,6 +125,7 @@ import {
   getAllStoredQuizzes,
   getQuizCountsByCourse,
   importarExamenesHeredados,
+  auditAndRepairAllQuizzes,
 } from './server/quizService.js';
 import {
   DOCENTOS_DEFAULT_EDITION,
@@ -4774,6 +4775,28 @@ app.get(
   asyncRoute(async (_req, res) => {
     const quizzes = await getAllStoredQuizzes();
     res.json({ success: true, quizzes });
+  }),
+);
+
+app.post(
+  '/api/quizzes/audit-repair',
+  requireRole(['ADMIN']),
+  securityLimits.expensive,
+  asyncRoute(async (req, res) => {
+    const dryRun = req.body.dryRun !== false;
+    const summary = await auditAndRepairAllQuizzes({ dryRun });
+    if (!dryRun && req.user) {
+      await recordAuditEvent(req, {
+        action: 'quizzes.repaired',
+        targetType: 'System',
+        targetId: 'all',
+        metadata: {
+          repairedQuestionsCount: summary.inconsistentQuestionsCount,
+          repairedModulesCount: summary.repairedModulesCount,
+        },
+      });
+    }
+    res.json({ success: true, summary });
   }),
 );
 

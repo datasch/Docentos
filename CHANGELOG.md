@@ -13,6 +13,22 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [1.0.1] - 2026-11-11
+
+**Esta versión no migra el esquema de la base de datos.**
+
+### Fixed
+
+- **Gestor de Evaluaciones & Exámenes con IA**: Resuelta la discrepancia donde la opción marcada como correcta contradecía la justificación pedagógica explicada por la IA. Se implementó un contrato semántico explícito (`correctAnswer` textual y `distractors`) que elimina la alucinación de índices posicionales en los modelos de lenguaje.
+- **Barajado Determinista de Opciones**: La distribución aleatoria de las respuestas de examen ahora es gestionada exclusivamente por el backend mediante el algoritmo Fisher-Yates, eliminando conflictos de doble aleatorización entre el modelo de IA y el servidor.
+- **Conciliación Semántica de Opciones**: Guardián semántico automático que detecta desalineaciones léxicas entre opciones y justificaciones pedagógicas, corrigiendo de forma transparente el índice hacia la opción verdadera.
+- **Detección Visual en Tiempo Real**: El modal del gestor de exámenes ahora avisa a los mentores y administradores en tiempo real si una justificación describe una opción distinta a la marcada, ofreciendo un botón para corregirla en un clic y un botón de auto-conciliación global.
+
+### Added
+
+- **Script de Auditoría y Reparación para Producción**: Nueva herramienta CLI (`npx tsx scripts/reconcile-quiz-answers.ts`) con modo de simulación segura (dry run) y modo de reparación activa (`--fix`) para corregir inconsistencias en exámenes ya creados en bases de datos de producción.
+- **Endpoint Administrativo de Conciliación**: Ruta protegida `POST /api/quizzes/audit-repair` para auditar y reparar evaluaciones desde la consola administrativa con registro de auditoría.
+
 ## [1.0.0] - 2026-11-10
 
 **Esta versión migra el esquema de la base de datos.** Añade la tabla `CourseMentor`

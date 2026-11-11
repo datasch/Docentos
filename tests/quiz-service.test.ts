@@ -10,6 +10,10 @@ import {
   deleteQuizForModule,
   getAllStoredQuizzes,
   shuffleQuestionOptions,
+  reconcileQuestionCorrectIndex,
+  computeOptionExplanationScore,
+  normalizeAiQuestion,
+  auditAndRepairAllQuizzes,
   type QuizQuestion,
 } from '../server/quizService.js';
 import { prisma } from '../server/prisma.js';
@@ -264,4 +268,160 @@ test('Quizzes: evaluacion con casos extremos', async (t) => {
     const pass = engine.evaluateQuiz(questions, { q1: 0, q2: 1 }, 100);
     assert.equal(pass.passed, true);
   });
+});
+
+test('Conciliación Semántica: Reconciliación de Opciones vs Justificación Pedagógica', async (t) => {
+  await t.test('1. Corrige automáticamente el caso real de la captura #1 (Protocolo de red)', () => {
+    const questionImage1: QuizQuestion = {
+      id: 'q_img_1',
+      text: '¿Qué es un protocolo de red?',
+      options: [
+        'Un dispositivo que amplifica la señal de red',
+        'Un software de seguridad', // marcado incorrectamente en la captura
+        'Un tipo de hardware de red',
+        'Un conjunto de reglas que permiten la comunicación entre dispositivos', // opción real
+      ],
+      correctIndex: 1, // B (erróneo)
+      explanation: 'Un protocolo de red es un conjunto de reglas que permite la comunicación entre dispositivos en una red, definiendo cómo se envían y reciben los datos.',
+    };
+
+    const res = reconcileQuestionCorrectIndex(questionImage1);
+    assert.equal(res.changed, true, 'Debe detectar la discrepancia y cambiar el índice');
+    assert.equal(res.oldIndex, 1, 'El índice anterior era 1 (B)');
+    assert.equal(res.newIndex, 3, 'El índice nuevo debe ser 3 (D)');
+    assert.equal(res.question.correctIndex, 3);
+    assert.ok(res.reason?.includes('D'), 'El motivo debe señalar la opción D');
+  });
+
+  await t.test('2. Corrige automáticamente el caso real de la captura #2 (Modelo OSI)', () => {
+    const questionImage2: QuizQuestion = {
+      id: 'q_img_2',
+      text: '¿Qué describe el modelo OSI?',
+      options: [
+        'Los tipos de dispositivos de red', // marcado incorrectamente en la captura
+        'Las capas de comunicación en redes de computadoras', // opción real
+        'Las etapas de desarrollo de software',
+        'Las capas de seguridad en una red',
+      ],
+      correctIndex: 0, // A (erróneo)
+      explanation: 'El modelo OSI describe las capas de comunicación en redes de computadoras, proporcionando un marco para entender cómo los datos se transmiten a través de diferentes niveles.',
+    };
+
+    const res = reconcileQuestionCorrectIndex(questionImage2);
+    assert.equal(res.changed, true, 'Debe detectar la discrepancia y cambiar el índice');
+    assert.equal(res.oldIndex, 0, 'El índice anterior era 0 (A)');
+    assert.equal(res.newIndex, 1, 'El índice nuevo debe ser 1 (B)');
+    assert.equal(res.question.correctIndex, 1);
+  });
+
+  await t.test('3. No altera una pregunta que ya es consistente', () => {
+    const consistentQ: QuizQuestion = {
+      id: 'q_consistent',
+      text: '¿Qué es TypeScript?',
+      options: [
+        'Un superconjunto tipado de JavaScript',
+        'Un motor de base de datos relacional',
+        'Un sistema operativo para servidores',
+        'Un protocolo de enrutamiento web',
+      ],
+      correctIndex: 0,
+      explanation: 'TypeScript es un superconjunto tipado de JavaScript que añade tipado estático al lenguaje.',
+    };
+
+    const res = reconcileQuestionCorrectIndex(consistentQ);
+    assert.equal(res.changed, false, 'No debe cambiar el índice si ya coincide');
+    assert.equal(res.newIndex, 0);
+  });
+
+  await t.test('4. No altera preguntas con justificaciones genéricas sin correspondencia clara', () => {
+    const genericQ: QuizQuestion = {
+      id: 'q_generic',
+      text: '¿Cuál es el comando para listar archivos en Linux?',
+      options: ['ls', 'cd', 'mkdir', 'rm'],
+      correctIndex: 0,
+      explanation: 'Respuesta validada en los ejercicios prácticos de la sesión.',
+    };
+
+    const res = reconcileQuestionCorrectIndex(genericQ);
+    assert.equal(res.changed, false, 'No debe cambiar si la explicación es genérica');
+    assert.equal(res.newIndex, 0);
+  });
+});
+
+test('Normalización de Respuestas de IA (normalizeAiQuestion)', async (t) => {
+  await t.test('1. Procesa nuevo esquema semántico con correctAnswer y distractors', () => {
+    const rawAi = {
+      text: '¿Cuál es la función del DNS?',
+      correctAnswer: 'Traducir nombres de dominio a direcciones IP',
+      distractors: [
+        'Cifrar el tráfico HTTP en la red local',
+        'Asignar direcciones físicas MAC a tarjetas de red',
+        'Comprimir archivos multimedia para streaming',
+      ],
+      explanation: 'El DNS traduce nombres de dominio legibles para humanos a direcciones IP numéricas.',
+    };
+
+    const q = normalizeAiQuestion(rawAi, 'Redes', 0);
+    assert.equal(q.text, '¿Cuál es la función del DNS?');
+    assert.equal(q.options.length, 4);
+    assert.ok(q.options.includes('Traducir nombres de dominio a direcciones IP'));
+    assert.equal(q.options[q.correctIndex], 'Traducir nombres de dominio a direcciones IP');
+  });
+
+  await t.test('2. Tolera formatos legados con strings y letras para el índice', () => {
+    const rawWithLetter = {
+      text: '¿Pregunta con letra?',
+      options: ['Op 0', 'Op 1', 'Op 2', 'Op 3'],
+      correctIndex: 'C', // letra C = índice 2
+      explanation: 'Explicación sin mención de texto.',
+    };
+
+    const q = normalizeAiQuestion(rawWithLetter, 'Módulo', 0);
+    assert.equal(q.options.length, 4);
+    assert.ok(q.correctIndex >= 0 && q.correctIndex <= 3);
+  });
+});
+
+test('Auditoría y Reparación Global de Exámenes (auditAndRepairAllQuizzes)', async (t) => {
+  const { moduleId: testModId, courseId: testCourseId } = await crearModuloDePrueba(`audit_${Date.now()}`);
+
+  try {
+    // Guardamos un examen con inconsistencia intencional
+    const inconsistentQuestions: QuizQuestion[] = [
+      {
+        id: 'q_broken_1',
+        text: '¿Qué es un protocolo de red?',
+        options: [
+          'Un dispositivo amplificador',
+          'Un software antivirus', // marcado erróneamente
+          'Un tipo de cable',
+          'Un conjunto de reglas para la comunicación', // real
+        ],
+        correctIndex: 1, // Opción B
+        explanation: 'Un conjunto de reglas para la comunicación entre dispositivos define lo que es un protocolo.',
+      },
+    ];
+
+    await saveQuizForModule(testModId, inconsistentQuestions);
+
+    await t.test('1. Modo simulación (dryRun = true) detecta inconsistencia sin modificar BD', async () => {
+      const drySummary = await auditAndRepairAllQuizzes({ dryRun: true });
+      assert.ok(drySummary.inconsistentQuestionsCount >= 1, 'Debe detectar al menos 1 inconsistencia');
+
+      // Comprobar que en la BD sigue con el índice anterior
+      const inDb = await getQuizByModuleId(testModId);
+      assert.equal(inDb[0].correctIndex, 1, 'En dryRun la BD no debe modificarse');
+    });
+
+    await t.test('2. Modo reparación activa (dryRun = false) corrige la BD', async () => {
+      const fixSummary = await auditAndRepairAllQuizzes({ dryRun: false });
+      assert.ok(fixSummary.inconsistentQuestionsCount >= 1);
+
+      // Comprobar que en la BD ahora tiene el índice corregido
+      const inDb = await getQuizByModuleId(testModId);
+      assert.equal(inDb[0].correctIndex, 3, 'En la BD se actualizó al índice 3 que corresponde a la justificación');
+    });
+  } finally {
+    await borrarCursoDePrueba(testCourseId);
+  }
 });

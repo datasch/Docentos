@@ -23,11 +23,79 @@ import {
   Loader2,
   BookOpen,
   Award,
+  Wand2,
 } from 'lucide-react';
 import { Module, QuizQuestion } from '../types';
 import { api } from '../lib/api';
 import { setModuleQuiz, getModuleQuestions } from '../plugins/QuizzesPlugin';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+
+function normalizeText(str: string): string {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const STOP_WORDS = new Set([
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
+  'de', 'del', 'en', 'y', 'o', 'a', 'que', 'para', 'por', 'con', 'es', 'son',
+  'al', 'se', 'su', 'sus', 'como', 'sobre', 'este', 'esta', 'estos', 'estas',
+  'the', 'an', 'in', 'on', 'and', 'or', 'to', 'for', 'with', 'is', 'are',
+]);
+
+function computeScore(option: string, explanation: string): number {
+  const normOpt = normalizeText(option);
+  const normExp = normalizeText(explanation);
+  if (!normOpt || !normExp) return 0;
+  if (normOpt.length >= 10 && normExp.includes(normOpt)) return 1.0;
+  const prefix25 = normOpt.slice(0, 25);
+  if (prefix25.length >= 12 && normExp.includes(prefix25)) return 0.95;
+
+  const words = normOpt.split(' ').filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+  if (words.length === 0) return 0;
+
+  let matches = 0;
+  for (const w of words) {
+    if (normExp.includes(w)) matches++;
+  }
+  const ratio = matches / words.length;
+
+  let bigramBonus = 0;
+  if (words.length >= 2) {
+    let bigramMatches = 0;
+    for (let i = 0; i < words.length - 1; i++) {
+      if (normExp.includes(`${words[i]} ${words[i + 1]}`)) bigramMatches++;
+    }
+    bigramBonus = (bigramMatches / (words.length - 1)) * 0.3;
+  }
+  return Math.min(1.0, ratio * 0.7 + bigramBonus);
+}
+
+function detectQuestionMismatch(q: QuizQuestion): number | null {
+  const options = q.options || [];
+  if (options.length < 2 || !q.explanation || !q.explanation.trim()) return null;
+  const currentIdx = typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex < options.length ? q.correctIndex : 0;
+  const scores = options.map((opt) => computeScore(opt, q.explanation));
+  const currentScore = scores[currentIdx] ?? 0;
+
+  let bestIdx = currentIdx;
+  let bestScore = currentScore;
+  for (let i = 0; i < scores.length; i++) {
+    if (scores[i] > bestScore) {
+      bestScore = scores[i];
+      bestIdx = i;
+    }
+  }
+
+  if (bestIdx !== currentIdx && bestScore >= 0.6 && (bestScore - currentScore) >= 0.35) {
+    return bestIdx;
+  }
+  return null;
+}
 
 interface QuizManagerModalProps {
   module: Module;
@@ -49,6 +117,24 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const mismatches = questions
+    .map((q, idx) => ({ qIdx: idx, targetIdx: detectQuestionMismatch(q) }))
+    .filter((m): m is { qIdx: number; targetIdx: number } => m.targetIdx !== null);
+
+  const handleReconcileAllMismatches = () => {
+    const updated = [...questions];
+    let count = 0;
+    for (let i = 0; i < updated.length; i++) {
+      const target = detectQuestionMismatch(updated[i]);
+      if (target !== null) {
+        updated[i] = { ...updated[i], correctIndex: target };
+        count++;
+      }
+    }
+    setQuestions(updated);
+    setSuccessMessage(`✨ Se corrigieron automáticamente ${count} ${count === 1 ? 'respuesta' : 'respuestas'} para que coincidan con su justificación pedagógica.`);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -248,6 +334,19 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               <Plus className="w-4 h-4 text-brand-cyan" />
               <span>Añadir Pregunta</span>
             </button>
+
+            {mismatches.length > 0 && (
+              <button
+                type="button"
+                onClick={handleReconcileAllMismatches}
+                disabled={generatingAi || saving}
+                className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm animate-pulse"
+                title="Alinear las respuestas marcadas con su justificación pedagógica"
+              >
+                <Wand2 className="w-4 h-4 text-amber-400" />
+                <span>Auto-conciliar ({mismatches.length})</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -408,6 +507,31 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                     })}
                   </div>
                 </div>
+
+                {/* Alerta de inconsistencia si la justificación describe otra opción */}
+                {(() => {
+                  const mismatchIdx = detectQuestionMismatch(q);
+                  if (mismatchIdx === null) return null;
+                  return (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-wrap items-center justify-between gap-2.5 text-xs text-amber-300">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>
+                          La justificación pedagógica parece describir la{' '}
+                          <strong className="underline underline-offset-2">Opción {String.fromCharCode(65 + mismatchIdx)}</strong>{' '}
+                          (<em>&ldquo;{q.options[mismatchIdx]?.slice(0, 45)}...&rdquo;</em>) en lugar de la {String.fromCharCode(65 + q.correctIndex)}.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSetCorrectIndex(qIdx, mismatchIdx)}
+                        className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0"
+                      >
+                        Marcar Opción {String.fromCharCode(65 + mismatchIdx)} como correcta
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Explicación / Retroalimentación */}
                 <div className="space-y-1 pt-1">

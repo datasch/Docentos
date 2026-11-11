@@ -823,6 +823,19 @@ export const api = {
     return res.json();
   },
 
+  async auditAndRepairQuizzes(dryRun: boolean = true): Promise<{ success: boolean; summary: any }> {
+    const res = await fetch('/api/quizzes/audit-repair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dryRun }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al auditar y reparar exámenes');
+    }
+    return res.json();
+  },
+
   // Plugin System API
   async getPlugins(): Promise<{ success: boolean; plugins: any[] }> {
     const res = await fetch('/api/plugins');
