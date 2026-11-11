@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
@@ -22,6 +22,7 @@ import { ListeningAdminPanel } from './ListeningAdminPanel';
 import { pluginManager } from '../plugins/PluginManager';
 import { DEFAULT_LOGO_URL } from '../lib/logoConfig';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
+import { MODERN_ADMIN_MODULES, type ModernAdminModuleId } from '../lib/adminNavigation';
 
 interface AdminDashboardProps {
   currentUser?: User;
@@ -50,6 +51,7 @@ const CURSO_VACIO: Course = {
 
 export type MasterSection = 'courses' | 'users' | 'legal' | 'system';
 export type SubTab =
+  | 'overview'
   | 'users'
   | 'courses'
   | 'contracts'
@@ -133,6 +135,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     };
   }, [uiVersion]);
 
+  useEffect(() => {
+    if (uiVersion === 'v0.5-modern' && activeTab === 'courses' && masterSection === 'courses') {
+      setActiveTab('overview');
+    }
+    if (uiVersion === 'v0.4-classic' && activeTab === 'overview') {
+      setActiveTab('courses');
+    }
+  }, [uiVersion]);
+
   const handleSwitchUiVersion = async (targetVer: 'v0.5-modern' | 'v0.4-classic') => {
     setUiVersion(targetVer);
     try {
@@ -151,6 +162,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const selectTab = (tab: SubTab) => {
     setActiveTab(tab);
 
+    if (tab === 'overview') {
+      setMasterSection('courses');
+      return;
+    }
     if (tab === 'enrollments') {
       setUserSectionView('enrollments');
       setMasterSection('users');
@@ -829,6 +844,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   );
 
   const animClass = uiVersion === 'v0.4-classic' ? '' : 'animate-fade-in';
+  const modernContextActions: Array<{ label: string; target: SubTab }> = activeTab === 'courses'
+    ? [
+      { label: 'Catálogo y contenido', target: 'courses' },
+      { label: 'Recursos', target: 'resources' },
+    ]
+    : ['users', 'enrollments'].includes(activeTab)
+      ? [
+        { label: 'Directorio', target: 'users' },
+        { label: 'Matrículas', target: 'enrollments' },
+      ]
+      : ['resources', 'drive', 'tts'].includes(activeTab)
+        ? [
+          { label: 'Materiales', target: 'resources' },
+          { label: 'Google Drive', target: 'drive' },
+          { label: 'Audio TTS', target: 'tts' },
+        ]
+        : ['certificates', 'contracts'].includes(activeTab)
+          ? [
+            { label: 'Certificados', target: 'certificates' },
+            { label: 'Contratos', target: 'contracts' },
+          ]
+          : ['landing', 'listening'].includes(activeTab)
+            ? [
+              { label: 'Portada', target: 'landing' },
+              { label: 'Escucha', target: 'listening' },
+            ]
+            : activeTab === 'plugins'
+              ? [{ label: 'Plugins y configuración', target: 'plugins' }]
+              : [];
 
   return (
     <div data-ui-version={uiVersion} className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 ${animClass}`}>
@@ -966,6 +1010,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
           </div>
 
+          {/* Navegación única de DocentOS 0.5 Moderna */}
+          <nav
+            aria-label="Módulos de administración"
+            className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl"
+          >
+            {MODERN_ADMIN_MODULES.map((module) => {
+              const iconByModule: Record<ModernAdminModuleId, React.ElementType> = {
+                overview: LayoutDashboard,
+                courses: BookOpen,
+                people: Users,
+                resources: Layers,
+                certification: Award,
+                portal: Sliders,
+                system: Shield,
+              };
+              const Icon = iconByModule[module.id];
+              const selectedTarget = module.target === 'overview'
+                ? activeTab === 'overview'
+                : module.target === activeTab || (
+                  module.id === 'resources' && ['resources', 'drive', 'tts'].includes(activeTab)
+                ) || (
+                  module.id === 'people' && ['users', 'enrollments'].includes(activeTab)
+                ) || (
+                  module.id === 'certification' && ['certificates', 'contracts'].includes(activeTab)
+                ) || (
+                  module.id === 'portal' && ['landing', 'listening'].includes(activeTab)
+                );
+              return (
+                <button
+                  key={module.id}
+                  type="button"
+                  aria-current={selectedTarget ? 'page' : undefined}
+                  onClick={() => selectTab(module.target as SubTab)}
+                  className={`min-h-16 px-3 py-2.5 rounded-xl text-left flex items-center gap-2.5 transition-colors ${
+                    selectedTarget
+                      ? 'bg-elevated text-ink border border-line-strong'
+                      : 'text-ink-muted hover:text-ink hover:bg-canvas border border-transparent'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${selectedTarget ? 'text-brand-cyan' : 'text-ink-faint'}`} />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold truncate">{module.label}</span>
+                    <span className="block text-[10px] text-ink-faint truncate">{module.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {modernContextActions.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-1" aria-label="Acciones del módulo actual">
+              <span className="text-xs font-medium text-ink-muted shrink-0">En este módulo</span>
+              <div className="flex flex-wrap gap-1.5">
+                {modernContextActions.map((action) => (
+                  <button
+                    key={action.target}
+                    type="button"
+                    aria-current={activeTab === action.target ? 'page' : undefined}
+                    onClick={() => selectTab(action.target)}
+                    className={`min-h-9 px-3 rounded-lg border text-xs font-medium transition-colors ${
+                      activeTab === action.target
+                        ? 'bg-brand-cyan/10 border-brand-cyan/40 text-brand-cyan'
+                        : 'bg-transparent border-line text-ink-muted hover:border-line-strong hover:text-ink'
+                    }`}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {false && (
+          <>
           {/* Nivel 1: Las 4 Secciones Maestras */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <button
@@ -1233,8 +1351,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       </div>
       </>
       )}
+      </>
+      )}
 
 
+      {uiVersion === 'v0.5-modern' && activeTab === 'overview' && (
+        <section className={`space-y-6 ${animClass}`} aria-labelledby="admin-overview-title">
+          <div className="flex flex-col gap-2">
+            <h1 id="admin-overview-title" className="text-2xl sm:text-3xl font-semibold text-ink tracking-tight">
+              Estado general
+            </h1>
+            <p className="max-w-2xl text-sm text-ink-muted">
+              Un punto de entrada para revisar el sistema y continuar con la tarea que necesita atención.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: 'Cursos', value: allCourses.length, target: 'courses' as SubTab },
+              { label: 'Personas', value: users.length, target: 'users' as SubTab },
+              { label: 'Matrículas', value: enrollments.length, target: 'enrollments' as SubTab },
+              { label: 'Certificados', value: certificates.length, target: 'certificates' as SubTab },
+            ].map((stat) => (
+              <button
+                key={stat.label}
+                type="button"
+                onClick={() => selectTab(stat.target)}
+                className="min-w-0 p-4 text-left bg-raised border border-line rounded-xl hover:border-line-strong hover:bg-elevated transition-colors"
+              >
+                <span className="block text-xs text-ink-muted">{stat.label}</span>
+                <span className="block mt-2 text-2xl font-semibold text-ink tabular-nums">{stat.value}</span>
+                <span className="block mt-1 text-[11px] text-brand-cyan">Abrir módulo</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] gap-4">
+            <div className="bg-raised border border-line rounded-xl p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-base font-semibold text-ink">Entradas principales</h2>
+                  <p className="mt-1 text-xs text-ink-muted">Accede directamente a las áreas de trabajo.</p>
+                </div>
+                <LayoutDashboard className="w-5 h-5 text-brand-cyan" aria-hidden />
+              </div>
+              <div className="divide-y divide-line border-y border-line">
+                {MODERN_ADMIN_MODULES.filter((module) => module.id !== 'overview').map((module) => (
+                  <button
+                    key={module.id}
+                    type="button"
+                    onClick={() => selectTab(module.target as SubTab)}
+                    className="w-full py-3.5 text-left flex items-center justify-between gap-4 hover:text-ink transition-colors"
+                  >
+                    <span>
+                      <span className="block text-sm font-medium text-ink">{module.label}</span>
+                      <span className="block mt-0.5 text-xs text-ink-muted">{module.description}</span>
+                    </span>
+                    <ExternalLink className="w-4 h-4 shrink-0 text-ink-faint" aria-hidden />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-raised border border-line rounded-xl p-5">
+              <h2 className="text-base font-semibold text-ink">Siguiente paso</h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                Selecciona un módulo para trabajar con su contexto y herramientas específicas.
+              </p>
+              <button
+                type="button"
+                onClick={() => selectTab('courses')}
+                className="mt-5 w-full min-h-11 px-4 rounded-lg btn-brand-primary text-sm font-semibold"
+              >
+                Abrir cursos
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {activeTab === 'courses' && (
         <CourseManagerView
@@ -2343,7 +2537,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   onClick={handlePreviewAudio}
                   className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
                 >
-                  <Volume2 className={`w-4 h-4 ${isPreviewingAudio ? 'text-[#06b6d4] animate-bounce' : ''}`} />
+                  <Volume2 className={`w-4 h-4 ${isPreviewingAudio ? 'text-[#06b6d4]' : ''}`} />
                   {isPreviewingAudio ? 'Reproduciendo Audio de Prueba...' : 'Previsualizar Audio'}
                 </button>
 

@@ -74,7 +74,8 @@ export function getThemePalette(theme: ColorTheme, mode: ColorMode): ThemePalett
 export function applyPlatformTheme(
   theme: ColorTheme = 'cyan',
   density: Density = 'comfortable',
-  colorMode: ColorMode = getCurrentColorMode()
+  colorMode: ColorMode = getCurrentColorMode(),
+  options: { persist?: boolean } = {},
 ) {
   if (typeof document === 'undefined') return;
 
@@ -140,12 +141,14 @@ export function applyPlatformTheme(
     }
   }
 
-  try {
-    localStorage.setItem(STORAGE_THEME_KEY, theme);
-    localStorage.setItem(STORAGE_DENSITY_KEY, density);
-    localStorage.setItem(STORAGE_COLOR_MODE_KEY, colorMode);
-  } catch {
-    // Almacenamiento local restringido o privado
+  if (options.persist !== false) {
+    try {
+      localStorage.setItem(STORAGE_THEME_KEY, theme);
+      localStorage.setItem(STORAGE_DENSITY_KEY, density);
+      localStorage.setItem(STORAGE_COLOR_MODE_KEY, colorMode);
+    } catch {
+      // Almacenamiento local restringido o privado
+    }
   }
 
   // Disparar evento para componentes que requieran sincronizar su estado

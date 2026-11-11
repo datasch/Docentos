@@ -43,7 +43,13 @@ import { AcademiaPlugin } from '../types';
 import { pluginManager } from '../plugins/PluginManager';
 import { SignaturePad } from './SignaturePad';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
-import { applyPlatformTheme, ColorTheme, ColorMode, getCurrentColorMode, setColorMode } from '../lib/themeApplicator';
+import { applyPlatformTheme, ColorTheme, ColorMode, getCurrentColorMode } from '../lib/themeApplicator';
+import {
+  buildCustomizerSaveConfig,
+  mergeCustomizerDraft,
+  normalizeCustomizerConfig,
+  type CustomizerConfig,
+} from '../lib/customizerConfig';
 import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL } from '../lib/logoConfig';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
@@ -89,6 +95,7 @@ export const PluginManagerView: React.FC = () => {
   const [configModalPlugin, setConfigModalPlugin] = useState<AcademiaPlugin | null>(null);
   useBodyScrollLock(Boolean(configModalPlugin));
   const [configFormState, setConfigFormState] = useState<Record<string, any>>({});
+  const [customizerInitialState, setCustomizerInitialState] = useState<CustomizerConfig | null>(null);
   const [savingConfig, setSavingConfig] = useState<boolean>(false);
   const [downloadingSampleCert, setDownloadingSampleCert] = useState<boolean>(false);
 
@@ -169,17 +176,38 @@ export const PluginManagerView: React.FC = () => {
       if (!initialConfig.jitsiDomain) initialConfig.jitsiDomain = 'meet.jit.si';
     }
     if (plugin.id === 'docentos-customizer') {
-      if (!initialConfig.colorMode) initialConfig.colorMode = getCurrentColorMode();
-      if (!initialConfig.interfaceVersion) initialConfig.interfaceVersion = 'v0.5-modern';
-      const currentBrand = initialConfig.customBrandName || (initialConfig.customCampusName !== 'DocentOS Command Center' ? initialConfig.customCampusName : undefined);
-      const safeBrand = (currentBrand && currentBrand !== 'Academia Giantucchi') ? currentBrand : 'DocentOS';
-      const currentCampus = initialConfig.customCampusName;
-      const safeCampus = (currentCampus && currentCampus !== 'Academia Giantucchi') ? currentCampus : 'DocentOS Command Center';
-      initialConfig.customBrandName = safeBrand;
-      initialConfig.customCampusName = safeCampus;
+      const normalizedConfig = normalizeCustomizerConfig({
+        ...initialConfig,
+        colorMode: initialConfig.colorMode || getCurrentColorMode(),
+      });
+      setCustomizerInitialState(normalizedConfig);
+      setConfigFormState(normalizedConfig);
       delete initialConfig.institutionName;
+      return;
     }
     setConfigFormState(initialConfig);
+  };
+
+  const handleCancelConfig = () => {
+    if (configModalPlugin?.id === 'docentos-customizer' && customizerInitialState) {
+      applyPlatformTheme(
+        customizerInitialState.colorTheme,
+        customizerInitialState.density,
+        customizerInitialState.colorMode,
+        { persist: false },
+      );
+    }
+    setCustomizerInitialState(null);
+    setConfigModalPlugin(null);
+  };
+
+  const previewCustomizerState = (patch: Partial<CustomizerConfig>) => {
+    const nextState = mergeCustomizerDraft(
+      normalizeCustomizerConfig(configFormState),
+      patch,
+    );
+    setConfigFormState(nextState);
+    applyPlatformTheme(nextState.colorTheme, nextState.density, nextState.colorMode, { persist: false });
   };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
@@ -188,15 +216,9 @@ export const PluginManagerView: React.FC = () => {
 
     try {
       setSavingConfig(true);
-      const unifiedState = { ...configFormState };
+      let unifiedState = { ...configFormState };
       if (configModalPlugin.id === 'docentos-customizer') {
-        const brand = (unifiedState.customBrandName || '').trim() || 'DocentOS';
-        const safeBrand = brand === 'Academia Giantucchi' ? 'DocentOS' : brand;
-        const campus = (unifiedState.customCampusName || '').trim() || 'DocentOS Command Center';
-        const safeCampus = campus === 'Academia Giantucchi' ? 'DocentOS Command Center' : campus;
-        unifiedState.customBrandName = safeBrand;
-        unifiedState.customCampusName = safeCampus;
-        delete unifiedState.institutionName;
+        unifiedState = buildCustomizerSaveConfig(normalizeCustomizerConfig(unifiedState));
       }
       const res = await api.updatePluginConfig(configModalPlugin.id, unifiedState);
       if (res.plugins) {
@@ -204,7 +226,12 @@ export const PluginManagerView: React.FC = () => {
         pluginManager.setPlugins(res.plugins);
       }
       if (configModalPlugin.id === 'docentos-customizer') {
-        applyPlatformTheme(unifiedState.colorTheme, 'comfortable', unifiedState.colorMode);
+        const savedCustomizerConfig = unifiedState as CustomizerConfig;
+        applyPlatformTheme(
+          savedCustomizerConfig.colorTheme,
+          savedCustomizerConfig.density,
+          savedCustomizerConfig.colorMode,
+        );
         if (unifiedState.customLogoUrl !== undefined) {
           setCustomLogoUrl(unifiedState.customLogoUrl);
         }
@@ -215,6 +242,7 @@ export const PluginManagerView: React.FC = () => {
           setCustomCampusName(unifiedState.customCampusName);
         }
       }
+      setCustomizerInitialState(null);
       setConfigModalPlugin(null);
     } catch (error) {
       console.error('Error al guardar configuración de plugin:', error);
@@ -380,7 +408,7 @@ export const PluginManagerView: React.FC = () => {
       {configModalPlugin && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overscroll-contain"
-          onMouseDown={() => setConfigModalPlugin(null)}
+          onMouseDown={handleCancelConfig}
           onWheel={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -401,14 +429,23 @@ export const PluginManagerView: React.FC = () => {
                   <span>Configurar {configModalPlugin.name}</span>
                 </h3>
                 <p className="text-micro text-ink-muted mt-0.5">
-                  {(configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates')
+                  {configModalPlugin.id === 'docentos-customizer'
+                    ? 'Previsualiza los cambios y guárdalos cuando el resultado sea correcto.'
+                    : (configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates')
                     ? 'Personaliza el logo, fondo blanco/negro, doble firma oficial y acreditación del diploma.'
                     : 'Ajusta los parámetros operativos del plugin institucional.'}
                 </p>
               </div>
+              {configModalPlugin.id === 'docentos-customizer' &&
+                customizerInitialState &&
+                JSON.stringify(customizerInitialState) !== JSON.stringify(normalizeCustomizerConfig(configFormState)) && (
+                  <span className="text-micro text-brand-cyan border border-brand-cyan/30 bg-brand-cyan/10 px-2 py-1 rounded-md">
+                    Cambios sin guardar
+                  </span>
+                )}
               <button
                 type="button"
-                onClick={() => setConfigModalPlugin(null)}
+                onClick={handleCancelConfig}
                 className="text-ink-muted hover:text-ink p-1.5 rounded-lg hover:bg-canvas transition-colors"
                 title="Cerrar modal"
               >
@@ -855,7 +892,7 @@ export const PluginManagerView: React.FC = () => {
                             Arquitectura y Versión de Navegación
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            {configFormState.interfaceVersion === 'v0.4-classic' ? '🏛️ v0.4 Clásica Activa' : '🌟 v0.5 Moderna Activa'}
+                            {configFormState.interfaceVersion === 'v0.4-classic' ? 'v0.4 Clásica activa' : 'v0.5 Moderna activa'}
                           </span>
                         </div>
 
@@ -864,8 +901,7 @@ export const PluginManagerView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setConfigFormState((prev) => ({ ...prev, interfaceVersion: 'v0.5-modern' }));
-                              pluginManager.updateConfig('docentos-customizer', { interfaceVersion: 'v0.5-modern' });
+                              previewCustomizerState({ interfaceVersion: 'v0.5-modern' });
                             }}
                             className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
                               configFormState.interfaceVersion !== 'v0.4-classic'
@@ -875,11 +911,9 @@ export const PluginManagerView: React.FC = () => {
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-bold text-ink flex items-center gap-2">
-                                <span>🌟</span> DocentOS 0.5 (Moderna)
+                                <Monitor className="w-4 h-4 text-brand-cyan" /> DocentOS 0.5 (Moderna)
                               </span>
-                              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-brand-cyan/20 text-brand-cyan font-bold border border-brand-cyan/30">
-                                Unificada
-                              </span>
+                              <span className="text-micro text-brand-cyan">Actual</span>
                             </div>
                             <p className="text-xs text-ink-muted leading-relaxed">
                               4 Macro-secciones con sub-navegación simétrica (2 botones por sección) y estudios integrados de Medios y Portal.
@@ -890,8 +924,7 @@ export const PluginManagerView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setConfigFormState((prev) => ({ ...prev, interfaceVersion: 'v0.4-classic' }));
-                              pluginManager.updateConfig('docentos-customizer', { interfaceVersion: 'v0.4-classic' });
+                              previewCustomizerState({ interfaceVersion: 'v0.4-classic' });
                             }}
                             className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
                               configFormState.interfaceVersion === 'v0.4-classic'
@@ -901,11 +934,9 @@ export const PluginManagerView: React.FC = () => {
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-bold text-ink flex items-center gap-2">
-                                <span>🏛️</span> DocentOS 0.4 (Clásica)
+                                <Layers className="w-4 h-4 text-ink-muted" /> DocentOS 0.4 (Clásica)
                               </span>
-                              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
-                                Apartado Anterior
-                              </span>
+                              <span className="text-micro text-ink-muted">Anterior</span>
                             </div>
                             <p className="text-xs text-ink-muted leading-relaxed">
                               La vista original con la barra completa de 11 pestañas directas desplegadas en horizontal tal como estaba antes.
@@ -943,9 +974,7 @@ export const PluginManagerView: React.FC = () => {
                                 type="button"
                                 onClick={() => {
                                   const chosenColor = c.key as ColorTheme;
-                                  setConfigFormState((prev) => ({ ...prev, colorTheme: chosenColor, density: 'comfortable' }));
-                                  applyPlatformTheme(chosenColor, 'comfortable');
-                                  pluginManager.updateConfig('docentos-customizer', { colorTheme: chosenColor, density: 'comfortable' });
+                                  previewCustomizerState({ colorTheme: chosenColor });
                                 }}
                                 className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
                                   isSelected
@@ -961,6 +990,52 @@ export const PluginManagerView: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Densidad de la interfaz */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-micro font-bold text-ink-soft">
+                            Densidad de la interfaz
+                          </label>
+                          <span className="text-micro text-ink-muted">
+                            {configFormState.density === 'compact' ? 'Compacta' : 'Cómoda'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {[
+                            {
+                              key: 'comfortable',
+                              label: 'Cómoda',
+                              description: 'Más espacio entre controles y contenido',
+                            },
+                            {
+                              key: 'compact',
+                              label: 'Compacta',
+                              description: 'Más información visible en cada pantalla',
+                            },
+                          ].map((option) => {
+                            const isSelected = (configFormState.density || 'comfortable') === option.key;
+                            return (
+                              <button
+                                key={option.key}
+                                type="button"
+                                onClick={() => previewCustomizerState({ density: option.key as 'comfortable' | 'compact' })}
+                                className={`p-3.5 rounded-xl border text-left transition-colors flex items-center justify-between cursor-pointer ${
+                                  isSelected
+                                    ? 'border-brand-cyan bg-brand-cyan/10 text-ink'
+                                    : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
+                                }`}
+                              >
+                                <span>
+                                  <span className="block text-sm font-bold">{option.label}</span>
+                                  <span className="block text-micro mt-0.5">{option.description}</span>
+                                </span>
+                                {isSelected && <Check className="w-4 h-4 text-brand-cyan shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       {/* Modo de Iluminación: Claro vs Oscuro */}
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
@@ -968,7 +1043,7 @@ export const PluginManagerView: React.FC = () => {
                             Modo de Iluminación (Tema Claro / Oscuro)
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Activo: {configFormState.colorMode === 'light' ? '☀️ Modo Claro (Blanco)' : '🌙 Modo Oscuro'}
+                            Activo: {configFormState.colorMode === 'light' ? 'Modo claro' : 'Modo oscuro'}
                           </span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -976,9 +1051,7 @@ export const PluginManagerView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setConfigFormState((prev) => ({ ...prev, colorMode: 'dark' }));
-                              setColorMode('dark');
-                              pluginManager.updateConfig('docentos-customizer', { colorMode: 'dark' });
+                              previewCustomizerState({ colorMode: 'dark' });
                             }}
                             className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
                               configFormState.colorMode !== 'light'
@@ -1004,9 +1077,7 @@ export const PluginManagerView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setConfigFormState((prev) => ({ ...prev, colorMode: 'light' }));
-                              setColorMode('light');
-                              pluginManager.updateConfig('docentos-customizer', { colorMode: 'light' });
+                              previewCustomizerState({ colorMode: 'light' });
                             }}
                             className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
                               configFormState.colorMode === 'light'
@@ -1053,7 +1124,6 @@ export const PluginManagerView: React.FC = () => {
                               ...prev,
                               customBrandName: newBrand,
                             }));
-                            setCustomBrandName(newBrand);
                           }}
                           className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
                           placeholder="ej. Academia Giantucchi"
@@ -1069,7 +1139,6 @@ export const PluginManagerView: React.FC = () => {
                                   ...prev,
                                   customBrandName: brand,
                                 }));
-                                setCustomBrandName(brand);
                               }}
                               className="text-[10px] px-2 py-0.5 rounded-md bg-canvas border border-line text-ink-soft hover:text-ink hover:border-brand-cyan transition-colors cursor-pointer"
                             >
@@ -1102,7 +1171,6 @@ export const PluginManagerView: React.FC = () => {
                               ...prev,
                               customCampusName: newCampus,
                             }));
-                            setCustomCampusName(newCampus);
                           }}
                           className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
                           placeholder="ej. DocentOS Command Center"
@@ -1118,7 +1186,6 @@ export const PluginManagerView: React.FC = () => {
                                   ...prev,
                                   customCampusName: campus,
                                 }));
-                                setCustomCampusName(campus);
                               }}
                               className="text-[10px] px-2 py-0.5 rounded-md bg-canvas border border-line text-ink-soft hover:text-ink hover:border-brand-cyan transition-colors cursor-pointer"
                             >
@@ -1169,7 +1236,6 @@ export const PluginManagerView: React.FC = () => {
                                 onChange={(e) => {
                                   const newLogo = e.target.value;
                                   setConfigFormState((prev) => ({ ...prev, customLogoUrl: newLogo }));
-                                  setCustomLogoUrl(newLogo);
                                 }}
                                 className="flex-1 py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-lg text-xs text-ink focus:outline-none transition-colors"
                                 placeholder="URL de la imagen (ej: /logo.avif o https://...)"
@@ -1191,7 +1257,6 @@ export const PluginManagerView: React.FC = () => {
                                         const base64 = evt.target?.result as string;
                                         if (base64) {
                                           setConfigFormState((prev) => ({ ...prev, customLogoUrl: base64 }));
-                                          setCustomLogoUrl(base64);
                                         }
                                       };
                                       reader.readAsDataURL(file);
@@ -1206,7 +1271,6 @@ export const PluginManagerView: React.FC = () => {
                                   type="button"
                                   onClick={() => {
                                     setConfigFormState((prev) => ({ ...prev, customLogoUrl: '' }));
-                                    setCustomLogoUrl('');
                                   }}
                                   className="p-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-muted hover:text-ink transition-all cursor-pointer"
                                   title="Restablecer logo por defecto"
@@ -1220,16 +1284,15 @@ export const PluginManagerView: React.FC = () => {
                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
                               <span className="text-[10px] text-ink-muted font-bold mr-1">Presets:</span>
                               {[
-                                { label: '🌌 Giantucchi Hex', url: '/logo.avif' },
-                                { label: '⚛️ React Core', url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg' },
-                                { label: '🌐 Web Globe', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80' },
+                                { label: 'Logo DocentOS', url: '/logo.avif' },
+                                { label: 'React Core', url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg' },
+                                { label: 'Web Globe', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80' },
                               ].map((preset) => (
                                 <button
                                   key={preset.label}
                                   type="button"
                                   onClick={() => {
                                     setConfigFormState((prev) => ({ ...prev, customLogoUrl: preset.url }));
-                                    setCustomLogoUrl(preset.url);
                                   }}
                                   className="text-[10px] px-2 py-0.5 rounded-md bg-canvas hover:bg-elevated border border-line text-ink-soft hover:text-ink transition-colors cursor-pointer"
                                 >
@@ -1302,7 +1365,7 @@ export const PluginManagerView: React.FC = () => {
               <div className="flex items-center justify-end gap-2.5 px-5 sm:px-6 py-3.5 border-t border-line shrink-0 bg-raised/95 backdrop-blur-md">
                 <button
                   type="button"
-                  onClick={() => setConfigModalPlugin(null)}
+                  onClick={handleCancelConfig}
                   className="px-4 py-2 bg-elevated hover:bg-canvas text-ink-soft hover:text-ink text-xs font-bold rounded-lg border border-line transition-colors"
                 >
                   Cancelar

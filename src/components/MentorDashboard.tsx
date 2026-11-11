@@ -513,28 +513,41 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       : 0;
 
   return (
-    <div className="min-h-screen bg-canvas text-ink p-3 sm:p-8 space-y-6 sm:space-y-8 w-full max-w-7xl mx-auto overflow-x-hidden">
+    <div
+      data-mentor-ui="modern"
+      className="academy-mentor-dashboard mentor-workspace min-h-screen bg-canvas text-ink px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full max-w-7xl mx-auto overflow-x-hidden"
+    >
 
-      {/* Header Banner */}
-      <div className="bg-surface border border-line rounded-2xl p-4 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="space-y-2 z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#a855f7] text-xs font-bold">
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>{t('mentor.headerBadge', 'Panel Especializado para Mentores')}</span>
+      {/* Command center */}
+      <section className="mentor-command-header bg-surface border border-line rounded-2xl p-5 sm:p-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] items-end">
+        <div className="space-y-3">
+          <div className="mentor-eyebrow flex items-center gap-2 text-xs font-medium text-brand-cyan">
+            <UserCheck className="w-4 h-4" />
+            <span>{t('mentor.workspaceBadge', 'Mentoría / Espacio de trabajo')}</span>
           </div>
-          <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {t('mentor.welcome', { name: currentUser.name, defaultValue: `Bienvenido, ${currentUser.name}` })}
-          </h1>
-          <p className="text-xs sm:text-sm text-ink-muted max-w-2xl">
-            {t('mentor.headerDesc', 'Gestiona tus programas académicos, supervisa el avance en tiempo real de tus Mentees asignados y responde a las consultas técnicas de la comunidad.')}
-          </p>
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-semibold text-ink tracking-tight">
+              {t('mentor.workspaceTitle', 'Operación de mentoría')}
+            </h1>
+            <p className="mt-2 text-sm text-ink-muted max-w-2xl">
+              {t('mentor.workspaceDescription', 'Organiza tus programas, acompaña el progreso de tus mentees y resuelve las consultas que requieren tu atención.')}
+            </p>
+          </div>
         </div>
-
-        {/* Aqui habia dos accesos rapidos, «Asignar Nuevo Mentee» y «Crear
-            Nuevo Programa». Se retiran de la cabecera: el alta de mentees vive
-            ahora dentro del selector de «Gestión de Cursos», junto a la lista
-            de quien ya tiene cuenta. */}
-      </div>
+        <div className="mentor-priority-card bg-raised border border-line rounded-xl p-4">
+          <span className="text-xs font-medium text-ink-muted">Atención prioritaria</span>
+          <strong className="mt-1 block text-lg font-semibold text-ink tabular-nums">
+            {pendingQuestions.length} {pendingQuestions.length === 1 ? 'consulta pendiente' : 'consultas pendientes'}
+          </strong>
+          <button
+            type="button"
+            onClick={() => setActiveTab('qna')}
+            className="mt-3 text-xs font-semibold text-brand-cyan hover:text-ink transition-colors"
+          >
+            Revisar consultas
+          </button>
+        </div>
+      </section>
 
       {actionNotice && (
         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in">
@@ -551,7 +564,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="mentor-stat-grid grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { title: currentUser.role === 'MENTOR' ? t('mentor.assignedPrograms', 'Programas Asignados') : t('mentor.catalogPrograms', 'Programas del Catálogo'), value: displayCourses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
           { title: t('mentor.assignedMentees', 'Mentees Asignados'), value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
@@ -570,12 +583,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         ].map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div key={idx} className="bg-surface border border-line p-3 sm:p-5 rounded-2xl flex items-center justify-between min-w-0">
+            <div key={idx} className="mentor-stat-card bg-surface border border-line p-3 sm:p-5 rounded-2xl flex items-center justify-between min-w-0">
               <div className="min-w-0 pr-1">
-                <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted uppercase tracking-wider block truncate">
+                <span className="text-[10px] sm:text-[11px] font-medium text-ink-muted block truncate">
                   {card.title}
                 </span>
-                <span className="text-xl sm:text-2xl font-black text-white mt-1 block">
+                <span className="text-xl sm:text-2xl font-semibold text-ink mt-1 block tabular-nums">
                   {card.value}
                 </span>
               </div>
@@ -588,13 +601,14 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <div className="flex border-b border-line gap-1 sm:gap-2 overflow-x-auto custom-horizontal-scrollbar scroll-smooth pb-1 pt-0.5">
+      <nav aria-label="Módulos de mentoría" className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
         <button
+          aria-current={activeTab === 'courses' ? 'page' : undefined}
           onClick={() => setActiveTab('courses')}
-          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'courses'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-ink-muted hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <BookOpen className="w-4 h-4 shrink-0" />
@@ -602,11 +616,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </button>
 
         <button
+          aria-current={activeTab === 'mentees' ? 'page' : undefined}
           onClick={() => setActiveTab('mentees')}
-          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'mentees'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-ink-muted hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <Users className="w-4 h-4 shrink-0" />
@@ -619,11 +634,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </button>
 
         <button
+          aria-current={activeTab === 'qna' ? 'page' : undefined}
           onClick={() => setActiveTab('qna')}
-          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'qna'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-ink-muted hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <MessageSquare className="w-4 h-4 shrink-0" />
@@ -631,11 +647,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </button>
 
         <button
+          aria-current={activeTab === 'meetings' ? 'page' : undefined}
           onClick={() => setActiveTab('meetings')}
-          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'meetings'
               ? 'border-[#06b6d4] text-[#06b6d4]'
-              : 'border-transparent text-ink-muted hover:text-white'
+              : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
           <Video className="w-4 h-4 shrink-0" />
@@ -643,46 +660,56 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </button>
 
         <button
+          aria-current={activeTab === 'quizzes' ? 'page' : undefined}
           onClick={() => setActiveTab('quizzes')}
-          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'quizzes'
-              ? 'border-purple-500 text-purple-400'
-              : 'border-transparent text-ink-muted hover:text-white'
+            ? 'border-brand-cyan text-ink'
+            : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+          <CheckSquare className="w-4 h-4 shrink-0" />
           <span>{t('mentor.tabQuizzes', 'Evaluaciones & Quizzes IA')}</span>
         </button>
 
         <button
+          aria-current={activeTab === 'youtube-builder' ? 'page' : undefined}
           onClick={() => setActiveTab('youtube-builder')}
-          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-bold text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer ${
+          className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'youtube-builder'
-              ? 'border-red-500 text-red-400'
-              : 'border-transparent text-ink-muted hover:text-white'
+            ? 'border-brand-cyan text-ink'
+            : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
-          <Youtube className="w-4 h-4 text-red-500 shrink-0" />
+          <Youtube className="w-4 h-4 shrink-0" />
           <span>{t('mentor.tabYoutubeBuilder', 'AI YouTube Course Builder')}</span>
         </button>
-      </div>
+      </nav>
 
       {/* Tab Content 1: Courses Management */}
       {activeTab === 'courses' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-red-950/40 via-slate-900 to-slate-900 border border-red-500/20 shadow-lg">
+        <div className="mentor-courses-panel space-y-6">
+          <div className="mentor-section-heading">
+            <div>
+              <span className="mentor-section-kicker">Programas</span>
+              <h2>Gestiona tus cursos</h2>
+              <p>Revisa el estado de publicación, asigna mentees y controla el acceso de cada programa.</p>
+            </div>
+            <span className="mentor-section-count">{displayCourses.length} programas</span>
+          </div>
+          <div className="mentor-promo flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-raised border border-line">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-red-600/20 border border-red-500/30 text-red-400">
                 <Youtube className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">{t('mentor.aiPromoTitle', '¿Quieres crear un curso rápidamente?')}</h3>
+                <h3 className="text-sm font-semibold text-ink">{t('mentor.aiPromoTitle', '¿Quieres crear un curso rápidamente?')}</h3>
                 <p className="text-xs text-ink-muted">{t('mentor.aiPromoDesc', 'Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.')}</p>
               </div>
             </div>
             <button
               onClick={() => setActiveTab('youtube-builder')}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-2 shadow-md shadow-red-600/20 self-stretch sm:self-auto justify-center"
+              className="btn-brand-primary px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 self-stretch sm:self-auto justify-center"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>{t('mentor.aiPromoBtn', 'Crear con IA desde YouTube')}</span>
@@ -698,10 +725,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="mentor-courses-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayCourses.map((course) => (
-                <div key={course.id} className="bg-surface border border-line rounded-2xl p-5 space-y-4 hover:border-[#06b6d4] transition-all">
-                  <div className="flex items-center justify-between">
+                <div key={course.id} className="mentor-course-card bg-surface border border-line rounded-xl p-5 space-y-4 hover:border-brand-cyan transition-colors">
+                  <div className="mentor-course-card__header flex items-center justify-between">
                     <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg">
                       {course.category}
                     </span>
@@ -734,15 +761,15 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     </div>
                   </div>
 
-                  <h3 className="font-extrabold text-base text-white line-clamp-2">
+                  <h3 className="mentor-course-card__title font-extrabold text-base text-white line-clamp-2">
                     {course.title}
                   </h3>
 
-                  <p className="text-xs text-ink-muted line-clamp-2">
+                  <p className="mentor-course-card__description text-xs text-ink-muted line-clamp-2">
                     {course.description}
                   </p>
 
-                  <div className="pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
+                  <div className="mentor-course-card__meta pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
                     <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} Módulos` })}</span>
                     <span>${course.price} USD</span>
                   </div>
@@ -791,7 +818,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
       {/* Tab Content 2: Mentees Progress Monitoring */}
       {activeTab === 'mentees' && (
-        <div className="space-y-6">
+        <div className="mentor-mentees-panel space-y-6">
           {accessRequests.length > 0 && (
             <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/30 via-[#0a0a0f] to-[#0a0a0f] p-5 shadow-lg">
               <div className="flex items-center justify-between mb-4">
@@ -966,7 +993,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
       {/* Tab Content 3: Mentorship Q&A Center */}
       {activeTab === 'qna' && (
-        <div className="space-y-4">
+        <div className="mentor-qna-panel space-y-4">
           <div className="bg-surface border border-line rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
               <div>
@@ -1113,28 +1140,30 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
       {/* Tab Content 4: Live & Synchronous Meetings */}
       {activeTab === 'meetings' && (
-        <MeetingManager
-          currentUser={currentUser}
-          courses={displayCourses}
-          onRefreshCourses={onRefreshCourses}
-        />
+        <div className="mentor-meetings-panel">
+          <MeetingManager
+            currentUser={currentUser}
+            courses={displayCourses}
+            onRefreshCourses={onRefreshCourses}
+          />
+        </div>
       )}
 
             {/* Tab Content 5: Quizzes & Evaluaciones con IA */}
       {activeTab === 'quizzes' && (
-        <div className="space-y-6">
+        <div className="mentor-quiz-panel space-y-6">
           <div className="bg-surface border border-line rounded-2xl p-6 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-purple-400">
-                  <Sparkles className="w-6 h-6 text-amber-300" />
+                <div className="p-3 bg-raised border border-line rounded-xl text-ink-muted">
+                  <CheckSquare className="w-6 h-6" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                    Gestor de Evaluaciones & Exámenes con IA
+                    Evaluaciones y exámenes
                   </h3>
                   <p className="text-xs text-ink-muted">
-                    Crea cuestionarios de validación por módulo o genéralos automáticamente a partir del temario con IA
+                    Crea cuestionarios por módulo o genera una propuesta a partir del temario
                   </p>
                 </div>
               </div>
@@ -1225,10 +1254,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => setSelectedQuizModule(module)}
-                                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 cursor-pointer transition-all shrink-0"
+                                    className="btn-brand-primary px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0"
                                   >
-                                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                    <span>{hasQuiz ? 'Editar Examen' : '✨ Generar con IA'}</span>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>{hasQuiz ? 'Editar Examen' : 'Generar con IA'}</span>
                                   </button>
                                 </div>
                               );
@@ -1247,15 +1276,17 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
       {/* Tab Content: YouTube AI Course Builder */}
       {activeTab === 'youtube-builder' && (
-        <YouTubeCourseBuilder
-          currentUser={currentUser}
-          onCourseCreated={(_courseId) => {
-            onRefreshCourses();
-            announce('¡Curso generado y guardado exitosamente desde YouTube!');
-            setActiveTab('courses');
-          }}
-          onCancel={() => setActiveTab('courses')}
-        />
+        <div className="mentor-youtube-panel">
+          <YouTubeCourseBuilder
+            currentUser={currentUser}
+            onCourseCreated={(_courseId) => {
+              onRefreshCourses();
+              announce('¡Curso generado y guardado exitosamente desde YouTube!');
+              setActiveTab('courses');
+            }}
+            onCancel={() => setActiveTab('courses')}
+          />
+        </div>
       )}
 
       {/* Modal de Exámenes para Mentores */}
