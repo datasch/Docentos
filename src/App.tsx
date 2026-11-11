@@ -6,7 +6,14 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { api } from './lib/api';
-import { TAB_PATHS, tabFromPath, type ActiveTab } from './lib/appRoutes';
+import {
+  isPrivatePath,
+  privateRouteRoleAllowed,
+  privateRouteView,
+  TAB_PATHS,
+  tabFromPath,
+  type ActiveTab,
+} from './lib/appRoutes';
 import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
 import { RefreshCw } from 'lucide-react';
@@ -41,6 +48,7 @@ function readLastCourseId(): string | null {
 
 const CACHED_COURSES_KEY = 'docentos_cached_courses_v1';
 const CACHED_USER_KEY = 'docentos_cached_user_v1';
+type PrivateRouteStatus = 'idle' | 'pending' | 'authorized' | 'unauthorized' | 'unavailable';
 
 function readCachedUser(): User | null {
   if (typeof window === 'undefined') return null;
@@ -85,7 +93,9 @@ function writeCachedCourses(courses: Course[]) {
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(() => readCachedUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(() => (
+    isPrivatePath(window.location.pathname) ? null : readCachedUser()
+  ));
   const [courses, setCourses] = useState<Course[]>(() => readCachedCourses());
   const [course, setCourse] = useState<Course | null>(() => {
     const cached = readCachedCourses();
@@ -96,8 +106,13 @@ export default function App() {
     return null;
   });
   const [accessVerified, setAccessVerified] = useState(false);
+  const [privateRouteStatus, setPrivateRouteStatus] = useState<PrivateRouteStatus>(() => (
+    isPrivatePath(window.location.pathname) ? 'pending' : 'idle'
+  ));
   const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(() => readCachedCourses().length === 0);
+  const [loading, setLoading] = useState<boolean>(() => (
+    readCachedCourses().length === 0 || isPrivatePath(window.location.pathname)
+  ));
   const [isSetupRequired, setIsSetupRequired] = useState<boolean>(false);
   const [showSetupWizard, setShowSetupWizard] = useState<boolean>(false);
 
@@ -115,7 +130,10 @@ export default function App() {
   const [showListening, setShowListening] = useState<boolean>(false);
   const [unreadListening, setUnreadListening] = useState<number>(0);
 
-  const navigateTo = (tab: ActiveTab, options?: { replace?: boolean }) => {
+  const navigateTo = (tab: ActiveTab, options?: {
+    replace?: boolean;
+    privateAccess?: Extract<PrivateRouteStatus, 'authorized' | 'unauthorized' | 'pending'>;
+  }) => {
     const path = TAB_PATHS[tab] || '/';
     if (window.location.pathname !== path) {
       if (options?.replace) window.history.replaceState({}, '', path);
@@ -123,6 +141,13 @@ export default function App() {
     }
     setSharedCourseId(null);
     setActiveTabState(tab);
+    if (isPrivatePath(path)) {
+      setPrivateRouteStatus(options?.privateAccess || (accessVerified
+        ? privateRouteRoleAllowed(path, currentUser?.role) ? 'authorized' : 'unauthorized'
+        : 'pending'));
+    } else {
+      setPrivateRouteStatus('idle');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -145,6 +170,9 @@ export default function App() {
     try {
       if (!silent) setLoading(true);
       setAccessVerified(false);
+      const currentPath = window.location.pathname;
+      const privatePath = isPrivatePath(currentPath);
+      if (privatePath) setPrivateRouteStatus('pending');
 
       const [setupResult, authResult, coursesResult] = await Promise.allSettled([
         checkSetupStatus(),
@@ -166,6 +194,9 @@ export default function App() {
         authUser = authResult.value?.user ?? null;
         setCurrentUser(authUser);
         writeCachedUser(authUser);
+        if (privatePath) {
+          setPrivateRouteStatus(privateRouteRoleAllowed(currentPath, authUser?.role) ? 'authorized' : 'unauthorized');
+        }
         if (authUser) {
           try {
             const [pendingRes, pluginsRes] = await Promise.allSettled([
@@ -186,6 +217,7 @@ export default function App() {
         setCurrentUser(null);
         writeCachedUser(null);
         setPendingContract(null);
+        if (privatePath) setPrivateRouteStatus('unauthorized');
         try {
           const brandRes = await api.getPublicBrand();
           if (brandRes?.brandName) {
@@ -200,6 +232,10 @@ export default function App() {
         } catch {
           // Silencioso
         }
+      } else if (privatePath) {
+        setCurrentUser(null);
+        writeCachedUser(null);
+        setPrivateRouteStatus('unavailable');
       }
 
       if (coursesResult.status === 'fulfilled') {
@@ -229,6 +265,11 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error al inicializar datos:", err);
+      if (isPrivatePath(window.location.pathname)) {
+        setCurrentUser(null);
+        writeCachedUser(null);
+        setPrivateRouteStatus('unavailable');
+      }
     } finally {
       if (!silent) setLoading(false);
     }
@@ -240,12 +281,20 @@ export default function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      setSharedCourseId(courseIdFromPath(window.location.pathname));
-      setActiveTabState(tabFromPath(window.location.pathname));
+      const path = window.location.pathname;
+      setSharedCourseId(courseIdFromPath(path));
+      setActiveTabState(tabFromPath(path));
+      if (isPrivatePath(path)) {
+        setPrivateRouteStatus(accessVerified
+          ? privateRouteRoleAllowed(path, currentUser?.role) ? 'authorized' : 'unauthorized'
+          : 'pending');
+      } else {
+        setPrivateRouteStatus('idle');
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [accessVerified, currentUser]);
 
   const handleLogout = async () => {
     try {
@@ -305,14 +354,50 @@ export default function App() {
     );
   }
 
-  // Solo bloquear con spinner si se accede directamente a una ruta privada (admin/mentor) mientras se valida la sesión
-  if (loading && (activeTab === 'admin' || activeTab === 'plugins' || activeTab === 'mentor')) {
+  const privatePath = isPrivatePath(window.location.pathname);
+
+  if (privatePath && privateRouteStatus === 'pending') {
     return (
       <div className="min-h-screen bg-[#07070b] text-white flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 rounded-2xl bg-[#0f0f17] border border-white/10 text-[#06b6d4] flex items-center justify-center animate-pulse">
           <RefreshCw className="w-6 h-6 animate-spin" />
         </div>
         <p className="text-sm font-semibold text-slate-400">Iniciando DocentOS Constellation...</p>
+      </div>
+    );
+  }
+
+  if (privatePath && privateRouteStatus !== 'authorized') {
+    const privateView = privateRouteView(
+      privateRouteStatus === 'unavailable' ? 'unavailable' : 'unauthorized',
+    );
+    return (
+      <div className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex items-center justify-center px-5">
+        <main className="w-full max-w-2xl rounded-[20px] border border-white/10 bg-[#121214] px-8 py-12 text-center shadow-[0_16px_48px_rgba(0,0,0,0.24)] sm:px-16 sm:py-16">
+          <p className="text-sm font-medium text-[#a5a5af]">DocentOS</p>
+          <div
+            aria-hidden="true"
+            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-cyan-500/55"
+          />
+          <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-[#f4f4f5]">
+            404
+          </p>
+          <h1 className="mt-6 text-[clamp(1.5rem,4vw,2rem)] font-medium">{privateView.title}</h1>
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#a5a5af]">{privateView.description}</p>
+          <button
+            type="button"
+            onClick={() => {
+              if (privateRouteStatus === 'unavailable') {
+                loadData();
+              } else {
+                navigateTo('landing');
+              }
+            }}
+            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-cyan-500 hover:bg-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-500"
+          >
+            {privateRouteStatus === 'unavailable' ? 'Reintentar' : 'Volver al inicio'}
+          </button>
+        </main>
       </div>
     );
   }
@@ -384,9 +469,17 @@ export default function App() {
             onSuccess={(user, redirectPath) => {
               setCurrentUser(user);
               writeCachedUser(user);
+              setAccessVerified(true);
               setAuthNotice(null);
               loadData();
-              if (!sharedCourseId) navigateTo(tabFromPath(redirectPath));
+              if (!sharedCourseId) {
+                const nextTab = tabFromPath(redirectPath);
+                navigateTo(nextTab, {
+                  privateAccess: isPrivatePath(redirectPath)
+                    ? privateRouteRoleAllowed(redirectPath, user.role) ? 'authorized' : 'unauthorized'
+                    : undefined,
+                });
+              }
               if (!sharedCourseId && !localStorage.getItem('giantucchi_tour_completed')) {
                 setShowTour(true);
               }
