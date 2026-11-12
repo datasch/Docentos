@@ -112,6 +112,7 @@ import {
 } from './server/courseCoverAi.js';
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
+import { getWatchStatus, recordWatchHeartbeat } from './server/watchService.js';
 import {
   createCheckoutSession,
   handleStripeWebhook,
@@ -2269,6 +2270,22 @@ app.post(
     if (completed === false) {
       await prisma.userProgress.deleteMany({ where: { userId: req.user!.id, videoId } });
     } else {
+      // El servidor decide el 90%: completar una lección medida exige haberla
+      // visto. Las ya completadas se conservan y no se revisan de nuevo.
+      const alreadyCompleted = await prisma.userProgress.findFirst({
+        where: { userId: req.user!.id, videoId, completed: true },
+        select: { id: true },
+      });
+      if (!alreadyCompleted) {
+        const watch = await getWatchStatus(req.user!.id, videoId);
+        if (!watch.unlocked) {
+          return res.status(409).json({
+            error: 'Para completar esta clase debes ver al menos el 90% del video, sin adelantarlo.',
+            code: 'WATCH_REQUIRED',
+            watchedPercent: Math.floor(watch.fraction * 100),
+          });
+        }
+      }
       await prisma.userProgress.upsert({
         where: { userId_videoId: { userId: req.user!.id, videoId } },
         update: { completed: true, completedAt: new Date() },
@@ -2293,6 +2310,32 @@ app.post(
       progress: progressReport,
       certificate: progressReport?.certificate || null,
     });
+  }),
+);
+
+// Seguimiento de reproducción: tramos vistos de verdad, para exigir el 90%.
+app.get(
+  '/api/progress/watch/:videoId',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const videoId = String(req.params.videoId || '');
+    if (!(await userHasVideoAccess(req.user, videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    res.json({ success: true, ...(await getWatchStatus(req.user!.id, videoId)) });
+  }),
+);
+
+app.post(
+  '/api/progress/watch',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const { videoId, ranges, duration } = req.body || {};
+    if (!videoId || typeof videoId !== 'string') return res.status(400).json({ error: 'videoId es requerido' });
+    if (!(await userHasVideoAccess(req.user, videoId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+    }
+    res.json({ success: true, ...(await recordWatchHeartbeat(req.user!, videoId, { ranges, duration })) });
   }),
 );
 

@@ -146,6 +146,7 @@ model User {
   listeningEntries    ListeningEntry[]     @relation("ListeningAuthor")
   listeningReplies    ListeningEntry[]     @relation("ListeningReplier")
   assignedCourses     CourseMentor[]       @relation("AssignedCourseMentors")
+  videoWatches        VideoWatch[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -422,6 +423,12 @@ model VideoDriveLink {
   comments    MentorshipComment[]
   progress    UserProgress[]
   videoNotes  VideoNote[]
+  watches     VideoWatch[]
+  /// Duración real del medio en segundos, para exigir el 90% visto.
+  /// El campo `duration` es texto libre ('20:00' por defecto) y no sirve.
+  mediaDurationSeconds Int?
+  /// Origen de `mediaDurationSeconds`: DRIVE_API | YOUTUBE | PLAYER_STAFF | PLAYER.
+  mediaDurationSource  String?
   meetingType String?
   meetingUrl  String?
   scheduledAt DateTime?
@@ -562,6 +569,23 @@ model UserProgress {
   completedAt DateTime       @default(now())
 
   @@unique([userId, videoId])
+}
+
+/// Tramos del video que el alumno reprodujo de verdad (sin adelantar).
+model VideoWatch {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId         String
+  video           VideoDriveLink @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  rangesJson      String         @default("[]")
+  watchedSeconds  Int            @default(0)
+  lastHeartbeatAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([userId, videoId])
+  @@index([videoId])
 }
 
 model VideoNote {

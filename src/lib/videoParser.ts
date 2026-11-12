@@ -36,15 +36,18 @@ export function isDriveVideo(video?: VideoLike | null): boolean {
 }
 
 /**
- * Determina si el reproductor de video admite telemetría interactiva de reproducción
- * (como los eventos postMessage de fin de video en YouTube y Vimeo, o un elemento <video> nativo).
- * Los videos reproducidos mediante iframe de Google Drive u otros embeds de terceros
- * están protegidos por Same-Origin Policy y no ofrecen API de eventos al sitio padre,
- * por lo que no es posible ni debe exigirse detección automática de visualización completa.
+ * Determina si el reproductor informa el segundo en curso, y por tanto si se
+ * puede (y se debe) exigir ver el 90% del video para completar la lección.
+ * - Drive se sirve por `/api/content/videos/:id/stream` en un `<video>` nativo.
+ * - YouTube se reproduce con la IFrame API, que avisa por `postMessage`.
+ * Los embeds de terceros (Loom, iframes pegados) no ofrecen esa información.
+ * Ojo: el navegador recibe las lecciones sin `embedUrl` ni `driveFileId`
+ * (ver `serializeVideo` en `server/courseAccess.ts`), así que para él Vimeo y
+ * Loom acaban en `false`. El servidor decide con esos mismos datos.
  */
 export function supportsPlaybackTracking(video?: VideoLike | null): boolean {
   if (!video) return false;
-  if (isDriveVideo(video)) return false;
+  if (isDriveVideo(video)) return true;
   const provider = video.provider;
   const url = `${video.embedUrl || ''} ${video.playbackUrl || ''}`.toLowerCase();
   if (provider === 'youtube' || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('youtube-nocookie.com')) {

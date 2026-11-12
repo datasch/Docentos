@@ -27,6 +27,13 @@ declare global {
   }
 }
 
+
+// El reproductor de YouTube solo responde a los mensajes que llevan `id` y
+// `channel: 'widget'`, igual que los que envía su IFrame API oficial. Sin ellos
+// ignora el saludo y los comandos: el video no arranca y el tiempo queda en 00:00.
+const YT_CHANNEL = { id: 1, channel: 'widget' } as const;
+const YT_LISTENING_MESSAGE = JSON.stringify({ event: 'listening', ...YT_CHANNEL });
+
 export interface DocentOSPlayerProps {
   video: VideoDriveLink | null;
   resolvedUrl?: string;
@@ -220,7 +227,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
     const win = ytIframeRef.current?.contentWindow;
     if (win) {
       try {
-        win.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
+        win.postMessage(JSON.stringify({ event: 'command', func, args, ...YT_CHANNEL }), '*');
       } catch {}
     }
   }, []);
@@ -236,7 +243,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
       const win = ytIframeRef.current?.contentWindow;
       if (win) {
         try {
-          win.postMessage(JSON.stringify({ event: 'listening' }), '*');
+          win.postMessage(YT_LISTENING_MESSAGE, '*');
         } catch {}
       }
     };
@@ -446,7 +453,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         const win = ytIframeRef.current?.contentWindow;
         if (win) {
           try {
-            win.postMessage(JSON.stringify({ event: 'listening' }), '*');
+            win.postMessage(YT_LISTENING_MESSAGE, '*');
           } catch {}
         }
         setIsLoading(false);
@@ -722,7 +729,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               onLoad={() => {
                 setIsLoading(false);
                 if (ytIframeRef.current?.contentWindow) {
-                  ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'listening' }), '*');
+                  ytIframeRef.current.contentWindow.postMessage(YT_LISTENING_MESSAGE, '*');
                 }
               }}
               className="absolute left-0 top-[-30%] h-[160%] w-full border-0 pointer-events-none"
@@ -859,7 +866,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
                   const win = ytIframeRef.current?.contentWindow;
                   if (win) {
                     try {
-                      win.postMessage(JSON.stringify({ event: 'listening' }), '*');
+                      win.postMessage(YT_LISTENING_MESSAGE, '*');
                     } catch {}
                   }
                   sendYtCommand('playVideo');
