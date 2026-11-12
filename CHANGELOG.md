@@ -13,6 +13,69 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [1.1.0] - 2026-11-12
+
+**Esta versión migra el esquema de la base de datos** (migración aditiva
+`20261112170000_realtime_notifications`: tabla nueva `Notification`). Se aplica
+sola al arrancar y no modifica datos existentes.
+
+### Added
+
+- **Notificaciones en vivo de las consultas de mentoría.** Cuando un alumno
+  pregunta en una lección, los mentores asignados a ese curso y los
+  administradores reciben el aviso al instante: un mensaje emergente, una
+  campana con contador en la barra superior, y la bandeja de consultas del
+  mentor se actualiza sola, sin recargar la página. Cuando el mentor responde,
+  el alumno recibe «Tu consulta fue respondida» y, si tiene abierta esa lección,
+  ve la respuesta sin salir del video.
+- **Los avisos quedan guardados:** quien estaba desconectado los encuentra al
+  volver. Desde la campana se abren directamente las consultas (mentor) o el
+  curso (alumno), y se pueden marcar como leídos.
+- **Indicador de carga en el reproductor.** Aparece en el mismo momento en que
+  se pulsa play, en el centro, donde estaba el botón, sin oscurecer el video.
+  En los cortes a mitad del video solo se muestra si la espera dura más de
+  medio segundo.
+
+### Changed
+
+- **Completar una lección es decisión del alumno.** Al ver el 90% del video el
+  botón cambia de «Ver video para completar» a «Marcar como completado» con una
+  animación, y es el alumno quien la completa. Ya no se completa sola.
+- **No se puede saltar a la lección siguiente sin completar la actual.** Las
+  flechas sobre el video, el botón «siguiente» del reproductor, la barra móvil y
+  el temario siguen la misma regla que la Ruta Cósmica. Mientras tanto la
+  flecha muestra un candado. Hacia atrás siempre se puede ir.
+- **Los videos de Google Drive se reproducen de forma fluida.** El servidor
+  guarda cada video completo en disco la primera vez que alguien lo abre y,
+  desde entonces, reproducir, adelantar o volver a la lección no espera a
+  Google, que tardaba entre 1,5 y 7 s por tramo y congelaba los videos pesados.
+  Se reproduce mientras baja. Espacio por defecto: 2 GB (`DRIVE_STREAM_CACHE_MB`,
+  `0` la desactiva). La lección siguiente se descarga después de la actual, sin
+  quitarle velocidad.
+- **Las lecciones muestran su duración real** en cuanto se conoce, en lugar de
+  la estimación por tamaño que se hacía al importar desde Drive (por ejemplo,
+  «0:24» en vez de «8:29»).
+
+### Fixed
+
+- **Un mentor asignado a un curso no podía responder sus consultas.** Si no
+  tenía alumnos asignados, recibía un error de acceso al abrir las lecciones o
+  responder. Ahora el mentor del curso tiene acceso a él.
+
+### Notas para el despliegue
+
+- La caché de video usa la carpeta temporal del contenedor y se vacía al
+  reiniciar; cada video se vuelve a descargar de Drive la primera vez que se
+  abre. Asegúrate de que el servidor tenga al menos 2 GB libres o ajusta
+  `DRIVE_STREAM_CACHE_MB`.
+- Las notificaciones usan una conexión abierta por pestaña (Server-Sent Events).
+  Si hay un proxy delante, no debe acumular las respuestas de
+  `/api/notifications/stream`. El servidor ya envía `X-Accel-Buffering: no` y un
+  mensaje cada 25 s para que no se corte la conexión.
+- Los videos de 1080p a 20 Mbps pesan unas 8 veces más de lo necesario para una
+  clase. Se recomienda comprimirlos antes de subirlos con
+  `ffmpeg -i video.mp4 -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 128k -movflags +faststart salida.mp4`.
+
 ## [1.0.3] - 2026-11-12
 
 **Esta versión migra el esquema de la base de datos** (migración aditiva
