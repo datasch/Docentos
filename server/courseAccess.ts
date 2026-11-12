@@ -295,6 +295,27 @@ function serializeResource(resource: any) {
   };
 }
 
+/** 75 -> "1:15", 3725 -> "1:02:05". */
+export function formatClockDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = String(seconds % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}
+
+/**
+ * Duración que ve el alumno. La guardada como texto puede ser una estimación
+ * (al importar de Drive se calcula por el tamaño del archivo, y las lecciones
+ * creadas a mano llevan '20:00'). En cuanto se conoce la duración real del
+ * medio —metadatos de Drive o YouTube, o la que informa el reproductor— se usa esa.
+ */
+function displayDuration(video: any): string | null {
+  const real = Number(video.mediaDurationSeconds);
+  if (Number.isFinite(real) && real > 0) return formatClockDuration(real);
+  return video.duration ?? null;
+}
+
 function serializeVideo(video: any) {
   const parsed = parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '');
   const provider = parsed.provider;
@@ -307,7 +328,7 @@ function serializeVideo(video: any) {
     id: video.id,
     title: video.title,
     description: video.description,
-    duration: video.duration,
+    duration: displayDuration(video),
     mimeType: video.mimeType,
     source: video.source,
     // Quien reproduce, sin decir que archivo. `playbackUrl` apunta a nuestra

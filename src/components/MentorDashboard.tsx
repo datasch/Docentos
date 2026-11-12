@@ -34,7 +34,8 @@ import {
 } from 'lucide-react';
 import { MeetingManager } from './MeetingManager';
 import { avatarSrc } from '../lib/avatar.js';
-import { api } from '../lib/api';
+import { api, type AppNotification } from '../lib/api';
+import { MENTOR_QNA_EVENT, MENTOR_TAB_STORAGE_KEY, NOTIFICATION_EVENT } from '../lib/useNotifications';
 import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment, QuizQuestion, CourseAccessRequest } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
 import { getModuleQuestions, syncModuleQuizzes } from '../plugins/QuizzesPlugin';
@@ -73,7 +74,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   onRefreshCourses,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>(() => {
+    // Al abrir un aviso de pregunta nueva se entra directo a las consultas.
+    try {
+      if (sessionStorage.getItem(MENTOR_TAB_STORAGE_KEY) === 'qna') {
+        sessionStorage.removeItem(MENTOR_TAB_STORAGE_KEY);
+        return 'qna';
+      }
+    } catch {
+      // Sin almacenamiento se queda en la pestaña por defecto.
+    }
+    return 'courses';
+  });
   const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
   const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
@@ -200,6 +212,25 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     loadMenteesData();
     loadAccessRequests();
     loadQnaData();
+  }, []);
+
+  // Tiempo real: una pregunta nueva recarga la bandeja sin refrescar la página.
+  useEffect(() => {
+    const onNotification = (event: Event) => {
+      const detail = (event as CustomEvent<AppNotification>).detail;
+      if (detail?.type === 'qna.question') loadQnaData();
+    };
+    const onOpenQna = () => {
+      setActiveTab('qna');
+      loadQnaData();
+    };
+    window.addEventListener(NOTIFICATION_EVENT, onNotification);
+    window.addEventListener(MENTOR_QNA_EVENT, onOpenQna);
+    return () => {
+      window.removeEventListener(NOTIFICATION_EVENT, onNotification);
+      window.removeEventListener(MENTOR_QNA_EVENT, onOpenQna);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const announce = (message: string) => {

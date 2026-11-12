@@ -12,6 +12,7 @@ import { Readable } from 'node:stream';
 import express, { NextFunction, Request, Response } from 'express';
 import compression from 'compression';
 import path from 'path';
+import os from 'node:os';
 import fs from 'node:fs';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -113,6 +114,17 @@ import {
 import { assignableMenteeWhere, groupAssignmentsByMentee, resolveRosterChanges } from './server/mentorship.js';
 import { calculateCourseProgress } from './server/progressService.js';
 import { getWatchStatus, recordWatchHeartbeat } from './server/watchService.js';
+import { DriveVideoCache, defaultVideoCacheDir, type DriveFetcher } from './server/driveVideoCache.js';
+import {
+  HEARTBEAT_MS,
+  fireAndForget,
+  formatSseEvent,
+  listNotifications,
+  markNotificationsRead,
+  notificationHub,
+  notifyNewQuestion,
+  notifyQuestionAnswered,
+} from './server/notificationService.js';
 import {
   createCheckoutSession,
   handleStripeWebhook,
@@ -578,6 +590,8 @@ app.use(
     threshold: 1024,
     filter: (req, res) => {
       if (req.headers['x-no-compression']) return false;
+      // SSE: comprimir acumula los eventos y el navegador no los recibe a tiempo.
+      if (req.path === '/api/notifications/stream') return false;
       return compression.filter(req, res);
     },
   }),
@@ -1335,7 +1349,21 @@ app.all(
       return res.redirect(targetUrl);
     }
 
-    const upstreamUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`;
+    // Video completo en disco: se baja de Drive una vez y se reproduce desde
+    // aquí mientras baja. Si el tramo pedido cae lejos de lo descargado (o la
+    // caché no puede guardarlo), sigue hacia Drive como siempre.
+    if (req.method === 'GET' && driveVideoCache.enabled) {
+      // Precarga de la lección siguiente: se encola con baja prioridad y se
+      // responde al momento, sin abrir ninguna descarga que compita con el
+      // video que el alumno está viendo.
+      if (req.headers['x-docentos-prefetch'] === '1') {
+        driveVideoCache.prefetch(fileId);
+        return res.status(204).end();
+      }
+      if (await driveVideoCache.serve(fileId, req.headers.range as string | undefined, res)) return;
+    }
+
+    const upstreamUrl = driveDownloadUrl(fileId);
 
     const forwardHeaders: Record<string, string> = {
       'User-Agent': (req.headers['user-agent'] as string) || 'DocentOS-MediaStreamer/1.0',
@@ -1411,6 +1439,25 @@ app.all(
     }
   }),
 );
+
+function driveDownloadUrl(fileId: string) {
+  return `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`;
+}
+
+const driveFetcher: DriveFetcher = (fileId, range, signal) =>
+  fetch(driveDownloadUrl(fileId), {
+    headers: { ...(range ? { Range: range } : {}), 'User-Agent': 'DocentOS-MediaStreamer/1.0' },
+    signal,
+  });
+
+const driveVideoCache = new DriveVideoCache({
+  dir: process.env.DRIVE_VIDEO_CACHE_DIR || defaultVideoCacheDir(os.tmpdir()),
+  maxBytes: config.DRIVE_STREAM_CACHE_MB * 1024 * 1024,
+  // Un video que ocupe más de la mitad de la caché no se guarda: echaría a todos los demás.
+  maxFileBytes: Math.floor((config.DRIVE_STREAM_CACHE_MB * 1024 * 1024) / 2),
+  fetcher: driveFetcher,
+  onError: (fileId, error: any) => logger.warn('drive_stream.cache_failed', { fileId, error: error?.message }),
+});
 
 app.get(
   '/api/content/resources/:resourceId',
@@ -2159,6 +2206,15 @@ app.post(
       include: { user: true, replies: { include: { user: true } } },
     });
     res.json({ success: true, comment: toApiComment(comment) });
+
+    // Aviso a los mentores del curso y a los administradores. No bloquea ni
+    // rompe la respuesta: la pregunta ya quedó guardada.
+    if (!comment.isMentorResponse) {
+      const author = req.user!;
+      fireAndForget('new_question', () =>
+        notifyNewQuestion({ id: comment.id, videoId: comment.videoId, content: comment.content, author }),
+      );
+    }
   }),
 );
 
@@ -2192,6 +2248,14 @@ app.post(
       await prisma.mentorshipComment.update({ where: { id: parent.id }, data: { isResolved: true } });
     }
     res.json({ success: true, reply: toApiComment(reply) });
+
+    // Aviso al alumno que hizo la pregunta. No bloquea ni rompe la respuesta.
+    if (isMentor) {
+      const mentor = req.user!;
+      fireAndForget('question_answered', () =>
+        notifyQuestionAnswered({ question: parent, reply, mentor }),
+      );
+    }
   }),
 );
 
@@ -2310,6 +2374,66 @@ app.post(
       progress: progressReport,
       certificate: progressReport?.certificate || null,
     });
+  }),
+);
+
+// Notificaciones en tiempo real (SSE) y bandeja de avisos.
+app.get(
+  '/api/notifications/stream',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const userId = req.user!.id;
+    if (!notificationHub.canAccept(userId)) {
+      return res.status(429).json({ error: 'Tienes demasiadas pestañas abiertas con avisos en vivo.' });
+    }
+    const { unreadCount } = await listNotifications(userId);
+
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    // Nginx/Traefik: no acumular la respuesta.
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    res.write('retry: 5000\n\n');
+    res.write(formatSseEvent('ready', { unreadCount }));
+
+    const sessionExpiresAt = req.authSession?.expiresAt ? new Date(req.authSession.expiresAt).getTime() : null;
+    notificationHub.add(userId, res, req.authSession?.id || null);
+    const heartbeat = setInterval(() => {
+      // Una sesión vencida no sigue recibiendo avisos.
+      if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
+        res.end();
+        return;
+      }
+      res.write(': ping\n\n');
+    }, HEARTBEAT_MS);
+    heartbeat.unref?.();
+
+    const cleanup = () => {
+      clearInterval(heartbeat);
+      notificationHub.remove(userId, res);
+    };
+    req.on('close', cleanup);
+    res.on('close', cleanup);
+  }),
+);
+
+app.get(
+  '/api/notifications',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    res.json({ success: true, ...(await listNotifications(req.user!.id)) });
+  }),
+);
+
+app.post(
+  '/api/notifications/read',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const updated = await markNotificationsRead(req.user!.id, req.body?.ids);
+    const { unreadCount } = await listNotifications(req.user!.id);
+    res.json({ success: true, updated, unreadCount });
   }),
 );
 
@@ -2944,8 +3068,10 @@ app.post(
         targetId: req.authSession?.id,
       });
     }
+    const closingSessionId = req.authSession?.id;
     await revokeRequestSession(req);
     clearSessionCookie(res);
+    if (closingSessionId) notificationHub.closeSession(closingSessionId);
     res.json({ success: true, message: 'Sesión cerrada correctamente' });
   }),
 );

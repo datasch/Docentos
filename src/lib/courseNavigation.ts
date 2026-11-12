@@ -139,6 +139,24 @@ export function moduleLockStates(
   });
 }
 
+/**
+ * ¿Se puede abrir esta lección? Misma regla que la Ruta Cósmica: la lección N
+ * se abre cuando la N-1 está completada. Hacia atrás siempre hay paso, y una
+ * lección ya completada (o con otra completada más adelante) tampoco se cierra,
+ * para no trabar a quien tiene huecos en su progreso.
+ */
+export function isLessonReachable(
+  lessons: FlatLesson[],
+  completed: Record<string, boolean>,
+  targetIndex: number,
+  currentIndex: number,
+): boolean {
+  if (targetIndex < 0 || targetIndex >= lessons.length) return false;
+  if (targetIndex === 0 || targetIndex <= currentIndex) return true;
+  if (completed[lessons[targetIndex - 1].videoId]) return true;
+  return lessons.slice(targetIndex).some((lesson) => Boolean(completed[lesson.videoId]));
+}
+
 /** Atajo para preguntar por un solo módulo sin recorrer el temario a mano. */
 export function isModuleOpen(states: ModuleLockState[], moduleIndex: number): boolean {
   return states[moduleIndex]?.unlocked ?? true;

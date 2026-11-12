@@ -147,6 +147,7 @@ model User {
   listeningReplies    ListeningEntry[]     @relation("ListeningReplier")
   assignedCourses     CourseMentor[]       @relation("AssignedCourseMentors")
   videoWatches        VideoWatch[]
+  notifications       Notification[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -569,6 +570,26 @@ model UserProgress {
   completedAt DateTime       @default(now())
 
   @@unique([userId, videoId])
+}
+
+/// Aviso para un usuario (por ejemplo, una pregunta nueva de mentoría o su
+/// respuesta). Es la fuente de verdad: lo que llega en tiempo real por SSE
+/// también queda aquí para quien estaba desconectado.
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// qna.question | qna.answered
+  type      String
+  title     String
+  body      String    @default("")
+  /// Datos para abrir el contexto (curso, lección, comentario) en JSON.
+  dataJson  String    @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 /// Tramos del video que el alumno reprodujo de verdad (sin adelantar).

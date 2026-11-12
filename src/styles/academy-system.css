@@ -1093,3 +1093,60 @@ body.academy-ui {
 @media (prefers-reduced-motion: reduce) {
   .academy-ui .academy-course-card img { transition: none; }
 }
+
+/*
+ * Botón «Marcar como completado» al llegar al 90% del video. Entra con un
+ * ligero rebote, deja un halo cian que se disipa y un único destello que lo
+ * cruza; después queda con el borde cian para que se distinga del estado
+ * bloqueado. Sin movimiento si el sistema pide reducirlo.
+ */
+@keyframes lesson-complete-ready-in {
+  0% { transform: scale(0.94); opacity: 0.55; box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+  55% { transform: scale(1.03); opacity: 1; box-shadow: 0 0 0 7px rgba(6, 182, 212, 0.18); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+}
+@keyframes lesson-complete-ready-sheen {
+  from { transform: translateX(-130%) skewX(-18deg); }
+  to { transform: translateX(260%) skewX(-18deg); }
+}
+.lesson-complete-ready {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: rgba(6, 182, 212, 0.7) !important;
+  animation: lesson-complete-ready-in 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lesson-complete-ready::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.28), rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(-130%) skewX(-18deg);
+  animation: lesson-complete-ready-sheen 1100ms cubic-bezier(0.4, 0, 0.2, 1) 300ms 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-complete-ready,
+  .lesson-complete-ready::after { animation: none; }
+  .lesson-complete-ready::after { display: none; }
+}
+
+/* Indicador de carga del reproductor: entra con 120 ms de retraso para no
+   parpadear cuando el video arranca al instante. */
+@keyframes player-loading-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.player-loading-overlay {
+  animation: player-loading-in 220ms ease-out 120ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-loading-overlay { animation-duration: 1ms; }
+}
+/* Cortes a mitad del video: el indicador solo aparece si la espera dura más
+   de medio segundo, para que los microcortes no se vean como una pausa. */
+.player-loading-overlay--rebuffer {
+  animation-delay: 500ms;
+}

@@ -65,6 +65,8 @@ interface ConstellationNavbarProps {
   onOpenListening?: () => void;
   onChangePassword?: () => void;
   unreadListening?: number;
+  /** Campana de avisos en tiempo real (solo con sesión iniciada). */
+  notificationBell?: React.ReactNode;
 }
 
 export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
@@ -81,6 +83,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
   onOpenListening,
   onChangePassword,
   unreadListening = 0,
+  notificationBell,
 }) => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -345,6 +348,8 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               </div>
             )}
           </div>
+
+          {currentUser && notificationBell}
 
           {/* Botón Selector Modo Claro / Modo Oscuro */}
           <button
