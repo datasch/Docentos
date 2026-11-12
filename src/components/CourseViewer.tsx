@@ -56,6 +56,15 @@ import {
 import { Course, VideoDriveLink, MentorshipComment, User, TTSGuide, VideoNote, CertificateRecord, Meeting } from '../types';
 import { MentorTTSGuideWidget } from './MentorTTSGuideWidget';
 import { parseVideoSource, VideoProvider, isDriveVideo, supportsPlaybackTracking } from '../lib/videoParser';
+import {
+  WATCH_THRESHOLD,
+  addWatchedSegment,
+  parseWatchRanges,
+  registerPlaybackTick,
+  watchedFraction,
+  watchedSeconds,
+  type WatchRanges,
+} from '../lib/watchProgress';
 import { pluginManager } from '../plugins/PluginManager';
 import { syncModuleQuizCounts, getModuleQuestionCount, quizzesPluginEngine } from '../plugins/QuizzesPlugin';
 import { downloadCertificate } from '../plugins/CertificateGenerator';
@@ -727,24 +736,96 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   // Persistencia de progreso de video por usuario y lección
   const getVideoTimeKey = (userId: string, videoId: string) => `docentos_video_time_${userId}_${videoId}`;
-  const getVideoWatchedKey = (userId: string, videoId: string) => `docentos_video_watched_${userId}_${videoId}`;
+  // v2: la marca anterior se ponía con solo abrir el video o arrastrar la barra.
+  const getVideoWatchedKey = (userId: string, videoId: string) => `docentos_video_watched_v2_${userId}_${videoId}`;
+  const getVideoRangesKey = (userId: string, videoId: string) => `docentos_video_ranges_${userId}_${videoId}`;
 
-  // Restaurar estado de video visto desde persistencia
+  // Tramos reproducidos de verdad en el video actual. Viven en refs porque las
+  // lecturas del reproductor llegan varias veces por segundo.
+  const watchRangesRef = useRef<{ videoId: string | null; ranges: WatchRanges; lastTime: number | null; duration: number }>({
+    videoId: null,
+    ranges: [],
+    lastTime: null,
+    duration: 0,
+  });
+  const heartbeatRef = useRef({ lastSentAt: 0, inFlight: false, sentSeconds: 0, sentAtThreshold: false });
+  // Lecciones que ya se intentaron completar solas al llegar al 90%.
+  const autoCompletedRef = useRef<Set<string>>(new Set());
+  // Lección completada sola durante esta reproducción: al terminar el video se avanza.
+  const completedInPlaybackRef = useRef<string | null>(null);
+  const [watchPercent, setWatchPercent] = useState<number | null>(null);
+  // Las respuestas del servidor llegan tarde: se llama siempre a la versión más reciente.
+  const unlockRef = useRef<(videoId: string) => void>(() => {});
+
+  const persistWatchRanges = (videoId: string, ranges: WatchRanges) => {
+    if (!currentUser?.id) return;
+    try {
+      localStorage.setItem(getVideoRangesKey(currentUser.id, videoId), JSON.stringify(ranges));
+    } catch {
+      // Sin almacenamiento local el progreso sigue llegando al servidor.
+    }
+  };
+
+  // Restaurar estado de video visto desde persistencia y del servidor
   useEffect(() => {
     if (!currentVideo?.id || !currentUser?.id) return;
-    // Para videos de Google Drive o fuentes sin telemetría de eventos postMessage,
-    // se asegura el estado visto para permitir marcar la clase como completada
-    if (!supportsPlaybackTracking(currentVideo)) {
-      if (!watchedVideos[currentVideo.id]) {
-        setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
-      }
-      localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
-      return;
+    const videoId = currentVideo.id;
+    const userId = currentUser.id;
+
+    if (localStorage.getItem(getVideoWatchedKey(userId, videoId)) === 'true') {
+      setWatchedVideos((prev) => (prev[videoId] ? prev : { ...prev, [videoId]: true }));
     }
-    const isSavedWatched = localStorage.getItem(getVideoWatchedKey(currentUser.id, currentVideo.id)) === 'true';
-    if (isSavedWatched && !watchedVideos[currentVideo.id]) {
-      setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
+
+    let localRanges: WatchRanges = [];
+    try {
+      localRanges = parseWatchRanges(localStorage.getItem(getVideoRangesKey(userId, videoId)));
+    } catch {
+      localRanges = [];
     }
+    watchRangesRef.current = { videoId, ranges: localRanges, lastTime: null, duration: 0 };
+    heartbeatRef.current = { lastSentAt: 0, inFlight: false, sentSeconds: 0, sentAtThreshold: false };
+    completedInPlaybackRef.current = null;
+    setWatchPercent(null);
+
+    if (!supportsPlaybackTracking(currentVideo)) return;
+
+    let cancelled = false;
+    api
+      .getWatchStatus(videoId)
+      .then((status) => {
+        const state = watchRangesRef.current;
+        if (cancelled || state.videoId !== videoId || !status.tracked) return;
+        // El progreso sigue al alumno entre dispositivos.
+        state.ranges = (status.ranges || []).reduce(
+          (acc, [start, end]) => addWatchedSegment(acc, start, end),
+          state.ranges,
+        );
+        heartbeatRef.current.sentSeconds = Math.max(heartbeatRef.current.sentSeconds, status.watchedSeconds || 0);
+        persistWatchRanges(videoId, state.ranges);
+        const duration = state.duration > 0 ? state.duration : status.durationSeconds || 0;
+        if (duration > 0) setWatchPercent(Math.floor(watchedFraction(state.ranges, duration) * 100));
+        if (status.unlocked) unlockRef.current(videoId);
+      })
+      .catch(() => {
+        // Sin respuesta se sigue midiendo en local y se reintenta con el siguiente envío.
+      });
+
+    // Último envío si quedó algo sin mandar (cambio de lección o cierre de pestaña).
+    const flush = () => {
+      const state = watchRangesRef.current;
+      if (state.videoId !== videoId) return;
+      const seconds = watchedSeconds(state.ranges);
+      if (seconds <= heartbeatRef.current.sentSeconds) return;
+      heartbeatRef.current.sentSeconds = seconds;
+      api.sendWatchHeartbeat(videoId, state.ranges, Number.isFinite(state.duration) ? state.duration : 0).catch(() => {});
+    };
+    window.addEventListener('pagehide', flush);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
   }, [currentVideo?.id, currentUser?.id]);
 
   // Segundo exacto donde el alumno dejó el video para no perder su progreso
@@ -754,7 +835,37 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     return val > 3 ? Math.floor(val) : 0;
   }, [currentVideo?.id, currentUser?.id]);
 
-  const toggleVideoCompletion = async (videoId: string, forceWatchBypass = false) => {
+  // Avanza a la lección siguiente tras completar la actual. En el visor modal
+  // (Ruta Cósmica) se notifica el avance o se cierra; fuera de él se abre la siguiente.
+  const advanceAfterCompletion = (completedMap: Record<string, boolean>) => {
+    const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
+    const locksAfterMarking = moduleLockStates(course, completedMap, isQuizGateOpen);
+    const nextTarget = target && isModuleOpen(locksAfterMarking, target.moduleIndex) ? target : null;
+
+    // Se notifica el avance a la lección siguiente y se cierra el visor
+    // para que el alumno pueda contemplar cómo el orbe celestial viaja
+    // y entra con su estela cósmica en la siguiente misión, desplegándose automáticamente al llegar.
+    if (isModal && onCloseModal) {
+      if (onLessonCompletedAndAdvance) {
+        onLessonCompletedAndAdvance(nextTarget);
+      } else {
+        setTimeout(() => {
+          onCloseModal();
+        }, 350);
+      }
+      return;
+    }
+
+    if (nextTarget) {
+      openLesson(nextTarget.moduleIndex, nextTarget.videoIndex);
+    }
+  };
+
+  const toggleVideoCompletion = async (
+    videoId: string,
+    forceWatchBypass = false,
+    { advance = true }: { advance?: boolean } = {},
+  ): Promise<boolean> => {
     // Al interactuar con el progreso, asegurar que la selección del usuario
     // quede fija y no sea sobrescrita por el useEffect de auto-resumen.
     setPickedByUser(true);
@@ -784,8 +895,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) === 'true';
 
       if (!isWatched) {
-        setProgressError('Para completar esta misión debes ver el video de la clase hasta el final.');
-        return;
+        setProgressError('Para completar esta misión debes ver al menos el 90% del video, sin adelantarlo.');
+        return false;
       }
 
       if (currentModule && activeVideoIndex >= (currentModule.videos?.length || 1) - 1) {
@@ -794,7 +905,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           const attempt = quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id);
           if (!attempt?.passed) {
             setProgressError('Para completar esta misión debes aprobar el examen interactivo del módulo.');
-            return;
+            return false;
           }
         }
       }
@@ -811,7 +922,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           setProgressError(
             'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, debes ir desmarcando de una en una hacia atrás desde la última lección completada.'
           );
-          return;
+          return false;
         }
       }
 
@@ -849,40 +960,125 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           pluginManager.onCourseComplete(currentUser, course);
         }
 
-        // Si se encuentra en el visor modal (Ruta Cósmica):
-        // Se notifica el avance a la lección siguiente y se cierra el visor
-        // para que el alumno pueda contemplar cómo el orbe celestial viaja
-        // y entra con su estela cósmica en la siguiente misión, desplegándose automáticamente al llegar.
-        if (isModal && onCloseModal) {
-          const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
-          const locksAfterMarking = moduleLockStates(course, newCompletedMap, isQuizGateOpen);
-          const nextTarget = target && isModuleOpen(locksAfterMarking, target.moduleIndex) ? target : null;
-
-          if (onLessonCompletedAndAdvance) {
-            onLessonCompletedAndAdvance(nextTarget);
-          } else {
-            setTimeout(() => {
-              onCloseModal();
-            }, 350);
-          }
-          return;
-        }
-
-        // Avanzar a la lección siguiente al completar
-        const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
-        const locksAfterMarking = moduleLockStates(course, newCompletedMap, isQuizGateOpen);
-        if (videoId === currentVideo.id && target && isModuleOpen(locksAfterMarking, target.moduleIndex)) {
-          openLesson(target.moduleIndex, target.videoIndex);
+        // Con `advance: false` (completada sola al llegar al 90%) el alumno sigue en el video.
+        if (advance && ((isModal && onCloseModal) || videoId === currentVideo.id)) {
+          advanceAfterCompletion(newCompletedMap);
         }
       }
+      return true;
     } catch (error) {
       console.error('Error toggling video progress:', error);
       setCompletedVideos(previousCompleted);
+      const code = (error as { code?: string } | null)?.code;
       setProgressError(
-        isCompleted
-          ? 'No se pudo guardar la clase como terminada. Revisa tu conexión e inténtalo otra vez.'
-          : 'No se pudo desmarcar la clase. Revisa tu conexión e inténtalo otra vez.',
+        code === 'WATCH_REQUIRED'
+          ? (error as Error).message
+          : isCompleted
+            ? 'No se pudo guardar la clase como terminada. Revisa tu conexión e inténtalo otra vez.'
+            : 'No se pudo desmarcar la clase. Revisa tu conexión e inténtalo otra vez.',
       );
+      return false;
+    }
+  };
+
+  // Se llama cuando el servidor confirma el 90% visto de forma limpia: abre la
+  // siguiente lección sin sacar al alumno del video. Completa con la respuesta
+  // del servidor, nunca con la cuenta local.
+  const unlockAfterCleanWatch = (videoId: string) => {
+    if (autoCompletedRef.current.has(videoId)) return;
+    autoCompletedRef.current.add(videoId);
+
+    setWatchedVideos((prev) => (prev[videoId] ? prev : { ...prev, [videoId]: true }));
+    if (currentUser?.id) localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
+    if (completedVideos[videoId]) return;
+
+    // Última lección de un módulo con examen sin aprobar: solo queda vista.
+    const lesson = lessons.find((l) => l.videoId === videoId);
+    const lessonModule = lesson ? course.modules[lesson.moduleIndex] : null;
+    if (lesson && lessonModule && lesson.videoIndex >= (lessonModule.videos?.length || 1) - 1) {
+      const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(lessonModule.id) > 0;
+      if (hasQuiz && !quizzesPluginEngine.getUserAttempt(currentUser.id, lessonModule.id)?.passed) return;
+    }
+
+    void toggleVideoCompletion(videoId, true, { advance: false }).then((ok) => {
+      if (ok) {
+        completedInPlaybackRef.current = videoId;
+      } else {
+        // Se reintenta con la próxima confirmación del servidor.
+        autoCompletedRef.current.delete(videoId);
+      }
+    });
+  };
+  unlockRef.current = unlockAfterCleanWatch;
+
+  const sendHeartbeat = async (videoId: string) => {
+    const state = watchRangesRef.current;
+    const hb = heartbeatRef.current;
+    if (state.videoId !== videoId || hb.inFlight) return;
+    hb.inFlight = true;
+    hb.lastSentAt = Date.now();
+    const ranges = state.ranges;
+    const seconds = watchedSeconds(ranges);
+    try {
+      // Un stream sin duración llega como Infinity: se manda 0 y el servidor
+      // usa la duración que tenga (metadatos de Drive o YouTube).
+      const status = await api.sendWatchHeartbeat(videoId, ranges, Number.isFinite(state.duration) ? state.duration : 0);
+      if (status.accepted) hb.sentSeconds = Math.max(hb.sentSeconds, seconds);
+      if (watchRangesRef.current.videoId === videoId && !(state.duration > 0) && status.durationSeconds) {
+        setWatchPercent(Math.floor((status.fraction || 0) * 100));
+      }
+      if (status.tracked && status.unlocked) unlockRef.current(videoId);
+    } catch {
+      // Se reintenta en el siguiente envío.
+    } finally {
+      hb.inFlight = false;
+    }
+  };
+
+  // Lectura del reproductor (varias por segundo mientras reproduce).
+  const handlePlayerTick = (time: number, duration: number) => {
+    if (selectedMeetingPlayback || !currentVideo || !currentUser?.id) return;
+    const videoId = currentVideo.id;
+    if (time > 0) {
+      localStorage.setItem(getVideoTimeKey(currentUser.id, videoId), String(Math.floor(time)));
+    }
+    if (!supportsPlaybackTracking(currentVideo)) return;
+
+    const state = watchRangesRef.current;
+    if (state.videoId !== videoId) return;
+    if (Number.isFinite(duration) && duration > 0) state.duration = duration;
+
+    const before = watchedSeconds(state.ranges);
+    state.ranges = registerPlaybackTick(state.ranges, state.lastTime, time);
+    state.lastTime = time;
+    const after = watchedSeconds(state.ranges);
+    const fraction = watchedFraction(state.ranges, state.duration);
+    if (after !== before) persistWatchRanges(videoId, state.ranges);
+    if (state.duration > 0) {
+      const percent = Math.floor(fraction * 100);
+      setWatchPercent((prev) => (prev === percent ? prev : percent));
+    }
+
+    const hb = heartbeatRef.current;
+    if (hb.inFlight) return;
+    const reachedLocally = fraction >= WATCH_THRESHOLD;
+    const pending = after > hb.sentSeconds || hb.lastSentAt === 0;
+    if (reachedLocally && !hb.sentAtThreshold) {
+      // Una vez de inmediato al alcanzar el 90% local.
+      hb.sentAtThreshold = true;
+      void sendHeartbeat(videoId);
+    } else if (pending && Date.now() - hb.lastSentAt >= 15000) {
+      void sendHeartbeat(videoId);
+    }
+  };
+
+  const handlePlayerEnded = () => {
+    if (selectedMeetingPlayback || !currentVideo) return;
+    if (supportsPlaybackTracking(currentVideo)) void sendHeartbeat(currentVideo.id);
+    // Completada sola en esta reproducción: al terminar se avanza como al pulsar "completar".
+    if (completedInPlaybackRef.current === currentVideo.id) {
+      completedInPlaybackRef.current = null;
+      advanceAfterCompletion(completedVideos);
     }
   };
 
@@ -905,12 +1101,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
       }
     };
-
-    // Si el video actual proviene de Google Drive o un proveedor sin tracking interactivo (postMessage),
-    // se marca como visto de inmediato para que la opción de completar esté habilitada al terminar de ver la clase
-    if (!supportsPlaybackTracking(currentVideo)) {
-      markWatched();
-    }
 
     const handleWindowMessage = (event: MessageEvent) => {
       // Aceptar mensajes del reproductor de la lección o dominios de video soportados
@@ -962,7 +1152,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       const reachedEnd =
         knownDuration > 0 &&
         (knownTime >= knownDuration - 3 || (knownDuration > 30 && knownTime >= knownDuration * 0.95));
-      if (playerState === 0 || playerState === '0' || reachedEnd) {
+      // YouTube y Drive se miden por tramos (handlePlayerTick). Este atajo queda
+      // solo para Vimeo, que todavía no tiene medición.
+      if (event.origin.includes('vimeo.com') && (playerState === 0 || playerState === '0' || reachedEnd)) {
         markWatched();
       }
     };
@@ -1009,21 +1201,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     };
     iframeEl?.addEventListener('load', handleIframeLoad);
 
+    // El <video> nativo (Drive) se mide en handlePlayerTick. Aquí solo se guarda la posición.
     const videoEl = document.querySelector('video');
-    const handleNativeEnded = () => {
-      if (currentVideo) {
-        setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
-        localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
-      }
-    };
     const handleNativeTimeUpdate = () => {
       if (!videoEl || !currentVideo) return;
       if (videoEl.currentTime > 0) {
         localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(videoEl.currentTime)));
-      }
-      if (videoEl.duration > 0 && videoEl.currentTime >= videoEl.duration - 2) {
-        setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
-        localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
       }
     };
 
@@ -1031,7 +1214,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       if (savedVideoTime > 3 && videoEl.currentTime === 0) {
         videoEl.currentTime = savedVideoTime;
       }
-      videoEl.addEventListener('ended', handleNativeEnded);
       videoEl.addEventListener('timeupdate', handleNativeTimeUpdate);
     }
 
@@ -1040,7 +1222,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       clearInterval(handshakeInterval);
       iframeEl?.removeEventListener('load', handleIframeLoad);
       if (videoEl) {
-        videoEl.removeEventListener('ended', handleNativeEnded);
         videoEl.removeEventListener('timeupdate', handleNativeTimeUpdate);
       }
     };
@@ -1365,23 +1546,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 theaterMode={theaterMode}
                 onToggleTheater={() => setTheaterMode(!theaterMode)}
                 autoPlay={false}
-                onTimeUpdate={(currentTime, duration) => {
-                  if (currentVideo && currentUser?.id) {
-                    if (currentTime > 0) {
-                      localStorage.setItem(getVideoTimeKey(currentUser.id, currentVideo.id), String(Math.floor(currentTime)));
-                    }
-                    if (duration > 0 && currentTime >= duration - 2) {
-                      setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
-                      localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
-                    }
-                  }
-                }}
-                onEnded={() => {
-                  if (currentVideo && currentUser?.id) {
-                    setWatchedVideos((prev) => ({ ...prev, [currentVideo.id]: true }));
-                    localStorage.setItem(getVideoWatchedKey(currentUser.id, currentVideo.id), 'true');
-                  }
-                }}
+                onTimeUpdate={handlePlayerTick}
+                onEnded={handlePlayerEnded}
                 hasNextLesson={Boolean(nextLesson)}
                 onNextLesson={() => {
                   if (nextLesson) {
@@ -1674,6 +1840,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canComplete={canCompleteLesson}
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
+                    watchPercent={currentSupportsTracking && watchPercent !== null ? watchPercent : undefined}
                     onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
                     onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
@@ -1692,6 +1859,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canComplete={canCompleteLesson}
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
+                    watchPercent={currentSupportsTracking && watchPercent !== null ? watchPercent : undefined}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
                     playbackUrl={showsPlayer ? (resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}

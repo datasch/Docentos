@@ -48,6 +48,18 @@ import type {
 } from './listeningTypes';
 
 import { apiRequest as fetch, ApiRequestError } from './apiRequest';
+import type { WatchRanges } from './watchProgress';
+
+export interface WatchStatusResponse {
+  success: boolean;
+  tracked: boolean;
+  ranges: WatchRanges;
+  watchedSeconds: number;
+  durationSeconds: number | null;
+  fraction: number;
+  unlocked: boolean;
+  accepted?: boolean;
+}
 
 function listeningQuery(filter: ListeningAdminFilter): string {
   const params = new URLSearchParams();
@@ -421,7 +433,30 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoId, completed }),
     });
-    if (!res.ok) throw new Error('Error al actualizar progreso');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const error = new Error(err?.error || 'Error al actualizar progreso') as Error & { code?: string; watchedPercent?: number };
+      error.code = err?.code;
+      error.watchedPercent = err?.watchedPercent;
+      throw error;
+    }
+    return res.json();
+  },
+
+  async getWatchStatus(videoId: string): Promise<WatchStatusResponse> {
+    const res = await fetch(`/api/progress/watch/${encodeURIComponent(videoId)}`);
+    if (!res.ok) throw new Error('Error al obtener el avance del video');
+    return res.json();
+  },
+
+  async sendWatchHeartbeat(videoId: string, ranges: WatchRanges, duration: number): Promise<WatchStatusResponse> {
+    const res = await fetch('/api/progress/watch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId, ranges, duration }),
+      keepalive: true,
+    });
+    if (!res.ok) throw new Error('Error al registrar el avance del video');
     return res.json();
   },
 

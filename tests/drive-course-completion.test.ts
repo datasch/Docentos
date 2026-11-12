@@ -63,7 +63,7 @@ test('Google Drive Video Engine: Detección y compatibilidad de tracking de repr
       true,
     );
 
-    // Google Drive NO soporta tracking interactivo (Cross-Origin Frame sin API pública)
+    // Google Drive se sirve por /stream en un <video> nativo: informa el segundo en curso
     const driveVideo: Partial<VideoDriveLink> = {
       id: 'drive-vid-01',
       source: 'GOOGLE_DRIVE',
@@ -71,7 +71,18 @@ test('Google Drive Video Engine: Detección y compatibilidad de tracking de repr
       driveFileId: 'file-12345',
       embedUrl: 'https://drive.google.com/file/d/file-12345/preview',
     };
-    assert.equal(supportsPlaybackTracking(driveVideo as VideoDriveLink), false);
+    assert.equal(supportsPlaybackTracking(driveVideo as VideoDriveLink), true);
+
+    // Tal como llega al navegador (sin embedUrl ni driveFileId)
+    assert.equal(
+      supportsPlaybackTracking({ source: 'GOOGLE_DRIVE', provider: 'drive', playbackUrl: '/api/content/videos/drive-vid-01' }),
+      true,
+    );
+    // Vimeo tal como llega al navegador: sin URL del proveedor no se mide
+    assert.equal(
+      supportsPlaybackTracking({ source: 'EXTERNAL_URL', provider: 'embed', playbackUrl: '/api/content/videos/vimeo-1' }),
+      false,
+    );
 
     // Embeds genéricos sin API conocida tampoco bloquean al alumno
     assert.equal(
@@ -83,7 +94,7 @@ test('Google Drive Video Engine: Detección y compatibilidad de tracking de repr
     );
   });
 
-  await t.test('3. Validación de compleción de lecciones: videos de Drive permiten completar inmediatamente', () => {
+  await t.test('3. Validación de compleción de lecciones: Drive y YouTube exigen haber visto el video', () => {
     const driveLesson: Partial<VideoDriveLink> = {
       id: 'drive-l1',
       source: 'GOOGLE_DRIVE',
@@ -110,12 +121,15 @@ test('Google Drive Video Engine: Detección y compatibilidad de tracking de repr
     const isYtWatched = !isTrackingYt || Boolean(watchedVideos[youtubeLesson.id!]);
     assert.equal(isYtWatched, false, 'YouTube debe exigir tracking');
 
-    // Comprobación para Drive: no debe exigir telemetría inexistente
+    // Comprobación para Drive: sin reproducir no se puede completar
     const isTrackingDrive = supportsPlaybackTracking(driveLesson as VideoDriveLink);
-    assert.equal(isTrackingDrive, false);
+    assert.equal(isTrackingDrive, true);
 
     const isDriveWatched = !isTrackingDrive || Boolean(watchedVideos[driveLesson.id!]);
-    assert.equal(isDriveWatched, true, 'Drive debe considerarse visto para no bloquear el botón de completar');
+    assert.equal(isDriveWatched, false, 'Drive debe exigir ver el 90% antes de completar');
+
+    watchedVideos[driveLesson.id!] = true;
+    assert.equal(!isTrackingDrive || Boolean(watchedVideos[driveLesson.id!]), true);
   });
 
   await t.test('4. parseVideoSource resuelve rutas protegidas /api/content/videos/<id> con provider drive y youtube', () => {
