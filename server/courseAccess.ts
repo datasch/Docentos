@@ -117,7 +117,7 @@ export async function getCourseAccessDecisions(
 
   if (!user || pendingIds.length === 0) return decisions;
 
-  const [payments, enrollments, menteeAssignments, mentorAssignments] = await Promise.all([
+  const [payments, enrollments, menteeAssignments, mentorAssignments, courseMentorAssignments] = await Promise.all([
     prisma.payment.findMany({
       where: {
         userId: user.id,
@@ -140,11 +140,23 @@ export async function getCourseAccessDecisions(
         select: { courseId: true },
       })
       : Promise.resolve([] as { courseId: string }[]),
+    // El mentor asignado al curso (CourseMentor) también entra, aunque todavía
+    // no tenga alumnos: es el mismo ámbito que ya usa su panel de mentoría y
+    // sin él no podía responder las consultas del curso.
+    user.role === 'MENTOR'
+      ? prisma.courseMentor.findMany({
+        where: { mentorId: user.id, courseId: { in: pendingIds } },
+        select: { courseId: true },
+      })
+      : Promise.resolve([] as { courseId: string }[]),
   ]);
 
   const paidCourseIds = new Set(payments.map((payment) => payment.courseId));
   const menteeCourseIds = new Set(menteeAssignments.map((assignment) => assignment.courseId));
-  const mentorCourseIds = new Set(mentorAssignments.map((assignment) => assignment.courseId));
+  const mentorCourseIds = new Set([
+    ...mentorAssignments.map((assignment) => assignment.courseId),
+    ...courseMentorAssignments.map((assignment) => assignment.courseId),
+  ]);
   const enrollmentByCourse = new Map(enrollments.map((enrollment) => [enrollment.courseId, enrollment]));
 
   for (const courseId of pendingIds) {
@@ -176,7 +188,7 @@ export async function getCourseAccessDecision(
   const staticDecision = resolveStaticDecision(user, course);
   if (staticDecision) return staticDecision;
 
-  const [payment, enrollment, menteeAssignment, mentorAssignment] = await Promise.all([
+  const [payment, enrollment, menteeAssignment, mentorAssignment, courseMentorAssignment] = await Promise.all([
     prisma.payment.findFirst({
       where: {
         userId: user.id,
@@ -199,13 +211,20 @@ export async function getCourseAccessDecision(
         select: { id: true },
       })
       : Promise.resolve(null),
+    // Mismo criterio que getCourseAccessDecisions: el mentor asignado al curso entra.
+    user.role === 'MENTOR'
+      ? prisma.courseMentor.findFirst({
+        where: { mentorId: user.id, courseId },
+        select: { id: true },
+      })
+      : Promise.resolve(null),
   ]);
 
   return combineDecision(
     Boolean(payment),
     enrollmentIsCurrent(enrollment),
     Boolean(menteeAssignment),
-    Boolean(mentorAssignment),
+    Boolean(mentorAssignment) || Boolean(courseMentorAssignment),
   );
 }
 
