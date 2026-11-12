@@ -41,13 +41,15 @@ import {
   Clock,
   Send,
 } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, type AppNotification } from '../lib/api';
+import { NOTIFICATION_EVENT } from '../lib/useNotifications';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import {
   countCompleted,
   findResumePosition,
   flattenLessons,
   indexOfLesson,
+  isLessonReachable,
   isModuleOpen,
   moduleLockStates,
   stepLesson,
@@ -77,6 +79,9 @@ import { SyllabusTree } from './course/SyllabusTree';
 import { NotesPanel } from './course/NotesPanel';
 import { MentorshipPanel } from './course/MentorshipPanel';
 import { LessonMetaBar, MobileLessonBar } from './course/LessonMetaBar';
+
+const LOCKED_NEXT_MESSAGE =
+  'Para pasar a la siguiente lección, mira al menos el 90% de este video y márcalo como completado.';
 
 interface CourseViewerProps {
 
@@ -489,6 +494,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     // El temario no ofrece las lecciones de un módulo cerrado, pero las flechas
     // y el avance automático sí pueden apuntar a una: aquí se para el salto.
     if (!isModuleOpen(moduleLocks, moduleIndex)) return;
+    // Hacia delante solo se avanza con la lección anterior completada.
+    const targetIndex = indexOfLesson(lessons, { moduleIndex, videoIndex });
+    if (!isLessonReachable(lessons, completedVideos, targetIndex, currentLessonIndex)) {
+      setProgressError(LOCKED_NEXT_MESSAGE);
+      return;
+    }
     openLesson(moduleIndex, videoIndex);
   };
 
@@ -526,7 +537,35 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // Hacia atrás siempre hay paso: lo ya abierto no se vuelve a cerrar. Hacia
   // delante, la siguiente lección puede caer en un módulo aún cerrado, y
   // entonces no hay a dónde ir: el botón se apaga como en el final del curso.
-  const nextLesson = rawNextLesson && isModuleOpen(moduleLocks, rawNextLesson.moduleIndex) ? rawNextLesson : null;
+  const nextInOpenModule = rawNextLesson && isModuleOpen(moduleLocks, rawNextLesson.moduleIndex) ? rawNextLesson : null;
+  // Y además la lección actual tiene que estar completada (ver el 90% y marcarla).
+  const nextLesson =
+    nextInOpenModule &&
+    isLessonReachable(lessons, completedVideos, indexOfLesson(lessons, nextInOpenModule), currentLessonIndex)
+      ? nextInOpenModule
+      : null;
+  // Hay siguiente lección, pero todavía no se puede pasar.
+  const nextLessonLocked = Boolean(nextInOpenModule && !nextLesson);
+
+  // Precalentar el siguiente video de Drive: unos segundos después de abrir la
+  // lección se pide un par de bytes, y el servidor guarda en memoria su
+  // principio y su índice. Cuando el alumno llegue, arranca al instante.
+  const prefetchedStreamsRef = useRef<Set<string>>(new Set());
+  const upcomingVideo = rawNextLesson
+    ? course.modules[rawNextLesson.moduleIndex]?.videos[rawNextLesson.videoIndex] || null
+    : null;
+  useEffect(() => {
+    if (!hasAccess || !upcomingVideo || !isDriveVideo(upcomingVideo)) return;
+    if (prefetchedStreamsRef.current.has(upcomingVideo.id)) return;
+    const url = upcomingVideo.streamUrl || `${upcomingVideo.playbackUrl || `/api/content/videos/${upcomingVideo.id}`}/stream`;
+    const timer = window.setTimeout(() => {
+      prefetchedStreamsRef.current.add(upcomingVideo.id);
+      // Baja prioridad: el servidor la encola detrás del video que se está viendo.
+      void fetch(url, { headers: { 'X-DocentOS-Prefetch': '1' }, credentials: 'include' }).catch(() => {});
+    }, 6000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upcomingVideo?.id, hasAccess]);
 
   // Calculate overall course progress metrics
   const totalCourseVideos = course.modules.reduce((acc, m) => acc + m.videos.length, 0);
@@ -672,6 +711,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
+  // Tiempo real: si llega una respuesta (o una pregunta, para el mentor) de la
+  // lección abierta, se recarga su hilo sin salir del video.
+  useEffect(() => {
+    const onNotification = (event: Event) => {
+      const detail = (event as CustomEvent<AppNotification>).detail;
+      if (currentVideo?.id && detail?.data?.videoId === currentVideo.id) loadComments(currentVideo.id);
+    };
+    window.addEventListener(NOTIFICATION_EVENT, onNotification);
+    return () => window.removeEventListener(NOTIFICATION_EVENT, onNotification);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVideo?.id]);
+
   const handlePostQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim() || !currentVideo?.id) return;
@@ -749,13 +800,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     duration: 0,
   });
   const heartbeatRef = useRef({ lastSentAt: 0, inFlight: false, sentSeconds: 0, sentAtThreshold: false });
-  // Lecciones que ya se intentaron completar solas al llegar al 90%.
-  const autoCompletedRef = useRef<Set<string>>(new Set());
-  // Lección completada sola durante esta reproducción: al terminar el video se avanza.
-  const completedInPlaybackRef = useRef<string | null>(null);
-  const [watchPercent, setWatchPercent] = useState<number | null>(null);
+  // Lección cuyo 90% acaba de confirmar el servidor en esta sesión: su botón
+  // «Marcar como completado» aparece con animación.
+  const [justUnlockedVideoId, setJustUnlockedVideoId] = useState<string | null>(null);
   // Las respuestas del servidor llegan tarde: se llama siempre a la versión más reciente.
-  const unlockRef = useRef<(videoId: string) => void>(() => {});
+  const unlockRef = useRef<(videoId: string, animate: boolean) => void>(() => {});
 
   const persistWatchRanges = (videoId: string, ranges: WatchRanges) => {
     if (!currentUser?.id) return;
@@ -784,8 +833,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
     watchRangesRef.current = { videoId, ranges: localRanges, lastTime: null, duration: 0 };
     heartbeatRef.current = { lastSentAt: 0, inFlight: false, sentSeconds: 0, sentAtThreshold: false };
-    completedInPlaybackRef.current = null;
-    setWatchPercent(null);
 
     if (!supportsPlaybackTracking(currentVideo)) return;
 
@@ -802,9 +849,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         );
         heartbeatRef.current.sentSeconds = Math.max(heartbeatRef.current.sentSeconds, status.watchedSeconds || 0);
         persistWatchRanges(videoId, state.ranges);
-        const duration = state.duration > 0 ? state.duration : status.durationSeconds || 0;
-        if (duration > 0) setWatchPercent(Math.floor(watchedFraction(state.ranges, duration) * 100));
-        if (status.unlocked) unlockRef.current(videoId);
+        // Ya lo había visto antes: el botón queda habilitado, sin animación.
+        if (status.unlocked) unlockRef.current(videoId, false);
       })
       .catch(() => {
         // Sin respuesta se sigue midiendo en local y se reintenta con el siguiente envío.
@@ -981,33 +1027,14 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
-  // Se llama cuando el servidor confirma el 90% visto de forma limpia: abre la
-  // siguiente lección sin sacar al alumno del video. Completa con la respuesta
-  // del servidor, nunca con la cuenta local.
-  const unlockAfterCleanWatch = (videoId: string) => {
-    if (autoCompletedRef.current.has(videoId)) return;
-    autoCompletedRef.current.add(videoId);
-
+  // El servidor confirmó el 90% visto de forma limpia: se habilita el botón
+  // «Marcar como completado» y es el alumno quien completa la lección. Nunca se
+  // habilita con la cuenta local.
+  const unlockAfterCleanWatch = (videoId: string, animate: boolean) => {
+    const alreadyWatched = Boolean(watchedVideos[videoId]);
     setWatchedVideos((prev) => (prev[videoId] ? prev : { ...prev, [videoId]: true }));
     if (currentUser?.id) localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
-    if (completedVideos[videoId]) return;
-
-    // Última lección de un módulo con examen sin aprobar: solo queda vista.
-    const lesson = lessons.find((l) => l.videoId === videoId);
-    const lessonModule = lesson ? course.modules[lesson.moduleIndex] : null;
-    if (lesson && lessonModule && lesson.videoIndex >= (lessonModule.videos?.length || 1) - 1) {
-      const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(lessonModule.id) > 0;
-      if (hasQuiz && !quizzesPluginEngine.getUserAttempt(currentUser.id, lessonModule.id)?.passed) return;
-    }
-
-    void toggleVideoCompletion(videoId, true, { advance: false }).then((ok) => {
-      if (ok) {
-        completedInPlaybackRef.current = videoId;
-      } else {
-        // Se reintenta con la próxima confirmación del servidor.
-        autoCompletedRef.current.delete(videoId);
-      }
-    });
+    if (animate && !alreadyWatched && !completedVideos[videoId]) setJustUnlockedVideoId(videoId);
   };
   unlockRef.current = unlockAfterCleanWatch;
 
@@ -1024,10 +1051,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       // usa la duración que tenga (metadatos de Drive o YouTube).
       const status = await api.sendWatchHeartbeat(videoId, ranges, Number.isFinite(state.duration) ? state.duration : 0);
       if (status.accepted) hb.sentSeconds = Math.max(hb.sentSeconds, seconds);
-      if (watchRangesRef.current.videoId === videoId && !(state.duration > 0) && status.durationSeconds) {
-        setWatchPercent(Math.floor((status.fraction || 0) * 100));
-      }
-      if (status.tracked && status.unlocked) unlockRef.current(videoId);
+      if (status.tracked && status.unlocked) unlockRef.current(videoId, true);
     } catch {
       // Se reintenta en el siguiente envío.
     } finally {
@@ -1054,10 +1078,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     const after = watchedSeconds(state.ranges);
     const fraction = watchedFraction(state.ranges, state.duration);
     if (after !== before) persistWatchRanges(videoId, state.ranges);
-    if (state.duration > 0) {
-      const percent = Math.floor(fraction * 100);
-      setWatchPercent((prev) => (prev === percent ? prev : percent));
-    }
 
     const hb = heartbeatRef.current;
     if (hb.inFlight) return;
@@ -1074,12 +1094,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
   const handlePlayerEnded = () => {
     if (selectedMeetingPlayback || !currentVideo) return;
+    // Último envío al terminar: si con él llega al 90%, se habilita el botón.
     if (supportsPlaybackTracking(currentVideo)) void sendHeartbeat(currentVideo.id);
-    // Completada sola en esta reproducción: al terminar se avanza como al pulsar "completar".
-    if (completedInPlaybackRef.current === currentVideo.id) {
-      completedInPlaybackRef.current = null;
-      advanceAfterCompletion(completedVideos);
-    }
   };
 
   // Detección automática al terminar el video (protocolo postMessage del IFrame API de YouTube / Vimeo / <video>)
@@ -1766,7 +1782,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   ) : (
                     <span />
                   )}
-                  {nextLesson && (
+                  {nextLesson ? (
                     <button
                       type="button"
                       onClick={() => goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
@@ -1775,7 +1791,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     >
                       <ChevronRight aria-hidden className="h-5 w-5" />
                     </button>
-                  )}
+                  ) : nextLessonLocked ? (
+                    <button
+                      type="button"
+                      aria-disabled="true"
+                      onClick={() => setProgressError(LOCKED_NEXT_MESSAGE)}
+                      aria-label="Lección siguiente bloqueada: completa esta lección para continuar"
+                      title="Completa esta lección para continuar"
+                      className="pointer-events-auto flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-full bg-canvas/50 text-ink-muted backdrop-blur-sm"
+                    >
+                      <Lock aria-hidden className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -1840,7 +1867,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canComplete={canCompleteLesson}
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
-                    watchPercent={currentSupportsTracking && watchPercent !== null ? watchPercent : undefined}
+                    highlightComplete={justUnlockedVideoId === currentVideo.id && !isCurrentCompleted}
                     onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
                     onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
@@ -1859,7 +1886,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canComplete={canCompleteLesson}
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
-                    watchPercent={currentSupportsTracking && watchPercent !== null ? watchPercent : undefined}
+                    highlightComplete={justUnlockedVideoId === currentVideo.id && !isCurrentCompleted}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
                     playbackUrl={showsPlayer ? (resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}

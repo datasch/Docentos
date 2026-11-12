@@ -50,6 +50,25 @@ import type {
 import { apiRequest as fetch, ApiRequestError } from './apiRequest';
 import type { WatchRanges } from './watchProgress';
 
+export type AppNotificationType = 'qna.question' | 'qna.answered';
+
+export interface AppNotification {
+  id: string;
+  type: AppNotificationType;
+  title: string;
+  body: string;
+  data: {
+    courseId?: string | null;
+    courseTitle?: string | null;
+    videoId?: string | null;
+    videoTitle?: string | null;
+    commentId?: string | null;
+    authorName?: string | null;
+  };
+  readAt: string | null;
+  createdAt: string;
+}
+
 export interface WatchStatusResponse {
   success: boolean;
   tracked: boolean;
@@ -440,6 +459,23 @@ export const api = {
       error.watchedPercent = err?.watchedPercent;
       throw error;
     }
+    return res.json();
+  },
+
+  async getNotifications(): Promise<{ success: boolean; notifications: AppNotification[]; unreadCount: number }> {
+    const res = await fetch('/api/notifications');
+    if (!res.ok) throw new Error('Error al obtener las notificaciones');
+    return res.json();
+  },
+
+  /** Sin `ids` marca todas como leídas. */
+  async markNotificationsRead(ids?: string[]): Promise<{ success: boolean; updated: number; unreadCount: number }> {
+    const res = await fetch('/api/notifications/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ids ? { ids } : {}),
+    });
+    if (!res.ok) throw new Error('Error al marcar las notificaciones como leídas');
     return res.json();
   },
 

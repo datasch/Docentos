@@ -17,8 +17,11 @@ interface LessonMetaBarProps {
   isLive?: boolean;
   meetingType?: string;
   meetingUrl?: string;
-  /** Porcentaje visto de forma limpia (solo en lecciones medidas). */
-  watchPercent?: number;
+  /**
+   * El servidor acaba de confirmar el 90% visto: el botón «Marcar como
+   * completado» aparece con una animación y se anuncia a lectores de pantalla.
+   */
+  highlightComplete?: boolean;
 }
 
 /**
@@ -44,7 +47,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   isLive,
   meetingType,
   meetingUrl,
-  watchPercent,
+  highlightComplete = false,
 }) => (
   <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 lg:px-0">
     <div className="min-w-0">
@@ -87,14 +90,14 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
             !isCompleted && !canComplete
               ? lockedReason === 'quiz'
                 ? 'Debes aprobar el examen del módulo para poder completar esta misión'
-                : 'Debes ver al menos el 90% del video, sin adelantarlo, para desbloquear la siguiente misión'
+                : 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión'
               : isCompleted
                 ? !canUncomplete
                   ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.'
                   : 'Desmarcar misión completada'
                 : 'Marcar misión como completada'
           }
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium transition-all ${
+          className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium transition-all ${
             isCompleted
               ? !canUncomplete
                 ? 'bg-purple-100/70 dark:bg-purple-950/30 text-purple-700/60 dark:text-purple-300/50 border border-purple-200 dark:border-purple-500/20 cursor-not-allowed'
@@ -114,11 +117,12 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
             : !canComplete
               ? lockedReason === 'quiz'
                 ? 'Aprobar examen para completar'
-                : typeof watchPercent === 'number'
-                  ? `Visto ${watchPercent}%`
-                  : 'Ver video para desbloquear'
-              : 'Marcar completada'}
+                : 'Ver video para completar'
+              : 'Marcar como completado'}
         </button>
+        {highlightComplete && canComplete && !isCompleted && (
+          <span role="status" className="sr-only">Ya puedes marcar esta lección como completada.</span>
+        )}
       </div>
     </div>
   </div>
@@ -136,8 +140,11 @@ interface MobileLessonBarProps {
   onPrevious: () => void;
   onNext: () => void;
   onToggleComplete: () => void;
-  /** Porcentaje visto de forma limpia (solo en lecciones medidas). */
-  watchPercent?: number;
+  /**
+   * El servidor acaba de confirmar el 90% visto: el botón «Marcar como
+   * completado» aparece con una animación y se anuncia a lectores de pantalla.
+   */
+  highlightComplete?: boolean;
 }
 
 /**
@@ -155,7 +162,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
   onPrevious,
   onNext,
   onToggleComplete,
-  watchPercent,
+  highlightComplete = false,
 }) => (
   <div className="flex border-b border-line bg-surface lg:hidden px-1.5 py-1.5 items-center justify-between gap-0.5">
     <button
@@ -191,10 +198,10 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
         isCompleted && !canUncomplete
           ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas'
           : !isCompleted && !canComplete && lockedReason !== 'quiz'
-            ? 'Debes ver al menos el 90% del video, sin adelantarlo, para desbloquear la siguiente misión'
+            ? 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión'
             : undefined
       }
-      className={`flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold transition-colors ${
+      className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold transition-colors ${
         isCompleted
           ? !canUncomplete
             ? 'text-purple-600/50 dark:text-purple-300/50 cursor-not-allowed'
@@ -215,10 +222,8 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
           : !canComplete
             ? lockedReason === 'quiz'
               ? 'Examen'
-              : typeof watchPercent === 'number'
-                ? `${watchPercent}%`
-                : 'Bloqueada'
-            : 'Marcar'}
+              : 'Ver video'
+            : 'Completar'}
       </span>
     </button>
   </div>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { VideoDriveLink } from '../../types';
 import { isDriveVideo, parseVideoSource } from '../../lib/videoParser';
+import { MorphingInfinity } from '../loading/MorphingInfinity';
 
 declare global {
   interface Window {
@@ -107,6 +108,9 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  // Desde que se pulsa play hasta que el video empieza de verdad: el indicador
+  // aparece en el mismo clic, no cuando el video ya se atascó.
+  const [isStarting, setIsStarting] = useState(false);
   const [hasError, setHasError] = useState<string | null>(null);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -305,7 +309,9 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             }
             setIsPlaying(true);
             setIsLoading(false);
+            setIsStarting(false);
           } else if (data.info.playerState === 2) {
+            setIsStarting(false);
             if (bufferingTimeoutRef.current) {
               clearTimeout(bufferingTimeoutRef.current);
               bufferingTimeoutRef.current = null;
@@ -317,6 +323,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               bufferingTimeoutRef.current = null;
             }
             setIsPlaying(false);
+            setIsStarting(false);
             onEndedRef.current?.();
           } else if (data.info.playerState === 3) {
             if (!bufferingTimeoutRef.current) {
@@ -337,9 +344,12 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         if (data.info === 1) {
           setIsPlaying(true);
           setIsLoading(false);
+          setIsStarting(false);
         } else if (data.info === 2) {
           setIsPlaying(false);
+          setIsStarting(false);
         } else if (data.info === 0) {
+          setIsStarting(false);
           setIsPlaying(false);
           onEndedRef.current?.();
         }
@@ -406,18 +416,24 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
 
   const handleNativeEnded = () => {
     setIsPlaying(false);
+    setIsStarting(false);
     onEnded?.();
   };
 
   const handleNativeWaiting = () => setIsLoading(true);
   const handleNativePlaying = () => {
     setIsLoading(false);
+    setIsStarting(false);
     setIsPlaying(true);
   };
-  const handleNativePause = () => setIsPlaying(false);
+  const handleNativePause = () => {
+    setIsPlaying(false);
+    setIsStarting(false);
+  };
 
   const handleNativeError = () => {
     setIsLoading(false);
+    setIsStarting(false);
     setHasError('No se pudo reproducir este video directamente.');
   };
 
@@ -432,22 +448,25 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
     if (videoDetails.mode === 'native' && videoRef.current) {
       if (videoRef.current.paused) {
         setIsLoading(false);
+        setIsStarting(true);
         videoRef.current
           .play()
           .then(() => {
             setIsPlaying(true);
             setRippleAction(null);
           })
-          .catch(() => {});
+          .catch(() => setIsStarting(false));
       } else {
         videoRef.current.pause();
         setIsPlaying(false);
+        setIsStarting(false);
         setRippleAction(null);
       }
     } else if (videoDetails.mode === 'youtube') {
       if (isPlaying) {
         sendYtCommand('pauseVideo');
         setIsPlaying(false);
+        setIsStarting(false);
         setRippleAction(null);
       } else {
         const win = ytIframeRef.current?.contentWindow;
@@ -457,6 +476,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           } catch {}
         }
         setIsLoading(false);
+        setIsStarting(true);
         sendYtCommand('playVideo');
         setIsPlaying(true);
         setRippleAction(null);
@@ -803,8 +823,9 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             <div className="pointer-events-none absolute bottom-0 right-0 h-28 w-80 bg-gradient-to-tl from-black via-black/95 to-transparent" />
           )}
 
-          {/* Botón Play central estilo Bezel YouTube en (50%, 50%) */}
-          <div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+          {/* Botón Play central estilo Bezel YouTube en (50%, 50%). Mientras arranca
+              se oculta: en su lugar queda el indicador de carga. */}
+          <div className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${isStarting ? 'hidden' : ''}`}>
             <div className="flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-black/65 hover:bg-black/75 border border-white/15 text-white shadow-xl backdrop-blur-sm hover:scale-105 active:scale-95 transition-all duration-200">
               <Play className="h-8 w-8 sm:h-9 sm:w-9 fill-white text-white ml-0.5" />
             </div>
@@ -835,13 +856,19 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         </div>
       )}
 
-      {/* 5. Spinner de Carga y Buffering */}
-      {isLoading && isPlaying && !hasError && (
-        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-300">
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-surface/80 border border-line shadow-2xl">
-            <RefreshCw className="h-7 w-7 text-brand-cyan animate-spin" />
-          </div>
-          <span className="mt-3 text-micro font-medium text-ink-muted">Cargando flujo de video...</span>
+      {/* 5. Carga: desde el clic en play y en los cortes durante la reproducción.
+          Aparece con 120 ms de retraso para no parpadear cuando el video arranca al instante. */}
+      {(isStarting || (isLoading && isPlaying)) && !hasError && (
+        <div
+          aria-busy="true"
+          className={`player-loading-overlay pointer-events-none absolute inset-0 z-20 ${isStarting ? '' : 'player-loading-overlay--rebuffer'}`}
+        >
+          {/* Mismo centro (50%, 50%) que el botón de play, que se oculta mientras arranca. */}
+          <MorphingInfinity
+            label="Cargando video"
+            duration={2.4}
+            className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:h-24 sm:w-24"
+          />
         </div>
       )}
 

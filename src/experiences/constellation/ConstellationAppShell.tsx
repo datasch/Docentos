@@ -7,6 +7,10 @@ import { api } from '../../lib/api';
 import { getLocalizedCourse, getLocalizedCourses } from '../../lib/courseLocalization';
 import { CourseOverview } from '../../components/CourseOverview';
 import { ConstellationNavbar, ConstellationTab } from './ConstellationNavbar';
+import { NotificationBell } from '../../components/notifications/NotificationBell';
+import { NotificationToasts } from '../../components/notifications/NotificationToasts';
+import { MENTOR_QNA_EVENT, MENTOR_TAB_STORAGE_KEY, useNotifications } from '../../lib/useNotifications';
+import type { AppNotification } from '../../lib/api';
 import { ConstellationHero } from './ConstellationHero';
 import { ConstellationCourseCatalog } from './ConstellationCourseCatalog';
 import { ConstellationPillars } from './ConstellationPillars';
@@ -113,6 +117,27 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
     if (tab === 'learning') return 'learning';
     if (tab === 'viewer') return 'viewer';
     return 'explore';
+  };
+
+  const notificationsState = useNotifications(currentUser?.id);
+
+  // Abrir un aviso: el mentor va a su bandeja de consultas y el alumno al curso.
+  const handleOpenNotification = (notification: AppNotification) => {
+    if (!notification.readAt) void notificationsState.markRead([notification.id]);
+    if (notification.type === 'qna.question') {
+      try {
+        sessionStorage.setItem(MENTOR_TAB_STORAGE_KEY, 'qna');
+      } catch {
+        // Sin almacenamiento la pestaña se cambia por el evento.
+      }
+      setConstellationTab('mentor');
+      onNavigate('mentor');
+      window.dispatchEvent(new CustomEvent(MENTOR_QNA_EVENT));
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      return;
+    }
+    const target = courses.find((c) => c.id === notification.data.courseId);
+    if (target) onContinueCourse(target);
   };
 
   const [showDesktopBrand, setShowDesktopBrand] = useState(false);
@@ -253,6 +278,20 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
         onOpenListening={onOpenListening}
         onChangePassword={onChangePassword}
         unreadListening={unreadListening}
+        notificationBell={
+          <NotificationBell
+            notifications={notificationsState.notifications}
+            unreadCount={notificationsState.unreadCount}
+            onOpenNotification={handleOpenNotification}
+            onMarkAllRead={() => void notificationsState.markRead()}
+          />
+        }
+      />
+
+      <NotificationToasts
+        toasts={notificationsState.toasts}
+        onOpen={handleOpenNotification}
+        onDismiss={notificationsState.dismissToast}
       />
 
       {/* Resplandor ambiental atmosférico cósmico de fondo */}

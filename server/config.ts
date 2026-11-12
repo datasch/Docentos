@@ -120,6 +120,8 @@ const rawSchema = z.object({
   // enorme o con ciclos no consuma el proceso: el recorrido se detiene y
   // devuelve lo leido en vez de quedarse colgado.
   DRIVE_IMPORT_ENABLED: booleanString(true),
+  /** Disco para guardar los videos de Drive ya vistos (reproducción fluida). 0 = desactivada. */
+  DRIVE_STREAM_CACHE_MB: numberWithDefault(2048, 0, 102400),
   DRIVE_IMPORT_MAX_DEPTH: numberWithDefault(4, 1, 8),
   DRIVE_IMPORT_MAX_NODES: numberWithDefault(3_000, 10, 20_000),
   DRIVE_IMPORT_CONCURRENCY: numberWithDefault(4, 1, 8),
