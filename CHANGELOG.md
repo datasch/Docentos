@@ -13,6 +13,50 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [1.0.3] - 2026-11-12
+
+**Esta versión migra el esquema de la base de datos** (migración aditiva
+`20261112150000_video_watch_tracking`: tabla nueva `VideoWatch` y dos columnas
+opcionales en `VideoDriveLink`). Se aplica sola al arrancar y no modifica datos
+existentes.
+
+### Fixed
+
+- **El reproductor de YouTube se quedaba en 00:00 y no respondía a play/pausa.**
+  El reproductor propio no completaba el saludo con YouTube, que ignoraba sus
+  mensajes. Ahora el tiempo avanza y los controles funcionan.
+- **Una lección se podía dar por vista sin verla.** Los videos de Google Drive
+  contaban como vistos con solo abrirlos, y en YouTube bastaba con arrastrar la
+  barra hasta el final.
+
+### Changed
+
+- **La siguiente lección se desbloquea al ver el 90% del video «de forma
+  limpia»**, en Google Drive y en YouTube. Solo cuenta lo reproducido de verdad:
+  adelantar con la barra o con +10 s no suma, repetir un tramo no cuenta dos
+  veces y ver a 1.5x o 2x sí cuenta.
+- **Al llegar al 90% la lección se completa sola** y se abre la siguiente sin
+  sacar al alumno del video; al terminar el video avanza como antes al pulsar
+  «completar». Si es la última lección de un módulo con examen sin aprobar, la
+  lección queda vista y completarla sigue pidiendo el examen.
+- **El servidor decide el 90%.** Completar una lección medida sin haberla visto
+  responde `409` con el código `WATCH_REQUIRED`. Las lecciones ya completadas
+  antes de esta versión se conservan y no se revisan.
+- **El botón de la lección muestra el avance** («Visto 67%») o «Ver video para
+  desbloquear» mientras no hay datos.
+
+### Notas para el despliegue
+
+- Las marcas locales de «visto pero no completado» de versiones anteriores se
+  descartan: el alumno tendrá que ver esos videos de nuevo.
+- Vimeo, Loom y los iframes pegados no se pueden medir y siguen sin exigir el
+  90%.
+- Sin credenciales de Google Drive, la duración del video la fija el primero que
+  lo reproduce; un mentor o administrador que abra la lección la corrige. Con
+  credenciales se toma de los metadatos de Drive.
+- Si el stream de Drive falla (por ejemplo, por la cuota diaria por archivo), el
+  alumno no puede avanzar en esa lección hasta que vuelva a reproducirse.
+
 ## [1.0.2] - 2026-11-11
 
 **Esta versión no migra el esquema de la base de datos.**
