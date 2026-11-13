@@ -13,6 +13,20 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [1.1.1] - 2026-11-13
+
+**Esta versión no migra el esquema de la base de datos.**
+
+### Fixed
+
+- **La notificación «Tu consulta fue respondida» llevaba al curso equivocado.**
+  Si el alumno preguntaba en un curso y después pasaba a otro, al pulsar el
+  aviso de respuesta se abría el último curso que había visitado en lugar del
+  curso donde hizo la pregunta. Ahora el aviso abre el curso correcto, en la
+  misma lección de la pregunta y con la pestaña Mentoría abierta, para que la
+  respuesta se vea al instante. Si esa lección ya estaba abierta, cambia a la
+  conversación sin recargar.
+
 ## [1.1.0] - 2026-11-12
 
 **Esta versión migra el esquema de la base de datos** (migración aditiva
