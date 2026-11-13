@@ -18,6 +18,34 @@ export const NOTIFICATION_EVENT = 'docentos:notification';
 export const MENTOR_QNA_EVENT = 'docentos:open-mentor-qna';
 /** Pestaña a abrir cuando el dashboard del mentor todavía no estaba montado. */
 export const MENTOR_TAB_STORAGE_KEY = 'docentos_mentor_open_tab';
+/**
+ * Lección a abrir al pulsar un aviso de respuesta: `{ courseId, videoId }`. Se
+ * guarda por si el curso todavía no está montado (se lee al abrirlo) y además
+ * se emite el evento para cuando ya está abierto.
+ */
+export const LESSON_FOCUS_STORAGE_KEY = 'docentos_focus_lesson';
+export const LESSON_FOCUS_EVENT = 'docentos:focus-lesson';
+/** Pestaña del panel de la lección con la que abrir (la de Mentoría, para ver la respuesta). */
+export const LESSON_PANEL_STORAGE_KEY = 'docentos_focus_panel';
+
+export interface LessonFocus {
+  courseId: string;
+  videoId?: string | null;
+}
+
+/** Lee (y opcionalmente consume) la lección pendiente de abrir para un curso. */
+export function readLessonFocus(courseId: string, consume = true): LessonFocus | null {
+  try {
+    const raw = sessionStorage.getItem(LESSON_FOCUS_STORAGE_KEY);
+    if (!raw) return null;
+    const focus = JSON.parse(raw) as LessonFocus;
+    if (!focus || focus.courseId !== courseId) return null;
+    if (consume) sessionStorage.removeItem(LESSON_FOCUS_STORAGE_KEY);
+    return focus;
+  } catch {
+    return null;
+  }
+}
 export const LIST_LIMIT = 30;
 const FALLBACK_POLL_MS = 60_000;
 const TOAST_MS = 6_000;

@@ -5,6 +5,7 @@ import { Course, User, Module, VideoDriveLink, CertificateRecord } from '../../t
 import { CourseViewer } from '../../components/CourseViewer';
 import { ConstellationCosmicPath } from './ConstellationCosmicPath';
 import { api } from '../../lib/api';
+import { LESSON_FOCUS_EVENT, readLessonFocus, type LessonFocus } from '../../lib/useNotifications';
 import { CourseShareButton } from '../../components/CourseShareButton';
 import { syncModuleQuizCounts, quizzesPluginEngine } from '../../plugins/QuizzesPlugin';
 
@@ -155,6 +156,36 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     setIsPlayerModalOpen(true);
   };
 
+  /** Abre una lección concreta por su id. Devuelve false si no está en este curso. */
+  const openLessonById = (videoId: string | null | undefined): boolean => {
+    if (!videoId) return false;
+    const modules = course.modules || [];
+    for (let modIdx = 0; modIdx < modules.length; modIdx++) {
+      const vidIdx = (modules[modIdx].videos || []).findIndex((v) => v.id === videoId);
+      if (vidIdx >= 0) {
+        setSelectedModuleIndex(modIdx);
+        setSelectedVideoIndex(vidIdx);
+        setIsPlayerModalOpen(true);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Aviso pulsado con este curso ya abierto: se abre la lección de la consulta.
+  useEffect(() => {
+    if (loadingCourse) return;
+    const onFocus = (event: Event) => {
+      const detail = (event as CustomEvent<LessonFocus>).detail;
+      if (!detail || detail.courseId !== course.id) return;
+      readLessonFocus(course.id); // ya se atiende aquí: que no se repita al montar
+      openLessonById(detail.videoId);
+    };
+    window.addEventListener(LESSON_FOCUS_EVENT, onFocus);
+    return () => window.removeEventListener(LESSON_FOCUS_EVENT, onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.id, course.modules, loadingCourse]);
+
   const handleOpenActiveLesson = () => {
     const modules = course.modules || [];
     const allVideos: { video: VideoDriveLink; modIdx: number; vidIdx: number }[] = [];
@@ -242,7 +273,9 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       }
 
       openTimer = setTimeout(() => {
-        handleOpenActiveLesson();
+        // Si se llegó desde un aviso de respuesta, se abre esa lección.
+        const focus = readLessonFocus(course.id);
+        if (!focus || !openLessonById(focus.videoId)) handleOpenActiveLesson();
       }, 750);
     }, 200);
 
