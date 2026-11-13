@@ -9,7 +9,15 @@ import { CourseOverview } from '../../components/CourseOverview';
 import { ConstellationNavbar, ConstellationTab } from './ConstellationNavbar';
 import { NotificationBell } from '../../components/notifications/NotificationBell';
 import { NotificationToasts } from '../../components/notifications/NotificationToasts';
-import { MENTOR_QNA_EVENT, MENTOR_TAB_STORAGE_KEY, useNotifications } from '../../lib/useNotifications';
+import {
+  LESSON_FOCUS_EVENT,
+  LESSON_FOCUS_STORAGE_KEY,
+  LESSON_PANEL_STORAGE_KEY,
+  MENTOR_QNA_EVENT,
+  MENTOR_TAB_STORAGE_KEY,
+  useNotifications,
+  type LessonFocus,
+} from '../../lib/useNotifications';
 import type { AppNotification } from '../../lib/api';
 import { ConstellationHero } from './ConstellationHero';
 import { ConstellationCourseCatalog } from './ConstellationCourseCatalog';
@@ -136,8 +144,22 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
       return;
     }
-    const target = courses.find((c) => c.id === notification.data.courseId);
-    if (target) onContinueCourse(target);
+    // Respuesta a una consulta: se abre el curso donde se hizo la pregunta (no
+    // el último que estaba abierto) y, dentro, esa lección con la pestaña de
+    // Mentoría para ver la respuesta.
+    const courseId = notification.data.courseId;
+    if (!courseId) return;
+    const focus: LessonFocus = { courseId, videoId: notification.data.videoId || null };
+    try {
+      sessionStorage.setItem(LESSON_FOCUS_STORAGE_KEY, JSON.stringify(focus));
+      sessionStorage.setItem(LESSON_PANEL_STORAGE_KEY, 'mentorship');
+    } catch {
+      // Sin almacenamiento se abre el curso igualmente.
+    }
+    // Si ese curso ya está abierto, la Ruta Cósmica abre la lección al recibirlo.
+    window.dispatchEvent(new CustomEvent<LessonFocus>(LESSON_FOCUS_EVENT, { detail: focus }));
+    const target = localizedCourses.find((c) => c.id === courseId) || courses.find((c) => c.id === courseId);
+    if (target) handleContinueCourse(target);
   };
 
   const [showDesktopBrand, setShowDesktopBrand] = useState(false);

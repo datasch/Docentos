@@ -42,7 +42,7 @@ import {
   Send,
 } from 'lucide-react';
 import { api, type AppNotification } from '../lib/api';
-import { NOTIFICATION_EVENT } from '../lib/useNotifications';
+import { LESSON_FOCUS_EVENT, LESSON_PANEL_STORAGE_KEY, NOTIFICATION_EVENT, type LessonFocus } from '../lib/useNotifications';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import {
   countCompleted,
@@ -209,7 +209,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [pickedByUser, setPickedByUser] = useState(
     initialModuleIndex !== undefined || initialVideoIndex !== undefined,
   );
-  const [activePanel, setActivePanel] = useState<PanelTabId>(hideSyllabus ? 'sessions' : 'syllabus');
+  const [activePanel, setActivePanel] = useState<PanelTabId>(() => {
+    // Desde un aviso de respuesta: se abre directamente la conversación.
+    try {
+      if (sessionStorage.getItem(LESSON_PANEL_STORAGE_KEY) === 'mentorship') {
+        sessionStorage.removeItem(LESSON_PANEL_STORAGE_KEY);
+        return 'mentorship';
+      }
+    } catch {
+      // Sin almacenamiento, pestaña por defecto.
+    }
+    return hideSyllabus ? 'sessions' : 'syllabus';
+  });
   const [theaterMode, setTheaterMode] = useState(false);
 
   useEffect(() => {
@@ -718,8 +729,24 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       const detail = (event as CustomEvent<AppNotification>).detail;
       if (currentVideo?.id && detail?.data?.videoId === currentVideo.id) loadComments(currentVideo.id);
     };
+    // Aviso pulsado con esta misma lección abierta: mostrar la conversación.
+    const onFocus = (event: Event) => {
+      const detail = (event as CustomEvent<LessonFocus>).detail;
+      if (!currentVideo?.id || detail?.videoId !== currentVideo.id) return;
+      try {
+        sessionStorage.removeItem(LESSON_PANEL_STORAGE_KEY);
+      } catch {
+        // nada que limpiar
+      }
+      setActivePanel('mentorship');
+      loadComments(currentVideo.id);
+    };
     window.addEventListener(NOTIFICATION_EVENT, onNotification);
-    return () => window.removeEventListener(NOTIFICATION_EVENT, onNotification);
+    window.addEventListener(LESSON_FOCUS_EVENT, onFocus);
+    return () => {
+      window.removeEventListener(NOTIFICATION_EVENT, onNotification);
+      window.removeEventListener(LESSON_FOCUS_EVENT, onFocus);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVideo?.id]);
 
