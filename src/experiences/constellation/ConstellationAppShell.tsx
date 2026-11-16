@@ -366,7 +366,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
               >
                 <ConstellationHero
                   currentUser={currentUser}
-                  showInlineBrand={!showDesktopBrand}
+                  showInlineBrand={false}
                   onExploreCourses={() => {
                     setConstellationTab('courses');
                     onNavigate('courses');

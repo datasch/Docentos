@@ -33,6 +33,7 @@ import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { ModuleSideDecorations } from './ConstellationPathAmbientDecorations';
 import { LogoIA } from './LogoIA';
 import './caminoIslas.css';
+import { caminoSpacing } from './caminoLayout';
 
 interface ConstellationCosmicPathProps {
   course: Course;
@@ -114,17 +115,19 @@ export const HalloweenCandyIcon: React.FC<{ className?: string; size?: number }>
 );
 
 /**
- * Genera el trazado en zigzag serpentino fluido y continuo con derivadas verticales suaves
+ * Genera el trazado en zigzag serpentino fluido y continuo con derivadas verticales suaves.
+ * `longestTitle` es la longitud del titulo mas largo del modulo: la separacion entre
+ * islas crece lo justo para que un titulo largo no choque con la isla siguiente.
  */
 function getCaminoData(
   n: number,
   startGlobalIndex: number = 0,
   hasPrevModule: boolean = false,
-  hasNextModule: boolean = true
+  hasNextModule: boolean = true,
+  longestTitle: number = 0
 ) {
-  const stepY = 165;
+  const { stepY, bottomOffset } = caminoSpacing(longestTitle);
   const topOffset = 105;
-  const bottomOffset = 95;
 
   const height = n <= 1 ? 280 : topOffset + (n - 1) * stepY + bottomOffset;
   const vh = height;
@@ -247,9 +250,10 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   const startGlobalIndex = missions[0]?.globalIndex ?? 0;
   const hasPrevModule = modIdx > 0;
   const hasNextModule = true; // Siempre continúa hacia el siguiente módulo o hacia el certificado
+  const longestTitle = missions.reduce((max, mission) => Math.max(max, mission.video.title?.length ?? 0), 0);
   const caminoConfig = useMemo(
-    () => getCaminoData(n, startGlobalIndex, hasPrevModule, hasNextModule),
-    [n, startGlobalIndex, hasPrevModule, hasNextModule]
+    () => getCaminoData(n, startGlobalIndex, hasPrevModule, hasNextModule, longestTitle),
+    [n, startGlobalIndex, hasPrevModule, hasNextModule, longestTitle]
   );
   const { pos, ruta, viewBox, vh, height } = caminoConfig;
 

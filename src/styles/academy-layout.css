@@ -60,9 +60,11 @@
 .academy-ui .academy-catalog { padding-block: 2rem 3.5rem; }
 .academy-ui .academy-catalog > div > div:first-child h2 { max-width: 26ch; }
 .academy-ui .academy-course-grid { gap: 1.5rem; }
-@media (min-width: 640px) {
+/* Por debajo de 768px no hay lienzo de fondo ni logo en linea: el hero ocupa una sola columna. */
+.academy-hero__brand { display: none; }
+@media (min-width: 768px) {
   .academy-ui .academy-hero__layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 1.5rem; }
-  .academy-hero__brand { height: clamp(18rem, 36vw, 27rem); }
+  .academy-hero__brand { display: block; height: clamp(18rem, 36vw, 27rem); }
 }
 @media (min-width: 1152px) {
   .academy-ui .academy-nav-layout { grid-template-columns: minmax(0, 1fr) auto auto; }

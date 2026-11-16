@@ -4,6 +4,7 @@ import { Course } from '../../types';
 import { searchCourseCatalog } from '../../lib/catalogSearch';
 import { SearchField } from '../../components/SearchField';
 import { CourseShareButton } from '../../components/CourseShareButton';
+import { ExpandableDescription } from './ExpandableDescription';
 import {
   Play,
   Layers,
@@ -183,10 +184,13 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     {featuredCourse.title}
                   </h3>
 
-                  <p className="font-constellation-body text-sm lg:text-base text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 sm:line-clamp-3 mb-5 sm:mb-6 font-extralight max-w-xl">
-                    {featuredCourse.description ||
+                  <ExpandableDescription
+                    text={featuredCourse.description ||
                       t('catalog.defaultDescription', 'Domina arquitectura avanzada, buenas prácticas y despliegues empresariales guiados por mentores técnicos.')}
-                  </p>
+                    className="font-constellation-body text-sm lg:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-extralight"
+                    clampClassName="line-clamp-2 sm:line-clamp-3"
+                    wrapperClassName="mb-5 sm:mb-6 max-w-xl"
+                  />
                 </div>
 
                 <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-4 w-full pt-4 border-t border-amber-600/15 dark:border-amber-400/15">
@@ -392,10 +396,13 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                           {course.title}
                         </h3>
 
-                        <p className="font-constellation-body text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight mb-4">
-                          {course.description ||
+                        <ExpandableDescription
+                          text={course.description ||
                             t('catalog.defaultCardDescription', 'Consulta el temario y los recursos disponibles de este curso.')}
-                        </p>
+                          className="font-constellation-body text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-extralight"
+                          clampClassName="line-clamp-2"
+                          wrapperClassName="mb-4"
+                        />
                       </div>
 
                       {/* Metadatos Inferiores y Botón de Entrada */}
@@ -481,10 +488,12 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                         {course.title}
                       </h3>
 
-                      <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed font-extralight">
-                        {course.description ||
+                      <ExpandableDescription
+                        text={course.description ||
                           t('catalog.defaultCardDescription', 'Consulta el temario y los recursos disponibles de este curso.')}
-                      </p>
+                        className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-extralight"
+                        clampClassName="line-clamp-2"
+                      />
                     </div>
 
                     <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/[0.04] flex flex-wrap items-center justify-between gap-3">

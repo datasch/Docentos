@@ -347,6 +347,8 @@ html[data-festividad="navidad"] .mision-popover {
   margin: 24px auto 36px;
   width: 100%;
   max-width: 360px;
+  /* Permite que el rotulo de cada isla se adapte al ancho real del camino (unidades cqw). */
+  container-type: inline-size;
 }
 
 .camino svg.ruta {
@@ -475,8 +477,14 @@ body[data-festividad="halloween"] .camino svg.ruta .ruta-viva {
   font-size: 13px;
   line-height: 1.25;
   width: max-content;
+  /* Ancho adaptativo: hasta 224px, sin salirse del camino (las islas estan al 34% y 66%). */
   max-width: 175px;
+  max-width: min(224px, 64cqw);
   text-align: center;
+  /* El titulo se ve completo: reparte las lineas por igual y parte palabras
+     larguisimas en vez de recortar el texto. */
+  text-wrap: balance;
+  overflow-wrap: anywhere;
   background: var(--th-rotulo);
   border: 1px solid var(--th-linea);
   padding: 6px 12px;
@@ -484,11 +492,6 @@ body[data-festividad="halloween"] .camino svg.ruta .ruta-viva {
   transition: border-color .3s, color .3s, box-shadow .3s;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* Estado: Lista (completada) */
