@@ -119,7 +119,11 @@ export default function App() {
   const [activeTab, setActiveTabState] = useState<ActiveTab>(() => tabFromPath(window.location.pathname));
   const [sharedCourseId, setSharedCourseId] = useState(() => courseIdFromPath(window.location.pathname));
   const [showPaywallModal, setShowPaywallModal] = useState<boolean>(false);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  // Quien llega desde el enlace del correo de recuperación ve directamente el
+  // formulario de nueva contraseña (AuthModal lee el token de la URL).
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('resetToken'),
+  );
   const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
@@ -129,6 +133,10 @@ export default function App() {
   const [pendingContract, setPendingContract] = useState<any | null>(null);
   const [showListening, setShowListening] = useState<boolean>(false);
   const [unreadListening, setUnreadListening] = useState<number>(0);
+  // El buzón flotante se puede cerrar: queda acoplado en el footer, junto a GitHub,
+  // hasta recargar la página. No se recuerda: al volver, aparece flotando otra vez.
+  const [listeningDocked, setListeningDocked] = useState<boolean>(false);
+  const dockListening = () => setListeningDocked(true);
 
   const navigateTo = (tab: ActiveTab, options?: {
     replace?: boolean;
@@ -456,6 +464,7 @@ export default function App() {
         onOpenListening={handleOpenListening}
         onChangePassword={() => setShowChangePasswordModal(true)}
         unreadListening={unreadListening}
+        listeningDocked={listeningDocked}
       />
 
       {/* Modales diferidos (Lazy Loaded) para no penalizar la carga inicial */}
@@ -564,10 +573,11 @@ export default function App() {
       </Suspense>
 
       {/* Botón flotante accesible de Buzón de Escucha en la esquina inferior izquierda */}
-      {!showListening && (
+      {!showListening && !listeningDocked && (
         <ListeningFloatingButton
           unreadCount={unreadListening}
           onClick={handleOpenListening}
+          onDismiss={dockListening}
         />
       )}
 

@@ -147,6 +147,7 @@ import {
   DOCENTOS_VERSION,
 } from './src/version.js';
 import { requestTracingMiddleware, logger, getMetricsSnapshot } from './server/logger.js';
+import { isMailConfigured, sendPasswordResetMail, verifyMailTransport } from './server/mailer.js';
 import {
   enrollFromIntegration,
   integrationEnrollmentSchema,
@@ -520,7 +521,20 @@ async function deliverPasswordReset(
   const resetUrl = `${passwordResetBaseUrl(req)}/?resetToken=${encodeURIComponent(token)}`;
   const webhookUrl = config.PASSWORD_RESET_WEBHOOK_URL;
 
-  if (webhookUrl?.startsWith('http')) {
+  if (isMailConfigured()) {
+    // SMTP propio. En segundo plano por la misma razon que el webhook.
+    void sendPasswordResetMail({ to: user.email, name: user.name, resetUrl, expiresAt })
+      .then(() => logger.info('password_reset.mail_sent', { channel: 'smtp' }))
+      .catch((error: any) => {
+        logger.error('password_reset.delivery_failed', {
+          channel: 'smtp',
+          reason: String(error?.code ?? error?.message ?? error),
+          response: error?.response ? String(error.response).slice(0, 200) : undefined,
+        });
+      });
+  } else if (webhookUrl?.startsWith('http')) {
+    // Igual que siempre ha funcionado con n8n: se espera la respuesta, sin corte
+    // por tiempo, y con el nombre tal cual esta guardado.
     try {
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -537,10 +551,18 @@ async function deliverPasswordReset(
           expiresAt: expiresAt.toISOString(),
         }),
       });
-      if (!response.ok) console.warn(`Webhook de recuperación respondió HTTP ${response.status}.`);
-    } catch (error) {
-      console.warn('No se pudo entregar el enlace de recuperación:', error);
+      if (!response.ok) {
+        logger.error('password_reset.delivery_failed', { reason: `HTTP ${response.status}` });
+      }
+    } catch (error: any) {
+      logger.error('password_reset.delivery_failed', {
+        reason: String(error?.cause?.code ?? error?.message ?? error),
+      });
     }
+  } else {
+    logger.error('password_reset.not_configured', {
+      reason: 'Sin SMTP_HOST ni PASSWORD_RESET_WEBHOOK_URL: el enlace de recuperacion no se envia a nadie.',
+    });
   }
 
   const exposeLocalToken = config.PASSWORD_RESET_EXPOSE_TOKEN;
@@ -6696,6 +6718,18 @@ async function startServer() {
     console.log(`🚀 DocentOS v${DOCENTOS_VERSION} activo en http://localhost:${PORT}`);
     console.log('🗄️ PostgreSQL conectado mediante Prisma');
   });
+
+  // Credenciales SMTP malas se descubren al arrancar, no cuando alguien pide
+  // recuperar su contrasena. No bloquea el arranque.
+  if (isMailConfigured()) {
+    verifyMailTransport()
+      .then(() => logger.info('mail.smtp_ready', { host: config.SMTP_HOST, port: config.SMTP_PORT }))
+      .catch((error: any) => logger.error('mail.smtp_unavailable', {
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        reason: String(error?.code ?? error?.message ?? error),
+      }));
+  }
 
   const shutdown = async () => {
     httpServer.close(async () => {

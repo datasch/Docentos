@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../../config/theme';
 import { usePlatformBrand, DEFAULT_LOGO_URL } from '../../lib/logoConfig';
@@ -10,19 +10,29 @@ import { TermsModal } from '../../components/TermsModal';
 interface ConstellationFooterProps {
   onOpenListening?: () => void;
   unreadListening?: number;
+  /** El buzón flotante se cerró: vive aquí, a la izquierda de GitHub. */
+  listeningDocked?: boolean;
 }
 
 export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
   onOpenListening,
   unreadListening = 0,
+  listeningDocked = false,
 }) => {
   const { t } = useTranslation();
   const { brandName: appName, logoUrl, logoInitial } = usePlatformBrand();
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const githubUrl = siteConfig.poweredByLink || 'https://github.com/datasch/Docentos';
+  // Solo se anima la llegada cuando se acopla en esta visita, no al recargar.
+  const wasDocked = useRef(listeningDocked);
+  const [justDocked, setJustDocked] = useState(false);
+  useEffect(() => {
+    if (listeningDocked && !wasDocked.current) setJustDocked(true);
+    wasDocked.current = listeningDocked;
+  }, [listeningDocked]);
 
   return (
-    <footer className="w-full bg-transparent border-t border-slate-200 dark:border-white/[0.08] pt-8 sm:pt-12 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] sm:pb-24 select-none">
+    <footer className="w-full bg-transparent border-t border-slate-200 dark:border-white/[0.08] pt-8 sm:pt-12 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8 select-none">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
         
         {/* Grilla Principal del Footer de DocentOS */}
@@ -64,7 +74,24 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
           {/* Columna Derecha: Enlaces Rápidos */}
           <nav aria-label="Enlaces del pie de página" className="lg:col-span-7 grid grid-cols-[minmax(0,1fr)_44px] items-start gap-4 text-xs text-slate-700 dark:text-slate-300">
             <div className="flex min-w-0 flex-col sm:flex-row sm:flex-wrap lg:justify-end gap-x-6 [&>a]:min-h-11 [&>button]:min-h-11 [&_svg]:shrink-0">
-              <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">
+              {onOpenListening && listeningDocked && (
+                <button
+                  type="button"
+                  onClick={onOpenListening}
+                  onAnimationEnd={() => setJustDocked(false)}
+                  aria-label={unreadListening > 0 ? t('footer.listeningBoxUnread', { count: unreadListening, defaultValue: `Abrir Buzón de escucha, tienes ${unreadListening} respuestas sin leer` }) : t('footer.listeningBox', 'Buzón de escucha')}
+                  className={`footer-listening-dock hidden sm:flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer ${justDocked ? 'footer-listening-dock--landing' : ''}`}
+                >
+                  <HeartHandshake aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                  <span>{t('footer.listeningBox', 'Buzón de escucha')}</span>
+                  {unreadListening > 0 && (
+                    <span aria-hidden className="min-w-[18px] rounded-full bg-amber-500 px-1.5 py-px text-center text-[10px] font-bold leading-4 text-white">
+                      {unreadListening > 99 ? '99+' : unreadListening}
+                    </span>
+                  )}
+                </button>
+              )}
+              <a href={githubUrl} target="_blank" rel="noopener noreferrer" data-footer-github className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">
                 <Github aria-hidden className="h-4 w-4" />
                 <span>GitHub</span>
               </a>

@@ -65,19 +65,20 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # Copiar artefactos y dependencias de producción únicamente
-COPY package*.json ./
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/generated ./generated
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
+# --chown en cada COPY evita un `chown -R` posterior, que reescribe cada archivo
+# de node_modules en una capa nueva y es muy lento en Docker Desktop.
+COPY --chown=node:node package*.json ./
+COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
+COPY --chown=node:node --from=builder /app/dist ./dist
+COPY --chown=node:node --from=builder /app/generated ./generated
+COPY --chown=node:node --from=builder /app/prisma ./prisma
+COPY --chown=node:node --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --chown=node:node --from=builder /app/server ./server
+COPY --chown=node:node --from=builder /app/scripts ./scripts
+COPY --chown=node:node --chmod=755 --from=builder /app/entrypoint.sh ./entrypoint.sh
 
-# Asegurar permisos de ejecución y propiedad para usuario no-root 'node'
-RUN chmod +x /app/entrypoint.sh && \
-    chown -R node:node /app
+# Propiedad del directorio raíz de la app para el usuario no-root 'node'
+RUN chown node:node /app
 
 # npm no se usa en ejecución: la aplicación arranca con `node` y las migraciones
 # invocan el binario de Prisma directamente. Retirarlo quita de la imagen las

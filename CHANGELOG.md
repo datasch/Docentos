@@ -9,9 +9,50 @@ cuando alcance su primera versión estable.
 
 ### Planned
 
-- Entrega real de correo para recuperación de contraseña.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
+
+## [1.1.2] - 2026-11-16
+
+**Esta versión no migra el esquema de la base de datos.**
+
+### Fixed
+
+- **El enlace del correo de recuperación no abría el formulario.** Al pulsar el
+  enlace «restablecer contraseña» se cargaba la página de inicio y había que
+  volver a abrir el acceso a mano. Ahora el enlace abre directamente el
+  formulario para elegir la nueva contraseña.
+- **Los fallos al enviar el correo de recuperación pasaban desapercibidos.**
+  DocentOS siempre decía «se enviaron las instrucciones» aunque el envío
+  fallara. La pantalla sigue diciendo lo mismo (por seguridad, no revela si la
+  cuenta existe), pero ahora cada fallo queda en los logs del servidor como
+  `password_reset.delivery_failed`, con el motivo. Si no hay ningún canal de
+  envío configurado, se registra `password_reset.not_configured` y se avisa al
+  arrancar. También se avisa si `APP_URL` apunta a `localhost`, porque los
+  enlaces de los correos no funcionarían fuera del servidor.
+
+### Added
+
+- **Envío del correo de recuperación por SMTP propio (opcional).** Con las
+  variables nuevas `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+  `SMTP_PASS` y `MAIL_FROM`, DocentOS envía el correo directamente (Gmail,
+  Outlook, el correo del dominio, Brevo, Resend…) y comprueba las credenciales
+  al arrancar. **Si `SMTP_HOST` queda vacío, todo sigue igual:** el correo se
+  entrega por el webhook configurado en `PASSWORD_RESET_WEBHOOK_URL` (n8n),
+  exactamente como hasta ahora. No hace falta cambiar nada en Coolify.
+- **El «Buzón de escucha» flotante se puede cerrar.** Tiene una «x» dentro del
+  propio botón; al cerrarlo se desliza hasta el pie de página, junto al enlace
+  de GitHub, desde donde se sigue pudiendo abrir. Al recargar la página vuelve
+  a aparecer flotando.
+
+### Changed
+
+- **El saludo de la portada usa solo el primer nombre.** «Continúa tu
+  aprendizaje, Juan» en lugar del nombre completo con apellidos; los
+  tratamientos como «Prof.» o «Dra.» y las etiquetas de rol se omiten.
+- **El pie de página ya no deja un hueco vacío debajo.**
+- **La imagen Docker se construye más rápido**: los permisos de los archivos se
+  asignan al copiarlos en lugar de recorrer después todo `node_modules`.
 
 ## [1.1.1] - 2026-11-13
 

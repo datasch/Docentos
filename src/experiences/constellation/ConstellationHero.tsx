@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { ArrowRight, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../types';
-import { formatDisplayName } from '../../lib/avatar';
+import { formatFirstName } from '../../lib/avatar';
 import { DEFAULT_LOGO_URL, usePlatformBrand } from '../../lib/logoConfig';
 
 const BrandAnimation = lazy(() => import('./ConstellationCanvas').then(module => ({ default: module.ConstellationCanvas })));
@@ -27,7 +27,7 @@ export const ConstellationHero: React.FC<ConstellationHeroProps> = ({
           <div className="academy-hero__copy">
             <h1 className="academy-hero__title">
               {currentUser
-                ? t('hero.continueLearning', { name: formatDisplayName(currentUser.name), defaultValue: `Continúa tu aprendizaje, ${formatDisplayName(currentUser.name)}.` })
+                ? t('hero.continueLearning', { name: formatFirstName(currentUser.name), defaultValue: `Continúa tu aprendizaje, ${formatFirstName(currentUser.name)}.` })
                 : t('hero.title', 'Dale dirección a tu aprendizaje.')}
             </h1>
             <div className="academy-hero__intro">

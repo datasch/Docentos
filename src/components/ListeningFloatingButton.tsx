@@ -1,19 +1,59 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { HeartHandshake } from 'lucide-react';
+import { HeartHandshake, X } from 'lucide-react';
 import { clampFloatingPoint, floatingAnchor, parseFloatingAnchor, pointFromAnchor, type FloatingPoint, type FloatingViewport } from '../lib/floatingPosition';
 
 interface ListeningFloatingButtonProps {
   unreadCount?: number;
   onClick: () => void;
+  /** Cierra el botón flotante; el buzón pasa a vivir en el footer. */
+  onDismiss?: () => void;
 }
 
 const POSITION_KEY = 'docentos_listening_position_v1';
+/** Separación entre enlaces del footer (gap-x-6) y ancho aproximado del enlace acoplado. */
+const FOOTER_GAP = 24;
+const DOCKED_WIDTH = 132;
 
-export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = ({ unreadCount = 0, onClick }) => {
+/**
+ * Vuelo del botón hasta su hueco en el footer, a la izquierda de GitHub. Si el
+ * footer está fuera de pantalla, se hunde por el borde inferior en esa
+ * dirección: el usuario ve hacia dónde se fue aunque no vea dónde aterriza.
+ */
+function flyToFooter(element: HTMLElement): Animation | null {
+  const github = document.querySelector<HTMLElement>('[data-footer-github]');
+  if (!github || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+  const from = element.getBoundingClientRect();
+  const to = github.getBoundingClientRect();
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  const targetX = to.left - FOOTER_GAP - DOCKED_WIDTH / 2;
+  const targetY = Math.min(to.top + to.height / 2, viewportHeight + from.height);
+  const dx = targetX - (from.left + from.width / 2);
+  const dy = targetY - (from.top + from.height / 2);
+  // Un arco, no una recta: sube un poco antes de caer hacia el destino.
+  const lift = Math.min(80, Math.max(32, Math.abs(dx) * 0.08));
+  return element.animate([
+    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+    { transform: `translate(${dx * 0.3}px, ${dy * 0.3 - lift}px) scale(0.82)`, opacity: 1, offset: 0.35 },
+    { transform: `translate(${dx}px, ${dy}px) scale(0.4)`, opacity: 0 },
+  ], { duration: 640, easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards' });
+}
+
+export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = ({ unreadCount = 0, onClick, onDismiss }) => {
   const button = useRef<HTMLButtonElement>(null);
+  const dock = useRef<HTMLDivElement>(null);
   const instructionsId = useId();
   const [position, setPosition] = useState<FloatingPoint | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const dismiss = () => {
+    if (!onDismiss || leaving) return;
+    setLeaving(true);
+    const flight = dock.current ? flyToFooter(dock.current) : null;
+    if (!flight) { onDismiss(); return; }
+    flight.onfinish = () => onDismiss();
+    flight.oncancel = () => onDismiss();
+  };
   const anchor = useRef<FloatingPoint | null>(null);
   const suppressClick = useRef(false);
   const gesture = useRef<{ id: number; start: FloatingPoint; origin: FloatingPoint; moved: boolean;
@@ -55,6 +95,32 @@ export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = (
     };
   }, []);
 
+  // En su sitio por defecto, el botón se detiene encima del footer en vez de
+  // taparlo: así el footer no necesita reservarle espacio vacío debajo.
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const element = dock.current;
+      if (!element) return;
+      const footer = document.querySelector('footer');
+      if (position || !footer) { element.style.translate = ''; return; }
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const restingBottom = viewportHeight - (parseFloat(getComputedStyle(element).bottom) || 0);
+      const lift = Math.max(0, restingBottom + 16 - footer.getBoundingClientRect().top);
+      element.style.translate = lift ? `0 ${-lift}px` : '';
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [position]);
+
   const moveTo = (point: FloatingPoint) => {
     const bounds = viewport();
     const bounded = clampFloatingPoint(point, bounds);
@@ -74,12 +140,17 @@ export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = (
 
   const hasUnread = unreadCount > 0;
   return (
-    <>
+    <div
+      ref={dock}
+      className={`lp-listening-floating ${onDismiss ? 'lp-listening-floating--closable' : ''}`}
+      style={position ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' } : undefined}
+      data-dragging={dragging || undefined}
+      data-leaving={leaving || undefined}
+    >
       <button
         ref={button}
         type="button"
         className={`lp-listening-floating-btn ${hasUnread ? 'lp-listening-floating-btn--has-unread' : ''} ${position ? 'lp-listening-floating-btn--positioned' : ''}`}
-        style={position ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' } : undefined}
         data-dragging={dragging || undefined}
         data-tooltip-edge={position && position.x > (typeof window !== 'undefined' ? window.innerWidth / 2 - 100 : Infinity) ? 'right' : 'left'}
         data-tooltip-below={position && position.y < 80 || undefined}
@@ -142,7 +213,18 @@ export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = (
           {hasUnread ? 'Tienes respuestas nuevas · Pulsa para leerlas' : 'Pulsa para abrir · Arrastra para mover'}
         </span>
       </button>
+      {onDismiss && (
+        <button
+          type="button"
+          className="lp-listening-close"
+          aria-label="Cerrar el botón flotante del Buzón de escucha. Seguirá disponible en el pie de página."
+          title="Cerrar"
+          onClick={dismiss}
+        >
+          <X aria-hidden />
+        </button>
+      )}
       <span id={instructionsId} className="sr-only">Puedes mover este botón arrastrándolo o con las flechas del teclado. La tecla Inicio restablece su posición.</span>
-    </>
+    </div>
   );
 };
