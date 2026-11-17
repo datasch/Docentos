@@ -37,6 +37,7 @@ import {
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { LandingConfig, LandingBenefit, ModeratedTestimonial, TestimonialStatus, Course } from '../types';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface LandingPageEditorProps {
   onSaved?: () => void;
@@ -44,6 +45,7 @@ interface LandingPageEditorProps {
 }
 
 export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, disableAnimation = false }) => {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'hero' | 'courses' | 'benefits' | 'testimonials' | 'footer'>('hero');
 
   // Cola de moderacion de testimonios. Vive fuera de `config` a proposito: no
@@ -109,7 +111,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
       }
     } catch (err: any) {
       console.error('Error loading landing config or courses:', err);
-      setErrorMsg('No se pudo cargar la configuración de la portada.');
+      setErrorMsg(t('noSePudoCargarLaConfiguracionDeLaPortada', 'No se pudo cargar la configuración de la portada.'));
     } finally {
       setLoading(false);
     }
@@ -124,13 +126,13 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     try {
       const res = await api.updateLandingConfig(config);
       if (res.success) {
-        setSuccessMsg('¡Configuración de la portada guardada con éxito!');
+        setSuccessMsg(t('configuracionDeLaPortadaGuardadaConExito', '¡Configuración de la portada guardada con éxito!'));
         if (onSaved) onSaved();
         setTimeout(() => setSuccessMsg(''), 4000);
       }
     } catch (err: any) {
       console.error('Error saving landing config:', err);
-      setErrorMsg(err.message || 'Error al guardar la configuración.');
+      setErrorMsg(err.message || t('errorAlGuardarLaConfiguracion', 'Error al guardar la configuración.'));
     } finally {
       setSaving(false);
     }
@@ -153,8 +155,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     const newB: LandingBenefit = {
       id: `b-${Date.now()}`,
       icon: 'Brain',
-      title: 'Nuevo Beneficio',
-      description: 'Escribe aquí la descripción detallada del beneficio.',
+      title: t('nuevoBeneficio', 'Nuevo Beneficio'),
+      description: t('escribeAquiLaDescripcionDetalladaDel', 'Escribe aquí la descripción detallada del beneficio.'),
     };
     setConfig({ ...config, benefits: [...config.benefits, newB] });
   };
@@ -175,7 +177,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
       const res = await api.getTestimonialsForModeration(filter === 'ALL' ? undefined : filter);
       setTestimonials(res.testimonials || []);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'No se pudieron cargar los testimonios');
+      setErrorMsg(err?.message || t('noSePudieronCargarLosTestimonios', 'No se pudieron cargar los testimonios'));
     } finally {
       setLoadingTestimonials(false);
     }
@@ -192,18 +194,18 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
   const moderateTestimonial = async (id: string, status: TestimonialStatus) => {
     try {
       await api.moderateTestimonial(id, status);
-      setSuccessMsg(status === 'APPROVED' ? 'Testimonio publicado' : 'Testimonio retirado de la portada');
+      setSuccessMsg(status === 'APPROVED' ? t('testimonioPublicado', 'Testimonio publicado') : t('testimonioRetiradoDeLaPortada', 'Testimonio retirado de la portada'));
       setTimeout(() => setSuccessMsg(''), 2500);
       await loadTestimonials(testimonialFilter);
       onSaved?.();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'No se pudo moderar el testimonio');
+      setErrorMsg(err?.message || t('noSePudoModerarElTestimonio', 'No se pudo moderar el testimonio'));
     }
   };
 
   /** Borrar de verdad. Rechazar basta para que no se vea; esto no se deshace. */
   const removeTestimonial = async (id: string) => {
-    if (!window.confirm('Se borrará la opinión de esta persona y no se puede deshacer. ¿Continuar?')) {
+    if (!window.confirm(t('seBorraraLaOpinionDeEstaPersonaYNoSe', 'Se borrará la opinión de esta persona y no se puede deshacer. ¿Continuar?'))) {
       return;
     }
     try {
@@ -211,7 +213,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
       await loadTestimonials(testimonialFilter);
       onSaved?.();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'No se pudo eliminar el testimonio');
+      setErrorMsg(err?.message || t('noSePudoEliminarElTestimonio', 'No se pudo eliminar el testimonio'));
     }
   };
 
@@ -219,7 +221,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     return (
       <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-8 text-center text-slate-400 flex items-center justify-center gap-3">
         <RefreshCw className="w-5 h-5 animate-spin text-[#06b6d4]" />
-        <span>Cargando CMS Gestor de Portada...</span>
+        <span>{t('cargandoCmsGestorDePortada', 'Cargando CMS Gestor de Portada...')}</span>
       </div>
     );
   }
@@ -238,13 +240,13 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs font-bold mb-2">
             <Sliders className="w-3.5 h-3.5" />
-            <span>CMS Gestor de Bloques & Portada</span>
+            <span>{t('cmsGestorDeBloquesPortada', 'CMS Gestor de Bloques & Portada')}</span>
           </div>
           <h2 className="text-2xl font-extrabold text-white tracking-tight">
-            Personalización de Landing Page
+            {t('personalizacionDeLandingPage', 'Personalización de Landing Page')}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Edita títulos, hero visual, cursos destacados y secciones públicas del LMS, y modera los testimonios.
+            {t('editaTitulosHeroVisualCursosDestacadosY', 'Edita títulos, hero visual, cursos destacados y secciones públicas del LMS, y modera los testimonios.')}
           </p>
         </div>
 
@@ -258,7 +260,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               }`}
           >
             <Eye className="w-4 h-4" />
-            {showLivePreview ? 'Ocultar Previsualización' : 'Vista Previa Rápida'}
+            {showLivePreview ? t('ocultarPrevisualizacion', 'Ocultar Previsualización') : t('vistaPreviaRapida', 'Vista Previa Rápida')}
           </button>
 
           <button
@@ -271,7 +273,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             ) : (
               <Save className="w-4 h-4" />
             )}
-            <span>Guardar Cambios</span>
+            <span>{t('guardarCambiosCapital', 'Guardar Cambios')}</span>
           </button>
         </div>
       </div>
@@ -296,9 +298,9 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
         <div className="bg-[#0a0a0f] border-2 border-[#06b6d4]/50 rounded-2xl p-6 space-y-4 shadow-2xl animate-fade-in">
           <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
             <span className="text-xs font-extrabold text-[#06b6d4] uppercase tracking-wider flex items-center gap-2">
-              <Eye className="w-4 h-4" /> Previsualización en Tiempo Real de la Portada
+              <Eye className="w-4 h-4" /> {t('previsualizacionEnTiempoRealDeLaPortada', 'Previsualización en Tiempo Real de la Portada')}
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">Modo Live Preview</span>
+            <span className="text-[10px] text-slate-500 font-mono">{t('modoLivePreview', 'Modo Live Preview')}</span>
           </div>
 
           {/* Hero Preview */}
@@ -324,14 +326,14 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               <div className="mt-4 max-w-xs mx-auto rounded-xl overflow-hidden border border-[#2d2d44] aspect-video bg-black relative">
                 <img
                   src={config.heroMediaUrl}
-                  alt="Miniatura al compartir"
+                  alt={t('miniaturaAlCompartir', 'Miniatura al compartir')}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
                 />
                 <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold text-slate-300 bg-black/80 rounded px-1.5 py-0.5">
-                  Miniatura al compartir · no se pinta en la portada
+                  {t('miniaturaAlCompartirNoSePintaEnLaPortada', 'Miniatura al compartir · no se pinta en la portada')}
                 </span>
               </div>
             )}
@@ -346,7 +348,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'hero' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
         >
-          <Sparkles className="w-4 h-4" /> Hero Section
+          <Sparkles className="w-4 h-4" /> {t('heroSection', 'Hero Section')}
         </button>
 
         <button
@@ -354,7 +356,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
         >
-          <Award className="w-4 h-4" /> Cursos Destacados ({config.featuredCourseIds.length})
+          <Award className="w-4 h-4" /> {t('cursosDestacadosLength', 'Cursos Destacados ({{length}})', { length: config.featuredCourseIds.length })}
         </button>
 
         <button
@@ -362,7 +364,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'benefits' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
         >
-          <Brain className="w-4 h-4" /> Beneficios ({config.benefits.length})
+          <Brain className="w-4 h-4" /> {t('beneficiosLength', 'Beneficios ({{length}})', { length: config.benefits.length })}
         </button>
 
         <button
@@ -370,7 +372,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'testimonials' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
         >
-          <Star className="w-4 h-4 text-[#eab308]" /> Testimonios
+          <Star className="w-4 h-4 text-[#eab308]" /> {t('testimonios', 'Testimonios')}
         </button>
 
         <button
@@ -378,7 +380,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'footer' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
             }`}
         >
-          <Globe className="w-4 h-4" /> Anuncios & Footer
+          <Globe className="w-4 h-4" /> {t('anunciosFooter', 'Anuncios & Footer')}
         </button>
       </div>
 
@@ -388,17 +390,17 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           <div className="border-b border-[#2d2d44] pb-3">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#06b6d4]" />
-              Edición de la Sección Principal (Hero Header)
+              {t('edicionDeLaSeccionPrincipalHeroHeader', 'Edición de la Sección Principal (Hero Header)')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Personaliza los textos de impacto principal, imágenes/video de cabecera y botones de llamada a la acción.
+              {t('personalizaLosTextosDeImpactoPrincipal', 'Personaliza los textos de impacto principal, imágenes/video de cabecera y botones de llamada a la acción.')}
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Título Principal de Portada
+                {t('tituloPrincipalDePortada', 'Título Principal de Portada')}
               </label>
               <input
                 type="text"
@@ -408,14 +410,14 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
               />
               <p className="mt-1.5 text-[11px] text-slate-500">
-                Una barra <code className="text-slate-300">|</code> marca dónde empieza el tramo que
-                se pinta en gradiente. Sin barra, el titular va entero en blanco.
+                <Trans i18nKey="unaBarraMarcaDondeEmpiezaElTramoQueSe">Una barra <code className="text-slate-300">|</code> marca dónde empieza el tramo que
+                se pinta en gradiente. Sin barra, el titular va entero en blanco.</Trans>
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Subtítulo / Descripción
+                {t('subtituloDescripcion', 'Subtítulo / Descripción')}
               </label>
               <textarea
                 rows={3}
@@ -432,7 +434,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Valoración
+                  {t('valoracion', 'Valoración')}
                 </label>
                 <input
                   type="text"
@@ -444,7 +446,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Estudiantes activos
+                  {t('estudiantesActivosCapital', 'Estudiantes activos')}
                 </label>
                 <input
                   type="text"
@@ -455,18 +457,16 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                 />
               </div>
               <p className="col-span-2 text-[11px] text-slate-500">
-                Se muestran bajo los botones del hero. Deja cualquiera de las dos en blanco y la
-                barra no se pinta.
+                {t('seMuestranBajoLosBotonesDelHeroDeja', 'Se muestran bajo los botones del hero. Deja cualquiera de las dos en blanco y la barra no se pinta.')}
               </p>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Imagen al compartir el enlace
+                {t('imagenAlCompartirElEnlace', 'Imagen al compartir el enlace')}
               </label>
               <p className="text-[11px] text-slate-400 mb-2">
-                La miniatura que aparece al pegar la dirección de la portada en WhatsApp, X o LinkedIn
-                (Open Graph). Ya no se pinta dentro de la página.
+                {t('laMiniaturaQueApareceAlPegarLaDireccion', 'La miniatura que aparece al pegar la dirección de la portada en WhatsApp, X o LinkedIn (Open Graph). Ya no se pinta dentro de la página.')}
               </p>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -485,7 +485,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Texto Botón CTA Principal
+                  {t('textoBotonCtaPrincipal', 'Texto Botón CTA Principal')}
                 </label>
                 <input
                   type="text"
@@ -497,7 +497,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Enlace Botón CTA Principal
+                  {t('enlaceBotonCtaPrincipal', 'Enlace Botón CTA Principal')}
                 </label>
                 <input
                   type="text"
@@ -509,7 +509,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Texto Botón Secundario
+                  {t('textoBotonSecundario', 'Texto Botón Secundario')}
                 </label>
                 <input
                   type="text"
@@ -521,7 +521,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Enlace Botón Secundario
+                  {t('enlaceBotonSecundario', 'Enlace Botón Secundario')}
                 </label>
                 <input
                   type="text"
@@ -539,7 +539,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               disabled={saving}
               className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
             >
-              <Save className="w-4 h-4" /> Guardar Sección Hero
+              <Save className="w-4 h-4" /> {t('guardarSeccionHero', 'Guardar Sección Hero')}
             </button>
           </div>
         </form>
@@ -552,10 +552,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Award className="w-5 h-5 text-[#06b6d4]" />
-                Selector de Cursos Destacados en Portada
+                {t('selectorDeCursosDestacadosEnPortada', 'Selector de Cursos Destacados en Portada')}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Marca cuáles de los cursos creados por mentores deseas destacar en el catálogo público de la portada.
+                {t('marcaCualesDeLosCursosCreadosPorMentores', 'Marca cuáles de los cursos creados por mentores deseas destacar en el catálogo público de la portada.')}
               </p>
             </div>
 
@@ -563,7 +563,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Buscar cursos..."
+                placeholder={t('buscarCursos', 'Buscar cursos...')}
                 value={courseSearch}
                 onChange={(e) => setCourseSearch(e.target.value)}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -589,7 +589,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                       <img src={c.coverImage} alt={c.title} className="w-full h-full object-cover" />
                       {isSelected && (
                         <div className="absolute top-2 right-2 bg-[#06b6d4] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                          <CheckCircle2 className="w-3 h-3" /> Destacado
+                          <CheckCircle2 className="w-3 h-3" /> {t('destacado', 'Destacado')}
                         </div>
                       )}
                     </div>
@@ -602,7 +602,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                   </div>
 
                   <div className="pt-3 mt-3 border-t border-[#2d2d44] flex items-center justify-between text-xs">
-                    <span className="font-extrabold text-[#a855f7]">${c.price.toFixed(2)} USD</span>
+                    <span className="font-extrabold text-[#a855f7]">{t('priceUsdPlano', '${{price}} USD', { price: c.price.toFixed(2) })}</span>
                     <button
                       type="button"
                       className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${isSelected
@@ -610,7 +610,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                           : 'bg-[#0a0a0f] border border-[#2d2d44] text-slate-300 hover:text-white'
                         }`}
                     >
-                      {isSelected ? 'Quitar de la Portada' : 'Destacar en Portada'}
+                      {isSelected ? t('quitarDeLaPortada', 'Quitar de la Portada') : t('destacarEnPortada', 'Destacar en Portada')}
                     </button>
                   </div>
                 </div>
@@ -624,7 +624,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               disabled={saving}
               className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
             >
-              <Save className="w-4 h-4" /> Guardar Selección de Cursos
+              <Save className="w-4 h-4" /> {t('guardarSeleccionDeCursos', 'Guardar Selección de Cursos')}
             </button>
           </div>
         </div>
@@ -637,10 +637,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             <div>
               <h3 className="font-bold text-base text-white flex items-center gap-2">
                 <Brain className="w-5 h-5 text-[#06b6d4]" />
-                Sección de Beneficios & Metodología
+                {t('seccionDeBeneficiosMetodologia', 'Sección de Beneficios & Metodología')}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Define las tarjetas de propuesta de valor e innovaciones técnicas.
+                {t('defineLasTarjetasDePropuestaDeValorE', 'Define las tarjetas de propuesta de valor e innovaciones técnicas.')}
               </p>
             </div>
 
@@ -648,7 +648,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               onClick={addBenefit}
               className="px-3.5 py-2 bg-[#06b6d4] hover:bg-[#06b6d4]/80 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md"
             >
-              <Plus className="w-4 h-4" /> Agregar Beneficio
+              <Plus className="w-4 h-4" /> {t('agregarBeneficio', 'Agregar Beneficio')}
             </button>
           </div>
 
@@ -657,32 +657,32 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               <div key={b.id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3 relative">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[#06b6d4] uppercase font-mono">Icono:</span>
+                    <span className="text-xs font-bold text-[#06b6d4] uppercase font-mono">{t('icono', 'Icono:')}</span>
                     <select
                       value={b.icon}
                       onChange={(e) => updateBenefit(b.id, 'icon', e.target.value)}
                       className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-lg px-2 py-1"
                     >
-                      <option value="Brain">Brain (IA)</option>
-                      <option value="Video">Video (Drive)</option>
-                      <option value="ShieldCheck">ShieldCheck (Roles)</option>
-                      <option value="Layers">Layers (Plugins)</option>
-                      <option value="Award">Award (Certificados)</option>
-                      <option value="Sparkles">Sparkles (Gamificación)</option>
+                      <option value="Brain">{t('brainIa', 'Brain (IA)')}</option>
+                      <option value="Video">{t('videoDrive', 'Video (Drive)')}</option>
+                      <option value="ShieldCheck">{t('shieldcheckRoles', 'ShieldCheck (Roles)')}</option>
+                      <option value="Layers">{t('layersPlugins', 'Layers (Plugins)')}</option>
+                      <option value="Award">{t('awardCertificados', 'Award (Certificados)')}</option>
+                      <option value="Sparkles">{t('sparklesGamificacion', 'Sparkles (Gamificación)')}</option>
                     </select>
                   </div>
 
                   <button
                     onClick={() => deleteBenefit(b.id)}
                     className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
-                    title="Eliminar beneficio"
+                    title={t('eliminarBeneficio', 'Eliminar beneficio')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Título del Beneficio</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('tituloDelBeneficio', 'Título del Beneficio')}</label>
                   <input
                     type="text"
                     value={b.title}
@@ -692,7 +692,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Descripción</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('descripcion', 'Descripción')}</label>
                   <textarea
                     rows={2}
                     value={b.description}
@@ -710,7 +710,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               disabled={saving}
               className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
             >
-              <Save className="w-4 h-4" /> Guardar Secciones de Beneficios
+              <Save className="w-4 h-4" /> {t('guardarSeccionesDeBeneficios', 'Guardar Secciones de Beneficios')}
             </button>
           </div>
         </div>
@@ -722,20 +722,19 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           <div className="border-b border-[#2d2d44] pb-4">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
               <Star className="w-5 h-5 text-[#eab308]" />
-              Testimonios de la portada
+              {t('testimoniosDeLaPortada', 'Testimonios de la portada')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Los escriben las personas usuarias desde la portada. Aquí solo decides cuáles se
-              publican: el texto es suyo y no se edita.
+              {t('losEscribenLasPersonasUsuariasDesdeLa', 'Los escriben las personas usuarias desde la portada. Aquí solo decides cuáles se publican: el texto es suyo y no se edita.')}
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             {([
-              { key: 'PENDING', label: 'Pendientes' },
-              { key: 'APPROVED', label: 'Publicados' },
-              { key: 'REJECTED', label: 'Rechazados' },
-              { key: 'ALL', label: 'Todos' },
+              { key: 'PENDING', label: t('pendientes', 'Pendientes') },
+              { key: 'APPROVED', label: t('publicados', 'Publicados') },
+              { key: 'REJECTED', label: t('rechazados', 'Rechazados') },
+              { key: 'ALL', label: t('todos', 'Todos') },
             ] as const).map((tab) => (
               <button
                 key={tab.key}
@@ -750,7 +749,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             <button
               onClick={() => loadTestimonials(testimonialFilter)}
               className="ml-auto p-2 text-slate-400 hover:text-white rounded-lg hover:bg-[#1a1a2e]"
-              title="Actualizar lista"
+              title={t('actualizarLista', 'Actualizar lista')}
             >
               <RefreshCw className={`w-4 h-4 ${loadingTestimonials ? 'animate-spin' : ''}`} />
             </button>
@@ -759,77 +758,77 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           {testimonials.length === 0 ? (
             <p className="text-center text-xs text-slate-500 py-10">
               {loadingTestimonials
-                ? 'Cargando…'
+                ? t('cargandoPuntos', 'Cargando…')
                 : testimonialFilter === 'PENDING'
-                  ? 'No hay opiniones esperando revisión.'
-                  : 'No hay testimonios en este estado.'}
+                  ? t('noHayOpinionesEsperandoRevision', 'No hay opiniones esperando revisión.')
+                  : t('noHayTestimoniosEnEsteEstado', 'No hay testimonios en este estado.')}
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {testimonials.map((t) => (
-                <div key={t.id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3">
+              {testimonials.map((testimonial) => (
+                <div key={testimonial.id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <img
-                        src={avatarSrc(t.avatarUrl)}
+                        src={avatarSrc(testimonial.avatarUrl)}
                         alt=""
                         className="w-9 h-9 rounded-full object-cover ring-1 ring-[#2d2d44] flex-shrink-0"
                       />
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{t.name}</p>
-                        <p className="text-[10px] font-semibold text-[#06b6d4]">{t.role}</p>
+                        <p className="text-xs font-bold text-white truncate">{testimonial.name}</p>
+                        <p className="text-[10px] font-semibold text-[#06b6d4]">{testimonial.role}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 text-[#eab308] flex-shrink-0">
-                      {Array.from({ length: t.rating }).map((_, i) => (
+                      {Array.from({ length: testimonial.rating }).map((_, i) => (
                         <Star key={i} className="w-3.5 h-3.5" fill="currentColor" />
                       ))}
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed italic">“{t.comment}”</p>
+                  <p className="text-xs text-slate-300 leading-relaxed italic">“{testimonial.comment}”</p>
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#2d2d44]">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${t.status === 'APPROVED'
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${testimonial.status === 'APPROVED'
                           ? 'text-emerald-400'
-                          : t.status === 'REJECTED'
+                          : testimonial.status === 'REJECTED'
                             ? 'text-red-400'
                             : 'text-amber-400'
                         }`}
                     >
-                      {t.status === 'APPROVED' ? (
+                      {testimonial.status === 'APPROVED' ? (
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                      ) : t.status === 'REJECTED' ? (
+                      ) : testimonial.status === 'REJECTED' ? (
                         <X className="w-3.5 h-3.5" />
                       ) : (
                         <Clock className="w-3.5 h-3.5" />
                       )}
-                      {t.status === 'APPROVED' ? 'Publicado' : t.status === 'REJECTED' ? 'Rechazado' : 'Pendiente'}
+                      {testimonial.status === 'APPROVED' ? t('publicado', 'Publicado') : testimonial.status === 'REJECTED' ? t('rechazado', 'Rechazado') : t('pendienteCapital', 'Pendiente')}
                     </span>
 
                     <div className="flex items-center gap-1.5">
-                      {t.status !== 'APPROVED' && (
+                      {testimonial.status !== 'APPROVED' && (
                         <button
-                          onClick={() => moderateTestimonial(t.id, 'APPROVED')}
+                          onClick={() => moderateTestimonial(testimonial.id, 'APPROVED')}
                           className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 font-bold rounded-lg text-[11px]"
                         >
-                          Publicar
+                          {t('publicar', 'Publicar')}
                         </button>
                       )}
-                      {t.status !== 'REJECTED' && (
+                      {testimonial.status !== 'REJECTED' && (
                         <button
-                          onClick={() => moderateTestimonial(t.id, 'REJECTED')}
+                          onClick={() => moderateTestimonial(testimonial.id, 'REJECTED')}
                           className="px-3 py-1.5 bg-[#141420] hover:bg-[#0a0a0f] text-slate-300 font-bold rounded-lg text-[11px]"
                         >
-                          {t.status === 'APPROVED' ? 'Retirar' : 'Rechazar'}
+                          {testimonial.status === 'APPROVED' ? t('retirar', 'Retirar') : t('rechazar', 'Rechazar')}
                         </button>
                       )}
                       <button
-                        onClick={() => removeTestimonial(t.id)}
+                        onClick={() => removeTestimonial(testimonial.id)}
                         className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
-                        title="Eliminar definitivamente"
+                        title={t('eliminarDefinitivamente', 'Eliminar definitivamente')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -848,10 +847,10 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           <div className="border-b border-[#2d2d44] pb-3">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
               <Globe className="w-5 h-5 text-[#06b6d4]" />
-              Banner Promocional & Enlaces del Pie de Página
+              {t('bannerPromocionalEnlacesDelPieDePagina', 'Banner Promocional & Enlaces del Pie de Página')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Configura el anuncio promocional superior y los enlaces institucionales/redes sociales.
+              {t('configuraElAnuncioPromocionalSuperiorY', 'Configura el anuncio promocional superior y los enlaces institucionales/redes sociales.')}
             </p>
           </div>
 
@@ -860,7 +859,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Texto Principal del Footer
+                {t('textoPrincipalDelFooter', 'Texto Principal del Footer')}
               </label>
               <input
                 type="text"
@@ -873,7 +872,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  GitHub Repository URL
+                  {t('githubRepositoryUrl', 'GitHub Repository URL')}
                 </label>
                 <input
                   type="url"
@@ -885,7 +884,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  LinkedIn URL
+                  {t('linkedinUrl', 'LinkedIn URL')}
                 </label>
                 <input
                   type="url"
@@ -897,7 +896,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Discord Community URL
+                  {t('discordCommunityUrl', 'Discord Community URL')}
                 </label>
                 <input
                   type="url"
@@ -909,7 +908,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Twitter / X URL
+                  {t('twitterXUrl', 'Twitter / X URL')}
                 </label>
                 <input
                   type="url"
@@ -927,7 +926,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               disabled={saving}
               className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
             >
-              <Save className="w-4 h-4" /> Guardar Banner & Footer
+              <Save className="w-4 h-4" /> {t('guardarBannerFooter', 'Guardar Banner & Footer')}
             </button>
           </div>
         </form>

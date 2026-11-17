@@ -74,6 +74,7 @@ import {
   TECHNICAL_CATEGORIES,
   STANDARD_COURSE_CATEGORIES,
 } from '../lib/courseCategories';
+import { useTranslation, Trans } from 'react-i18next'
 
 const COURSE_CATEGORIES = STANDARD_COURSE_CATEGORIES;
 
@@ -82,6 +83,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   onCourseCreated,
   onCancel,
 }) => {
+  const { t } = useTranslation()
   // Pasos: 1 = Input (Búsqueda o URL), 2 = Seleccionar/Curar videos, 3 = Generando con IA, 4 = Revision y Edicion, 5 = Finalizado
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
@@ -99,7 +101,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
   // Formulario Paso 1
   const [coursePrompt, setCoursePrompt] = useState(
-    'Quiero crear un curso práctico y estructurado. Organiza el contenido desde fundamentos hasta proyectos aplicados y formula objetivos de aprendizaje claros para cada módulo.',
+    t('quieroCrearUnCursoPracticoYEstructurado', 'Quiero crear un curso práctico y estructurado. Organiza el contenido desde fundamentos hasta proyectos aplicados y formula objetivos de aprendizaje claros para cada módulo.'),
   );
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [importing, setImporting] = useState(false);
@@ -114,7 +116,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   // Estado Generación IA (Paso 3)
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState(0);
-  const [jobStatusText, setJobStatusText] = useState('Iniciando análisis pedagógico...');
+  const [jobStatusText, setJobStatusText] = useState(t('iniciandoAnalisisPedagogico', 'Iniciando análisis pedagógico...'));
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   // Estructura generada para edición (Paso 4)
@@ -127,7 +129,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
   const handleGenerateCover = async () => {
     if (!draftCourse?.course?.title?.trim()) {
-      alert('Escribe primero el título del curso para generar una portada temática con IA.');
+      alert(t('escribePrimeroElTituloDelCursoPara', 'Escribe primero el título del curso para generar una portada temática con IA.'));
       return;
     }
     setGeneratingCover(true);
@@ -148,7 +150,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         );
       }
     } catch (err: any) {
-      alert(err.message || 'No se pudo generar la portada con IA');
+      alert(err.message || t('noSePudoGenerarLaPortadaConIa', 'No se pudo generar la portada con IA'));
     } finally {
       setGeneratingCover(false);
     }
@@ -164,7 +166,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       checkConnectionStatus();
     }
     if (params.get('youtube_error')) {
-      setImportError(`Error en autenticación de YouTube: ${params.get('youtube_error')}`);
+      setImportError(t('errorEnAutenticacionDeYoutubeGet', 'Error en autenticación de YouTube: {{get}}', { get: params.get('youtube_error') }));
     }
   }, []);
 
@@ -185,12 +187,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       const authUrl = await api.youtube.getAuthUrl();
       window.location.href = authUrl;
     } catch (err: any) {
-      setImportError(err.message || 'No se pudo iniciar la autenticación con YouTube.');
+      setImportError(err.message || t('noSePudoIniciarLaAutenticacionConYoutube', 'No se pudo iniciar la autenticación con YouTube.'));
     }
   };
 
   const handleDisconnectYouTube = async () => {
-    if (!window.confirm('¿Desconectar tu cuenta de YouTube de DocentOS?')) return;
+    if (!window.confirm(t('desconectarTuCuentaDeYoutubeDeDocentos', '¿Desconectar tu cuenta de YouTube de DocentOS?'))) return;
     try {
       await api.youtube.disconnect();
       setYtStatus({ connected: false });
@@ -206,7 +208,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     const cleanKeywords = keywords.trim();
 
     if (!cleanTitle && !cleanKeywords) {
-      setImportError('Ingresa un título o palabras clave para buscar contenido en YouTube.');
+      setImportError(t('ingresaUnTituloOPalabrasClaveParaBuscar', 'Ingresa un título o palabras clave para buscar contenido en YouTube.'));
       return;
     }
 
@@ -218,7 +220,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       if (searchType === 'playlists') {
         const results = await api.youtube.searchPlaylists(combinedQuery, 10);
         if (results.length === 0) {
-          setImportError('No se encontraron playlists para esa búsqueda. Intenta con otras palabras clave.');
+          setImportError(t('noSeEncontraronPlaylistsParaEsaBusqueda', 'No se encontraron playlists para esa búsqueda. Intenta con otras palabras clave.'));
         } else {
           setFoundPlaylists(results);
         }
@@ -232,18 +234,18 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         });
 
         if (foundVideos.length === 0) {
-          setImportError('No se encontraron videos para esa búsqueda. Prueba con términos más generales.');
+          setImportError(t('noSeEncontraronVideosParaEsaBusqueda', 'No se encontraron videos para esa búsqueda. Prueba con términos más generales.'));
           return;
         }
 
         // Crear contenedor representativo para la curación
-        const displayTitle = cleanTitle || `Curso sobre ${cleanKeywords}`;
+        const displayTitle = cleanTitle || t('cursoSobreCleanKeywords', 'Curso sobre {{cleanKeywords}}', { cleanKeywords });
         setPlaylist({
           id: `search-${Date.now()}`,
           youtubeId: 'custom-search',
           title: displayTitle,
-          description: `Videos encontrados para: "${combinedQuery}"`,
-          channelTitle: 'Colección de Videos de YouTube',
+          description: t('videosEncontradosParaCombinedQuery', 'Videos encontrados para: "{{combinedQuery}}"', { combinedQuery }),
+          channelTitle: t('coleccionDeVideosDeYoutube', 'Colección de Videos de YouTube'),
           thumbnailUrl: foundVideos[0]?.thumbnailUrl || '',
           privacyStatus: 'PUBLIC',
           itemCount: foundVideos.length,
@@ -255,12 +257,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     } catch (err: any) {
       if (err.code === 'NOT_CONNECTED') {
         setImportError(
-          'Debes conectar tu cuenta de YouTube mediante Google OAuth o configurar YOUTUBE_API_KEY en el servidor para realizar búsquedas.',
+          t('debesConectarTuCuentaDeYoutubeMediante', 'Debes conectar tu cuenta de YouTube mediante Google OAuth o configurar YOUTUBE_API_KEY en el servidor para realizar búsquedas.'),
         );
       } else if (err.code === 'API_QUOTA_EXCEEDED') {
-        setImportError('Se ha superado la cuota de la API de YouTube. Conecta tu cuenta o intenta más tarde.');
+        setImportError(t('seHaSuperadoLaCuotaDeLaApiDeYoutube', 'Se ha superado la cuota de la API de YouTube. Conecta tu cuenta o intenta más tarde.'));
       } else {
-        setImportError(err.message || 'Error al buscar en YouTube. Verifica tu conexión o términos de búsqueda.');
+        setImportError(err.message || t('errorAlBuscarEnYoutubeVerificaTuConexion', 'Error al buscar en YouTube. Verifica tu conexión o términos de búsqueda.'));
       }
     } finally {
       setIsSearching(false);
@@ -277,7 +279,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setVideos(plData.videos);
       setCurrentStep(2);
     } catch (err: any) {
-      setImportError(err.message || 'Error al importar los videos de la playlist.');
+      setImportError(err.message || t('errorAlImportarLosVideosDeLaPlaylist', 'Error al importar los videos de la playlist.'));
     } finally {
       setImporting(false);
     }
@@ -287,7 +289,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const handleImportPlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playlistUrl.trim()) {
-      setImportError('Ingresa una URL o ID de playlist de YouTube.');
+      setImportError(t('ingresaUnaUrlOIdDePlaylistDeYoutube', 'Ingresa una URL o ID de playlist de YouTube.'));
       return;
     }
 
@@ -301,14 +303,14 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     } catch (err: any) {
       if (err.code === 'PLAYLIST_PRIVATE_UNAUTHORIZED') {
         setImportError(
-          'Esta playlist es privada o requiere autorización. Conecta tu cuenta de Google/YouTube con OAuth para que el sistema pueda acceder a ella legalmente.',
+          t('estaPlaylistEsPrivadaORequiere', 'Esta playlist es privada o requiere autorización. Conecta tu cuenta de Google/YouTube con OAuth para que el sistema pueda acceder a ella legalmente.'),
         );
       } else if (err.code === 'NOT_CONNECTED') {
         setImportError(
-          'Debes conectar tu cuenta de YouTube mediante OAuth o configurar YOUTUBE_API_KEY para importar playlists públicas.',
+          t('debesConectarTuCuentaDeYoutubeMediante2', 'Debes conectar tu cuenta de YouTube mediante OAuth o configurar YOUTUBE_API_KEY para importar playlists públicas.'),
         );
       } else {
-        setImportError(err.message || 'Error al importar la playlist. Verifica que el enlace sea correcto.');
+        setImportError(err.message || t('errorAlImportarLaPlaylistVerificaQueEl', 'Error al importar la playlist. Verifica que el enlace sea correcto.'));
       }
     } finally {
       setImporting(false);
@@ -353,7 +355,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const handleStartAiGeneration = async () => {
     const includedVideos = videos.filter((v) => !v.excluded);
     if (includedVideos.length === 0) {
-      alert('Debes incluir al menos un video para generar el curso.');
+      alert(t('debesIncluirAlMenosUnVideoParaGenerarEl', 'Debes incluir al menos un video para generar el curso.'));
       return;
     }
 
@@ -361,7 +363,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setCurrentStep(3);
       setGenerationError(null);
       setJobProgress(15);
-      setJobStatusText('Enviando videos al motor de IA pedagógico...');
+      setJobStatusText(t('enviandoVideosAlMotorDeIaPedagogico', 'Enviando videos al motor de IA pedagógico...'));
 
       const resolvedTitle = courseTitle.trim() || playlist?.title || '';
       const response = await api.youtube.generateCourse({
@@ -381,7 +383,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setActiveJobId(response.jobId);
       pollJobStatus(response.jobId);
     } catch (err: any) {
-      setGenerationError(err.message || 'Error al iniciar la generación de IA.');
+      setGenerationError(err.message || t('errorAlIniciarLaGeneracionDeIa', 'Error al iniciar la generación de IA.'));
       setCurrentStep(2);
     }
   };
@@ -412,11 +414,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         setJobProgress(job.progress || 50);
 
         if (job.status === 'PROCESSING') {
-          setJobStatusText(`Analizando y estructurando módulos... (${job.progress}%)`);
+          setJobStatusText(t('analizandoYEstructurandoModulosProgress', 'Analizando y estructurando módulos... ({{progress}}%)', { progress: job.progress }));
         } else if (job.status === 'COMPLETED') {
           clearInterval(interval);
           setJobProgress(100);
-          setJobStatusText('¡Curso generado con éxito!');
+          setJobStatusText(t('cursoGeneradoConExito', '¡Curso generado con éxito!'));
           if (job.result) {
             const finalTitle = courseTitle.trim() || playlist?.title || '';
             if (
@@ -430,11 +432,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             setDraftCourse(job.result);
             setTimeout(() => setCurrentStep(4), 600);
           } else {
-            setGenerationError('El trabajo concluyó pero no se recibió la estructura esperada.');
+            setGenerationError(t('elTrabajoConcluyoPeroNoSeRecibioLa', 'El trabajo concluyó pero no se recibió la estructura esperada.'));
           }
         } else if (job.status === 'FAILED') {
           clearInterval(interval);
-          setGenerationError(job.errorMessage || 'Falló la generación del curso por IA.');
+          setGenerationError(job.errorMessage || t('falloLaGeneracionDelCursoPorIa', 'Falló la generación del curso por IA.'));
         }
       } catch (err: any) {
         if (pollRef.current !== interval) return;
@@ -445,7 +447,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         consecutiveErrors += 1;
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           clearInterval(interval);
-          setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
+          setGenerationError(err.message || t('errorAlConsultarElProgresoDelTrabajo', 'Error al consultar el progreso del trabajo.'));
         }
       } finally { inFlight = false; }
     }, 2000);
@@ -469,7 +471,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         onCourseCreated(res.courseId);
       }
     } catch (err: any) {
-      alert(`Error al guardar curso: ${err.message}`);
+      alert(t('errorAlGuardarCursoMessage', 'Error al guardar curso: {{message}}', { message: err.message }));
     } finally {
       setSavingCourse(false);
     }
@@ -481,10 +483,10 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     try {
       setPublishing(true);
       await api.youtube.publishCourse(saveSuccess.courseId);
-      alert('¡Curso publicado exitosamente en el catálogo de DocentOS!');
+      alert(t('cursoPublicadoExitosamenteEnElCatalogoDe', '¡Curso publicado exitosamente en el catálogo de DocentOS!'));
       if (onCancel) onCancel();
     } catch (err: any) {
-      alert(`Error al publicar curso: ${err.message}`);
+      alert(t('errorAlPublicarCursoMessage', 'Error al publicar curso: {{message}}', { message: err.message }));
     } finally {
       setPublishing(false);
     }
@@ -499,13 +501,13 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold mb-3">
               <Youtube className="w-3.5 h-3.5" />
-              <span>AI YouTube Course Builder</span>
+              <span>{t('aiYoutubeCourseBuilder', 'AI YouTube Course Builder')}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Crear Cursos Inteligentes desde YouTube
+              {t('crearCursosInteligentesDesdeYoutube', 'Crear Cursos Inteligentes desde YouTube')}
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Importa playlists públicas, no listadas o privadas y deja que la IA organice los videos en un temario pedagógico estructurado con módulos y lecciones.
+              {t('importaPlaylistsPublicasNoListadasO', 'Importa playlists públicas, no listadas o privadas y deja que la IA organice los videos en un temario pedagógico estructurado con módulos y lecciones.')}
             </p>
           </div>
 
@@ -517,7 +519,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <div className="text-xs">
-                  <p className="font-semibold text-white">YouTube Conectado</p>
+                  <p className="font-semibold text-white">{t('youtubeConectado', 'YouTube Conectado')}</p>
                   <p className="text-slate-400 truncate max-w-[160px]">{ytStatus.googleEmail}</p>
                 </div>
                 <button
@@ -525,7 +527,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   onClick={handleDisconnectYouTube}
                   className="text-xs text-red-400 hover:text-red-300 ml-1 underline"
                 >
-                  Desconectar
+                  {t('desconectar', 'Desconectar')}
                 </button>
               </div>
             ) : (
@@ -535,7 +537,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition"
               >
                 <Youtube className="w-4 h-4" />
-                <span>Conectar con Google OAuth</span>
+                <span>{t('conectarConGoogleOauth', 'Conectar con Google OAuth')}</span>
               </button>
             )}
           </div>
@@ -545,19 +547,19 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
           <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 1 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
-            <span>Buscar / Importar</span>
+            <span>{t('buscarImportar', 'Buscar / Importar')}</span>
           </div>
           <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 2 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>2</span>
-            <span>Curar Videos</span>
+            <span>{t('curarVideos', 'Curar Videos')}</span>
           </div>
           <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 3 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>3</span>
-            <span>Generación IA</span>
+            <span>{t('generacionIa', 'Generación IA')}</span>
           </div>
           <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-red-400' : 'text-slate-500'}`}>
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 4 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>4</span>
-            <span>Revisar y Guardar</span>
+            <span>{t('revisarYGuardar', 'Revisar y Guardar')}</span>
           </div>
         </div>
       </div>
@@ -582,7 +584,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Búsqueda Inteligente (Título / Keywords)</span>
+              <span>{t('busquedaInteligenteTituloKeywords', 'Búsqueda Inteligente (Título / Keywords)')}</span>
             </button>
             <button
               type="button"
@@ -597,7 +599,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               }`}
             >
               <Link className="w-3.5 h-3.5" />
-              <span>Pegar URL de Playlist</span>
+              <span>{t('pegarUrlDePlaylist', 'Pegar URL de Playlist')}</span>
             </button>
           </div>
 
@@ -607,40 +609,40 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    1. Título o Tema del Curso
+                    {t('1TituloOTemaDelCurso', '1. Título o Tema del Curso')}
                   </label>
                   <div className="relative">
                     <input
                       type="text"
                       value={courseTitle}
                       onChange={(e) => setCourseTitle(e.target.value)}
-                      placeholder="Ej: Curso de Python desde Cero a Avanzado"
+                      placeholder={t('ejCursoDePythonDesdeCeroAAvanzado', 'Ej: Curso de Python desde Cero a Avanzado')}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
                       required
                     />
                     <Film className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   </div>
                   <p className="text-xs text-slate-400 mt-1.5">
-                    Define el tema central para localizar los mejores contenidos.
+                    {t('defineElTemaCentralParaLocalizarLos', 'Define el tema central para localizar los mejores contenidos.')}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">
-                    2. Palabras Clave (Keywords / Temario)
+                    {t('2PalabrasClaveKeywordsTemario', '2. Palabras Clave (Keywords / Temario)')}
                   </label>
                   <div className="relative">
                     <input
                       type="text"
                       value={keywords}
                       onChange={(e) => setKeywords(e.target.value)}
-                      placeholder="Ej: variables, bucles, funciones, POO, fastapi, proyectos"
+                      placeholder={t('ejVariablesBuclesFuncionesPooFastapi', 'Ej: variables, bucles, funciones, POO, fastapi, proyectos')}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
                     />
                     <Tag className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   </div>
                   <p className="text-xs text-slate-400 mt-1.5">
-                    Términos separados por comas que guiarán la selección de lecciones.
+                    {t('terminosSeparadosPorComasQueGuiaranLa', 'Términos separados por comas que guiarán la selección de lecciones.')}
                   </p>
                 </div>
               </div>
@@ -648,7 +650,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               {/* Selector de tipo de búsqueda */}
               <div>
                 <label className="block text-sm font-semibold text-white mb-2">
-                  3. ¿Qué deseas buscar en YouTube?
+                  {t('3QueDeseasBuscarEnYoutube', '3. ¿Qué deseas buscar en YouTube?')}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
                   <button
@@ -665,9 +667,9 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   >
                     <Film className={`w-5 h-5 mt-0.5 ${searchType === 'videos' ? 'text-red-400' : 'text-slate-500'}`} />
                     <div>
-                      <p className="text-xs font-semibold text-white">Videos Temáticos</p>
+                      <p className="text-xs font-semibold text-white">{t('videosTematicos', 'Videos Temáticos')}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Busca los mejores videos individuales y los reúne listos para curar.
+                        {t('buscaLosMejoresVideosIndividualesYLos', 'Busca los mejores videos individuales y los reúne listos para curar.')}
                       </p>
                     </div>
                   </button>
@@ -685,9 +687,9 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   >
                     <ListFilter className={`w-5 h-5 mt-0.5 ${searchType === 'playlists' ? 'text-red-400' : 'text-slate-500'}`} />
                     <div>
-                      <p className="text-xs font-semibold text-white">Playlists Completas</p>
+                      <p className="text-xs font-semibold text-white">{t('playlistsCompletas', 'Playlists Completas')}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Busca listas de reproducción existentes para seleccionar una con 1 clic.
+                        {t('buscaListasDeReproduccionExistentesPara', 'Busca listas de reproducción existentes para seleccionar una con 1 clic.')}
                       </p>
                     </div>
                   </button>
@@ -696,17 +698,17 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
               <div>
                 <label className="block text-sm font-semibold text-white mb-2">
-                  4. Instrucción Pedagógica para la IA
+                  {t('4InstruccionPedagogicaParaLaIa', '4. Instrucción Pedagógica para la IA')}
                 </label>
                 <textarea
                   rows={2}
                   value={coursePrompt}
                   onChange={(e) => setCoursePrompt(e.target.value)}
-                  placeholder="Ej: Quiero un curso práctico y estructurado de fundamentos a proyectos..."
+                  placeholder={t('ejQuieroUnCursoPracticoYEstructuradoDe', 'Ej: Quiero un curso práctico y estructurado de fundamentos a proyectos...')}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  La IA estructurará las lecciones según este criterio pedagógico.
+                  {t('laIaEstructuraraLasLeccionesSegunEste', 'La IA estructurará las lecciones según este criterio pedagógico.')}
                 </p>
               </div>
 
@@ -718,7 +720,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     onClick={onCancel}
                     className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
                   >
-                    Cancelar
+                    {t('cancelar', 'Cancelar')}
                   </button>
                 )}
                 <button
@@ -729,15 +731,15 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   {isSearching ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Buscando en YouTube...</span>
+                      <span>{t('buscandoEnYoutube', 'Buscando en YouTube...')}</span>
                     </>
                   ) : (
                     <>
                       <Search className="w-4 h-4" />
                       <span>
                         {searchType === 'videos'
-                          ? 'Buscar Videos y Curar'
-                          : 'Buscar Playlists en YouTube'}
+                          ? t('buscarVideosYCurar', 'Buscar Videos y Curar')
+                          : t('buscarPlaylistsEnYoutube', 'Buscar Playlists en YouTube')}
                       </span>
                       <ArrowRight className="w-4 h-4" />
                     </>
@@ -752,7 +754,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             <div className="pt-4 border-t border-slate-800 space-y-3">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                 <ListFilter className="w-4 h-4 text-red-400" />
-                <span>Playlists encontradas en YouTube ({foundPlaylists.length})</span>
+                <span>{t('playlistsEncontradasEnYoutubeLength', 'Playlists encontradas en YouTube ({{length}})', { length: foundPlaylists.length })}</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
                 {foundPlaylists.map((pl) => (
@@ -771,7 +773,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-white line-clamp-1">{pl.title}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5">{pl.channelTitle}</p>
-                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{pl.description || 'Sin descripción'}</p>
+                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{pl.description || t('sinDescripcion', 'Sin descripción')}</p>
                       </div>
                     </div>
                     <button
@@ -783,11 +785,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       {importing ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Importando videos...</span>
+                          <span>{t('importandoVideos', 'Importando videos...')}</span>
                         </>
                       ) : (
                         <>
-                          <span>Curar videos de esta playlist</span>
+                          <span>{t('curarVideosDeEstaPlaylist', 'Curar videos de esta playlist')}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </>
                       )}
@@ -803,24 +805,24 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             <form onSubmit={handleImportPlaylist} className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-white mb-2">
-                  1. ¿Qué curso quieres que la IA diseñe a partir de esta playlist?
+                  {t('1QueCursoQuieresQueLaIaDiseneAPartirDe', '1. ¿Qué curso quieres que la IA diseñe a partir de esta playlist?')}
                 </label>
                 <textarea
                   rows={3}
                   value={coursePrompt}
                   onChange={(e) => setCoursePrompt(e.target.value)}
-                  placeholder="Ej: Quiero un curso intensivo de Node.js y Microservicios para desarrolladores con experiencia previa en JavaScript..."
+                  placeholder={t('ejQuieroUnCursoIntensivoDeNodejsY', 'Ej: Quiero un curso intensivo de Node.js y Microservicios para desarrolladores con experiencia previa en JavaScript...')}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
                   required
                 />
                 <p className="text-xs text-slate-400 mt-1.5">
-                  La IA utilizará esta indicación pedagógica junto con los títulos y descripciones de los videos para estructurar los módulos.
+                  {t('laIaUtilizaraEstaIndicacionPedagogica', 'La IA utilizará esta indicación pedagógica junto con los títulos y descripciones de los videos para estructurar los módulos.')}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-white mb-2">
-                  2. URL o ID de la Playlist de YouTube
+                  {t('2UrlOIdDeLaPlaylistDeYoutube', '2. URL o ID de la Playlist de YouTube')}
                 </label>
                 <div className="relative">
                   <input
@@ -835,15 +837,15 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
                   <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                    <Globe className="w-3.5 h-3.5" /> Públicas
+                    <Globe className="w-3.5 h-3.5" /> {t('publicas', 'Públicas')}
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-sky-400 font-medium">
-                    <Eye className="w-3.5 h-3.5" /> No listadas
+                    <Eye className="w-3.5 h-3.5" /> {t('noListadas', 'No listadas')}
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1 text-amber-400 font-medium">
-                    <Lock className="w-3.5 h-3.5" /> Privadas (requiere OAuth de la cuenta)
+                    <Lock className="w-3.5 h-3.5" /> {t('privadasRequiereOauthDeLaCuenta', 'Privadas (requiere OAuth de la cuenta)')}
                   </span>
                 </div>
               </div>
@@ -855,7 +857,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     onClick={onCancel}
                     className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
                   >
-                    Cancelar
+                    {t('cancelar', 'Cancelar')}
                   </button>
                 )}
                 <button
@@ -866,11 +868,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   {importing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Consultando YouTube API...</span>
+                      <span>{t('consultandoYoutubeApi', 'Consultando YouTube API...')}</span>
                     </>
                   ) : (
                     <>
-                      <span>Importar Playlist</span>
+                      <span>{t('importarPlaylist', 'Importar Playlist')}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -891,7 +893,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     onClick={handleConnectYouTube}
                     className="mt-2 text-xs underline font-semibold text-red-400 hover:text-white"
                   >
-                    Conectar cuenta de YouTube ahora
+                    {t('conectarCuentaDeYoutubeAhora', 'Conectar cuenta de YouTube ahora')}
                   </button>
                 )}
               </div>
@@ -922,16 +924,16 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-red-600/20 text-red-300 uppercase flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-300" />
-                  {playlist.youtubeId === 'custom-search' ? 'Búsqueda Inteligente' : playlist.privacyStatus}
+                  {playlist.youtubeId === 'custom-search' ? t('busquedaInteligente', 'Búsqueda Inteligente') : playlist.privacyStatus}
                 </span>
                 <span className="text-xs text-slate-400">• {playlist.channelTitle}</span>
               </div>
               <h2 className="text-lg font-bold text-white truncate">{playlist.title}</h2>
-              <p className="text-xs text-slate-400 mt-1 line-clamp-2">{playlist.description || 'Sin descripción'}</p>
+              <p className="text-xs text-slate-400 mt-1 line-clamp-2">{playlist.description || t('sinDescripcion', 'Sin descripción')}</p>
               <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
-                <span>{videos.length} videos disponibles</span>
+                <span>{t('lengthVideosDisponibles', '{{length}} videos disponibles', { length: videos.length })}</span>
                 <span className="text-emerald-400 font-medium">
-                  {videos.filter((v) => !v.excluded).length} seleccionados para el temario
+                  {t('lengthSeleccionadosParaElTemario', '{{length}} seleccionados para el temario', { length: videos.filter((v) => !v.excluded).length })}
                 </span>
               </div>
             </div>
@@ -945,18 +947,18 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 onClick={() => toggleSelectAll(true)}
                 className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
               >
-                Seleccionar todos
+                {t('seleccionarTodos', 'Seleccionar todos')}
               </button>
               <button
                 type="button"
                 onClick={() => toggleSelectAll(false)}
                 className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
               >
-                Deseleccionar todos
+                {t('deseleccionarTodos', 'Deseleccionar todos')}
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              Usa las flechas para ordenar, desmarca los no prioritarios o el ícono de papelera para eliminar videos que no desees mostrar.
+              {t('usaLasFlechasParaOrdenarDesmarcaLosNo', 'Usa las flechas para ordenar, desmarca los no prioritarios o el ícono de papelera para eliminar videos que no desees mostrar.')}
             </p>
           </div>
 
@@ -964,9 +966,9 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           {videos.length === 0 ? (
             <div className="p-8 text-center bg-slate-950/60 rounded-xl border border-slate-800 text-slate-400 space-y-2">
               <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-              <p className="font-semibold text-white">No quedan videos en la lista.</p>
+              <p className="font-semibold text-white">{t('noQuedanVideosEnLaLista', 'No quedan videos en la lista.')}</p>
               <p className="text-xs text-slate-400">
-                Has eliminado todos los videos. Haz clic en "Atrás" para realizar una nueva búsqueda.
+                {t('hasEliminadoTodosLosVideosHazClicEnAtras', 'Has eliminado todos los videos. Haz clic en "Atrás" para realizar una nueva búsqueda.')}
               </p>
             </div>
           ) : (
@@ -985,7 +987,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     type="button"
                     onClick={() => toggleVideoExcluded(vid.id)}
                     className="text-red-500 hover:text-red-400 transition flex-shrink-0"
-                    title={vid.excluded ? 'Incluir en el temario' : 'Excluir del temario'}
+                    title={vid.excluded ? t('incluirEnElTemario', 'Incluir en el temario') : t('excluirDelTemario', 'Excluir del temario')}
                   >
                     {vid.excluded ? (
                       <Square className="w-5 h-5 text-slate-600" />
@@ -1023,7 +1025,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       )}
                       {vid.privacyStatus === 'PRIVATE' && (
                         <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Privado
+                          <Lock className="w-3 h-3" /> {t('privado', 'Privado')}
                         </span>
                       )}
                     </div>
@@ -1036,7 +1038,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       disabled={idx === 0}
                       onClick={() => moveVideo(idx, 'up')}
                       className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
-                      title="Mover arriba"
+                      title={t('moverArriba', 'Mover arriba')}
                     >
                       <MoveUp className="w-4 h-4" />
                     </button>
@@ -1045,7 +1047,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       disabled={idx === videos.length - 1}
                       onClick={() => moveVideo(idx, 'down')}
                       className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
-                      title="Mover abajo"
+                      title={t('moverAbajo', 'Mover abajo')}
                     >
                       <MoveDown className="w-4 h-4" />
                     </button>
@@ -1054,7 +1056,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       type="button"
                       onClick={() => handleRemoveVideo(vid.id)}
                       className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition ml-1"
-                      title="Eliminar este video de la lista"
+                      title={t('eliminarEsteVideoDeLaLista', 'Eliminar este video de la lista')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1072,7 +1074,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Atrás</span>
+              <span>{t('atras', 'Atrás')}</span>
             </button>
             <button
               type="button"
@@ -1081,7 +1083,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20 disabled:opacity-40"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Generar Estructura con IA ({videos.filter((v) => !v.excluded).length} videos)</span>
+              <span>{t('generarEstructuraConIaLengthVideos', 'Generar Estructura con IA ({{length}} videos)', { length: videos.filter((v) => !v.excluded).length })}</span>
             </button>
           </div>
         </div>
@@ -1098,7 +1100,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
           <div>
             <h2 className="text-xl font-bold text-white mb-1">
-              Diseñando el Curso con Inteligencia Artificial
+              {t('disenandoElCursoConInteligencia', 'Diseñando el Curso con Inteligencia Artificial')}
             </h2>
             <p className="text-sm text-slate-400">{jobStatusText}</p>
           </div>
@@ -1112,21 +1114,21 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           </div>
 
           <div className="text-xs text-slate-500 space-y-1">
-            <p>• Categorizando temas y nivel pedagógico</p>
-            <p>• Asignando videos a lecciones con objetivos de aprendizaje</p>
-            <p>• Formulando preguntas de comprensión para autoevaluación</p>
+            <p>{t('categorizandoTemasYNivelPedagogico', '• Categorizando temas y nivel pedagógico')}</p>
+            <p>{t('asignandoVideosALeccionesConObjetivosDe', '• Asignando videos a lecciones con objetivos de aprendizaje')}</p>
+            <p>{t('formulandoPreguntasDeComprensionPara', '• Formulando preguntas de comprensión para autoevaluación')}</p>
           </div>
 
           {generationError && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm mt-4">
-              <p className="font-semibold">Ocurrió un error en la generación:</p>
+              <p className="font-semibold">{t('ocurrioUnErrorEnLaGeneracion', 'Ocurrió un error en la generación:')}</p>
               <p className="text-xs mt-1">{generationError}</p>
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
                 className="mt-3 px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
               >
-                Volver a la selección de videos
+                {t('volverALaSeleccionDeVideos', 'Volver a la selección de videos')}
               </button>
             </div>
           )}
@@ -1142,9 +1144,9 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-1">
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>Estructura generada por IA — Puedes personalizar todo</span>
+                <span>{t('estructuraGeneradaPorIaPuedes', 'Estructura generada por IA — Puedes personalizar todo')}</span>
               </div>
-              <h2 className="text-xl font-bold text-white">Estructura del Curso Propuesta</h2>
+              <h2 className="text-xl font-bold text-white">{t('estructuraDelCursoPropuesta', 'Estructura del Curso Propuesta')}</h2>
             </div>
             <div className="flex items-center gap-4 flex-wrap">
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
@@ -1154,7 +1156,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   onChange={(e) => setPublishImmediately(e.target.checked)}
                   className="accent-[#06b6d4] w-4 h-4 rounded cursor-pointer"
                 />
-                <span>Publicar inmediatamente</span>
+                <span>{t('publicarInmediatamente', 'Publicar inmediatamente')}</span>
               </label>
 
               <button
@@ -1166,12 +1168,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 {savingCourse ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{publishImmediately ? 'Publicando en DocentOS...' : 'Guardando en DocentOS...'}</span>
+                    <span>{publishImmediately ? t('publicandoEnDocentos', 'Publicando en DocentOS...') : t('guardandoEnDocentos', 'Guardando en DocentOS...')}</span>
                   </>
                 ) : (
                   <>
                     {publishImmediately ? <Globe className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    <span>{publishImmediately ? 'Guardar y Publicar Curso' : 'Guardar como Curso Borrador'}</span>
+                    <span>{publishImmediately ? t('guardarYPublicarCurso', 'Guardar y Publicar Curso') : t('guardarComoCursoBorrador', 'Guardar como Curso Borrador')}</span>
                   </>
                 )}
               </button>
@@ -1180,10 +1182,10 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
           {/* Metadatos Generales del Curso */}
           <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Datos Principales</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('datosPrincipales', 'Datos Principales')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Título del Curso</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('tituloDelCurso', 'Título del Curso')}</label>
                 <input
                   type="text"
                   value={draftCourse.course.title}
@@ -1197,7 +1199,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Nivel y Categoría</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">{t('nivelYCategoria', 'Nivel y Categoría')}</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1209,7 +1211,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       })
                     }
                     className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500"
-                    placeholder="Nivel (Ej: Principiante)"
+                    placeholder={t('nivelEjPrincipiante', 'Nivel (Ej: Principiante)')}
                   />
                   <select
                     value={draftCourse.course.category || 'Mentoría Especializada'}
@@ -1224,14 +1226,14 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category as any) && (
                       <option value={draftCourse.course.category}>{draftCourse.course.category}</option>
                     )}
-                    <optgroup label="Modalidades de Mentoría">
+                    <optgroup label={t('modalidadesDeMentoria', 'Modalidades de Mentoría')}>
                       {MENTORSHIP_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Áreas Temáticas Técnicas">
+                    <optgroup label={t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas')}>
                       {TECHNICAL_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
@@ -1244,7 +1246,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Descripción del Curso</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">{t('descripcionDelCurso', 'Descripción del Curso')}</label>
               <textarea
                 rows={2}
                 value={draftCourse.course.description}
@@ -1259,7 +1261,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Objetivos Generales (uno por línea)</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">{t('objetivosGeneralesUnoPorLinea', 'Objetivos Generales (uno por línea)')}</label>
               <textarea
                 rows={2}
                 value={(draftCourse.course.generalObjectives || []).join('\n')}
@@ -1280,7 +1282,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             <div className="space-y-2 pt-3 border-t border-slate-800/80">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-xs font-medium text-slate-300 block">
-                  Imagen de Portada (Automática con IA + Logo si se deja vacía)
+                  {t('imagenDePortadaAutomaticaConIaLogoSiSe', 'Imagen de Portada (Automática con IA + Logo si se deja vacía)')}
                 </label>
                 <button
                   type="button"
@@ -1293,13 +1295,13 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   ) : (
                     <Sparkles className="w-3.5 h-3.5" />
                   )}
-                  <span>{generatingCover ? 'Generando con IA...' : 'Generar con IA + Logo'}</span>
+                  <span>{generatingCover ? t('generandoConIa', 'Generando con IA...') : t('generarConIaLogo', 'Generar con IA + Logo')}</span>
                 </button>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Dejar vacío para autogenerar portada IA temática con logo del plugin..."
+                  placeholder={t('dejarVacioParaAutogenerarPortadaIa', 'Dejar vacío para autogenerar portada IA temática con logo del plugin...')}
                   value={draftCourse.course.coverImage || ''}
                   onChange={(e) =>
                     setDraftCourse({
@@ -1318,7 +1320,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                         course: { ...draftCourse.course, coverImage: '' },
                       })
                     }
-                    title="Limpiar portada"
+                    title={t('limpiarPortada', 'Limpiar portada')}
                     className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
@@ -1329,12 +1331,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800 mt-2">
                   <img
                     src={draftCourse.course.coverImage}
-                    alt="Vista previa de portada"
+                    alt={t('vistaPreviaDePortada', 'Vista previa de portada')}
                     className="w-32 h-20 rounded-lg object-cover border border-cyan-500/30 shrink-0"
                   />
                   <div className="text-xs text-slate-400 leading-relaxed">
-                    <span className="text-cyan-400 font-bold block mb-0.5">Vista previa de portada activa</span>
-                    Diseño temático adaptado al curso con el emblema y colores configurados en el plugin de personalización.
+                    <Trans i18nKey="vistaPreviaDePortadaActivadisenoTematico"><span className="text-cyan-400 font-bold block mb-0.5">Vista previa de portada activa</span>
+                    Diseño temático adaptado al curso con el emblema y colores configurados en el plugin de personalización.</Trans>
                   </div>
                 </div>
               )}
@@ -1345,7 +1347,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-red-500" />
-              <span>Módulos y Lecciones ({draftCourse.modules.length} módulos)</span>
+              <span>{t('modulosYLeccionesLengthModulos', 'Módulos y Lecciones ({{length}} módulos)', { length: draftCourse.modules.length })}</span>
             </h3>
 
             {draftCourse.modules.map((mod, mIdx) => (
@@ -1364,7 +1366,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     }}
                     className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
                   />
-                  <span className="text-xs text-slate-500">{mod.lessons.length} lecciones</span>
+                  <span className="text-xs text-slate-500">{t('lengthLeccionesSimple', '{{length}} lecciones', { length: mod.lessons.length })}</span>
                 </div>
 
                 {/* Lecciones del módulo */}
@@ -1392,7 +1394,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                           target="_blank"
                           rel="noreferrer"
                           className="text-slate-500 hover:text-red-400 ml-1"
-                          title="Ver en YouTube"
+                          title={t('verEnYoutube', 'Ver en YouTube')}
                         >
                           <ExternalLink className="w-3 h-3" />
                         </a>
@@ -1400,7 +1402,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
                       {les.learningObjectives && les.learningObjectives.length > 0 && (
                         <div className="text-[11px] text-slate-400 pl-5">
-                          <span className="font-semibold text-slate-300">Objetivo: </span>
+                          <span className="font-semibold text-slate-300">{t('objetivo', 'Objetivo:')} </span>
                           {les.learningObjectives[0]}
                         </div>
                       )}
@@ -1419,7 +1421,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Atrás</span>
+              <span>{t('atras', 'Atrás')}</span>
             </button>
             <div className="flex items-center gap-4 flex-wrap">
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
@@ -1429,7 +1431,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   onChange={(e) => setPublishImmediately(e.target.checked)}
                   className="accent-[#06b6d4] w-4 h-4 rounded cursor-pointer"
                 />
-                <span>Publicar inmediatamente</span>
+                <span>{t('publicarInmediatamente', 'Publicar inmediatamente')}</span>
               </label>
 
               <button
@@ -1441,12 +1443,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 {savingCourse ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{publishImmediately ? 'Publicando...' : 'Guardando...'}</span>
+                    <span>{publishImmediately ? t('publicando', 'Publicando...') : t('guardando', 'Guardando...')}</span>
                   </>
                 ) : (
                   <>
                     {publishImmediately ? <Globe className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    <span>{publishImmediately ? 'Guardar y Publicar Curso' : 'Guardar como Borrador en DocentOS'}</span>
+                    <span>{publishImmediately ? t('guardarYPublicarCurso', 'Guardar y Publicar Curso') : t('guardarComoBorradorEnDocentos', 'Guardar como Borrador en DocentOS')}</span>
                   </>
                 )}
               </button>
@@ -1466,26 +1468,34 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">
-              {saveSuccess.published ? '¡Curso Creado y Publicado con Éxito!' : '¡Curso Creado Exitosamente!'}
+              {saveSuccess.published ? t('cursoCreadoYPublicadoConExito', '¡Curso Creado y Publicado con Éxito!') : t('cursoCreadoExitosamente', '¡Curso Creado Exitosamente!')}
             </h2>
             <p className="text-sm text-slate-400">
-              El curso <span className="text-white font-semibold font-mono">"{saveSuccess.courseTitle}"</span> ha sido{' '}
               {saveSuccess.published ? (
-                <strong className="text-emerald-400">PUBLICADO</strong>
+                <Trans
+                  i18nKey="cursoPublicadoEnDocentos"
+                  defaults='El curso <1>"{{title}}"</1> ha sido <3>PUBLICADO</3> en DocentOS.'
+                  values={{ title: saveSuccess.courseTitle }}
+                  components={{ 1: <span className="text-white font-semibold font-mono" />, 3: <strong className="text-emerald-400" /> }}
+                />
               ) : (
-                <strong className="text-amber-400">guardado como BORRADOR</strong>
-              )}{' '}
-              en DocentOS.
+                <Trans
+                  i18nKey="cursoBorradorEnDocentos"
+                  defaults='El curso <1>"{{title}}"</1> ha sido <3>guardado como BORRADOR</3> en DocentOS.'
+                  values={{ title: saveSuccess.courseTitle }}
+                  components={{ 1: <span className="text-white font-semibold font-mono" />, 3: <strong className="text-amber-400" /> }}
+                />
+              )}
             </p>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 text-left space-y-2">
-            <p>✅ Videos vinculados con reproducción nativa sin cookies de YouTube</p>
-            <p>✅ Módulos y lecciones sincronizados en PostgreSQL</p>
+            <p>{t('videosVinculadosConReproduccionNativaSin', '✅ Videos vinculados con reproducción nativa sin cookies de YouTube')}</p>
+            <p>{t('modulosYLeccionesSincronizadosEn', '✅ Módulos y lecciones sincronizados en PostgreSQL')}</p>
             <p>
               {saveSuccess.published
-                ? '✅ Visible inmediatamente para todos los estudiantes en el Catálogo'
-                : '✅ Solo los mentores y administradores pueden verlo mientras esté en borrador'}
+                ? t('visibleInmediatamenteParaTodosLos', '✅ Visible inmediatamente para todos los estudiantes en el Catálogo')
+                : t('soloLosMentoresYAdministradoresPueden', '✅ Solo los mentores y administradores pueden verlo mientras esté en borrador')}
             </p>
           </div>
 
@@ -1498,7 +1508,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition flex items-center justify-center gap-2"
               >
                 {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-                <span>Publicar Ahora en el Catálogo</span>
+                <span>{t('publicarAhoraEnElCatalogo', 'Publicar Ahora en el Catálogo')}</span>
               </button>
             ) : null}
             {onCancel && (
@@ -1507,7 +1517,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 onClick={onCancel}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition"
               >
-                Cerrar y Volver
+                {t('cerrarYVolver', 'Cerrar y Volver')}
               </button>
             )}
           </div>

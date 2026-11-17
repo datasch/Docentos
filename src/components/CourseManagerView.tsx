@@ -54,6 +54,7 @@ import {
   TECHNICAL_CATEGORIES,
   STANDARD_COURSE_CATEGORIES,
 } from '../lib/courseCategories';
+import { useTranslation, Trans } from 'react-i18next'
 
 export const COURSE_CATEGORIES = STANDARD_COURSE_CATEGORIES;
 
@@ -85,6 +86,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   onRefreshData,
   disableAnimation = false,
 }) => {
+  const { t } = useTranslation()
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -149,7 +151,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       );
       setAvailableMentors(mentorUsers);
     } catch (err: any) {
-      setCourseMentorsNotice(err?.message || 'Error al cargar mentores');
+      setCourseMentorsNotice(err?.message || t('errorAlCargarMentores', 'Error al cargar mentores'));
     } finally {
       setLoadingCourseMentors(false);
     }
@@ -168,13 +170,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     try {
       const res = await api.setAdminCourseMentors(mentorModalCourse.id, assignedMentorIds);
       setAssignedMentorIds(res.mentorIds || []);
-      setCourseMentorsNotice('Mentores asignados correctamente al curso');
+      setCourseMentorsNotice(t('mentoresAsignadosCorrectamenteAlCurso', 'Mentores asignados correctamente al curso'));
       setTimeout(() => {
         setMentorModalCourse(null);
         setCourseMentorsNotice(null);
       }, 1000);
     } catch (err: any) {
-      setCourseMentorsNotice(err?.message || 'Error al guardar mentores del curso');
+      setCourseMentorsNotice(err?.message || t('errorAlGuardarMentoresDelCurso', 'Error al guardar mentores del curso'));
     } finally {
       setSavingCourseMentors(false);
     }
@@ -242,7 +244,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
   const handleGenerateCover = async () => {
     if (!form.title.trim()) {
-      alert('Escribe primero el título del curso para generar una portada temática con IA.');
+      alert(t('escribePrimeroElTituloDelCursoPara', 'Escribe primero el título del curso para generar una portada temática con IA.'));
       return;
     }
     setGeneratingCover(true);
@@ -254,10 +256,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       });
       if (res.success && res.coverImage) {
         setForm((prev) => ({ ...prev, coverImage: res.coverImage }));
-        flash('Portada generada con IA + logo del plugin de personalización.');
+        flash(t('portadaGeneradaConIaLogoDelPluginDe', 'Portada generada con IA + logo del plugin de personalización.'));
       }
     } catch (err: any) {
-      alert(err.message || 'No se pudo generar la portada con IA');
+      alert(err.message || t('noSePudoGenerarLaPortadaConIa', 'No se pudo generar la portada con IA'));
     } finally {
       setGeneratingCover(false);
     }
@@ -271,15 +273,15 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     try {
       if (editingCourseId) {
         await api.updateCourse(editingCourseId, form);
-        flash('Curso actualizado correctamente.');
+        flash(t('cursoActualizadoCorrectamente', 'Curso actualizado correctamente.'));
       } else {
         await api.createCourse(form);
-        flash('Curso creado correctamente.');
+        flash(t('cursoCreadoCorrectamente', 'Curso creado correctamente.'));
       }
       resetForm();
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al guardar el curso');
+      alert(err.message || t('errorAlGuardarElCurso', 'Error al guardar el curso'));
     } finally {
       setSavingCourse(false);
     }
@@ -289,10 +291,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     setBusyId(course.id);
     try {
       await api.updateCourse(course.id, { published: !course.published });
-      flash(course.published ? 'Curso pasado a borrador.' : 'Curso publicado.');
+      flash(course.published ? t('cursoPasadoABorrador', 'Curso pasado a borrador.') : t('cursoPublicado', 'Curso publicado.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al cambiar la publicación');
+      alert(err.message || t('errorAlCambiarLaPublicacion', 'Error al cambiar la publicación'));
     } finally {
       setBusyId(null);
     }
@@ -303,7 +305,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'course',
       id: course.id,
       title: course.title,
-      warningText: 'Se eliminará el curso junto con sus módulos, videos y recursos vinculados.',
+      warningText: t('seEliminaraElCursoJuntoConSusModulos', 'Se eliminará el curso junto con sus módulos, videos y recursos vinculados.'),
     });
   };
 
@@ -312,10 +314,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     try {
       await api.createModule(courseId, { title: newModuleTitle.trim() });
       setNewModuleTitle('');
-      flash('Módulo agregado.');
+      flash(t('moduloAgregado', 'Módulo agregado.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al crear el módulo');
+      alert(err.message || t('errorAlCrearElModulo', 'Error al crear el módulo'));
     }
   };
 
@@ -325,10 +327,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       await api.updateModule(moduleId, { title: editingModuleTitle.trim() });
       setEditingModuleId(null);
       setEditingModuleTitle('');
-      flash('Módulo actualizado.');
+      flash(t('moduloActualizado', 'Módulo actualizado.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al renombrar el módulo');
+      alert(err.message || t('errorAlRenombrarElModulo', 'Error al renombrar el módulo'));
     }
   };
 
@@ -337,7 +339,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'module',
       id: module.id,
       title: module.title,
-      warningText: `Se eliminará el módulo con sus ${module.videos.length} video(s).`,
+      warningText: t('seEliminaraElModuloConSusLengthVideos', 'Se eliminará el módulo con sus {{length}} video(s).', { length: module.videos.length }),
     });
   };
 
@@ -352,7 +354,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       await api.updateModule(target.id, { order: current.order });
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al reordenar los módulos');
+      alert(err.message || t('errorAlReordenarLosModulos', 'Error al reordenar los módulos'));
     }
   };
 
@@ -375,11 +377,11 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       setDriveResults(res.videos || []);
       setDriveIsDemo(Boolean(res.isDemo));
       if (!res.videos || res.videos.length === 0) {
-        setDriveError('Sin resultados en Google Drive para esa búsqueda.');
+        setDriveError(t('sinResultadosEnGoogleDriveParaEsa', 'Sin resultados en Google Drive para esa búsqueda.'));
       }
     } catch (err: any) {
       setDriveResults([]);
-      setDriveError(err.message || 'No se pudo consultar Google Drive.');
+      setDriveError(err.message || t('noSePudoConsultarGoogleDrive', 'No se pudo consultar Google Drive.'));
     } finally {
       setDriveLoading(false);
     }
@@ -406,10 +408,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       });
       resetVideoForm();
       setVideoModuleId(null);
-      flash('Video agregado al módulo.');
+      flash(t('videoAgregadoAlModulo', 'Video agregado al módulo.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al agregar el video');
+      alert(err.message || t('errorAlAgregarElVideo', 'Error al agregar el video'));
     }
   };
 
@@ -423,7 +425,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       await api.updateVideo(target.id, { order: current.order });
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al reordenar los videos');
+      alert(err.message || t('errorAlReordenarLosVideos', 'Error al reordenar los videos'));
     }
   };
 
@@ -432,7 +434,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'video',
       id: video.id,
       title: video.title,
-      warningText: 'Se eliminará esta misión/lección de video del módulo.',
+      warningText: t('seEliminaraEstaMisionleccionDeVideoDel', 'Se eliminará esta misión/lección de video del módulo.'),
     });
   };
 
@@ -445,13 +447,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         await api.deleteCourse(deleteTarget.id, force);
         if (expandedCourseId === deleteTarget.id) setExpandedCourseId(null);
         if (editingCourseId === deleteTarget.id) resetForm();
-        flash(force ? 'Curso forzado y eliminado por completo.' : 'Curso eliminado.');
+        flash(force ? t('cursoForzadoYEliminadoPorCompleto', 'Curso forzado y eliminado por completo.') : t('cursoEliminado', 'Curso eliminado.'));
       } else if (deleteTarget.type === 'module') {
         await api.deleteModule(deleteTarget.id, force);
-        flash(force ? 'Módulo forzado y eliminado.' : 'Módulo eliminado.');
+        flash(force ? t('moduloForzadoYEliminado', 'Módulo forzado y eliminado.') : t('moduloEliminado', 'Módulo eliminado.'));
       } else if (deleteTarget.type === 'video') {
         await api.deleteVideo(deleteTarget.id, force);
-        flash(force ? 'Video forzado y eliminado.' : 'Video eliminado.');
+        flash(force ? t('videoForzadoYEliminado', 'Video forzado y eliminado.') : t('videoEliminado', 'Video eliminado.'));
       }
       setDeleteTarget(null);
       await refreshAll();
@@ -460,7 +462,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         prev
           ? {
               ...prev,
-              error: err.message || 'Error al eliminar.',
+              error: err.message || t('errorAlEliminarPunto', 'Error al eliminar.'),
               canForce: true,
             }
           : null,
@@ -487,13 +489,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
           <div className="space-y-1">
             <span className="text-micro font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Métodos de Creación de Cursos
+              <Sparkles className="w-3.5 h-3.5" /> {t('metodosDeCreacionDeCursos', 'Métodos de Creación de Cursos')}
             </span>
             <h3 className="text-sm font-bold text-ink">
-              ¿Cómo deseas estructurar tu próximo curso?
+              {t('comoDeseasEstructurarTuProximoCurso', '¿Cómo deseas estructurar tu próximo curso?')}
             </h3>
             <p className="text-xs text-ink-muted">
-              Diseña temarios desde cero, genera cursos completos con IA desde YouTube o importa carpetas desde Google Drive.
+              {t('disenaTemariosDesdeCeroGeneraCursos', 'Diseña temarios desde cero, genera cursos completos con IA desde YouTube o importa carpetas desde Google Drive.')}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto shrink-0">
@@ -507,7 +509,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               }`}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Manual</span>
+              <span>{t('manual', 'Manual')}</span>
             </button>
             <button
               type="button"
@@ -519,7 +521,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               }`}
             >
               <Youtube className="w-3.5 h-3.5" />
-              <span>IA YouTube Builder</span>
+              <span>{t('iaYoutubeBuilder', 'IA YouTube Builder')}</span>
             </button>
             <button
               type="button"
@@ -531,7 +533,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               }`}
             >
               <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Google Drive</span>
+              <span>{t('googleDrive', 'Google Drive')}</span>
             </button>
           </div>
         </div>
@@ -542,20 +544,20 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-red-400 flex items-center gap-2">
-              <Youtube className="w-4 h-4" /> Asistente de Creación de Cursos desde YouTube con IA
+              <Youtube className="w-4 h-4" /> {t('asistenteDeCreacionDeCursosDesdeYoutube', 'Asistente de Creación de Cursos desde YouTube con IA')}
             </span>
             <button
               type="button"
               onClick={() => setCreationTab('manual')}
               className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
             >
-              <X className="w-3.5 h-3.5" /> Volver a Creación Manual
+              <X className="w-3.5 h-3.5" /> {t('volverACreacionManual', 'Volver a Creación Manual')}
             </button>
           </div>
           <YouTubeCourseBuilder
             currentUser={currentUser}
             onCourseCreated={(newId) => {
-              flash('¡Curso creado exitosamente con IA desde YouTube!');
+              flash(t('cursoCreadoExitosamenteConIaDesdeYoutube', '¡Curso creado exitosamente con IA desde YouTube!'));
               refreshAll();
               setCreationTab('manual');
               setExpandedCourseId(newId);
@@ -570,14 +572,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-              <HardDrive className="w-4 h-4" /> Importación desde Google Drive Video Engine
+              <HardDrive className="w-4 h-4" /> {t('importacionDesdeGoogleDriveVideoEngine', 'Importación desde Google Drive Video Engine')}
             </span>
             <button
               type="button"
               onClick={() => setCreationTab('manual')}
               className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
             >
-              <X className="w-3.5 h-3.5" /> Volver a Creación Manual
+              <X className="w-3.5 h-3.5" /> {t('volverACreacionManual', 'Volver a Creación Manual')}
             </button>
           </div>
           <DriveCourseImport onImported={refreshAll} />
@@ -591,11 +593,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <div>
             <h3 className="font-extrabold text-base text-white flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-cyan-400" />
-              {editingCourseId ? 'Editar Curso' : 'Crear Nuevo Curso'}
+              {editingCourseId ? t('editarCurso', 'Editar Curso') : t('crearNuevoCurso', 'Crear Nuevo Curso')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Los cursos nuevos se guardan como borrador hasta que los publiques. Un precio de 0 los
-              convierte en cursos públicos y gratuitos.
+              {t('losCursosNuevosSeGuardanComoBorrador', 'Los cursos nuevos se guardan como borrador hasta que los publiques. Un precio de 0 los convierte en cursos públicos y gratuitos.')}
             </p>
           </div>
           {editingCourseId && (
@@ -603,7 +604,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               onClick={resetForm}
               className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
             >
-              <X className="w-4 h-4" /> Cancelar
+              <X className="w-4 h-4" /> {t('cancelar', 'Cancelar')}
             </button>
           )}
         </div>
@@ -611,10 +612,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <form onSubmit={handleSubmitCourse} className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Curso</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('tituloDelCurso', 'Título del Curso')}</label>
               <input
                 type="text"
-                placeholder="Ej. Arquitectura Cloud Avanzada"
+                placeholder={t('ejArquitecturaCloudAvanzada', 'Ej. Arquitectura Cloud Avanzada')}
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -622,7 +623,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Categoría</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('categoriaEtiqueta', 'Categoría')}</label>
               <select
                 value={form.category || 'Mentoría Especializada'}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -631,14 +632,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 {form.category && !COURSE_CATEGORIES.includes(form.category as any) && (
                   <option value={form.category}>{form.category}</option>
                 )}
-                <optgroup label="Modalidades de Mentoría">
+                <optgroup label={t('modalidadesDeMentoria', 'Modalidades de Mentoría')}>
                   {MENTORSHIP_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Áreas Temáticas Técnicas">
+                <optgroup label={t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas')}>
                   {TECHNICAL_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
@@ -650,10 +651,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           </div>
 
           <div>
-            <label className="text-[11px] font-bold text-slate-400 block mb-1">Descripción</label>
+            <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('descripcion', 'Descripción')}</label>
             <textarea
               rows={3}
-              placeholder="Qué aprenderá el estudiante en este programa."
+              placeholder={t('queAprenderaElEstudianteEnEstePrograma', 'Qué aprenderá el estudiante en este programa.')}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -662,7 +663,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Precio</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('precio', 'Precio')}</label>
               <input
                 type="number"
                 min={0}
@@ -673,23 +674,23 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Moneda</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('moneda', 'Moneda')}</label>
               <select
                 value={form.currency}
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
                 className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
               >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="MXN">MXN</option>
-                <option value="COP">COP</option>
-                <option value="ARS">ARS</option>
+                <option value="USD">{t('usd', 'USD')}</option>
+                <option value="EUR">{t('eur', 'EUR')}</option>
+                <option value="MXN">{t('mxn', 'MXN')}</option>
+                <option value="COP">{t('cop', 'COP')}</option>
+                <option value="ARS">{t('ars', 'ARS')}</option>
               </select>
             </div>
             <div className="md:col-span-2 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-[11px] font-bold text-slate-400 block">
-                  Imagen de Portada (Automática con IA + Logo si se deja vacía)
+                  {t('imagenDePortadaAutomaticaConIaLogoSiSe', 'Imagen de Portada (Automática con IA + Logo si se deja vacía)')}
                 </label>
                 <button
                   type="button"
@@ -702,13 +703,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   ) : (
                     <Sparkles className="w-3.5 h-3.5" />
                   )}
-                  <span>{generatingCover ? 'Generando con IA...' : 'Generar con IA + Logo'}</span>
+                  <span>{generatingCover ? t('generandoConIa', 'Generando con IA...') : t('generarConIaLogo', 'Generar con IA + Logo')}</span>
                 </button>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Dejar vacío para autogenerar portada IA temática con logo del plugin..."
+                  placeholder={t('dejarVacioParaAutogenerarPortadaIa', 'Dejar vacío para autogenerar portada IA temática con logo del plugin...')}
                   value={form.coverImage}
                   onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
                   className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -717,7 +718,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, coverImage: '' })}
-                    title="Limpiar portada"
+                    title={t('limpiarPortada', 'Limpiar portada')}
                     className="p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-rose-400"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -728,12 +729,12 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 <div className="flex items-center gap-3 p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
                   <img
                     src={form.coverImage}
-                    alt="Vista previa de portada"
+                    alt={t('vistaPreviaDePortada', 'Vista previa de portada')}
                     className="w-28 h-16 rounded-lg object-cover border border-cyan-500/30 shrink-0"
                   />
                   <div className="text-[11px] text-slate-400 leading-relaxed">
-                    <span className="text-cyan-400 font-bold block">Vista previa de portada activa</span>
-                    Incluye diseño temático adaptado al curso y el emblema configurado en el plugin de personalización.
+                    <Trans i18nKey="vistaPreviaDePortadaActivaincluyeDiseno"><span className="text-cyan-400 font-bold block">Vista previa de portada activa</span>
+                    Incluye diseño temático adaptado al curso y el emblema configurado en el plugin de personalización.</Trans>
                   </div>
                 </div>
               )}
@@ -757,12 +758,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 ) : (
                   <Unlock className="w-3.5 h-3.5 text-slate-500" />
                 )}
-                Progresión secuencial (bloquear módulos)
+                {t('progresionSecuencialBloquearModulos', 'Progresión secuencial (bloquear módulos)')}
               </span>
               <span className="block text-[11px] text-slate-400 mt-1 leading-relaxed">
-                El alumno empieza con el Módulo 1 abierto y el resto con candado. Cada módulo se
-                desbloquea cuando termina todas las lecciones del anterior. Apagado, el temario se
-                ve completo desde el primer día.
+                {t('elAlumnoEmpiezaConElModulo1AbiertoYEl', 'El alumno empieza con el Módulo 1 abierto y el resto con candado. Cada módulo se desbloquea cuando termina todas las lecciones del anterior. Apagado, el temario se ve completo desde el primer día.')}
               </span>
             </span>
           </label>
@@ -785,11 +784,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 ) : (
                   <Lock className="w-3.5 h-3.5 text-ink-faint" />
                 )}
-                Acceso para miembros
+                {t('accesoParaMiembros', 'Acceso para miembros')}
               </span>
               <span className="block text-micro text-ink-muted mt-1 leading-relaxed">
-                Disponible para mentees y personal de la academia. Los invitados y estudiantes
-                externos necesitan una compra o asignación para acceder.
+                {t('disponibleParaMenteesYPersonalDeLa', 'Disponible para mentees y personal de la academia. Los invitados y estudiantes externos necesitan una compra o asignación para acceder.')}
               </span>
             </span>
           </label>
@@ -802,7 +800,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onChange={(e) => setForm({ ...form, published: e.target.checked })}
                 className="accent-[#06b6d4] w-4 h-4"
               />
-              Publicar inmediatamente
+              {t('publicarInmediatamente', 'Publicar inmediatamente')}
             </label>
 
             <button
@@ -817,7 +815,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              {editingCourseId ? 'Guardar Cambios' : 'Crear Curso'}
+              {editingCourseId ? t('guardarCambiosCapital', 'Guardar Cambios') : t('crearCursoCapital', 'Crear Curso')}
             </button>
           </div>
         </form>
@@ -829,21 +827,21 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
           <h3 className="text-base font-extrabold text-white flex items-center gap-2">
             <Layers className="w-5 h-5 text-[#06b6d4]" />
-            Catálogo ({courses.length})
+            {t('catalogoLength', 'Catálogo ({{length}})', { length: courses.length })}
           </h3>
           <button
             onClick={loadCourses}
             className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> {t('actualizar', 'Actualizar')}
           </button>
         </div>
 
         {loading && courses.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">Cargando cursos…</p>
+          <p className="text-xs text-slate-500 py-6 text-center">{t('cargandoCursos', 'Cargando cursos…')}</p>
         ) : courses.length === 0 ? (
           <p className="text-xs text-slate-500 py-6 text-center">
-            Todavía no hay cursos. Crea el primero con el formulario de arriba.
+            {t('todaviaNoHayCursosCreaElPrimeroConEl', 'Todavía no hay cursos. Crea el primero con el formulario de arriba.')}
           </p>
         ) : (
           <div className="space-y-3">
@@ -875,33 +873,33 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                 : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                             }`}
                           >
-                            {course.published ? 'Publicado' : 'Borrador'}
+                            {course.published ? t('publicado', 'Publicado') : t('borrador', 'Borrador')}
                           </span>
                           {course.isDemo && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                              Demo
+                              {t('demo', 'Demo')}
                             </span>
                           )}
                           {course.openToAllRegistered && (
                             <span
-                              title="Disponible para mentees y personal de la academia"
+                              title={t('disponibleParaMenteesYPersonalDeLa2', 'Disponible para mentees y personal de la academia')}
                               className="text-micro font-bold px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1"
                             >
-                              <Globe className="w-2.5 h-2.5" /> Miembros
+                              <Globe className="w-2.5 h-2.5" /> {t('miembros', 'Miembros')}
                             </span>
                           )}
                           {course.sequentialUnlock && (
                             <span
-                              title="Los módulos se desbloquean uno a uno"
+                              title={t('losModulosSeDesbloqueanUnoAUno', 'Los módulos se desbloquean uno a uno')}
                               className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1"
                             >
-                              <Lock className="w-2.5 h-2.5" /> Secuencial
+                              <Lock className="w-2.5 h-2.5" /> {t('secuencial', 'Secuencial')}
                             </span>
                           )}
                         </div>
                         <span className="text-[10px] text-slate-500">
-                          {course.category} • {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : 'Gratuito'} •{' '}
-                          {modules.length} módulo(s) • {countVideos(course)} video(s)
+                          {course.category} • {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : t('gratuito', 'Gratuito')} •{' '}
+                          {modules.length} {t('modulosParentesis', 'módulo(s) •')} {countVideos(course)} video(s)
                         </span>
                       </div>
                     </div>
@@ -911,20 +909,20 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         type="button"
                         onClick={() => handleOpenCourseMentors(course)}
                         className="px-2.5 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44] text-[11px] font-bold text-brand-cyan hover:text-white transition-colors flex items-center gap-1.5"
-                        title="Asignar mentores autorizados a este curso"
+                        title={t('asignarMentoresAutorizadosAEsteCurso', 'Asignar mentores autorizados a este curso')}
                       >
-                        <Users className="w-3.5 h-3.5 text-brand-cyan" /> Mentores
+                        <Users className="w-3.5 h-3.5 text-brand-cyan" /> {t('mentores', 'Mentores')}
                       </button>
                       <button
                         onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
                         className="px-2.5 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44] text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
                       >
-                        <Layers className="w-3.5 h-3.5" /> Temario
+                        <Layers className="w-3.5 h-3.5" /> {t('temario', 'Temario')}
                       </button>
                       <button
                         onClick={() => startEditing(course)}
                         className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors"
-                        title="Editar curso"
+                        title={t('editarCurso2', 'Editar curso')}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -932,7 +930,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         onClick={() => handleTogglePublished(course)}
                         disabled={busyId === course.id}
                         className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors disabled:opacity-50"
-                        title={course.published ? 'Pasar a borrador' : 'Publicar'}
+                        title={course.published ? t('pasarABorrador', 'Pasar a borrador') : t('publicar', 'Publicar')}
                       >
                         {course.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -940,7 +938,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         onClick={() => handleDeleteCourse(course)}
                         disabled={busyId === course.id}
                         className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors disabled:opacity-50"
-                        title="Eliminar curso"
+                        title={t('eliminarCurso', 'Eliminar curso')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -953,7 +951,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="Título del nuevo módulo"
+                          placeholder={t('tituloDelNuevoModulo', 'Título del nuevo módulo')}
                           value={newModuleTitle}
                           onChange={(e) => setNewModuleTitle(e.target.value)}
                           className="flex-1 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -962,13 +960,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                           onClick={() => handleCreateModule(course.id)}
                           className="btn-brand-primary py-2 px-3 text-xs font-bold flex items-center gap-1.5"
                         >
-                          <Plus className="w-4 h-4" /> Módulo
+                          <Plus className="w-4 h-4" /> {t('modulo', 'Módulo')}
                         </button>
                       </div>
 
                       {modules.length === 0 ? (
                         <p className="text-xs text-slate-500 py-3 text-center">
-                          Este curso todavía no tiene módulos.
+                          {t('esteCursoTodaviaNoTieneModulos', 'Este curso todavía no tiene módulos.')}
                         </p>
                       ) : (
                         modules.map((module, moduleIndex) => {
@@ -1017,7 +1015,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                         onClick={() => handleMoveModule(modules, moduleIndex, -1)}
                                         disabled={moduleIndex === 0}
                                         className="p-1 rounded-lg bg-[#141420] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                        title="Subir"
+                                        title={t('subir', 'Subir')}
                                       >
                                         <ChevronUp className="w-3.5 h-3.5" />
                                       </button>
@@ -1025,7 +1023,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                         onClick={() => handleMoveModule(modules, moduleIndex, 1)}
                                         disabled={moduleIndex === modules.length - 1}
                                         className="p-1 rounded-lg bg-[#141420] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                        title="Bajar"
+                                        title={t('bajar', 'Bajar')}
                                       >
                                         <ChevronDown className="w-3.5 h-3.5" />
                                       </button>
@@ -1035,7 +1033,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                           setEditingModuleTitle(module.title);
                                         }}
                                         className="p-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400"
-                                        title="Renombrar"
+                                        title={t('renombrar', 'Renombrar')}
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
@@ -1043,10 +1041,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                         type="button"
                                         onClick={() => setQuizModule(module)}
                                         className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer"
-                                        title="Gestionar Examen con IA"
+                                        title={t('gestionarExamenConIa', 'Gestionar Examen con IA')}
                                       >
                                         <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                        <span>Examen IA</span>
+                                        <span>{t('examenIa', 'Examen IA')}</span>
                                       </button>
                                       <button
                                         onClick={() => {
@@ -1054,14 +1052,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                           setVideoModuleId(videoModuleId === module.id ? null : module.id);
                                         }}
                                         className="p-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
-                                        title="Agregar video"
+                                        title={t('agregarVideo', 'Agregar video')}
                                       >
                                         <Plus className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteModule(module)}
                                         className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                                        title="Eliminar módulo"
+                                        title={t('eliminarModulo', 'Eliminar módulo')}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -1078,7 +1076,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                 >
                                   <div className="md:col-span-2">
                                     <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      Título del video
+                                      {t('tituloDelVideo', 'Título del video')}
                                     </label>
                                     <input
                                       type="text"
@@ -1090,7 +1088,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                   </div>
                                   <div>
                                     <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      Duración
+                                      {t('duracion', 'Duración')}
                                     </label>
                                     <input
                                       type="text"
@@ -1102,12 +1100,12 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                   </div>
                                   <div>
                                     <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      Archivo de Google Drive
+                                      {t('archivoDeGoogleDrive', 'Archivo de Google Drive')}
                                     </label>
                                     <div className="flex gap-1">
                                       <input
                                         type="text"
-                                        placeholder="Pega el enlace de Drive o su ID"
+                                        placeholder={t('pegaElEnlaceDeDriveOSuId', 'Pega el enlace de Drive o su ID')}
                                         value={videoDriveId}
                                         onChange={(e) => setVideoDriveId(e.target.value)}
                                         className="flex-1 min-w-0 bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -1120,7 +1118,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                           if (opening && driveResults.length === 0) searchDrive();
                                         }}
                                         className="shrink-0 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                                        title="Buscar en Google Drive"
+                                        title={t('buscarEnGoogleDriveSin', 'Buscar en Google Drive')}
                                       >
                                         <HardDrive className="w-3.5 h-3.5" />
                                       </button>
@@ -1133,7 +1131,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                       <div className="flex gap-1">
                                         <input
                                           type="text"
-                                          placeholder="Buscar por nombre en Google Drive…"
+                                          placeholder={t('buscarPorNombreEnGoogleDrive', 'Buscar por nombre en Google Drive…')}
                                           value={driveQuery}
                                           onChange={(e) => setDriveQuery(e.target.value)}
                                           onKeyDown={(e) => {
@@ -1160,10 +1158,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
                                       {driveIsDemo && (
                                         <p className="text-[10px] text-amber-400 leading-snug">
-                                          Google Drive no está configurado: estos resultados son de
-                                          demostración y sus identificadores no existen, así que el
-                                          reproductor quedará vacío. Pega el enlace real del vídeo en
-                                          el campo de arriba, o configura las credenciales de Drive.
+                                          {t('googleDriveNoEstaConfiguradoEstos', 'Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.')}
                                         </p>
                                       )}
 
@@ -1197,7 +1192,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                             <div className="min-w-0 flex-1">
                                               <p className="text-[11px] text-slate-200 truncate">{file.name}</p>
                                               <span className="text-[9px] text-slate-500 font-mono">
-                                                {file.duration || 'sin duración'} • {file.id.slice(0, 14)}…
+                                                {file.duration || t('sinDuracion', 'sin duración')} • {file.id.slice(0, 14)}…
                                               </span>
                                             </div>
                                             {videoDriveId === file.id && (
@@ -1207,7 +1202,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                         ))}
                                         {!driveLoading && driveResults.length === 0 && !driveError && (
                                           <p className="text-[10px] text-slate-500 text-center py-3">
-                                            Busca un video para enlazarlo.
+                                            {t('buscaUnVideoParaEnlazarlo', 'Busca un video para enlazarlo.')}
                                           </p>
                                         )}
                                       </div>
@@ -1217,14 +1212,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                   <div className="col-span-full flex flex-wrap items-center justify-between gap-2">
                                     <span className="text-[10px] text-slate-500 truncate">
                                       {videoDriveId
-                                        ? `Enlazado a Drive: ${videoDriveId}`
-                                        : 'Sin archivo de Drive: se generará un enlace de marcador.'}
+                                        ? t('enlazadoADriveVideoDriveId', 'Enlazado a Drive: {{videoDriveId}}', { videoDriveId })
+                                        : t('sinArchivoDeDriveSeGeneraraUnEnlaceDe', 'Sin archivo de Drive: se generará un enlace de marcador.')}
                                     </span>
                                     <button
                                       type="submit"
                                       className="btn-brand-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1.5 shrink-0"
                                     >
-                                      <Plus className="w-3.5 h-3.5" /> Agregar Video
+                                      <Plus className="w-3.5 h-3.5" /> {t('agregarVideo2', 'Agregar Video')}
                                     </button>
                                   </div>
                                 </form>
@@ -1252,7 +1247,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                           onClick={() => handleMoveVideo(videos, videoIndex, -1)}
                                           disabled={videoIndex === 0}
                                           className="p-1 rounded bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                          title="Subir"
+                                          title={t('subir', 'Subir')}
                                         >
                                           <ChevronUp className="w-3 h-3" />
                                         </button>
@@ -1260,14 +1255,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                           onClick={() => handleMoveVideo(videos, videoIndex, 1)}
                                           disabled={videoIndex === videos.length - 1}
                                           className="p-1 rounded bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                          title="Bajar"
+                                          title={t('bajar', 'Bajar')}
                                         >
                                           <ChevronDown className="w-3 h-3" />
                                         </button>
                                         <button
                                           onClick={() => handleDeleteVideo(video)}
                                           className="p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                                          title="Eliminar video"
+                                          title={t('eliminarVideo', 'Eliminar video')}
                                         >
                                           <Trash2 className="w-3 h-3" />
                                         </button>
@@ -1320,10 +1315,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               <div>
                 <h3 className="text-base font-bold text-white">
                   {deleteTarget.type === 'course'
-                    ? 'Eliminar Curso'
+                    ? t('eliminarCurso2', 'Eliminar Curso')
                     : deleteTarget.type === 'module'
-                    ? 'Eliminar Módulo'
-                    : 'Eliminar Misión / Video'}
+                    ? t('eliminarModulo2', 'Eliminar Módulo')
+                    : t('eliminarMisionVideo', 'Eliminar Misión / Video')}
                 </h3>
                 <p className="text-xs text-slate-400 truncate max-w-[260px]">
                   «{deleteTarget.title}»
@@ -1343,10 +1338,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 </p>
                 <p className="text-[11px] text-red-300/80 leading-snug">
                   {deleteTarget.type === 'course'
-                    ? 'El curso contiene registros de alumnos (pagos, matrículas, certificados o progreso). Forzar la eliminación purgará definitivamente todos estos registros asociados.'
+                    ? t('elCursoContieneRegistrosDeAlumnosPagos', 'El curso contiene registros de alumnos (pagos, matrículas, certificados o progreso). Forzar la eliminación purgará definitivamente todos estos registros asociados.')
                     : deleteTarget.type === 'module'
-                    ? 'El módulo contiene intentos de examen o progreso de alumnos. Forzar la eliminación purgará permanentemente los datos.'
-                    : 'Esta lección tiene progreso o notas de alumnos. Forzar la eliminación eliminará el progreso de los alumnos en este video.'}
+                    ? t('elModuloContieneIntentosDeExamenO', 'El módulo contiene intentos de examen o progreso de alumnos. Forzar la eliminación purgará permanentemente los datos.')
+                    : t('estaLeccionTieneProgresoONotasDeAlumnos', 'Esta lección tiene progreso o notas de alumnos. Forzar la eliminación eliminará el progreso de los alumnos en este video.')}
                 </p>
               </div>
             )}
@@ -1358,7 +1353,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 disabled={isDeleting}
                 className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#1a1a2e] transition-colors disabled:opacity-50"
               >
-                Cancelar
+                {t('cancelar', 'Cancelar')}
               </button>
 
               {!deleteTarget.error ? (
@@ -1370,17 +1365,17 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    Eliminar
+                    {t('eliminar', 'Eliminar')}
                   </button>
                   <button
                     type="button"
                     onClick={() => executeDelete(true)}
                     disabled={isDeleting}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
-                    title="Forzar eliminación ignorando y purgando progreso de alumnos"
+                    title={t('forzarEliminacionIgnorandoYPurgando', 'Forzar eliminación ignorando y purgando progreso de alumnos')}
                   >
                     {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                    Forzar eliminación
+                    {t('forzarEliminacion', 'Forzar eliminación')}
                   </button>
                 </>
               ) : (
@@ -1391,7 +1386,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
                 >
                   {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                  Confirmar y Forzar Eliminación
+                  {t('confirmarYForzarEliminacion', 'Confirmar y Forzar Eliminación')}
                 </button>
               )}
             </div>
@@ -1419,7 +1414,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-white">
-                    Mentores a Cargo del Curso
+                    {t('mentoresACargoDelCurso', 'Mentores a Cargo del Curso')}
                   </h3>
                   <p className="text-xs text-slate-400 truncate max-w-sm">
                     {mentorModalCourse.title}
@@ -1437,7 +1432,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             </div>
 
             <p className="text-xs text-slate-300">
-              Selecciona qué mentores tienen permiso para gestionar alumnos, tutorías y evaluaciones en este curso.
+              {t('seleccionaQueMentoresTienenPermisoPara', 'Selecciona qué mentores tienen permiso para gestionar alumnos, tutorías y evaluaciones en este curso.')}
             </p>
 
             {courseMentorsNotice && (
@@ -1449,13 +1444,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             {loadingCourseMentors ? (
               <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
-                <span className="text-xs">Cargando mentores disponibles...</span>
+                <span className="text-xs">{t('cargandoMentoresDisponibles', 'Cargando mentores disponibles...')}</span>
               </div>
             ) : (
               <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                 {availableMentors.length === 0 ? (
                   <p className="text-xs text-slate-500 py-4 text-center">
-                    No hay usuarios con rol Mentor o Administrador registrados.
+                    {t('noHayUsuariosConRolMentorOAdministrador', 'No hay usuarios con rol Mentor o Administrador registrados.')}
                   </p>
                 ) : (
                   availableMentors.map((m) => {
@@ -1483,7 +1478,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         </div>
                         {isChecked && (
                           <span className="text-[10px] font-mono font-bold text-brand-cyan uppercase ml-2 shrink-0">
-                            Asignado
+                            {t('asignado', 'Asignado')}
                           </span>
                         )}
                       </label>
@@ -1495,7 +1490,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
             <div className="flex items-center justify-between pt-3 border-t border-[#2d2d44]">
               <span className="text-xs text-slate-400 font-mono">
-                {assignedMentorIds.length} mentor{assignedMentorIds.length === 1 ? '' : 'es'} asignado{assignedMentorIds.length === 1 ? '' : 's'}
+                {t('countMentoresAsignados', { defaultValue_one: '{{count}} mentor asignado', defaultValue_other: '{{count}} mentores asignados', count: assignedMentorIds.length })}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1504,7 +1499,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   onClick={() => setMentorModalCourse(null)}
                   className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="button"
@@ -1513,7 +1508,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
                 >
                   {savingCourseMentors && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Guardar Mentores</span>
+                  <span>{t('guardarMentores', 'Guardar Mentores')}</span>
                 </button>
               </div>
             </div>
