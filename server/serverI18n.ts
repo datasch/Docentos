@@ -8,6 +8,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { RESPONSE_PATTERNS, RESPONSE_TRANSLATIONS } from './responseTranslations.js';
 
 export const SERVER_LANGUAGES = ['es', 'en', 'pt', 'fr', 'it'] as const;
 export type ServerLanguage = (typeof SERVER_LANGUAGES)[number];
@@ -297,4 +298,48 @@ export function sendApiError(
     code,
     ...extra,
   });
+}
+
+const RESPONSE_LANG_INDEX: Record<Exclude<ServerLanguage, 'es'>, number> = { en: 0, pt: 1, fr: 2, it: 3 };
+
+/** Traduce un texto canónico en español al idioma pedido; si no está en el diccionario, lo deja igual. */
+export function translateResponseText(text: string, lang: ServerLanguage): string {
+  if (lang === 'es') return text;
+  const entry = RESPONSE_TRANSLATIONS[text] ?? RESPONSE_TRANSLATIONS[text.trim()];
+  if (entry) return entry[RESPONSE_LANG_INDEX[lang]];
+  for (const { pattern, translate } of RESPONSE_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) return translate(match)[RESPONSE_LANG_INDEX[lang]];
+  }
+  return text;
+}
+
+/**
+ * Middleware: traduce `error` y `message` de toda respuesta JSON según el idioma
+ * de la petición (`?lang=` o `Accept-Language`). Los handlers siguen escribiendo
+ * el mensaje en español; los correos no pasan por aquí.
+ */
+export function localizeJsonResponses(req: Request, res: Response, next: () => void): void {
+  const lang = resolveRequestLanguage(req);
+  if (lang === 'es') return next();
+  const originalJson = res.json.bind(res);
+  res.json = ((body: unknown) => {
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      const record = body as Record<string, unknown>;
+      let changed: Record<string, unknown> | null = null;
+      for (const field of ['error', 'message'] as const) {
+        const value = record[field];
+        if (typeof value === 'string') {
+          const translated = translateResponseText(value, lang);
+          if (translated !== value) {
+            changed = changed ?? { ...record };
+            changed[field] = translated;
+          }
+        }
+      }
+      if (changed) return originalJson(changed);
+    }
+    return originalJson(body);
+  }) as Response['json'];
+  next();
 }

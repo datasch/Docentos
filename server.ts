@@ -135,6 +135,7 @@ import {
   sendApiError,
   resolveRequestLanguage,
   getLocalizedMessage,
+  localizeJsonResponses,
 } from './server/serverI18n.js';
 import {
   getQuizByModuleId,
@@ -618,6 +619,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(requestTracingMiddleware);
+// Traduce error/message de las respuestas JSON al idioma de la petición.
+app.use(localizeJsonResponses);
 app.use(
   compression({
     threshold: 1024,
