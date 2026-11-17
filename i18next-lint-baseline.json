@@ -1,0 +1,25 @@
+{
+  "src/components/course/DocentOSPlayer.tsx": {
+    "hardcoded: -10s": 1
+  },
+  "src/components/DriveCourseImport.tsx": {
+    "concatenation: Avoid splitting text across multiple translations (<Trans> or t()). Use a single translation with placeholders instead.": 1
+  },
+  "src/components/LandingPage.tsx": {
+    "hardcoded: 👋": 1,
+    "hardcoded: 🔥": 1
+  },
+  "src/components/LinearHeroCanvas.tsx": {
+    "hardcoded: 02:22 / 18:40": 1
+  },
+  "src/components/MentorDashboard.tsx": {
+    "concatenation: Avoid string concatenation in translations. Use a single string with placeholders instead.": 2
+  },
+  "src/experiences/constellation/ConstellationCosmicPath.tsx": {
+    "hardcoded: 🌌": 1
+  },
+  "src/experiences/constellation/ConstellationNavbar.tsx": {
+    "hardcoded: 🎃": 1,
+    "hardcoded: 🎅": 1
+  }
+}
