@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Youtube,
   Sparkles,
@@ -65,6 +66,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   onCourseCreated,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   // Pasos: 1 = Input (Búsqueda o URL), 2 = Seleccionar/Curar videos, 3 = Generando con IA, 4 = Revision y Edicion, 5 = Finalizado
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
@@ -81,9 +83,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   // Formulario Paso 1
-  const [coursePrompt, setCoursePrompt] = useState(
-    'Quiero crear un curso práctico y estructurado. Organiza el contenido desde fundamentos hasta proyectos aplicados y formula objetivos de aprendizaje claros para cada módulo.',
-  );
+  const [coursePrompt, setCoursePrompt] = useState(() => t('youtubeBuilder.defaultPrompt', 'Quiero crear un curso práctico y estructurado. Organiza el contenido desde fundamentos hasta proyectos aplicados y formula objetivos de aprendizaje claros para cada módulo.'));
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   // Estado Generación IA (Paso 3)
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState(0);
-  const [jobStatusText, setJobStatusText] = useState('Iniciando análisis pedagógico...');
+  const [jobStatusText, setJobStatusText] = useState(() => t('youtubeBuilder.statusStart', 'Iniciando análisis pedagógico...'));
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   // Estructura generada para edición (Paso 4)
@@ -110,7 +110,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
   const handleGenerateCover = async () => {
     if (!draftCourse?.course?.title?.trim()) {
-      alert('Escribe primero el título del curso para generar una portada temática con IA.');
+      alert(t('youtubeBuilder.coverNeedsTitle', 'Escribe primero el título del curso para generar una portada temática con IA.'));
       return;
     }
     setGeneratingCover(true);
@@ -131,7 +131,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         );
       }
     } catch (err: any) {
-      alert(err.message || 'No se pudo generar la portada con IA');
+      alert(err.message || t('youtubeBuilder.coverFailed', 'No se pudo generar la portada con IA'));
     } finally {
       setGeneratingCover(false);
     }
@@ -147,7 +147,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       checkConnectionStatus();
     }
     if (params.get('youtube_error')) {
-      setImportError(`Error en autenticación de YouTube: ${params.get('youtube_error')}`);
+      setImportError(t('youtubeBuilder.authError', { defaultValue: 'Error en autenticación de YouTube: {{error}}', error: params.get('youtube_error') }));
     }
   }, []);
 
@@ -168,12 +168,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       const authUrl = await api.youtube.getAuthUrl();
       window.location.href = authUrl;
     } catch (err: any) {
-      setImportError(err.message || 'No se pudo iniciar la autenticación con YouTube.');
+      setImportError(err.message || t('youtubeBuilder.connectFailed', 'No se pudo iniciar la autenticación con YouTube.'));
     }
   };
 
   const handleDisconnectYouTube = async () => {
-    if (!window.confirm('¿Desconectar tu cuenta de YouTube de DocentOS?')) return;
+    if (!window.confirm(t('youtubeBuilder.confirmDisconnect', '¿Desconectar tu cuenta de YouTube de DocentOS?'))) return;
     try {
       await api.youtube.disconnect();
       setYtStatus({ connected: false });
@@ -189,7 +189,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     const cleanKeywords = keywords.trim();
 
     if (!cleanTitle && !cleanKeywords) {
-      setImportError('Ingresa un título o palabras clave para buscar contenido en YouTube.');
+      setImportError(t('youtubeBuilder.needQuery', 'Ingresa un título o palabras clave para buscar contenido en YouTube.'));
       return;
     }
 
@@ -201,7 +201,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       if (searchType === 'playlists') {
         const results = await api.youtube.searchPlaylists(combinedQuery, 10);
         if (results.length === 0) {
-          setImportError('No se encontraron playlists para esa búsqueda. Intenta con otras palabras clave.');
+          setImportError(t('youtubeBuilder.noPlaylists', 'No se encontraron playlists para esa búsqueda. Intenta con otras palabras clave.'));
         } else {
           setFoundPlaylists(results);
         }
@@ -215,18 +215,18 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         });
 
         if (foundVideos.length === 0) {
-          setImportError('No se encontraron videos para esa búsqueda. Prueba con términos más generales.');
+          setImportError(t('youtubeBuilder.noVideos', 'No se encontraron videos para esa búsqueda. Prueba con términos más generales.'));
           return;
         }
 
         // Crear contenedor representativo para la curación
-        const displayTitle = cleanTitle || `Curso sobre ${cleanKeywords}`;
+        const displayTitle = cleanTitle || t('youtubeBuilder.courseOn', { defaultValue: 'Curso sobre {{keywords}}', keywords: cleanKeywords });
         setPlaylist({
           id: `search-${Date.now()}`,
           youtubeId: 'custom-search',
           title: displayTitle,
-          description: `Videos encontrados para: "${combinedQuery}"`,
-          channelTitle: 'Colección de Videos de YouTube',
+          description: t('youtubeBuilder.videosFoundFor', { defaultValue: 'Videos encontrados para: "{{query}}"', query: combinedQuery }),
+          channelTitle: t('youtubeBuilder.collection', 'Colección de Videos de YouTube'),
           thumbnailUrl: foundVideos[0]?.thumbnailUrl || '',
           privacyStatus: 'PUBLIC',
           itemCount: foundVideos.length,
@@ -238,12 +238,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     } catch (err: any) {
       if (err.code === 'NOT_CONNECTED') {
         setImportError(
-          'Debes conectar tu cuenta de YouTube mediante Google OAuth o configurar YOUTUBE_API_KEY en el servidor para realizar búsquedas.',
+          t('youtubeBuilder.notConnectedSearch', 'Debes conectar tu cuenta de YouTube mediante Google OAuth o configurar YOUTUBE_API_KEY en el servidor para realizar búsquedas.'),
         );
       } else if (err.code === 'API_QUOTA_EXCEEDED') {
-        setImportError('Se ha superado la cuota de la API de YouTube. Conecta tu cuenta o intenta más tarde.');
+        setImportError(t('youtubeBuilder.quotaExceeded', 'Se ha superado la cuota de la API de YouTube. Conecta tu cuenta o intenta más tarde.'));
       } else {
-        setImportError(err.message || 'Error al buscar en YouTube. Verifica tu conexión o términos de búsqueda.');
+        setImportError(err.message || t('youtubeBuilder.searchError', 'Error al buscar en YouTube. Verifica tu conexión o términos de búsqueda.'));
       }
     } finally {
       setIsSearching(false);
@@ -260,7 +260,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setVideos(plData.videos);
       setCurrentStep(2);
     } catch (err: any) {
-      setImportError(err.message || 'Error al importar los videos de la playlist.');
+      setImportError(err.message || t('youtubeBuilder.importVideosError', 'Error al importar los videos de la playlist.'));
     } finally {
       setImporting(false);
     }
@@ -270,7 +270,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const handleImportPlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playlistUrl.trim()) {
-      setImportError('Ingresa una URL o ID de playlist de YouTube.');
+      setImportError(t('youtubeBuilder.needPlaylistUrl', 'Ingresa una URL o ID de playlist de YouTube.'));
       return;
     }
 
@@ -284,14 +284,14 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     } catch (err: any) {
       if (err.code === 'PLAYLIST_PRIVATE_UNAUTHORIZED') {
         setImportError(
-          'Esta playlist es privada o requiere autorización. Conecta tu cuenta de Google/YouTube con OAuth para que el sistema pueda acceder a ella legalmente.',
+          t('youtubeBuilder.privatePlaylist', 'Esta playlist es privada o requiere autorización. Conecta tu cuenta de Google/YouTube con OAuth para que el sistema pueda acceder a ella legalmente.'),
         );
       } else if (err.code === 'NOT_CONNECTED') {
         setImportError(
-          'Debes conectar tu cuenta de YouTube mediante OAuth o configurar YOUTUBE_API_KEY para importar playlists públicas.',
+          t('youtubeBuilder.notConnectedImport', 'Debes conectar tu cuenta de YouTube mediante OAuth o configurar YOUTUBE_API_KEY para importar playlists públicas.'),
         );
       } else {
-        setImportError(err.message || 'Error al importar la playlist. Verifica que el enlace sea correcto.');
+        setImportError(err.message || t('youtubeBuilder.importError', 'Error al importar la playlist. Verifica que el enlace sea correcto.'));
       }
     } finally {
       setImporting(false);
@@ -336,7 +336,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
   const handleStartAiGeneration = async () => {
     const includedVideos = videos.filter((v) => !v.excluded);
     if (includedVideos.length === 0) {
-      alert('Debes incluir al menos un video para generar el curso.');
+      alert(t('youtubeBuilder.needVideo', 'Debes incluir al menos un video para generar el curso.'));
       return;
     }
 
@@ -344,7 +344,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setCurrentStep(3);
       setGenerationError(null);
       setJobProgress(15);
-      setJobStatusText('Enviando videos al motor de IA pedagógico...');
+      setJobStatusText(t('youtubeBuilder.statusSending', 'Enviando videos al motor de IA pedagógico...'));
 
       const resolvedTitle = courseTitle.trim() || playlist?.title || '';
       const response = await api.youtube.generateCourse({
@@ -364,7 +364,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       setActiveJobId(response.jobId);
       pollJobStatus(response.jobId);
     } catch (err: any) {
-      setGenerationError(err.message || 'Error al iniciar la generación de IA.');
+      setGenerationError(err.message || t('youtubeBuilder.startFailed', 'Error al iniciar la generación de IA.'));
       setCurrentStep(2);
     }
   };
@@ -395,11 +395,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         setJobProgress(job.progress || 50);
 
         if (job.status === 'PROCESSING') {
-          setJobStatusText(`Analizando y estructurando módulos... (${job.progress}%)`);
+          setJobStatusText(t('youtubeBuilder.statusProcessing', { defaultValue: 'Analizando y estructurando módulos... ({{progress}}%)', progress: job.progress }));
         } else if (job.status === 'COMPLETED') {
           clearInterval(interval);
           setJobProgress(100);
-          setJobStatusText('¡Curso generado con éxito!');
+          setJobStatusText(t('youtubeBuilder.statusDone', '¡Curso generado con éxito!'));
           if (job.result) {
             const finalTitle = courseTitle.trim() || playlist?.title || '';
             if (
@@ -413,11 +413,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             setDraftCourse(job.result);
             setTimeout(() => setCurrentStep(4), 600);
           } else {
-            setGenerationError('El trabajo concluyó pero no se recibió la estructura esperada.');
+            setGenerationError(t('youtubeBuilder.noStructure', 'El trabajo concluyó pero no se recibió la estructura esperada.'));
           }
         } else if (job.status === 'FAILED') {
           clearInterval(interval);
-          setGenerationError(job.errorMessage || 'Falló la generación del curso por IA.');
+          setGenerationError(job.errorMessage || t('youtubeBuilder.jobFailed', 'Falló la generación del curso por IA.'));
         }
       } catch (err: any) {
         if (pollRef.current !== interval) return;
@@ -428,7 +428,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         consecutiveErrors += 1;
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           clearInterval(interval);
-          setGenerationError(err.message || 'Error al consultar el progreso del trabajo.');
+          setGenerationError(err.message || t('youtubeBuilder.pollFailed', 'Error al consultar el progreso del trabajo.'));
         }
       } finally { inFlight = false; }
     }, 2000);
@@ -452,7 +452,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         onCourseCreated(res.courseId);
       }
     } catch (err: any) {
-      alert(`Error al guardar curso: ${err.message}`);
+      alert(t('youtubeBuilder.saveError', { defaultValue: 'Error al guardar curso: {{error}}', error: err.message }));
     } finally {
       setSavingCourse(false);
     }
@@ -464,10 +464,10 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     try {
       setPublishing(true);
       await api.youtube.publishCourse(saveSuccess.courseId);
-      alert('¡Curso publicado exitosamente en el catálogo de DocentOS!');
+      alert(t('youtubeBuilder.publishedOk', '¡Curso publicado exitosamente en el catálogo de DocentOS!'));
       if (onCancel) onCancel();
     } catch (err: any) {
-      alert(`Error al publicar curso: ${err.message}`);
+      alert(t('youtubeBuilder.publishError', { defaultValue: 'Error al publicar curso: {{error}}', error: err.message }));
     } finally {
       setPublishing(false);
     }
@@ -475,14 +475,14 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
   const privacyLabel = (value?: string) => {
     const v = String(value || '').toUpperCase();
-    return v === 'PRIVATE' ? 'Privado' : v === 'UNLISTED' ? 'No listado' : v === 'PUBLIC' ? 'Público' : '';
+    return v === 'PRIVATE' ? t('youtubeBuilder.privacyPrivate', 'Privado') : v === 'UNLISTED' ? t('youtubeBuilder.privacyUnlisted', 'No listado') : v === 'PUBLIC' ? t('youtubeBuilder.privacyPublic', 'Público') : '';
   };
   const selectedVideos = videos.filter((v) => !v.excluded);
   const totalSeconds = selectedVideos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0);
   const totalLabel = totalSeconds >= 3600
-    ? `${Math.floor(totalSeconds / 3600)} h ${Math.round((totalSeconds % 3600) / 60)} min`
-    : `${Math.max(1, Math.round(totalSeconds / 60))} min`;
-  const steps = ['Buscar o importar', 'Elegir videos', 'Generar con IA', 'Revisar y guardar'];
+    ? t('youtubeBuilder.hoursMinutes', { defaultValue: '{{h}} h {{m}} min', h: Math.floor(totalSeconds / 3600), m: Math.round((totalSeconds % 3600) / 60) })
+    : t('youtubeBuilder.minutes', { defaultValue: '{{m}} min', m: Math.max(1, Math.round(totalSeconds / 60)) });
+  const steps = [t('youtubeBuilder.stepSearch', 'Buscar o importar'), t('youtubeBuilder.stepPick', 'Elegir videos'), t('youtubeBuilder.stepGenerate', 'Generar con IA'), t('youtubeBuilder.stepReview', 'Revisar y guardar')];
   const activeStep = Math.min(currentStep, 4);
 
   const field = (label: string, hint?: string) => (
@@ -496,8 +496,8 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     <section className="mentor-youtube-panel" aria-labelledby="yt-title">
       <div className="mentor-section-heading">
         <div>
-          <h2 id="yt-title">Crear curso desde YouTube</h2>
-          <p>Importa una playlist o busca videos, ordénalos y la IA arma el temario con módulos y lecciones</p>
+          <h2 id="yt-title">{t('youtubeBuilder.title', 'Crear curso desde YouTube')}</h2>
+          <p>{t('youtubeBuilder.subtitle', 'Importa una playlist o busca videos, ordénalos y la IA arma el temario con módulos y lecciones')}</p>
         </div>
         <div className="yt-connection">
           {loadingStatus ? (
@@ -505,23 +505,23 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           ) : ytStatus.connected ? (
             <>
               <span className="yt-connection__text">
-                <strong>YouTube conectado</strong>
+                <strong>{t('youtubeBuilder.connected', 'YouTube conectado')}</strong>
                 <small title={ytStatus.googleEmail}>{ytStatus.googleEmail}</small>
               </span>
               <button type="button" className="mentor-course-control" onClick={handleDisconnectYouTube}>
-                Desconectar
+                {t('youtubeBuilder.disconnect', 'Desconectar')}
               </button>
             </>
           ) : (
             <button type="button" className="mentor-course-control mentor-course-import" onClick={handleConnectYouTube}>
               <Youtube aria-hidden="true" />
-              Conectar YouTube
+              {t('youtubeBuilder.connect', 'Conectar YouTube')}
             </button>
           )}
         </div>
       </div>
 
-      <ol className="yt-steps" aria-label="Progreso">
+      <ol className="yt-steps" aria-label={t('youtubeBuilder.progress', 'Progreso')}>
         {steps.map((label, i) => {
           const n = i + 1;
           const state = currentStep > n || currentStep === 5 ? 'done' : activeStep === n ? 'current' : 'todo';
@@ -536,14 +536,14 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
       {currentStep === 1 && (
         <div className="yt-card">
-          <div className="mentor-publication-filters yt-mode" data-options="2" role="group" aria-label="Cómo quieres empezar">
+          <div className="mentor-publication-filters yt-mode" data-options="2" role="group" aria-label={t('youtubeBuilder.startHow', 'Cómo quieres empezar')}>
             <button type="button" aria-pressed={inputMode === 'search'} onClick={() => { setInputMode('search'); setImportError(null); }}>
               <Search aria-hidden="true" />
-              <span>Buscar por tema</span>
+              <span>{t('youtubeBuilder.modeSearch', 'Buscar por tema')}</span>
             </button>
             <button type="button" aria-pressed={inputMode === 'url'} onClick={() => { setInputMode('url'); setImportError(null); }}>
               <Link aria-hidden="true" />
-              <span>Pegar URL de playlist</span>
+              <span>{t('youtubeBuilder.modeUrl', 'Pegar URL de playlist')}</span>
             </button>
           </div>
 
@@ -551,34 +551,34 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             <form onSubmit={handleSearchContent} className="yt-form">
               <div className="yt-grid">
                 <label className="yt-field">
-                  {field('Tema del curso')}
+                  {field(t('youtubeBuilder.topic', 'Tema del curso'))}
                   <input
                     type="text"
                     value={courseTitle}
                     onChange={(e) => setCourseTitle(e.target.value)}
-                    placeholder="Ej: Curso de Python desde cero"
+                    placeholder={t('youtubeBuilder.topicPlaceholder', 'Ej: Curso de Python desde cero')}
                     required
                   />
-                  <small>El tema central para encontrar los mejores contenidos.</small>
+                  <small>{t('youtubeBuilder.topicHint', 'El tema central para encontrar los mejores contenidos.')}</small>
                 </label>
                 <label className="yt-field">
-                  {field('Palabras clave', '(opcional)')}
+                  {field(t('youtubeBuilder.keywords', 'Palabras clave'), t('youtubeBuilder.optional', '(opcional)'))}
                   <input
                     type="text"
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
-                    placeholder="Ej: variables, bucles, funciones, proyectos"
+                    placeholder={t('youtubeBuilder.keywordsPlaceholder', 'Ej: variables, bucles, funciones, proyectos')}
                   />
-                  <small>Términos separados por comas que guían la selección.</small>
+                  <small>{t('youtubeBuilder.keywordsHint', 'Términos separados por comas que guían la selección.')}</small>
                 </label>
               </div>
 
               <fieldset className="yt-field">
-                <legend>Qué buscar en YouTube</legend>
-                <div className="yt-options" role="radiogroup" aria-label="Qué buscar en YouTube">
+                <legend>{t('youtubeBuilder.searchWhat', 'Qué buscar en YouTube')}</legend>
+                <div className="yt-options" role="radiogroup" aria-label={t('youtubeBuilder.searchWhat', 'Qué buscar en YouTube')}>
                   {([
-                    { id: 'videos', label: 'Videos sueltos', hint: 'Reúne los mejores videos para que elijas cuáles usar' },
-                    { id: 'playlists', label: 'Playlists completas', hint: 'Busca listas existentes y elige una con un clic' },
+                    { id: 'videos', label: t('youtubeBuilder.typeVideos', 'Videos sueltos'), hint: t('youtubeBuilder.typeVideosHint', 'Reúne los mejores videos para que elijas cuáles usar') },
+                    { id: 'playlists', label: t('youtubeBuilder.typePlaylists', 'Playlists completas'), hint: t('youtubeBuilder.typePlaylistsHint', 'Busca listas existentes y elige una con un clic') },
                   ] as const).map((o) => (
                     <button
                       key={o.id}
@@ -595,25 +595,25 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               </fieldset>
 
               <label className="yt-field">
-                {field('Instrucción para la IA')}
+                {field(t('youtubeBuilder.aiInstruction', 'Instrucción para la IA'))}
                 <textarea
                   rows={3}
                   value={coursePrompt}
                   onChange={(e) => setCoursePrompt(e.target.value)}
-                  placeholder="Ej: Un curso práctico que vaya de fundamentos a proyectos"
+                  placeholder={t('youtubeBuilder.aiInstructionPlaceholder', 'Ej: Un curso práctico que vaya de fundamentos a proyectos')}
                 />
-                <small>La IA organiza las lecciones según este criterio pedagógico.</small>
+                <small>{t('youtubeBuilder.aiInstructionHint', 'La IA organiza las lecciones según este criterio pedagógico.')}</small>
               </label>
 
               <div className="yt-actions">
                 {onCancel && (
                   <button type="button" className="mentor-course-control" onClick={onCancel}>
-                    Cancelar
+                    {t('youtubeBuilder.cancel', 'Cancelar')}
                   </button>
                 )}
                 <button type="submit" className="mentor-course-control mentor-course-import" disabled={isSearching}>
                   {isSearching ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
-                  {isSearching ? 'Buscando en YouTube' : searchType === 'videos' ? 'Buscar videos' : 'Buscar playlists'}
+                  {isSearching ? t('youtubeBuilder.searching', 'Buscando en YouTube') : searchType === 'videos' ? t('youtubeBuilder.searchVideos', 'Buscar videos') : t('youtubeBuilder.searchPlaylists', 'Buscar playlists')}
                 </button>
               </div>
             </form>
@@ -621,7 +621,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
           {inputMode === 'search' && searchType === 'playlists' && foundPlaylists.length > 0 && (
             <div className="yt-results">
-              <h3>{foundPlaylists.length} {foundPlaylists.length === 1 ? 'playlist encontrada' : 'playlists encontradas'}</h3>
+              <h3>{t('youtubeBuilder.playlistsFound', { defaultValue: '{{count}} playlists encontradas', count: foundPlaylists.length })}</h3>
               <ul className="yt-playlists">
                 {foundPlaylists.map((pl) => (
                   <li key={pl.youtubeId} className="yt-playlist">
@@ -630,12 +630,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       <div>
                         <strong title={stripEmoji(pl.title)}>{stripEmoji(pl.title)}</strong>
                         <span>{pl.channelTitle}</span>
-                        <p>{stripEmoji(pl.description) || 'Sin descripción'}</p>
+                        <p>{stripEmoji(pl.description) || t('youtubeBuilder.noDescription', 'Sin descripción')}</p>
                       </div>
                     </div>
                     <button type="button" className="mentor-course-control" disabled={importing} onClick={() => handleSelectFoundPlaylist(pl)}>
                       {importing && <Loader2 aria-hidden="true" className="animate-spin" />}
-                      {importing ? 'Importando videos' : 'Usar esta playlist'}
+                      {importing ? t('youtubeBuilder.importingVideos', 'Importando videos') : t('youtubeBuilder.usePlaylist', 'Usar esta playlist')}
                     </button>
                   </li>
                 ))}
@@ -646,18 +646,18 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           {inputMode === 'url' && (
             <form onSubmit={handleImportPlaylist} className="yt-form">
               <label className="yt-field">
-                {field('Qué curso debe diseñar la IA')}
+                {field(t('youtubeBuilder.urlPrompt', 'Qué curso debe diseñar la IA'))}
                 <textarea
                   rows={3}
                   value={coursePrompt}
                   onChange={(e) => setCoursePrompt(e.target.value)}
-                  placeholder="Ej: Un curso intensivo de Node.js para quienes ya conocen JavaScript"
+                  placeholder={t('youtubeBuilder.urlPromptPlaceholder', 'Ej: Un curso intensivo de Node.js para quienes ya conocen JavaScript')}
                   required
                 />
-                <small>Junto con los títulos y descripciones de los videos, guía cómo se arman los módulos.</small>
+                <small>{t('youtubeBuilder.urlPromptHint', 'Junto con los títulos y descripciones de los videos, guía cómo se arman los módulos.')}</small>
               </label>
               <label className="yt-field">
-                {field('URL o ID de la playlist')}
+                {field(t('youtubeBuilder.playlistUrl', 'URL o ID de la playlist'))}
                 <input
                   type="text"
                   value={playlistUrl}
@@ -665,17 +665,17 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                   placeholder="https://www.youtube.com/playlist?list=..."
                   required
                 />
-                <small>Sirven playlists públicas y no listadas. Las privadas requieren conectar la cuenta.</small>
+                <small>{t('youtubeBuilder.playlistUrlHint', 'Sirven playlists públicas y no listadas. Las privadas requieren conectar la cuenta.')}</small>
               </label>
               <div className="yt-actions">
                 {onCancel && (
                   <button type="button" className="mentor-course-control" onClick={onCancel}>
-                    Cancelar
+                    {t('youtubeBuilder.cancel', 'Cancelar')}
                   </button>
                 )}
                 <button type="submit" className="mentor-course-control mentor-course-import" disabled={importing}>
                   {importing && <Loader2 aria-hidden="true" className="animate-spin" />}
-                  {importing ? 'Consultando YouTube' : 'Importar playlist'}
+                  {importing ? t('youtubeBuilder.consulting', 'Consultando YouTube') : t('youtubeBuilder.importPlaylist', 'Importar playlist')}
                 </button>
               </div>
             </form>
@@ -688,7 +688,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                 <p>{importError}</p>
                 {!ytStatus.connected && (
                   <button type="button" className="mentor-course-control" onClick={handleConnectYouTube}>
-                    Conectar cuenta de YouTube
+                    {t('youtubeBuilder.connectAccount', 'Conectar cuenta de YouTube')}
                   </button>
                 )}
               </div>
@@ -703,30 +703,30 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             {playlist.thumbnailUrl ? <img src={playlist.thumbnailUrl} alt="" /> : <span className="yt-summary__empty" aria-hidden="true"><Film /></span>}
             <div>
               <span className="yt-summary__kicker">
-                {playlist.youtubeId === 'custom-search' ? 'Búsqueda por tema' : privacyLabel(playlist.privacyStatus) || 'Playlist'} · {playlist.channelTitle}
+                {playlist.youtubeId === 'custom-search' ? t('youtubeBuilder.searchKicker', 'Búsqueda por tema') : privacyLabel(playlist.privacyStatus) || t('youtubeBuilder.playlistKicker', 'Playlist')} · {playlist.channelTitle}
               </span>
               <h3 title={stripEmoji(playlist.title)}>{stripEmoji(playlist.title)}</h3>
-              <p>{stripEmoji(playlist.description) || 'Sin descripción'}</p>
+              <p>{stripEmoji(playlist.description) || t('youtubeBuilder.noDescription', 'Sin descripción')}</p>
               <dl>
-                <div><dt>Disponibles</dt><dd>{videos.length}</dd></div>
-                <div><dt>Seleccionados</dt><dd>{selectedVideos.length}</dd></div>
-                <div><dt>Duración</dt><dd>{selectedVideos.length > 0 ? totalLabel : '—'}</dd></div>
+                <div><dt>{t('youtubeBuilder.available', 'Disponibles')}</dt><dd>{videos.length}</dd></div>
+                <div><dt>{t('youtubeBuilder.selected', 'Seleccionados')}</dt><dd>{selectedVideos.length}</dd></div>
+                <div><dt>{t('youtubeBuilder.duration', 'Duración')}</dt><dd>{selectedVideos.length > 0 ? totalLabel : '—'}</dd></div>
               </dl>
             </div>
           </div>
 
           <div className="yt-bar">
             <div>
-              <button type="button" className="mentor-course-control" onClick={() => toggleSelectAll(true)}>Seleccionar todos</button>
-              <button type="button" className="mentor-course-control" onClick={() => toggleSelectAll(false)}>Quitar selección</button>
+              <button type="button" className="mentor-course-control" onClick={() => toggleSelectAll(true)}>{t('youtubeBuilder.selectAll', 'Seleccionar todos')}</button>
+              <button type="button" className="mentor-course-control" onClick={() => toggleSelectAll(false)}>{t('youtubeBuilder.clearSelection', 'Quitar selección')}</button>
             </div>
-            <span>Ordena con las flechas, desmarca lo que no sirva o elimínalo de la lista.</span>
+            <span>{t('youtubeBuilder.reorderHint', 'Ordena con las flechas, desmarca lo que no sirva o elimínalo de la lista.')}</span>
           </div>
 
           {videos.length === 0 ? (
             <div className="yt-empty" role="status">
-              <strong>No quedan videos en la lista</strong>
-              <p>Eliminaste todos los videos. Vuelve atrás para hacer una nueva búsqueda.</p>
+              <strong>{t('youtubeBuilder.emptyTitle', 'No quedan videos en la lista')}</strong>
+              <p>{t('youtubeBuilder.emptyBody', 'Eliminaste todos los videos. Vuelve atrás para hacer una nueva búsqueda.')}</p>
             </div>
           ) : (
             <ul className="yt-videos">
@@ -737,7 +737,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                       type="checkbox"
                       checked={!vid.excluded}
                       onChange={() => toggleVideoExcluded(vid.id)}
-                      aria-label={`${vid.excluded ? 'Incluir' : 'Excluir'} ${stripEmoji(vid.title)}`}
+                      aria-label={vid.excluded ? t('youtubeBuilder.includeVideo', { defaultValue: 'Incluir {{title}}', title: stripEmoji(vid.title) }) : t('youtubeBuilder.excludeVideo', { defaultValue: 'Excluir {{title}}', title: stripEmoji(vid.title) })}
                     />
                   </label>
                   <span className="yt-video__n" aria-hidden="true">{idx + 1}</span>
@@ -751,13 +751,13 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     </span>
                   </div>
                   <div className="yt-video__actions">
-                    <button type="button" disabled={idx === 0} onClick={() => moveVideo(idx, 'up')} aria-label="Subir video" title="Subir">
+                    <button type="button" disabled={idx === 0} onClick={() => moveVideo(idx, 'up')} aria-label={t('youtubeBuilder.moveUp', 'Subir video')} title={t('youtubeBuilder.moveUpShort', 'Subir')}>
                       <MoveUp aria-hidden="true" />
                     </button>
-                    <button type="button" disabled={idx === videos.length - 1} onClick={() => moveVideo(idx, 'down')} aria-label="Bajar video" title="Bajar">
+                    <button type="button" disabled={idx === videos.length - 1} onClick={() => moveVideo(idx, 'down')} aria-label={t('youtubeBuilder.moveDown', 'Bajar video')} title={t('youtubeBuilder.moveDownShort', 'Bajar')}>
                       <MoveDown aria-hidden="true" />
                     </button>
-                    <button type="button" data-danger="true" onClick={() => handleRemoveVideo(vid.id)} aria-label="Quitar de la lista" title="Quitar de la lista">
+                    <button type="button" data-danger="true" onClick={() => handleRemoveVideo(vid.id)} aria-label={t('youtubeBuilder.removeVideo', 'Quitar de la lista')} title={t('youtubeBuilder.removeVideo', 'Quitar de la lista')}>
                       <Trash2 aria-hidden="true" />
                     </button>
                   </div>
@@ -769,11 +769,11 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           <div className="yt-actions yt-actions--split">
             <button type="button" className="mentor-course-control" onClick={() => setCurrentStep(1)}>
               <ArrowLeft aria-hidden="true" />
-              Atrás
+              {t('youtubeBuilder.back', 'Atrás')}
             </button>
             <button type="button" className="mentor-course-control mentor-course-import" onClick={handleStartAiGeneration} disabled={selectedVideos.length === 0}>
               <Sparkles aria-hidden="true" />
-              Generar con IA ({selectedVideos.length} {selectedVideos.length === 1 ? 'video' : 'videos'})
+              {t('youtubeBuilder.generateWith', { defaultValue: 'Generar con IA ({{count}} videos)', count: selectedVideos.length })}
             </button>
           </div>
         </div>
@@ -781,24 +781,24 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
       {currentStep === 3 && (
         <div className="yt-card yt-progress" role="status" aria-live="polite">
-          <h3>Diseñando el curso</h3>
+          <h3>{t('youtubeBuilder.designing', 'Diseñando el curso')}</h3>
           <p>{jobStatusText}</p>
-          <div className="yt-bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(jobProgress)} aria-label="Progreso de la generación">
+          <div className="yt-bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(jobProgress)} aria-label={t('youtubeBuilder.generationProgress', 'Progreso de la generación')}>
             <span style={{ width: `${jobProgress}%` }} />
           </div>
           <span className="yt-progress__pct">{Math.round(jobProgress)}%</span>
           <ul>
-            <li>Agrupa los videos por tema y nivel</li>
-            <li>Asigna cada video a una lección con sus objetivos</li>
-            <li>Redacta preguntas de comprensión</li>
+            <li>{t('youtubeBuilder.designing1', 'Agrupa los videos por tema y nivel')}</li>
+            <li>{t('youtubeBuilder.designing2', 'Asigna cada video a una lección con sus objetivos')}</li>
+            <li>{t('youtubeBuilder.designing3', 'Redacta preguntas de comprensión')}</li>
           </ul>
           {generationError && (
             <div className="yt-error" role="alert">
               <AlertCircle aria-hidden="true" />
               <div>
-                <p>No se pudo generar el curso: {generationError}</p>
+                <p>{t('youtubeBuilder.generationFailedTitle', { defaultValue: 'No se pudo generar el curso: {{error}}', error: generationError })}</p>
                 <button type="button" className="mentor-course-control" onClick={() => setCurrentStep(2)}>
-                  Volver a la selección
+                  {t('youtubeBuilder.backToSelection', 'Volver a la selección')}
                 </button>
               </div>
             </div>
@@ -809,15 +809,15 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       {currentStep === 4 && draftCourse && (
         <div className="yt-card">
           <div className="yt-review-head">
-            <h3>Estructura propuesta</h3>
-            <p>Todo es editable: título, módulos y lecciones.</p>
+            <h3>{t('youtubeBuilder.proposed', 'Estructura propuesta')}</h3>
+            <p>{t('youtubeBuilder.editable', 'Todo es editable: título, módulos y lecciones.')}</p>
           </div>
 
           <section className="yt-block" aria-labelledby="yt-main">
-            <h4 id="yt-main">Datos principales</h4>
+            <h4 id="yt-main">{t('youtubeBuilder.mainData', 'Datos principales')}</h4>
             <div className="yt-grid">
               <label className="yt-field">
-                {field('Título')}
+                {field(t('youtubeBuilder.fieldTitle', 'Título'))}
                 <input
                   type="text"
                   value={draftCourse.course.title}
@@ -826,31 +826,31 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
               </label>
               <div className="yt-grid yt-grid--tight">
                 <label className="yt-field">
-                  {field('Nivel')}
+                  {field(t('youtubeBuilder.level', 'Nivel'))}
                   <input
                     type="text"
                     value={draftCourse.course.level}
                     onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, level: e.target.value } })}
-                    placeholder="Ej: Principiante"
+                    placeholder={t('youtubeBuilder.levelPlaceholder', 'Ej: Principiante')}
                   />
                 </label>
                 <label className="yt-field">
-                  {field('Categoría')}
+                  {field(t('youtubeBuilder.category', 'Categoría'))}
                   <select
                     value={draftCourse.course.category || 'Mentoría Especializada'}
                     onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, category: e.target.value } })}
                   >
                     {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category as any) && (
-                      <option value={draftCourse.course.category}>{draftCourse.course.category}</option>
+                      <option value={draftCourse.course.category}>{t(`categories.${draftCourse.course.category}`, draftCourse.course.category)}</option>
                     )}
-                    <optgroup label="Modalidades de mentoría">
+                    <optgroup label={t('youtubeBuilder.mentorshipGroup', 'Modalidades de mentoría')}>
                       {MENTORSHIP_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat}>{t(`categories.${cat}`, cat)}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="Áreas temáticas">
+                    <optgroup label={t('youtubeBuilder.topicsGroup', 'Áreas temáticas')}>
                       {TECHNICAL_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat}>{t(`categories.${cat}`, cat)}</option>
                       ))}
                     </optgroup>
                   </select>
@@ -859,7 +859,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             </div>
 
             <label className="yt-field">
-              {field('Descripción')}
+              {field(t('youtubeBuilder.description', 'Descripción'))}
               <textarea
                 rows={3}
                 value={draftCourse.course.description}
@@ -868,7 +868,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
             </label>
 
             <label className="yt-field">
-              {field('Objetivos generales', '(uno por línea)')}
+              {field(t('youtubeBuilder.objectives', 'Objetivos generales'), t('youtubeBuilder.onePerLine', '(uno por línea)'))}
               <textarea
                 rows={3}
                 value={(draftCourse.course.generalObjectives || []).join('\n')}
@@ -883,17 +883,17 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
 
             <div className="yt-field">
               <div className="yt-field__row">
-                <span className="yt-field__label">Imagen de portada {<em>(si la dejas vacía se genera sola)</em>}</span>
+                <span className="yt-field__label">{t('youtubeBuilder.cover', 'Imagen de portada')} <em>{t('youtubeBuilder.coverHint', '(si la dejas vacía se genera sola)')}</em></span>
                 <button type="button" className="mentor-course-control" onClick={handleGenerateCover} disabled={generatingCover}>
                   {generatingCover ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
-                  {generatingCover ? 'Generando portada' : 'Generar con IA'}
+                  {generatingCover ? t('youtubeBuilder.generatingCover', 'Generando portada') : t('youtubeBuilder.generateAi', 'Generar con IA')}
                 </button>
               </div>
               <div className="yt-cover-input">
                 <input
                   type="text"
-                  placeholder="URL de la imagen"
-                  aria-label="URL de la imagen de portada"
+                  placeholder={t('youtubeBuilder.coverUrl', 'URL de la imagen')}
+                  aria-label={t('youtubeBuilder.coverUrlLabel', 'URL de la imagen de portada')}
                   value={draftCourse.course.coverImage || ''}
                   onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, coverImage: e.target.value } })}
                 />
@@ -902,21 +902,21 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     type="button"
                     className="mentor-course-control mentor-icon-control"
                     onClick={() => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, coverImage: '' } })}
-                    aria-label="Quitar portada"
-                    title="Quitar portada"
+                    aria-label={t('youtubeBuilder.removeCover', 'Quitar portada')}
+                    title={t('youtubeBuilder.removeCover', 'Quitar portada')}
                   >
                     <X aria-hidden="true" />
                   </button>
                 )}
               </div>
               {draftCourse.course.coverImage && (
-                <img className="yt-cover" src={draftCourse.course.coverImage} alt="Vista previa de la portada" />
+                <img className="yt-cover" src={draftCourse.course.coverImage} alt={t('youtubeBuilder.coverPreview', 'Vista previa de la portada')} />
               )}
             </div>
           </section>
 
           <section className="yt-block" aria-labelledby="yt-modules">
-            <h4 id="yt-modules">Módulos y lecciones <span>{draftCourse.modules.length} {draftCourse.modules.length === 1 ? 'módulo' : 'módulos'}</span></h4>
+            <h4 id="yt-modules">{t('youtubeBuilder.modulesLessons', 'Módulos y lecciones')} <span>{t('youtubeBuilder.modules', { defaultValue: '{{count}} módulos', count: draftCourse.modules.length })}</span></h4>
             <ul className="yt-modules">
               {draftCourse.modules.map((mod, mIdx) => (
                 <li key={mIdx} className="yt-module">
@@ -925,14 +925,14 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                     <textarea
                       rows={1}
                       value={mod.title}
-                      aria-label={`Título del módulo ${mIdx + 1}`}
+                      aria-label={t('youtubeBuilder.moduleTitle', { defaultValue: 'Título del módulo {{n}}', n: mIdx + 1 })}
                       onChange={(e) => {
                         const newMods = [...draftCourse.modules];
                         newMods[mIdx].title = e.target.value;
                         setDraftCourse({ ...draftCourse, modules: newMods });
                       }}
                     />
-                    <span className="yt-module__count">{mod.lessons.length} {mod.lessons.length === 1 ? 'lección' : 'lecciones'}</span>
+                    <span className="yt-module__count">{t('youtubeBuilder.lessons', { defaultValue: '{{count}} lecciones', count: mod.lessons.length })}</span>
                   </div>
                   <ul className="yt-lessons">
                     {mod.lessons.map((les, lIdx) => (
@@ -941,7 +941,7 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                           <textarea
                             rows={1}
                             value={les.title}
-                            aria-label={`Título de la lección ${lIdx + 1} del módulo ${mIdx + 1}`}
+                            aria-label={t('youtubeBuilder.lessonTitle', { defaultValue: 'Título de la lección {{lesson}} del módulo {{module}}', lesson: lIdx + 1, module: mIdx + 1 })}
                             onChange={(e) => {
                               const newMods = [...draftCourse.modules];
                               newMods[mIdx].lessons[lIdx].title = e.target.value;
@@ -949,12 +949,12 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
                             }}
                           />
                           <span>{les.durationFormatted || '0:00'}</span>
-                          <a href={`https://www.youtube.com/watch?v=${les.youtubeVideoId}`} target="_blank" rel="noreferrer" aria-label="Ver en YouTube" title="Ver en YouTube">
+                          <a href={`https://www.youtube.com/watch?v=${les.youtubeVideoId}`} target="_blank" rel="noreferrer" aria-label={t('youtubeBuilder.viewOnYoutube', 'Ver en YouTube')} title={t('youtubeBuilder.viewOnYoutube', 'Ver en YouTube')}>
                             <ExternalLink aria-hidden="true" />
                           </a>
                         </div>
                         {les.learningObjectives && les.learningObjectives.length > 0 && (
-                          <p><strong>Objetivo:</strong> {les.learningObjectives[0]}</p>
+                          <p><strong>{t('youtubeBuilder.objective', 'Objetivo:')}</strong> {les.learningObjectives[0]}</p>
                         )}
                       </li>
                     ))}
@@ -967,16 +967,16 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
           <div className="yt-actions yt-actions--split">
             <button type="button" className="mentor-course-control" onClick={() => setCurrentStep(2)}>
               <ArrowLeft aria-hidden="true" />
-              Atrás
+              {t('youtubeBuilder.back', 'Atrás')}
             </button>
             <div className="yt-save">
               <label className="yt-check">
                 <input type="checkbox" checked={publishImmediately} onChange={(e) => setPublishImmediately(e.target.checked)} />
-                <span>Publicar al guardar</span>
+                <span>{t('youtubeBuilder.publishOnSave', 'Publicar al guardar')}</span>
               </label>
               <button type="button" className="mentor-course-control mentor-course-import" onClick={handleSaveDraftCourse} disabled={savingCourse}>
                 {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : publishImmediately ? <Globe aria-hidden="true" /> : <Save aria-hidden="true" />}
-                {savingCourse ? (publishImmediately ? 'Publicando' : 'Guardando') : publishImmediately ? 'Guardar y publicar' : 'Guardar como borrador'}
+                {savingCourse ? (publishImmediately ? t('youtubeBuilder.publishing', 'Publicando') : t('youtubeBuilder.saving', 'Guardando')) : publishImmediately ? t('youtubeBuilder.saveAndPublish', 'Guardar y publicar') : t('youtubeBuilder.saveDraft', 'Guardar como borrador')}
               </button>
             </div>
           </div>
@@ -986,25 +986,25 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
       {currentStep === 5 && saveSuccess && (
         <div className="yt-card yt-done">
           <span className="yt-done__icon" aria-hidden="true"><CheckCircle2 /></span>
-          <h3>{saveSuccess.published ? 'Curso creado y publicado' : 'Curso creado como borrador'}</h3>
+          <h3>{saveSuccess.published ? t('youtubeBuilder.doneTitlePublished', 'Curso creado y publicado') : t('youtubeBuilder.doneTitleDraft', 'Curso creado como borrador')}</h3>
           <p>
-            <strong>{saveSuccess.courseTitle}</strong> {saveSuccess.published ? 'ya está en el catálogo.' : 'quedó guardado y solo lo ven mentores y administradores.'}
+            <strong>{saveSuccess.courseTitle}</strong> {saveSuccess.published ? t('youtubeBuilder.donePublishedBody', 'ya está en el catálogo.') : t('youtubeBuilder.doneDraftBody', 'quedó guardado y solo lo ven mentores y administradores.')}
           </p>
           <ul>
-            <li><CheckCircle2 aria-hidden="true" />Videos vinculados con reproducción sin cookies de YouTube</li>
-            <li><CheckCircle2 aria-hidden="true" />Módulos y lecciones guardados</li>
-            <li><CheckCircle2 aria-hidden="true" />{saveSuccess.published ? 'Visible para todos los alumnos en el catálogo' : 'Podrás publicarlo cuando quieras'}</li>
+            <li><CheckCircle2 aria-hidden="true" />{t('youtubeBuilder.done1', 'Videos vinculados con reproducción sin cookies de YouTube')}</li>
+            <li><CheckCircle2 aria-hidden="true" />{t('youtubeBuilder.done2', 'Módulos y lecciones guardados')}</li>
+            <li><CheckCircle2 aria-hidden="true" />{saveSuccess.published ? t('youtubeBuilder.done3Published', 'Visible para todos los alumnos en el catálogo') : t('youtubeBuilder.done3Draft', 'Podrás publicarlo cuando quieras')}</li>
           </ul>
           <div className="yt-actions yt-actions--center">
             {!saveSuccess.published && (
               <button type="button" className="mentor-course-control mentor-course-import" onClick={handlePublishNow} disabled={publishing}>
                 {publishing ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Globe aria-hidden="true" />}
-                Publicar ahora
+                {t('youtubeBuilder.publishNow', 'Publicar ahora')}
               </button>
             )}
             {onCancel && (
               <button type="button" className="mentor-course-control" onClick={onCancel}>
-                Cerrar y volver
+                {t('youtubeBuilder.closeBack', 'Cerrar y volver')}
               </button>
             )}
           </div>
