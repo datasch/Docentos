@@ -35,6 +35,7 @@ import {
   Sparkles,
   AlertTriangle,
   Users,
+  UsersRound,
   List,
   LayoutGrid,
 } from 'lucide-react';
@@ -747,6 +748,21 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             </div>
 
             <div className="mentee-sheet__foot">
+              {editingCourseId && (
+                <button
+                  type="button"
+                  className="mentor-course-control admin-course-form__delete"
+                  data-danger="true"
+                  onClick={() => {
+                    const target = courses.find((c) => c.id === editingCourseId);
+                    resetForm();
+                    if (target) handleDeleteCourse(target);
+                  }}
+                >
+                  <Trash2 aria-hidden="true" />
+                  Eliminar curso
+                </button>
+              )}
               <button type="button" className="mentor-course-control" onClick={resetForm}>Cancelar</button>
               <button type="submit" disabled={savingCourse} className="mentor-course-control mentor-course-publish">
                 {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
@@ -813,54 +829,60 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             <p>Ningún curso coincide con la búsqueda.</p>
           </div>
         ) : (
-          <div className="admin-courses-list" data-view={viewMode}>
+          <div className="admin-courses-list mentor-courses-grid" data-view={viewMode}>
             {visibleCourses.map((course) => {
               const isExpanded = expandedCourseId === course.id;
               const modules = [...course.modules].sort((a, b) => a.order - b.order);
 
               return (
-                <div key={course.id} className="admin-course-row" data-view={viewMode} data-expanded={isExpanded || undefined}>
-                  <div className="admin-course-row__head">
-                  <div className="admin-course-row__main">
-                    {course.coverImage ? (
-                      <img src={course.coverImage} alt="" className="admin-course-row__cover" />
-                    ) : (
-                      <span className="admin-course-row__cover" aria-hidden="true" />
-                    )}
-                    <div className="admin-course-row__info">
-                      <h3>{course.title}</h3>
-                      <div className="admin-course-row__tags">
-                        <span className="mentor-course-card__status" data-published={course.published}>
-                          {course.published ? 'Publicado' : 'Borrador'}
-                        </span>
-                        {course.isDemo && <span className="admin-course-tag">Demo</span>}
-                        {course.openToAllRegistered && (
-                          <span className="admin-course-tag" title="Disponible para mentees y personal de la academia">
-                            <Globe aria-hidden="true" /> Miembros
-                          </span>
-                        )}
-                        {course.sequentialUnlock && (
-                          <span className="admin-course-tag" title="Los módulos se desbloquean uno a uno">
-                            <Lock aria-hidden="true" /> Secuencial
-                          </span>
-                        )}
+                <article
+                  key={course.id}
+                  className="mentor-course-card admin-course-card"
+                  data-view={viewMode}
+                  data-expanded={isExpanded || undefined}
+                  aria-labelledby={`admin-course-${course.id}`}
+                >
+                  {course.coverImage ? (
+                    <img src={course.coverImage} alt="" loading="lazy" className="admin-course-card__cover" />
+                  ) : (
+                    <span className="admin-course-card__cover admin-course-card__cover--empty" aria-hidden="true">
+                      <BookOpen />
+                    </span>
+                  )}
+                  <div className="admin-course-card__summary">
+                    <div className="mentor-course-card__header">
+                      <span className="mentor-course-card__category">{course.category}</span>
+                      <span className="mentor-course-card__status" data-published={course.published}>
+                        {course.published ? 'Publicado' : 'Borrador'}
+                      </span>
+                    </div>
+
+                    <div className="mentor-course-card__body">
+                      <h3 id={`admin-course-${course.id}`} className="mentor-course-card__title">{course.title}</h3>
+                      {course.description && <p className="mentor-course-card__description">{course.description}</p>}
+                    </div>
+
+                    <div className="admin-course-card__facts">
+                      <span className="mentor-course-access-label" data-access={course.openToAllRegistered ? 'members' : 'assigned'}>
+                        {course.openToAllRegistered ? <Globe aria-hidden="true" /> : <Lock aria-hidden="true" />}
+                        {course.openToAllRegistered ? 'Acceso para miembros' : 'Solo asignados'}
+                      </span>
+                      <div className="mentor-course-card__meta">
+                        <span>{modules.length} {modules.length === 1 ? 'módulo' : 'módulos'} · {countVideos(course)} {countVideos(course) === 1 ? 'video' : 'videos'}{course.sequentialUnlock ? ' · Secuencial' : ''}</span>
+                        <span>{course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : 'Gratuito'}</span>
                       </div>
-                      <p>
-                        {course.category} · {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : 'Gratuito'} ·{' '}
-                        {modules.length} módulo(s) · {countVideos(course)} video(s)
-                      </p>
                     </div>
                   </div>
 
-                  <div className="admin-course-row__actions">
+                  <div className="mentor-course-card__actions admin-course-card__actions">
                     <button
                       type="button"
                       onClick={() => handleOpenCourseMentors(course)}
                       className="mentor-course-control"
                       aria-haspopup="dialog"
-                      aria-label={`Asignar mentores a ${course.title}`}
+                      aria-label={`Gestionar mentores de ${course.title}`}
                     >
-                      <Users aria-hidden="true" /> <span>Mentores</span>
+                      <UsersRound aria-hidden="true" /> <span>Mentores</span>
                     </button>
                     <button
                       type="button"
@@ -883,24 +905,21 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       type="button"
                       onClick={() => (course.published ? setUnpublishTarget(course) : handleTogglePublished(course))}
                       disabled={busyId === course.id}
-                      className="mentor-course-control"
-                      aria-label={`${course.published ? 'Pasar a borrador' : 'Publicar'}: ${course.title}`}
+                      aria-busy={busyId === course.id}
+                      className={`mentor-course-control ${course.published ? '' : 'mentor-course-publish'}`}
+                      aria-label={`${course.published ? 'Pasar a borrador' : 'Publicar en catálogo'}: ${course.title}`}
                     >
-                      {course.published ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-                      <span>{course.published ? 'Despublicar' : 'Publicar'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCourse(course)}
-                      disabled={busyId === course.id}
-                      className="mentor-course-control"
-                      data-danger="true"
-                      aria-label={`Eliminar ${course.title}`}
-                    >
-                      <Trash2 aria-hidden="true" /> <span>Eliminar</span>
+                      {busyId === course.id ? (
+                        <Loader2 aria-hidden="true" className="animate-spin" />
+                      ) : course.published ? (
+                        <EyeOff aria-hidden="true" />
+                      ) : (
+                        <BookOpen aria-hidden="true" />
+                      )}
+                      <span>{course.published ? 'Pasar a borrador' : 'Publicar'}</span>
                     </button>
                   </div>
-                </div>
+
 
                   {/* Temario del curso */}
                   {isExpanded && (
@@ -1237,7 +1256,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       )}
                     </div>
                   )}
-                </div>
+                </article>
               );
             })}
           </div>
