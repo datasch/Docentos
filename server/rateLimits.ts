@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { LocalBucketStore, SharedRateLimitStore } from './rateLimitStore.js';
 import { LoginThrottle } from './loginThrottle.js';
+import { resolveRequestLanguage, getLocalizedMessage } from './serverI18n.js';
 
 const minute = 60000;
 
@@ -56,12 +57,16 @@ export function createSecurityLimits(options: {
   const loginKey = (email: string) => `${prefix}login-backoff:${digest(email.trim().toLowerCase())}`;
 
   function unavailable(res: Response) {
-    return res.set('Retry-After', '30').status(503).json({ code: 'RATE_LIMIT_UNAVAILABLE', error: 'No se pudo verificar la protección de esta operación. Reintenta en unos momentos.', retryAfterSeconds: 30 });
+    const lang = resolveRequestLanguage(res.req);
+    const error = getLocalizedMessage('RATE_LIMIT_UNAVAILABLE', lang, 'No se pudo verificar la protección de esta operación. Reintenta en unos momentos.');
+    return res.set('Retry-After', '30').status(503).json({ code: 'RATE_LIMIT_UNAVAILABLE', error, retryAfterSeconds: 30 });
   }
 
   function blocked(res: Response, seconds: number) {
     const retryAfterSeconds = Math.max(1, seconds);
-    return res.set('Retry-After', String(retryAfterSeconds)).status(429).json({ code: 'RATE_LIMITED', error: 'Has realizado varias solicitudes seguidas. Espera un momento antes de reintentar.', retryAfterSeconds });
+    const lang = resolveRequestLanguage(res.req);
+    const error = getLocalizedMessage('RATE_LIMITED', lang, 'Has realizado varias solicitudes seguidas. Espera un momento antes de reintentar.');
+    return res.set('Retry-After', String(retryAfterSeconds)).status(429).json({ code: 'RATE_LIMITED', error, retryAfterSeconds });
   }
 
   function recordBlocked(policy: string) {

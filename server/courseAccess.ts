@@ -268,11 +268,11 @@ export async function getVideoForAccess(user: AuthenticatedUser | undefined, vid
     where: { id: videoId },
     include: { module: { select: { courseId: true } } },
   });
-  if (!video) return { status: 404, error: 'Video no encontrado.', video: null };
+  if (!video) return { status: 404, error: 'Video no encontrado.', code: 'VIDEO_NOT_FOUND', video: null };
 
   const hasAccess = await userHasCourseAccess(user, video.module.courseId);
   if (!hasAccess) {
-    return { status: 403, error: 'No tienes autorización para ver este video.', video: null };
+    return { status: 403, error: 'No tienes autorización para ver este video.', code: 'VIDEO_ACCESS_DENIED', video: null };
   }
   return { status: 200, error: null, video };
 }

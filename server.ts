@@ -132,6 +132,11 @@ import {
   simulateDevPaymentSuccess,
 } from './server/paymentService.js';
 import {
+  sendApiError,
+  resolveRequestLanguage,
+  getLocalizedMessage,
+} from './server/serverI18n.js';
+import {
   getQuizByModuleId,
   saveQuizForModule,
   deleteQuizForModule,
@@ -1022,7 +1027,7 @@ app.get(
         },
       },
     });
-    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+    if (!course) return sendApiError(res, req, 404, 'COURSE_NOT_FOUND', 'Curso no encontrado');
 
     const viewerRole: UserRole = req.user?.role || 'PUBLIC_USER';
     const decision = await getCourseAccessDecision(req.user, course.id);
@@ -1211,7 +1216,7 @@ app.post(
   asyncRoute(async (req, res) => {
     const courseId = req.body?.courseId as string;
     if (!courseId) {
-      return res.status(400).json({ error: 'courseId es requerido' });
+      return sendApiError(res, req, 400, 'COURSE_ID_REQUIRED', 'courseId es requerido');
     }
 
     const course = await prisma.course.findUnique({
@@ -1223,7 +1228,7 @@ app.post(
       },
     });
     if (!course) {
-      return res.status(404).json({ error: 'Curso no encontrado' });
+      return sendApiError(res, req, 404, 'COURSE_NOT_FOUND', 'Curso no encontrado');
     }
 
     const decision = await getCourseAccessDecision(req.user, courseId);
@@ -1312,10 +1317,10 @@ app.get(
 
     const targetUrl = video.embedUrl || video.previewUrl;
     if (!targetUrl) {
-      return res.status(404).json({ error: 'URL del video no disponible.' });
+      return sendApiError(res, req, 404, 'VIDEO_NOT_FOUND', 'URL del video no disponible.');
     }
     const safeUrl = safeExternalUrl(targetUrl, config.DOCENTOS_ENV === 'development');
-    if (!safeUrl) return res.status(400).json({ error: 'URL del video no segura.' });
+    if (!safeUrl) return sendApiError(res, req, 400, 'UNSAFE_VIDEO_URL', 'URL del video no segura.');
 
     let finalUrl = safeUrl;
     if (finalUrl.includes('youtube.com') || finalUrl.includes('youtube-nocookie.com') || finalUrl.includes('youtu.be')) {
@@ -1356,7 +1361,7 @@ app.all(
   asyncRoute(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
-      return res.status(405).json({ error: 'Método no permitido.' });
+      return sendApiError(res, req, 405, 'METHOD_NOT_ALLOWED', 'Método no permitido.');
     }
 
     const { status, error, video } = await getVideoForAccess(req.user, req.params.videoId);
@@ -1373,7 +1378,7 @@ app.all(
 
     if (!fileId) {
       const targetUrl = video.embedUrl || video.previewUrl;
-      if (!targetUrl) return res.status(404).json({ error: 'URL del video no disponible.' });
+      if (!targetUrl) return sendApiError(res, req, 404, 'VIDEO_NOT_FOUND', 'URL del video no disponible.');
       return res.redirect(targetUrl);
     }
 
@@ -1417,7 +1422,7 @@ app.all(
         return;
       }
       logger.warn('drive_stream.upstream_fetch_failed', { videoId: video.id, error: err?.message });
-      return res.status(502).json({ error: 'No se pudo conectar con el origen de video.' });
+      return sendApiError(res, req, 502, 'VIDEO_ORIGIN_ERROR', 'No se pudo conectar con el origen de video.');
     }
 
     const contentType = upstreamRes.headers.get('content-type') || '';
@@ -1493,15 +1498,15 @@ app.get(
     const resource = await prisma.courseResource.findUnique({
       where: { id: req.params.resourceId },
     });
-    if (!resource) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    if (!resource) return sendApiError(res, req, 404, 'RESOURCE_NOT_FOUND', 'Recurso no encontrado.');
 
     const hasAccess = await userHasResourceAccess(req.user, resource.id);
     if (!hasAccess) {
-      return res.status(403).json({ error: 'No tienes autorización para acceder a este recurso.' });
+      return sendApiError(res, req, 403, 'RESOURCE_ACCESS_DENIED', 'No tienes autorización para acceder a este recurso.');
     }
 
     const safeUrl = safeExternalUrl(resource.privateUrl, config.DOCENTOS_ENV === 'development');
-    if (!safeUrl) return res.status(400).json({ error: 'URL privada del recurso no segura.' });
+    if (!safeUrl) return sendApiError(res, req, 400, 'UNSAFE_RESOURCE_URL', 'URL privada del recurso no segura.');
 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
@@ -2219,10 +2224,10 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     if (!(await userHasVideoAccess(req.user, req.params.videoId))) {
-      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      return sendApiError(res, req, 403, 'CONTENT_ACCESS_DENIED', 'No tienes acceso a este contenido.');
     }
     const content = String(req.body.content || '').trim();
-    if (!content) return res.status(400).json({ error: 'El contenido del comentario es obligatorio' });
+    if (!content) return sendApiError(res, req, 400, 'FIELD_REQUIRED', 'El contenido del comentario es obligatorio');
 
     const comment = await prisma.mentorshipComment.create({
       data: {
@@ -2251,12 +2256,12 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     const content = String(req.body.content || '').trim();
-    if (!content) return res.status(400).json({ error: 'El contenido de la respuesta es obligatorio' });
+    if (!content) return sendApiError(res, req, 400, 'FIELD_REQUIRED', 'El contenido de la respuesta es obligatorio');
 
     const parent = await prisma.mentorshipComment.findUnique({ where: { id: req.params.commentId } });
-    if (!parent) return res.status(404).json({ error: 'Comentario original no encontrado' });
+    if (!parent) return sendApiError(res, req, 404, 'PARENT_COMMENT_NOT_FOUND', 'Comentario original no encontrado');
     if (!(await userHasVideoAccess(req.user, parent.videoId))) {
-      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      return sendApiError(res, req, 403, 'CONTENT_ACCESS_DENIED', 'No tienes acceso a este contenido.');
     }
 
     const isMentor = ['ADMIN', 'MENTOR'].includes(req.user!.role);
@@ -2292,9 +2297,9 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     const existing = await prisma.mentorshipComment.findUnique({ where: { id: req.params.commentId } });
-    if (!existing) return res.status(404).json({ error: 'Comentario no encontrado' });
+    if (!existing) return sendApiError(res, req, 404, 'COMMENT_NOT_FOUND', 'Comentario no encontrado');
     if (!(await userHasVideoAccess(req.user, existing.videoId))) {
-      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      return sendApiError(res, req, 403, 'CONTENT_ACCESS_DENIED', 'No tienes acceso a este contenido.');
     }
     const comment = await prisma.mentorshipComment.update({
       where: { id: existing.id },
@@ -2412,7 +2417,7 @@ app.get(
   asyncRoute(async (req, res) => {
     const userId = req.user!.id;
     if (!notificationHub.canAccept(userId)) {
-      return res.status(429).json({ error: 'Tienes demasiadas pestañas abiertas con avisos en vivo.' });
+      return sendApiError(res, req, 429, 'LIVE_ALERTS_RATE_LIMITED', 'Tienes demasiadas pestañas abiertas con avisos en vivo.');
     }
     const { unreadCount } = await listNotifications(userId);
 
@@ -2542,7 +2547,7 @@ app.get(
       },
     });
     if (!certificate) {
-      return res.status(404).json({ error: 'Aún no se ha emitido un certificado para este curso.' });
+      return sendApiError(res, req, 404, 'CERTIFICATE_NOT_ISSUED', 'Aún no se ha emitido un certificado para este curso.');
     }
     res.json({
       certificate: {
@@ -2596,7 +2601,7 @@ app.put(
     const certificate = await prisma.certificate.findUnique({
       where: { id: req.params.id },
     });
-    if (!certificate) return res.status(404).json({ error: 'Certificado no encontrado.' });
+    if (!certificate) return sendApiError(res, req, 404, 'CERTIFICATE_NOT_FOUND', 'Certificado no encontrado.');
 
     const updated = await prisma.certificate.update({
       where: { id: certificate.id },

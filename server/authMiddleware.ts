@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { securityLimits } from './rateLimits.js';
 import { logger } from './logger.js';
 import { resolveRequestSession } from './authService.js';
+import { sendApiError } from './serverI18n.js';
 
 export type UserRole = 'ADMIN' | 'MENTOR' | 'MENTEE' | 'PUBLIC_USER' | 'VIP' | 'EXTERNAL';
 
@@ -109,7 +110,7 @@ declare global {
 
 export function requireAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (!req.user || !req.authSession) {
-    return res.status(401).json({ error: 'Debes iniciar sesión para continuar.' });
+    return sendApiError(res, req, 401, 'AUTH_REQUIRED', 'Debes iniciar sesión para continuar.');
   }
 
   next();
@@ -118,13 +119,13 @@ export function requireAuthenticated(req: Request, res: Response, next: NextFunc
 export function requireRole(allowedRoles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !req.authSession) {
-      return res.status(401).json({ error: 'Debes iniciar sesión para continuar.' });
+      return sendApiError(res, req, 401, 'AUTH_REQUIRED', 'Debes iniciar sesión para continuar.');
     }
 
     if (!allowedRoles.includes(req.user.role)) {
       return securityLimits.forbidden(req, res, () => {
         logger.warn('authorization.denied', { userId: req.user!.id, method: req.method, route: req.route?.path });
-        res.status(403).json({ error: 'Acceso denegado. Permisos insuficientes.', code: 'ACCESS_DENIED' });
+        sendApiError(res, req, 403, 'ACCESS_DENIED', 'Acceso denegado. Permisos insuficientes.');
       });
     }
 

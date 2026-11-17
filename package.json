@@ -30,6 +30,8 @@
     "i18n:status": "i18next-cli status",
     "i18n:extract": "i18next-cli extract",
     "i18n:lint": "i18next-cli lint",
+    "i18n:parity": "tsx --test tests/i18n-parity.test.ts",
+    "i18n:check": "npm run i18n:parity && npm run i18n:lint",
     "lint:i18n-editor": "eslint \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {

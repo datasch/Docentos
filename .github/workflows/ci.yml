@@ -63,6 +63,9 @@ jobs:
       - name: Validar tipado TypeScript (Lint)
         run: npm run lint
 
+      - name: Validar internacionalización (i18n paridad y lint)
+        run: npm run i18n:check
+
       - name: Aplicar migraciones en PostgreSQL
         run: npx prisma migrate deploy
         env:

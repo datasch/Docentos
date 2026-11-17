@@ -4,6 +4,7 @@ import { NextFunction, Request, Response } from 'express';
 import { prisma } from './prisma.js';
 import { AuthenticatedUser } from './authMiddleware.js';
 import { config } from './config.js';
+import { sendApiError } from './serverI18n.js';
 
 const SESSION_COOKIE_NAME = config.SESSION_COOKIE_NAME;
 const BCRYPT_ROUNDS = 12;
@@ -217,7 +218,7 @@ export function requireSameOrigin(req: Request, res: Response, next: NextFunctio
 
   const fetchSite = req.get('sec-fetch-site');
   if (fetchSite === 'cross-site') {
-    return res.status(403).json({ error: 'Solicitud entre sitios rechazada.' });
+    return sendApiError(res, req, 403, 'CROSS_SITE_REJECTED', 'Solicitud entre sitios rechazada.');
   }
 
   const origin = req.get('origin');
@@ -230,7 +231,7 @@ export function requireSameOrigin(req: Request, res: Response, next: NextFunctio
   for (const allowedOrigin of config.ALLOWED_ORIGINS) expectedOrigins.add(allowedOrigin);
 
   if (!expectedOrigins.has(origin.replace(/\/$/, ''))) {
-    return res.status(403).json({ error: 'Origen de solicitud no autorizado.' });
+    return sendApiError(res, req, 403, 'ORIGIN_NOT_ALLOWED', 'Origen de solicitud no autorizado.');
   }
 
   next();

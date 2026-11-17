@@ -4,6 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { resolveRequestLanguage, getLocalizedMessage } from './serverI18n.js';
 
 // Definición de interfaz para la verificación de usuarios
 export interface SetupGuardOptions {
@@ -25,9 +26,11 @@ export function createSetupGuard(isSetupComplete: () => Promise<boolean> | boole
 
     try {
       if (!(await isSetupComplete())) {
+        const lang = resolveRequestLanguage(req);
         return res.status(428).json({
           isSetupRequired: true,
-          error: 'Instalación inicial requerida (First Run Setup)',
+          code: 'SETUP_REQUIRED',
+          error: getLocalizedMessage('SETUP_REQUIRED', lang, 'Instalación inicial requerida (First Run Setup)'),
           message: 'No existen usuarios en el sistema. Por favor complete el asistente de configuración en /setup',
           redirect: '/setup',
         });
@@ -36,8 +39,10 @@ export function createSetupGuard(isSetupComplete: () => Promise<boolean> | boole
       next();
     } catch (error) {
       console.error('Error en setupGuard al verificar número de usuarios:', error);
+      const lang = resolveRequestLanguage(req);
       return res.status(503).json({
-        error: 'No se pudo verificar el estado de instalacion.',
+        code: 'DB_UNAVAILABLE',
+        error: getLocalizedMessage('SERVICE_UNAVAILABLE', lang, 'No se pudo verificar el estado de instalacion.'),
         message: 'La base de datos no esta disponible o no tiene el esquema compatible.',
       });
     }
