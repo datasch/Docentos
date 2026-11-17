@@ -64,13 +64,23 @@ export type SubTab =
   | 'resources'
   | 'listening';
 
+const ADMIN_TABS: SubTab[] = ['overview', 'users', 'courses', 'contracts', 'drive', 'tts', 'plugins', 'landing', 'enrollments', 'certificates', 'resources', 'listening'];
+
+// Al recargar se vuelve a la pestaña de la URL (?tab=), no al inicio.
+const tabFromUrl = (): SubTab | null => {
+  if (typeof window === 'undefined') return null;
+  const tab = new URLSearchParams(window.location.search).get('tab');
+  return ADMIN_TABS.find((t) => t === tab) ?? null;
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, course, onRefreshData }) => {
   const { t } = useTranslation();
+  const [initialTab] = useState<SubTab | null>(tabFromUrl);
   const [masterSection, setMasterSection] = useState<MasterSection>('courses');
-  const [activeTab, setActiveTab] = useState<SubTab>('courses');
+  const [activeTab, setActiveTab] = useState<SubTab>(initialTab ?? 'courses');
 
   // Estado interno para la vista unificada de Usuarios y Matrículas
-  const [userSectionView, setUserSectionView] = useState<'directory' | 'enrollments'>('directory');
+  const [userSectionView, setUserSectionView] = useState<'directory' | 'enrollments'>(initialTab === 'enrollments' ? 'enrollments' : 'directory');
   const [showQuickEnroll, setShowQuickEnroll] = useState(false);
   const [userSearchText, setUserSearchText] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('ALL');
@@ -78,13 +88,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState<string>('ALL');
 
   // Estado unificado de Medios y Recursos (Descargables, Drive, TTS)
-  const [mediaView, setMediaView] = useState<'resources' | 'drive' | 'tts'>('resources');
+  const [mediaView, setMediaView] = useState<'resources' | 'drive' | 'tts'>(initialTab === 'drive' || initialTab === 'tts' ? initialTab : 'resources');
 
   // Estado unificado de Certificación y Legal (Certificados, Contratos)
-  const [legalView, setLegalView] = useState<'certificates' | 'contracts'>('certificates');
+  const [legalView, setLegalView] = useState<'certificates' | 'contracts'>(initialTab === 'contracts' ? 'contracts' : 'certificates');
 
   // Estado unificado de Portal y Feedback (Portada, Buzón NPS)
-  const [portalView, setPortalView] = useState<'landing' | 'listening'>('landing');
+  const [portalView, setPortalView] = useState<'landing' | 'listening'>(initialTab === 'listening' ? 'listening' : 'landing');
 
   // Integración con el Plugin de Personalización y Versiones de DocentOS
   const isCustomizerEnabled = pluginManager.isEnabled('docentos-customizer');
@@ -136,13 +146,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   }, [uiVersion]);
 
   useEffect(() => {
-    if (uiVersion === 'v0.5-modern' && activeTab === 'courses' && masterSection === 'courses') {
+    if (uiVersion === 'v0.5-modern' && activeTab === 'courses' && masterSection === 'courses' && !initialTab) {
       setActiveTab('overview');
     }
     if (uiVersion === 'v0.4-classic' && activeTab === 'overview') {
       setActiveTab('courses');
     }
   }, [uiVersion]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') === activeTab) return;
+    url.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', url);
+  }, [activeTab]);
 
   const handleSwitchUiVersion = async (targetVer: 'v0.5-modern' | 'v0.4-classic') => {
     setUiVersion(targetVer);

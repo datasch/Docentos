@@ -35,6 +35,8 @@ import {
   Sparkles,
   AlertTriangle,
   Users,
+  List,
+  LayoutGrid,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
@@ -71,6 +73,8 @@ const emptyForm = {
 
 type CourseForm = typeof emptyForm;
 
+const VIEW_MODE_KEY = 'docentos_admin_courses_view';
+
 interface DeleteTarget {
   type: 'course' | 'module' | 'video';
   id: string;
@@ -96,6 +100,24 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   // Formulario de alta / edición de curso
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const formRef = useRef<HTMLDialogElement>(null);
+  const deleteRef = useRef<HTMLDialogElement>(null);
+  const unpublishRef = useRef<HTMLDialogElement>(null);
+  const [unpublishTarget, setUnpublishTarget] = useState<Course | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>(() => {
+    try {
+      return localStorage.getItem(VIEW_MODE_KEY) === 'cards' ? 'cards' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
+  const changeViewMode = (mode: 'list' | 'cards') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      // Sin almacenamiento la vista solo dura esta sesión.
+    }
+  };
   const [courseQuery, setCourseQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
@@ -314,7 +336,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'course',
       id: course.id,
       title: course.title,
-      warningText: 'Se eliminará el curso junto con sus módulos, videos y recursos vinculados.',
+      warningText: `Se borrarán sus ${course.modules.length} módulo(s), ${countVideos(course)} video(s) y recursos vinculados.${
+        course.published ? ' Está publicado: los alumnos perderán el acceso.' : ''
+      }`,
     });
   };
 
@@ -484,6 +508,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
   const countVideos = (course: Course) =>
     course.modules.reduce((total, m) => total + m.videos.length, 0);
+
+  useEffect(() => {
+    for (const [target, ref] of [[deleteTarget, deleteRef], [unpublishTarget, unpublishRef]] as const) {
+      const d = ref.current;
+      if (target && d && !d.open) d.showModal();
+      if (!target && d?.open) d.close();
+    }
+  }, [deleteTarget, unpublishTarget]);
 
   const statusCounts = {
     all: courses.length,
@@ -748,6 +780,16 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <span className="mentor-course-filter-result" role="status" aria-live="polite">
           {visibleCourses.length} de {courses.length} cursos
         </span>
+        <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista del catálogo">
+          <button type="button" aria-pressed={viewMode === 'list'} onClick={() => changeViewMode('list')}>
+            <List aria-hidden="true" />
+            <span>Lista</span>
+          </button>
+          <button type="button" aria-pressed={viewMode === 'cards'} onClick={() => changeViewMode('cards')}>
+            <LayoutGrid aria-hidden="true" />
+            <span>Tarjetas</span>
+          </button>
+        </div>
         <button type="button" className="mentor-course-control" onClick={loadCourses} aria-label="Actualizar catálogo">
           <RefreshCw aria-hidden="true" className={loading ? 'animate-spin' : ''} />
           Actualizar
@@ -771,13 +813,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             <p>Ningún curso coincide con la búsqueda.</p>
           </div>
         ) : (
-          <div className="admin-courses-list">
+          <div className="admin-courses-list" data-view={viewMode}>
             {visibleCourses.map((course) => {
               const isExpanded = expandedCourseId === course.id;
               const modules = [...course.modules].sort((a, b) => a.order - b.order);
 
               return (
-                <div key={course.id} className="admin-course-row">
+                <div key={course.id} className="admin-course-row" data-view={viewMode} data-expanded={isExpanded || undefined}>
                   <div className="admin-course-row__head">
                   <div className="admin-course-row__main">
                     {course.coverImage ? (
@@ -839,7 +881,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleTogglePublished(course)}
+                      onClick={() => (course.published ? setUnpublishTarget(course) : handleTogglePublished(course))}
                       disabled={busyId === course.id}
                       className="mentor-course-control"
                       aria-label={`${course.published ? 'Pasar a borrador' : 'Publicar'}: ${course.title}`}
@@ -851,10 +893,11 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       type="button"
                       onClick={() => handleDeleteCourse(course)}
                       disabled={busyId === course.id}
-                      className="mentor-course-control admin-course-delete"
+                      className="mentor-course-control"
+                      data-danger="true"
                       aria-label={`Eliminar ${course.title}`}
                     >
-                      <Trash2 aria-hidden="true" />
+                      <Trash2 aria-hidden="true" /> <span>Eliminar</span>
                     </button>
                   </div>
                 </div>
@@ -1213,103 +1256,87 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         />
       )}
 
-      {/* Modal de confirmación y forzado de eliminación */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="app-dialog bg-[#141420] border border-[#2d2d44] rounded-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4 animate-scale-in text-white relative">
-            <button
-              onClick={() => !isDeleting && setDeleteTarget(null)}
-              disabled={isDeleting}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#2d2d44]/50 transition-colors disabled:opacity-50"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3 border-b border-[#2d2d44] pb-3">
-              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">
-                  {deleteTarget.type === 'course'
-                    ? 'Eliminar Curso'
-                    : deleteTarget.type === 'module'
-                    ? 'Eliminar Módulo'
-                    : 'Eliminar Misión / Video'}
-                </h3>
-                <p className="text-xs text-slate-400 truncate max-w-[260px]">
-                  «{deleteTarget.title}»
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {deleteTarget.warningText}
+      {/* Confirmaciones (mismo diálogo que el panel de mentor) */}
+      <dialog
+        ref={deleteRef}
+        className="mentor-confirm"
+        aria-labelledby="admin-delete-title"
+        onCancel={(e) => { e.preventDefault(); if (!isDeleting) setDeleteTarget(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
+      >
+        {deleteTarget && (
+          <div className="mentor-confirm__body">
+            <h3 id="admin-delete-title" className="admin-confirm-title">
+              <AlertTriangle aria-hidden="true" />
+              {deleteTarget.type === 'course' ? 'Eliminar curso' : deleteTarget.type === 'module' ? 'Eliminar módulo' : 'Eliminar video'}
+            </h3>
+            <p>
+              Vas a eliminar <strong>{deleteTarget.title}</strong>. {deleteTarget.warningText} No se puede deshacer.
             </p>
-
             {deleteTarget.error && (
-              <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs space-y-2">
-                <p className="font-semibold flex items-center gap-1.5 text-red-200">
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                  {deleteTarget.error}
-                </p>
-                <p className="text-[11px] text-red-300/80 leading-snug">
-                  {deleteTarget.type === 'course'
-                    ? 'El curso contiene registros de alumnos (pagos, matrículas, certificados o progreso). Forzar la eliminación purgará definitivamente todos estos registros asociados.'
-                    : deleteTarget.type === 'module'
-                    ? 'El módulo contiene intentos de examen o progreso de alumnos. Forzar la eliminación purgará permanentemente los datos.'
-                    : 'Esta lección tiene progreso o notas de alumnos. Forzar la eliminación eliminará el progreso de los alumnos en este video.'}
-                </p>
-              </div>
+              <p role="alert" className="admin-confirm-error">
+                <strong>{deleteTarget.error}</strong>{' '}
+                {deleteTarget.type === 'course'
+                  ? 'El curso tiene pagos, matrículas, certificados o progreso de alumnos. Eliminarlo de todos modos borra todos esos registros.'
+                  : deleteTarget.type === 'module'
+                  ? 'El módulo tiene intentos de examen o progreso de alumnos. Eliminarlo de todos modos borra esos datos.'
+                  : 'Esta lección tiene progreso o notas de alumnos. Eliminarla de todos modos borra ese progreso.'}
+              </p>
             )}
-
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-                disabled={isDeleting}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#1a1a2e] transition-colors disabled:opacity-50"
-              >
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" disabled={isDeleting} onClick={() => setDeleteTarget(null)}>
                 Cancelar
               </button>
-
-              {!deleteTarget.error ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => executeDelete(false)}
-                    disabled={isDeleting}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    Eliminar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => executeDelete(true)}
-                    disabled={isDeleting}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
-                    title="Forzar eliminación ignorando y purgando progreso de alumnos"
-                  >
-                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                    Forzar eliminación
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => executeDelete(true)}
-                  disabled={isDeleting}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
-                >
-                  {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                  Confirmar y Forzar Eliminación
-                </button>
-              )}
+              <button
+                type="button"
+                className="mentor-course-control"
+                data-danger="true"
+                disabled={isDeleting}
+                onClick={() => executeDelete(Boolean(deleteTarget.error))}
+              >
+                {isDeleting ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
+                {deleteTarget.error
+                  ? 'Eliminar de todos modos'
+                  : deleteTarget.type === 'course' ? 'Eliminar curso' : deleteTarget.type === 'module' ? 'Eliminar módulo' : 'Eliminar video'}
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </dialog>
+
+      <dialog
+        ref={unpublishRef}
+        className="mentor-confirm"
+        aria-labelledby="admin-unpublish-title"
+        onCancel={(e) => { e.preventDefault(); setUnpublishTarget(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setUnpublishTarget(null); }}
+      >
+        {unpublishTarget && (
+          <div className="mentor-confirm__body">
+            <h3 id="admin-unpublish-title" className="admin-confirm-title">
+              <EyeOff aria-hidden="true" />
+              Pasar a borrador
+            </h3>
+            <p>
+              <strong>{unpublishTarget.title}</strong> dejará de aparecer en el catálogo y los alumnos no podrán abrirlo hasta que lo publiques de nuevo.
+            </p>
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" onClick={() => setUnpublishTarget(null)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="mentor-course-control"
+                data-danger="true"
+                onClick={() => { const c = unpublishTarget; setUnpublishTarget(null); handleTogglePublished(c); }}
+              >
+                <EyeOff aria-hidden="true" />
+                Pasar a borrador
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
 
       {/* Modal para Asignar Mentores a un Curso */}
       {mentorModalCourse && (
