@@ -13,7 +13,8 @@ import { defineConfig } from 'i18next-cli';
 export default defineConfig({
   locales: ['es', 'en', 'pt', 'fr', 'it'],
   extract: {
-    input: ['src/**/*.{ts,tsx}'],
+    // I18N_FILES="a.tsx,b.tsx" limita la pasada a esos archivos (para migrar por lotes).
+    input: process.env.I18N_FILES ? process.env.I18N_FILES.split(',') : ['src/**/*.{ts,tsx}'],
     ignore: ['src/i18n/**', '**/*.d.ts'],
     output: 'src/i18n/locales/{{language}}.json',
     primaryLanguage: 'es',
@@ -35,13 +36,9 @@ export default defineConfig({
     baseline: 'i18next-lint-baseline.json',
   },
   status: {
-    // Un idioma con el mismo texto que el español casi siempre es una traducción pendiente.
-    checkIdentical: 'error',
-    ignoreKeys: [
-      // Nombres propios y marcas que no se traducen.
-      'categories.Cloud & DevOps',
-      'mentor.tabYoutubeBuilder',
-      'admin.title',
-    ],
+    // Un texto idéntico al español no es necesariamente un error: portugués, francés e italiano
+    // comparten muchas palabras ("Catálogo", "Cancelar", "Recursos"). Se muestra como aviso;
+    // lo que sí falla es una clave ausente o vacía.
+    checkIdentical: 'warn',
   },
 });

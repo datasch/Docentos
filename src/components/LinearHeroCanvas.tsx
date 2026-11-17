@@ -18,8 +18,10 @@ import {
   Terminal,
   Zap
 } from 'lucide-react';
+import { useTranslation, Trans } from 'react-i18next'
 
 export const LinearHeroCanvas: React.FC = () => {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'player' | 'ian' | 'palette' | 'cert'>('player');
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeTranscriptIdx, setActiveTranscriptIdx] = useState(1);
@@ -36,17 +38,17 @@ export const LinearHeroCanvas: React.FC = () => {
   }, []);
 
   const tabs = [
-    { id: 'player', label: 'Theater Player', icon: Tv, badge: 'Inmersivo' },
-    { id: 'ian', label: 'Copiloto Ian 2.0', icon: Bot, badge: 'IA Nativa' },
-    { id: 'palette', label: 'Command Palette', icon: Command, badge: '⌘K' },
-    { id: 'cert', label: 'Certificación & RBAC', icon: ShieldCheck, badge: 'Verificable' },
+    { id: 'player', label: t('theaterPlayer', 'Theater Player'), icon: Tv, badge: 'Inmersivo' },
+    { id: 'ian', label: t('copilotoIan20', 'Copiloto Ian 2.0'), icon: Bot, badge: 'IA Nativa' },
+    { id: 'palette', label: t('commandPalette', 'Command Palette'), icon: Command, badge: '⌘K' },
+    { id: 'cert', label: t('certificacionRbac', 'Certificación & RBAC'), icon: ShieldCheck, badge: 'Verificable' },
   ] as const;
 
   const sampleTranscripts = [
-    { time: '01:14', text: 'Optimizamos la reactividad del estado global eliminando re-renders innecesarios.' },
-    { time: '01:48', text: 'El pipeline de IA analiza la tasa de comprensión y ajusta la velocidad de explicación.' },
-    { time: '02:22', text: 'Cada progreso se valida criptográficamente con tokens seguros de sesión.' },
-    { time: '03:05', text: 'Con Command Palette puedes saltar a cualquier módulo o nota en milisegundos.' },
+    { time: '01:14', text: t('optimizamosLaReactividadDelEstadoGlobal', 'Optimizamos la reactividad del estado global eliminando re-renders innecesarios.') },
+    { time: '01:48', text: t('elPipelineDeIaAnalizaLaTasaDeComprension', 'El pipeline de IA analiza la tasa de comprensión y ajusta la velocidad de explicación.') },
+    { time: '02:22', text: t('cadaProgresoSeValidaCriptograficamente', 'Cada progreso se valida criptográficamente con tokens seguros de sesión.') },
+    { time: '03:05', text: t('conCommandPalettePuedesSaltarACualquier', 'Con Command Palette puedes saltar a cualquier módulo o nota en milisegundos.') },
   ];
 
   return (
@@ -67,7 +69,7 @@ export const LinearHeroCanvas: React.FC = () => {
             <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block border border-emerald-600/40" />
             
             <span className="ml-3 text-[11px] font-mono text-slate-500 hidden sm:inline">
-              docentos / engine / v2026.1-live
+              {t('docentosEngineV20261live', 'docentos / engine / v2026.1-live')}
             </span>
           </div>
 
@@ -77,16 +79,16 @@ export const LinearHeroCanvas: React.FC = () => {
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] hover:border-cyan-500/40 text-[11px] text-slate-400 hover:text-white transition-all group"
           >
             <Search className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-            <span className="hidden md:inline">Buscar lecciones, comandos o IA...</span>
+            <span className="hidden md:inline">{t('buscarLeccionesComandosOIa', 'Buscar lecciones, comandos o IA...')}</span>
             <kbd className="px-1.5 py-0.2 rounded bg-white/10 font-mono text-[9px] text-slate-300">
-              ⌘K
+              {t('k', '⌘K')}
             </kbd>
           </button>
 
           {/* Estado de conectividad en vivo */}
           <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="hidden sm:inline">60 FPS · READY</span>
+            <span className="hidden sm:inline">{t('60FpsReady', '60 FPS · READY')}</span>
           </div>
         </div>
 
@@ -146,9 +148,9 @@ export const LinearHeroCanvas: React.FC = () => {
                   {/* Header flotante */}
                   <div className="relative p-3 flex items-center justify-between text-xs">
                     <span className="px-2 py-0.5 rounded bg-black/60 border border-white/10 text-[10px] font-mono text-cyan-300">
-                      MODO CINE ACTIVO
+                      {t('modoCineActivo', 'MODO CINE ACTIVO')}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">1080p · 60fps</span>
+                    <span className="text-[10px] text-slate-400 font-mono">{t('1080p60fps', '1080p · 60fps')}</span>
                   </div>
 
                   {/* Centro con botón de Play / Pause */}
@@ -160,7 +162,7 @@ export const LinearHeroCanvas: React.FC = () => {
                       <Play className="w-6 h-6 fill-current ml-0.5" />
                     </button>
                     <span className="text-[11px] text-slate-300 font-medium mt-3">
-                      Arquitectura Distribuida y Algoritmos de Aprendizaje
+                      {t('arquitecturaDistribuidaYAlgoritmosDe', 'Arquitectura Distribuida y Algoritmos de Aprendizaje')}
                     </span>
                   </div>
 
@@ -173,7 +175,7 @@ export const LinearHeroCanvas: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="px-1.5 py-0.2 rounded bg-white/10 text-[9px] font-mono text-slate-300">1.25x</span>
+                      <span className="px-1.5 py-0.2 rounded bg-white/10 text-[9px] font-mono text-slate-300">{t('125x', '1.25x')}</span>
                       <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
                     </div>
                   </div>
@@ -184,10 +186,10 @@ export const LinearHeroCanvas: React.FC = () => {
                   <div className="flex items-center justify-between pb-1 border-b border-white/[0.08]">
                     <div className="flex items-center gap-1.5 text-slate-300 font-medium text-[11px]">
                       <Subtitles className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Transcripción Sincronizada</span>
+                      <span>{t('transcripcionSincronizada', 'Transcripción Sincronizada')}</span>
                     </div>
                     <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded">
-                      LIVE
+                      {t('live', 'LIVE')}
                     </span>
                   </div>
 
@@ -239,28 +241,28 @@ export const LinearHeroCanvas: React.FC = () => {
                       <Bot className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-white">Ian 2.0 · Copiloto de Estudio</h4>
-                      <p className="text-[11px] text-slate-400">Contextualizado a la lección actual y tu historial de notas.</p>
+                      <h4 className="text-xs font-bold text-white">{t('ian20CopilotoDeEstudio', 'Ian 2.0 · Copiloto de Estudio')}</h4>
+                      <p className="text-[11px] text-slate-400">{t('contextualizadoALaLeccionActualYTu', 'Contextualizado a la lección actual y tu historial de notas.')}</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-mono text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">
-                    GEMINI FLASH 2.5
+                    {t('geminiFlash25', 'GEMINI FLASH 2.5')}
                   </span>
                 </div>
 
                 <div className="space-y-2">
                   <div className="p-3 rounded-xl bg-white/[0.04] text-slate-200 text-xs ml-12 border border-white/5">
-                    <span className="text-[10px] text-slate-500 font-mono block mb-1">Tú · hace 1 min</span>
-                    ¿Cómo garantizo que el pipeline de videos no bloquee la base de datos al importar 50 lecciones?
+                    <Trans i18nKey="tuHace1MincomoGarantizoQueElPipelineDe"><span className="text-[10px] text-slate-500 font-mono block mb-1">Tú · hace 1 min</span>
+                    ¿Cómo garantizo que el pipeline de videos no bloquee la base de datos al importar 50 lecciones?</Trans>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-gradient-to-r from-purple-950/30 via-slate-900/40 to-slate-900/30 border border-purple-500/30 text-xs text-slate-200 mr-8 space-y-2">
                     <div className="flex items-center gap-2 text-[10px] text-purple-300 font-mono">
                       <Sparkles className="w-3 h-3 text-purple-400" />
-                      <span>Ian 2.0 Tutor</span>
+                      <span>{t('ian20Tutor', 'Ian 2.0 Tutor')}</span>
                     </div>
                     <p className="text-[11px] leading-relaxed text-slate-300">
-                      Implementa un patrón de <strong>Worker Queue asíncrono con batching</strong>. En DocentOS utilizamos transacciones atómicas con Prisma y actualizamos el progreso del alumno de forma optimista en memoria antes de persistir:
+                      <Trans i18nKey="implementaUnPatronDeWorkerQueueAsincrono">Implementa un patrón de <strong>Worker Queue asíncrono con batching</strong>. En DocentOS utilizamos transacciones atómicas con Prisma y actualizamos el progreso del alumno de forma optimista en memoria antes de persistir:</Trans>
                     </p>
                     <div className="p-2 rounded bg-black/60 font-mono text-[10px] text-cyan-300 border border-white/10">
                       <code>await prisma.$transaction(lessons.map(l =&gt; createLesson(l)));</code>
@@ -282,16 +284,16 @@ export const LinearHeroCanvas: React.FC = () => {
               >
                 <div className="flex items-center gap-2.5 px-3 py-2 border-b border-white/10">
                   <Search className="w-4 h-4 text-cyan-400" />
-                  <span className="text-xs text-slate-200 font-medium">Buscar acción, lección o cambio de interfaz...</span>
-                  <kbd className="ml-auto px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-slate-400">ESC</kbd>
+                  <span className="text-xs text-slate-200 font-medium">{t('buscarAccionLeccionOCambioDeInterfaz', 'Buscar acción, lección o cambio de interfaz...')}</span>
+                  <kbd className="ml-auto px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-slate-400">{t('esc', 'ESC')}</kbd>
                 </div>
 
                 <div className="p-1 space-y-1">
                   {[
-                    { title: 'Activar DocentOS Vanguard (2026 AI-Native)', cat: 'UI Lab', icon: Sparkles, active: true },
-                    { title: 'Alternar Modo Cine Inmersivo', cat: 'Estudio', icon: Tv },
-                    { title: 'Consultar al Asistente Ian', cat: 'Copiloto IA', icon: Bot },
-                    { title: 'Ir al Panel de Administración', cat: 'Navegación', icon: Terminal },
+                    { title: t('activarDocentosVanguard2026Ainative', 'Activar DocentOS Vanguard (2026 AI-Native)'), cat: 'UI Lab', icon: Sparkles, active: true },
+                    { title: t('alternarModoCineInmersivo', 'Alternar Modo Cine Inmersivo'), cat: 'Estudio', icon: Tv },
+                    { title: t('consultarAlAsistenteIan', 'Consultar al Asistente Ian'), cat: 'Copiloto IA', icon: Bot },
+                    { title: t('irAlPanelDeAdministracion', 'Ir al Panel de Administración'), cat: 'Navegación', icon: Terminal },
                   ].map((item, idx) => (
                     <div
                       key={idx}
@@ -324,16 +326,16 @@ export const LinearHeroCanvas: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-emerald-400">
                       <ShieldCheck className="w-5 h-5" />
-                      <span className="font-bold text-xs">Certificación Criptográfica</span>
+                      <span className="font-bold text-xs">{t('certificacionCriptografica', 'Certificación Criptográfica')}</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      Cada certificado emitido incluye un hash SHA-256 inmutable verificable por empleadores mediante código QR o enlace público.
+                      {t('cadaCertificadoEmitidoIncluyeUnHash', 'Cada certificado emitido incluye un hash SHA-256 inmutable verificable por empleadores mediante código QR o enlace público.')}
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-emerald-300">
-                    <span>ID: DOC-2026-X892</span>
+                    <span>{t('idDoc2026x892', 'ID: DOC-2026-X892')}</span>
                     <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> VERIFICADO
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {t('verificado', 'VERIFICADO')}
                     </span>
                   </div>
                 </div>
@@ -342,16 +344,16 @@ export const LinearHeroCanvas: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-blue-400">
                       <Zap className="w-5 h-5" />
-                      <span className="font-bold text-xs">Control de Acceso RBAC Estricto</span>
+                      <span className="font-bold text-xs">{t('controlDeAccesoRbacEstricto', 'Control de Acceso RBAC Estricto')}</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      Garantía de Administrador Único, Pases VIP con Stripe, y permisos diferenciados para estudiantes, mentores y auditores.
+                      {t('garantiaDeAdministradorUnicoPasesVipCon', 'Garantía de Administrador Único, Pases VIP con Stripe, y permisos diferenciados para estudiantes, mentores y auditores.')}
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2 text-[10px] font-mono">
-                    <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">ADMIN</span>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">MENTOR</span>
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">VIP PASS</span>
+                    <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">{t('adminRol', 'ADMIN')}</span>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">{t('mentorRol', 'MENTOR')}</span>
+                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">{t('vipPass', 'VIP PASS')}</span>
                   </div>
                 </div>
               </motion.div>
@@ -364,10 +366,10 @@ export const LinearHeroCanvas: React.FC = () => {
         <div className="px-4 py-2.5 bg-black/50 border-t border-white/[0.06] flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-[11px] font-medium text-slate-300">Interactúa con las pestañas superiores para previsualizar el motor</span>
+            <span className="text-[11px] font-medium text-slate-300">{t('interactuaConLasPestanasSuperioresPara', 'Interactúa con las pestañas superiores para previsualizar el motor')}</span>
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
-            <span>DOCENTOS ODYSSEY 2026</span>
+            <span>{t('docentosOdyssey2026', 'DOCENTOS ODYSSEY 2026')}</span>
           </div>
         </div>
 

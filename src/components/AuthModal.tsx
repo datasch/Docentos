@@ -170,7 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setClock(Date.now());
       }
       setError(err instanceof ApiRequestError && err.status === 429
-        ? 'Por seguridad, espera un momento antes de volver a intentarlo.' : err.message || 'Error al autenticar');
+        ? t('porSeguridadEsperaUnMomentoAntesDeVolver', 'Por seguridad, espera un momento antes de volver a intentarlo.') : err.message || t('errorAlAutenticar', 'Error al autenticar'));
     } finally {
       setLoading(false);
     }
@@ -195,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           type="button"
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-surface hover:bg-raised rounded-full transition-colors"
-          aria-label="Cerrar ventana de autenticación"
+          aria-label={t('cerrarVentanaDeAutenticacion', 'Cerrar ventana de autenticación')}
         >
           <X className="w-4 h-4" />
         </button>
@@ -221,25 +221,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
           <h2 id="auth-modal-title" className="text-2xl font-extrabold text-white tracking-tight">
             {twoFactorChallenge
-              ? 'Verificación en dos pasos'
+              ? t('verificacionEnDosPasos', 'Verificación en dos pasos')
               : recoveryMode === 'request'
-              ? 'Recuperar Contraseña'
+              ? t('recuperarContrasena', 'Recuperar Contraseña')
               : recoveryMode === 'reset'
-                ? 'Crear Nueva Contraseña'
+                ? t('crearNuevaContrasena', 'Crear Nueva Contraseña')
                 : recoveryMode === 'sent'
-                  ? 'Revisa tu Correo'
+                  ? t('revisaTuCorreo', 'Revisa tu Correo')
                   : mode === 'login'
-                    ? 'Iniciar Sesión'
-                    : 'Crear Cuenta Institucional'}
+                    ? t('iniciarSesion', 'Iniciar Sesión')
+                    : t('crearCuentaInstitucional', 'Crear Cuenta Institucional')}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             {twoFactorChallenge
-              ? 'Escribe el código de seis dígitos de tu aplicación de autenticación'
+              ? t('escribeElCodigoDeSeisDigitosDeTu', 'Escribe el código de seis dígitos de tu aplicación de autenticación')
               : recoveryMode
-              ? 'Usa un enlace de un solo uso para proteger tu cuenta'
+              ? t('usaUnEnlaceDeUnSoloUsoParaProtegerTu', 'Usa un enlace de un solo uso para proteger tu cuenta')
               : mode === 'login'
-                ? 'Accede a tus programas de mentoría y clases grabadas'
-                : 'Únete a la comunidad educativa de alto nivel'}
+                ? t('accedeATusProgramasDeMentoriaYClases', 'Accede a tus programas de mentoría y clases grabadas')
+                : t('uneteALaComunidadEducativaDeAltoNivel', 'Únete a la comunidad educativa de alto nivel')}
           </p>
         </div>
 
@@ -428,7 +428,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {loading ? (
               <span className="animate-pulse">{t('auth.processing', 'Procesando...')}</span>
             ) : retrySeconds > 0 ? (
-              <span>Reintentar en {Math.floor(retrySeconds / 60)}:{String(retrySeconds % 60).padStart(2, '0')}</span>
+              <span>{t('reintentarEnMinutosSegundos', 'Reintentar en {{minutes}}:{{seconds}}', { minutes: Math.floor(retrySeconds / 60), seconds: String(retrySeconds % 60).padStart(2, '0') })}</span>
             ) : (
               <>
                 <span>
@@ -459,7 +459,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             className="mt-4 w-full text-xs font-semibold text-ink-muted hover:text-ink"
           >
-            Volver al inicio de sesión
+            {t('volverAlInicioDeSesion', 'Volver al inicio de sesión')}
           </button>
         )}
 
@@ -474,7 +474,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
             className="mt-4 w-full text-xs font-semibold text-slate-400 hover:text-white"
           >
-            Volver al inicio de sesión
+            {t('volverAlInicioDeSesion', 'Volver al inicio de sesión')}
           </button>
         )}
 

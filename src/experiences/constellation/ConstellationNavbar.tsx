@@ -208,12 +208,12 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             />
             {/* Adorno Festivo sobre el Logo */}
             {seasonalTheme === 'halloween' && (
-              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-bounce" title="¡Feliz Halloween!">
+              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-bounce" title={t('felizHalloween', '¡Feliz Halloween!')}>
                 🎃
               </span>
             )}
             {seasonalTheme === 'christmas' && (
-              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(239,68,68,0.8)] animate-pulse" title="¡Feliz Navidad!">
+              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(239,68,68,0.8)] animate-pulse" title={t('felizNavidad', '¡Feliz Navidad!')}>
                 🎅
               </span>
             )}
@@ -231,7 +231,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
         </button>
 
         {/* 2. Navegación Principal Fantasma (Mayúsculas 13px weight 600, tracking 0.05em estilo Dala) */}
-        <nav aria-label="Navegación principal" className="academy-navigation hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
+        <nav aria-label={t('navegacionPrincipal', 'Navegación principal')} className="academy-navigation hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
           <button
             onClick={() => {
               onSelectTab('explore');
@@ -529,7 +529,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                         {t('nav.listeningBox', 'Buzón de escucha')}
                       </span>
                       {unreadListening > 0 && (
-                        <span className="lp-badge-premium" title="Tienes respuestas nuevas">
+                        <span className="lp-badge-premium" title={t('tienesRespuestasNuevas', 'Tienes respuestas nuevas')}>
                           {unreadListening}
                         </span>
                       )}

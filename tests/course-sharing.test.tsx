@@ -7,7 +7,8 @@ import { CourseOverview } from '../src/components/CourseOverview.js';
 import { CourseShareButton } from '../src/components/CourseShareButton.js';
 import { renderSeoCourseHtml } from '../server/seo.js';
 import type { Course, User } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 const course = { id: 'curso-ciberseguridad', title: 'Ciberseguridad Defensiva', description: 'Protege tus sistemas.', published: true, price: 25, currency: 'USD', modules: [], resources: [], hasAccess: false, coverImage: '/logo.avif' } as Course;
 const noop = () => {};
 const page = (overrides: Partial<React.ComponentProps<typeof CourseOverview>> = {}) => renderToStaticMarkup(<CourseOverview course={course} ready user={null} onBack={noop} onRegister={noop} onLogin={noop} onPurchase={noop} onContinue={noop} {...overrides} />);

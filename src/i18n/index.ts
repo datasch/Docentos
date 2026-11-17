@@ -38,6 +38,8 @@ export const i18nReady = i18n
       // No se guarda solo: el idioma se recuerda únicamente cuando la persona lo elige (setLanguage).
       caches: [],
     },
+    // Una clave todavía sin traducir queda vacía en el JSON: se muestra el texto en español, no un hueco.
+    returnEmptyString: false,
     interpolation: {
       escapeValue: false,
     },

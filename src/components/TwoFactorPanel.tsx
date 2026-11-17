@@ -15,11 +15,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Check, Copy, KeyRound, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
 import { api, TwoFactorStatus } from '../lib/api';
+import { useTranslation } from 'react-i18next'
 
 const ANILLO_FOCO =
   'focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-surface';
 
 export const TwoFactorPanel: React.FC = () => {
+  const { t } = useTranslation()
   const [estado, setEstado] = useState<TwoFactorStatus | null>(null);
   const [cargando, setCargando] = useState(true);
   const [trabajando, setTrabajando] = useState(false);
@@ -37,11 +39,11 @@ export const TwoFactorPanel: React.FC = () => {
     try {
       setEstado(await api.getTwoFactorStatus());
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo consultar el estado.');
+      setError(fallo instanceof Error ? fallo.message : t('noSePudoConsultarElEstado', 'No se pudo consultar el estado.'));
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void refrescar();
@@ -56,7 +58,7 @@ export const TwoFactorPanel: React.FC = () => {
       setAlta({ qrDataUrl: respuesta.qrDataUrl, secret: respuesta.secret });
       setCodigo('');
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo iniciar la configuración.');
+      setError(fallo instanceof Error ? fallo.message : t('noSePudoIniciarLaConfiguracion', 'No se pudo iniciar la configuración.'));
     } finally {
       setTrabajando(false);
     }
@@ -75,7 +77,7 @@ export const TwoFactorPanel: React.FC = () => {
       setAviso(respuesta.message);
       await refrescar();
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo activar.');
+      setError(fallo instanceof Error ? fallo.message : t('noSePudoActivar', 'No se pudo activar.'));
     } finally {
       setTrabajando(false);
     }
@@ -99,7 +101,7 @@ export const TwoFactorPanel: React.FC = () => {
       setContrasena('');
       await refrescar();
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo completar la operación.');
+      setError(fallo instanceof Error ? fallo.message : t('noSePudoCompletarLaOperacion', 'No se pudo completar la operación.'));
     } finally {
       setTrabajando(false);
     }
@@ -113,14 +115,14 @@ export const TwoFactorPanel: React.FC = () => {
       window.setTimeout(() => setCopiado(false), 2000);
     } catch {
       // Sin permiso de portapapeles quedan en pantalla para copiarlos a mano.
-      setError('El navegador no dejó copiar. Selecciona los códigos y cópialos a mano.');
+      setError(t('elNavegadorNoDejoCopiarSeleccionaLos', 'El navegador no dejó copiar. Selecciona los códigos y cópialos a mano.'));
     }
   };
 
   if (cargando) {
     return (
       <p className="flex items-center gap-2 text-meta text-ink-soft">
-        <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> Consultando el estado…
+        <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> {t('consultandoElEstado', 'Consultando el estado…')}
       </p>
     );
   }
@@ -130,17 +132,17 @@ export const TwoFactorPanel: React.FC = () => {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 id="dos-pasos-titulo" className="flex items-center gap-2 text-row font-bold text-ink">
-            <ShieldCheck aria-hidden className="h-4 w-4" /> Verificación en dos pasos
+            <ShieldCheck aria-hidden className="h-4 w-4" /> {t('verificacionEnDosPasos', 'Verificación en dos pasos')}
           </h3>
           <p className="mt-1 text-meta text-ink-soft">
             {estado?.activo
-              ? `Activa. Quedan ${estado.codigosDisponibles} códigos de recuperación sin usar.`
-              : 'Añade un código temporal de tu teléfono a la contraseña. Es opcional.'}
+              ? t('activaQuedanCodigosDisponiblesCodigosDe', 'Activa. Quedan {{codigosDisponibles}} códigos de recuperación sin usar.', { codigosDisponibles: estado.codigosDisponibles })
+              : t('anadeUnCodigoTemporalDeTuTelefonoALa', 'Añade un código temporal de tu teléfono a la contraseña. Es opcional.')}
           </p>
         </div>
         {estado?.activo && (
           <span className="shrink-0 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1 text-micro font-bold text-success">
-            ACTIVA
+            {t('activa', 'ACTIVA')}
           </span>
         )}
       </div>
@@ -159,7 +161,7 @@ export const TwoFactorPanel: React.FC = () => {
       {codigosRecuperacion && (
         <div className="rounded-xl border border-warning/40 bg-warning/10 p-4">
           <p className="text-meta font-bold text-warning">
-            Guarda estos códigos ahora. No se vuelven a mostrar.
+            {t('guardaEstosCodigosAhoraNoSeVuelvenA', 'Guarda estos códigos ahora. No se vuelven a mostrar.')}
           </p>
           <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-meta text-ink">
             {codigosRecuperacion.map((codigoRecuperacion) => (
@@ -172,14 +174,14 @@ export const TwoFactorPanel: React.FC = () => {
             className={`mt-3 inline-flex items-center gap-2 rounded-lg border border-line bg-elevated px-3 py-1.5 text-meta font-bold text-ink hover:border-line-strong ${ANILLO_FOCO}`}
           >
             {copiado ? <Check aria-hidden className="h-3.5 w-3.5" /> : <Copy aria-hidden className="h-3.5 w-3.5" />}
-            {copiado ? 'Copiados' : 'Copiar los diez'}
+            {copiado ? t('copiados', 'Copiados') : t('copiarLosDiez', 'Copiar los diez')}
           </button>
         </div>
       )}
 
       {!estado?.activo && (
         <label className="block space-y-1 text-meta text-ink-soft">
-          <span>Contraseña actual</span>
+          <span>{t('contrasenaActual', 'Contraseña actual')}</span>
           <input
             type="password"
             autoComplete="current-password"
@@ -197,28 +199,28 @@ export const TwoFactorPanel: React.FC = () => {
           disabled={trabajando || !contrasena}
           className={`inline-flex items-center gap-2 rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-2.5 text-meta font-bold text-brand-cyan hover:border-brand-cyan disabled:opacity-60 ${ANILLO_FOCO}`}
         >
-          <KeyRound aria-hidden className="h-4 w-4" /> Activar verificación en dos pasos
+          <KeyRound aria-hidden className="h-4 w-4" /> {t('activarVerificacionEnDosPasos', 'Activar verificación en dos pasos')}
         </button>
       )}
 
       {alta && (
         <form onSubmit={confirmarAlta} className="space-y-3 rounded-xl border border-line bg-elevated p-4">
           <p className="text-meta text-ink-soft">
-            Escanea este código con Google Authenticator, Aegis o la aplicación que uses.
+            {t('escaneaEsteCodigoConGoogleAuthenticator', 'Escanea este código con Google Authenticator, Aegis o la aplicación que uses.')}
           </p>
           <img
             src={alta.qrDataUrl}
-            alt="Código QR para configurar la verificación en dos pasos"
+            alt={t('codigoQrParaConfigurarLaVerificacionEn', 'Código QR para configurar la verificación en dos pasos')}
             width={200}
             height={200}
             className="rounded-lg bg-white p-2"
           />
           <p className="text-meta text-ink-soft">
-            ¿No puedes escanear? Escribe esta clave en la aplicación:{' '}
+            {t('noPuedesEscanearEscribeEstaClaveEnLa', '¿No puedes escanear? Escribe esta clave en la aplicación:')}{' '}
             <code className="break-all font-mono text-ink">{alta.secret}</code>
           </p>
           <label htmlFor="dos-pasos-codigo" className="block text-micro font-bold uppercase tracking-wider text-ink-soft">
-            Código de seis dígitos
+            {t('codigoDeSeisDigitos', 'Código de seis dígitos')}
           </label>
           <input
             id="dos-pasos-codigo"
@@ -236,14 +238,14 @@ export const TwoFactorPanel: React.FC = () => {
               disabled={trabajando || !contrasena}
               className={`rounded-xl border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-2 text-meta font-bold text-brand-cyan hover:border-brand-cyan disabled:opacity-60 ${ANILLO_FOCO}`}
             >
-              {trabajando ? 'Comprobando…' : 'Confirmar y activar'}
+              {trabajando ? t('comprobando', 'Comprobando…') : t('confirmarYActivar', 'Confirmar y activar')}
             </button>
             <button
               type="button"
               onClick={() => setAlta(null)}
               className={`rounded-xl border border-line bg-elevated px-4 py-2 text-meta font-bold text-ink-soft hover:text-ink ${ANILLO_FOCO}`}
             >
-              Cancelar
+              {t('cancelar', 'Cancelar')}
             </button>
           </div>
         </form>
@@ -256,14 +258,14 @@ export const TwoFactorPanel: React.FC = () => {
             onClick={() => setPidiendoContrasena('renovar')}
             className={`rounded-xl border border-line bg-elevated px-4 py-2 text-meta font-bold text-ink hover:border-line-strong ${ANILLO_FOCO}`}
           >
-            Generar códigos de recuperación nuevos
+            {t('generarCodigosDeRecuperacionNuevos', 'Generar códigos de recuperación nuevos')}
           </button>
           <button
             type="button"
             onClick={() => setPidiendoContrasena('apagar')}
             className={`inline-flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-meta font-bold text-danger hover:border-danger ${ANILLO_FOCO}`}
           >
-            <ShieldOff aria-hidden className="h-4 w-4" /> Desactivar
+            <ShieldOff aria-hidden className="h-4 w-4" /> {t('desactivar', 'Desactivar')}
           </button>
         </div>
       )}
@@ -271,7 +273,7 @@ export const TwoFactorPanel: React.FC = () => {
       {pidiendoContrasena && (
         <form onSubmit={confirmarConContrasena} className="space-y-3 rounded-xl border border-line bg-elevated p-4">
           <label htmlFor="dos-pasos-contrasena" className="block text-micro font-bold uppercase tracking-wider text-ink-soft">
-            Confirma con tu contraseña
+            {t('confirmaConTuContrasena', 'Confirma con tu contraseña')}
           </label>
           <input
             id="dos-pasos-contrasena"
@@ -288,7 +290,7 @@ export const TwoFactorPanel: React.FC = () => {
               disabled={trabajando}
               className={`rounded-xl border border-line bg-elevated px-4 py-2 text-meta font-bold text-ink hover:border-line-strong disabled:opacity-60 ${ANILLO_FOCO}`}
             >
-              {pidiendoContrasena === 'apagar' ? 'Desactivar' : 'Generar códigos'}
+              {pidiendoContrasena === 'apagar' ? t('desactivar', 'Desactivar') : t('generarCodigos', 'Generar códigos')}
             </button>
             <button
               type="button"
@@ -298,7 +300,7 @@ export const TwoFactorPanel: React.FC = () => {
               }}
               className={`rounded-xl border border-line bg-elevated px-4 py-2 text-meta font-bold text-ink-soft hover:text-ink ${ANILLO_FOCO}`}
             >
-              Cancelar
+              {t('cancelar', 'Cancelar')}
             </button>
           </div>
         </form>

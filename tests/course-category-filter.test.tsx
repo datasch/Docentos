@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CourseCategoryFilter } from '../src/components/CourseCategoryFilter.js';
-
+
+import './helpers/initI18n.js';
 test('el filtro omite la categoría seleccionada de las alternativas y permite volver a Todos', () => {
   const html = renderToStaticMarkup(
     <CourseCategoryFilter id="category" value="Cloud & DevOps" onChange={() => {}}

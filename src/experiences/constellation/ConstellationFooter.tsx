@@ -67,19 +67,19 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
             </div>
             
             <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-sm leading-relaxed font-extralight">
-              {siteConfig.appTagline || 'Plataforma e-Learning Open Source de alto rendimiento'}
+              {siteConfig.appTagline || t('plataformaElearningOpenSourceDeAlto', 'Plataforma e-Learning Open Source de alto rendimiento')}
             </p>
           </div>
 
           {/* Columna Derecha: Enlaces Rápidos */}
-          <nav aria-label="Enlaces del pie de página" className="lg:col-span-7 grid grid-cols-[minmax(0,1fr)_44px] items-start gap-4 text-xs text-slate-700 dark:text-slate-300">
+          <nav aria-label={t('enlacesDelPieDePagina', 'Enlaces del pie de página')} className="lg:col-span-7 grid grid-cols-[minmax(0,1fr)_44px] items-start gap-4 text-xs text-slate-700 dark:text-slate-300">
             <div className="flex min-w-0 flex-col sm:flex-row sm:flex-wrap lg:justify-end gap-x-6 [&>a]:min-h-11 [&>button]:min-h-11 [&_svg]:shrink-0">
               {onOpenListening && listeningDocked && (
                 <button
                   type="button"
                   onClick={onOpenListening}
                   onAnimationEnd={() => setJustDocked(false)}
-                  aria-label={unreadListening > 0 ? t('footer.listeningBoxUnread', { count: unreadListening, defaultValue: `Abrir Buzón de escucha, tienes ${unreadListening} respuestas sin leer` }) : t('footer.listeningBox', 'Buzón de escucha')}
+                  aria-label={unreadListening > 0 ? t('footer.listeningBoxUnread', { count: unreadListening, defaultValue_one: 'Abrir Buzón de escucha, tienes {{count}} respuesta sin leer', defaultValue_other: 'Abrir Buzón de escucha, tienes {{count}} respuestas sin leer' }) : t('footer.listeningBox', 'Buzón de escucha')}
                   className={`footer-listening-dock hidden sm:flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer ${justDocked ? 'footer-listening-dock--landing' : ''}`}
                 >
                   <HeartHandshake aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
@@ -93,7 +93,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
               )}
               <a href={githubUrl} target="_blank" rel="noopener noreferrer" data-footer-github className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">
                 <Github aria-hidden className="h-4 w-4" />
-                <span>GitHub</span>
+                <span>{t('github', 'GitHub')}</span>
               </a>
               <button type="button" onClick={() => setShowTermsModal(true)} className="flex items-center gap-2 text-left hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
                 <ShieldCheck aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
@@ -132,7 +132,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
               <CheckCircle2 className="h-3.5 w-3.5 text-[#06b6d4]" />
               <span>v{DOCENTOS_VERSION}</span>
             </span>
-            <span className="min-w-0 break-words">{siteConfig.authorCredit || 'DocentOS Community Edition'}</span>
+            <span className="min-w-0 break-words">{siteConfig.authorCredit || t('docentosCommunityEdition', 'DocentOS Community Edition')}</span>
           </div>
         </div>
 

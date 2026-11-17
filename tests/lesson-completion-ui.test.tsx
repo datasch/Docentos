@@ -11,6 +11,7 @@ import { flattenLessons, isLessonReachable } from '../src/lib/courseNavigation.j
 import { LessonMetaBar, MobileLessonBar } from '../src/components/course/LessonMetaBar.js';
 import type { Course } from '../src/types.js';
 
+import './helpers/initI18n.js';
 const video = (id: string) => ({ id, title: id, driveFileId: '', embedUrl: '', mimeType: 'video/mp4', order: 0 });
 const course = {
   modules: [

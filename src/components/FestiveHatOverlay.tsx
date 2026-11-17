@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSeasonalTheme, SeasonalTheme } from '../lib/seasonalTheme';
+import { useTranslation } from 'react-i18next'
 
 export interface FestiveHatOverlayProps {
   /**
@@ -75,6 +76,7 @@ export const FestiveHatOverlay: React.FC<FestiveHatOverlayProps> = ({
   className = '',
   title,
 }) => {
+  const { t } = useTranslation()
   const currentTheme = useSeasonalTheme();
   const theme = forcedTheme !== undefined ? forcedTheme : currentTheme;
 
@@ -84,7 +86,7 @@ export const FestiveHatOverlay: React.FC<FestiveHatOverlayProps> = ({
 
   const config = SIZE_STYLES[size] || SIZE_STYLES.sm;
   const offsetClass = theme === 'halloween' ? config.witchOffset : config.santaOffset;
-  const defaultTitle = theme === 'halloween' ? '¡Especial de Halloween!' : '¡Especial de Navidad!';
+  const defaultTitle = theme === 'halloween' ? t('especialDeHalloween', '¡Especial de Halloween!') : t('especialDeNavidad', '¡Especial de Navidad!');
 
   return (
     <div

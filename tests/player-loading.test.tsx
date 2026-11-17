@@ -7,6 +7,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MorphingInfinity } from '../src/components/loading/MorphingInfinity.js';
 
+import './helpers/initI18n.js';
 test('MorphingInfinity se anuncia como estado de carga en español', () => {
   const html = renderToStaticMarkup(<MorphingInfinity label="Cargando video" className="h-14 w-14" />);
   assert.match(html, /role="status"/);

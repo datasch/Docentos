@@ -31,6 +31,7 @@ const CertificateVerifyModal = lazy(() => import('./components/CertificateVerify
 const ContractSignatureModal = lazy(() => import('./components/ContractSignatureModal').then((m) => ({ default: m.ContractSignatureModal })));
 const ListeningBoxModal = lazy(() => import('./components/ListeningBoxModal').then((m) => ({ default: m.ListeningBoxModal })));
 import { ListeningFloatingButton } from './components/ListeningFloatingButton';
+import { useTranslation } from 'react-i18next'
 
 // Inicializar tema y festividad inmediatamente para evitar parpadeos
 initSavedTheme();
@@ -93,6 +94,7 @@ function writeCachedCourses(courses: Course[]) {
 }
 
 export default function App() {
+  const { t } = useTranslation()
   const [currentUser, setCurrentUser] = useState<User | null>(() => (
     isPrivatePath(window.location.pathname) ? null : readCachedUser()
   ));
@@ -197,7 +199,7 @@ export default function App() {
 
       let authUser: User | null = null;
       setConnectionNotice(authResult.status === 'rejected' || coursesResult.status === 'rejected'
-        ? 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.' : null);
+        ? t('noPudimosActualizarTusDatosIntentaloDe', 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.') : null);
       if (authResult.status === 'fulfilled' && authResult.value?.authenticated) {
         authUser = authResult.value?.user ?? null;
         setCurrentUser(authUser);
@@ -339,7 +341,7 @@ export default function App() {
   const handleOpenListening = () => {
     if (!currentUser) {
       setAuthMode('login');
-      setAuthNotice('Inicia sesión para dejarnos tu aporte o sugerencia en el buzón.');
+      setAuthNotice(t('iniciaSesionParaDejarnosTuAporteO', 'Inicia sesión para dejarnos tu aporte o sugerencia en el buzón.'));
       setShowAuthModal(true);
       return;
     }
@@ -370,7 +372,7 @@ export default function App() {
         <div className="w-12 h-12 rounded-2xl bg-[#0f0f17] border border-white/10 text-[#06b6d4] flex items-center justify-center animate-pulse">
           <RefreshCw className="w-6 h-6 animate-spin" />
         </div>
-        <p className="text-sm font-semibold text-slate-400">Iniciando DocentOS Constellation...</p>
+        <p className="text-sm font-semibold text-slate-400">{t('iniciandoDocentosConstellation', 'Iniciando DocentOS Constellation...')}</p>
       </div>
     );
   }
@@ -382,7 +384,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex items-center justify-center px-5">
         <main className="w-full max-w-2xl rounded-[20px] border border-white/10 bg-[#121214] px-8 py-12 text-center shadow-[0_16px_48px_rgba(0,0,0,0.24)] sm:px-16 sm:py-16">
-          <p className="text-sm font-medium text-[#a5a5af]">DocentOS</p>
+          <p className="text-sm font-medium text-[#a5a5af]">{t('docentos', 'DocentOS')}</p>
           <div
             aria-hidden="true"
             className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-cyan-500/55"
@@ -403,7 +405,7 @@ export default function App() {
             }}
             className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-cyan-500 hover:bg-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-500"
           >
-            {privateRouteStatus === 'unavailable' ? 'Reintentar' : 'Volver al inicio'}
+            {privateRouteStatus === 'unavailable' ? t('reintentar', 'Reintentar') : t('volverAlInicio', 'Volver al inicio')}
           </button>
         </main>
       </div>
@@ -415,7 +417,7 @@ export default function App() {
       {connectionNotice && (
         <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           <p>{connectionNotice}</p>
-          <button type="button" disabled={loading} onClick={() => loadData()} className="font-semibold underline underline-offset-4 disabled:opacity-50">Reintentar</button>
+          <button type="button" disabled={loading} onClick={() => loadData()} className="font-semibold underline underline-offset-4 disabled:opacity-50">{t('reintentar', 'Reintentar')}</button>
         </div>
       )}
       

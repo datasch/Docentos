@@ -801,7 +801,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   </p>
 
                   <div className="mentor-course-card__meta pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
-                    <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} Módulos` })}</span>
+                    <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue_one: '{{count}} Módulo', defaultValue_other: '{{count}} Módulos' })}</span>
                     <span>${course.price} USD</span>
                   </div>
 
@@ -812,7 +812,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     className="w-full py-2 bg-raised hover:bg-elevated border border-line hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
                   >
                     <Users className="w-3.5 h-3.5 text-[#06b6d4]" />
-                    {t('mentor.assignedMenteesBtn', { count: menteesOfCourse(course.id).length, defaultValue: `Mentees asignados (${menteesOfCourse(course.id).length})` })}
+                    {t('mentor.assignedMenteesBtn', { total: menteesOfCourse(course.id).length, defaultValue: 'Mentees asignados ({{total}})' })}
                   </button>
 
                   {/* La excepción, dicha en voz alta. Mientras esté apagado, a
@@ -913,7 +913,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         ) : (
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         )}
-                        <span>{t('mentor.approve', 'Aprobar Acceso')}</span>
+                        <span>{t('mentor.approve', 'Aprobar y Dar Acceso')}</span>
                       </button>
                       <button
                         type="button"
@@ -1028,9 +1028,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <div className="bg-surface border border-line rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
               <div>
-                <h3 className="font-extrabold text-sm text-white mb-1">{t('mentor.qnaTitle', 'Centro de Consultas de Mentoría')}</h3>
+                <h3 className="font-extrabold text-sm text-white mb-1">{t('mentor.qnaTitle', 'Centro de Consultas Q&A')}</h3>
                 <p className="text-xs text-ink-muted">
-                  {t('mentor.qnaSubtitle', 'Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.')}
+                  {t('mentor.qnaSubtitle', 'Responde dudas de tus mentees y acelera su aprendizaje')}
                 </p>
               </div>
 
@@ -1046,8 +1046,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       }`}
                     >
                       {option === 'pending'
-                        ? `${t('mentor.qnaPending', 'Pendientes')} (${pendingQuestions.length})`
-                        : `${t('mentor.qnaAll', 'Todas')} (${qnaComments.length})`}
+                        ? `${t('mentor.qnaPending', 'Solo pendientes')} (${pendingQuestions.length})`
+                        : `${t('mentor.qnaAll', 'Todas las preguntas')} (${qnaComments.length})`}
                     </button>
                   ))}
                 </div>

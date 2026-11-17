@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FileCheck, Shield, Calendar, Clock, AlertCircle, ChevronRight, Lock } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface ContractModalProps {
   contractData: {
@@ -21,6 +22,7 @@ interface ContractModalProps {
 }
 
 export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractData, onSuccess }) => {
+  const { t } = useTranslation()
   useBodyScrollLock(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
@@ -61,7 +63,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
       });
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Error al firmar el contrato. Por favor intenta de nuevo.');
+      setError(err.message || t('errorAlFirmarElContratoPorFavorIntentaDe', 'Error al firmar el contrato. Por favor intenta de nuevo.'));
       setIsSigning(false);
     }
   };
@@ -88,10 +90,10 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
             </div>
             <div>
               <h2 id="contract-signature-title" className="text-base sm:text-lg font-bold text-ink tracking-tight">
-                Firma de Acuerdo y Términos de la Plataforma
+                {t('firmaDeAcuerdoYTerminosDeLaPlataforma', 'Firma de Acuerdo y Términos de la Plataforma')}
               </h2>
               <p className="text-xs sm:text-[13px] text-ink-muted mt-0.5">
-                Habilitación de acceso oficial para nuevos miembros registrados
+                {t('habilitacionDeAccesoOficialParaNuevos', 'Habilitación de acceso oficial para nuevos miembros registrados')}
               </p>
             </div>
           </div>
@@ -103,7 +105,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
           <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-raised border border-line">
             <Calendar aria-hidden="true" className="w-4 h-4 text-success-light shrink-0" />
             <div className="min-w-0">
-              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">Inicio</div>
+              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">{t('inicio', 'Inicio')}</div>
               <div className="text-ink font-semibold truncate text-xs">{formatDate(contractData.calculatedDates.startDate)}</div>
             </div>
           </div>
@@ -111,7 +113,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
           <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-raised border border-line">
             <Clock aria-hidden="true" className="w-4 h-4 text-brand-cyan shrink-0" />
             <div className="min-w-0">
-              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">Vigencia</div>
+              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">{t('vigencia', 'Vigencia')}</div>
               <div className="text-ink font-semibold truncate text-xs">{formatDate(contractData.calculatedDates.endDate)}</div>
             </div>
           </div>
@@ -119,8 +121,8 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
           <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-raised border border-line">
             <Lock aria-hidden="true" className="w-4 h-4 text-brand-purple shrink-0" />
             <div className="min-w-0">
-              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">Custodia</div>
-              <div className="text-ink font-semibold truncate text-xs">{contractData.calculatedDates.retentionPeriodMonths} meses</div>
+              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">{t('custodia', 'Custodia')}</div>
+              <div className="text-ink font-semibold truncate text-xs">{t('retentionPeriodMonthsMeses', '{{retentionPeriodMonths}} meses', { retentionPeriodMonths: contractData.calculatedDates.retentionPeriodMonths })}</div>
             </div>
           </div>
         </div>
@@ -201,7 +203,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
                 className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
               />
               <span className="text-ink-soft group-hover:text-ink transition-colors leading-snug">
-                He leído y acepto los <strong className="text-ink font-semibold">Términos y Condiciones</strong> de la plataforma.
+                <Trans i18nKey="heLeidoYAceptoLosTerminosYCondicionesDe">He leído y acepto los <strong className="text-ink font-semibold">Términos y Condiciones</strong> de la plataforma.</Trans>
               </span>
             </label>
 
@@ -213,7 +215,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
                 className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
               />
               <span className="text-ink-soft group-hover:text-ink transition-colors leading-snug">
-                Acepto la <strong className="text-ink font-semibold">Política de Privacidad</strong> para el acceso a las clases.
+                <Trans i18nKey="aceptoLaPoliticaDePrivacidadParaElAcceso">Acepto la <strong className="text-ink font-semibold">Política de Privacidad</strong> para el acceso a las clases.</Trans>
               </span>
             </label>
 
@@ -225,7 +227,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
                 className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
               />
               <span className="text-ink-soft group-hover:text-ink transition-colors leading-snug">
-                Autorizo la <strong className="text-ink font-semibold">custodia y retención de mis datos académicos</strong> por un período de {contractData.calculatedDates.retentionPeriodMonths} meses.
+                <Trans i18nKey="autorizoLaCustodiaYRetencionDeMisDatos">Autorizo la <strong className="text-ink font-semibold">custodia y retención de mis datos académicos</strong> por un período de {{ retentionPeriodMonths: contractData.calculatedDates.retentionPeriodMonths }} meses.</Trans>
               </span>
             </label>
 
@@ -237,7 +239,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
                 className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
               />
               <span className="text-ink-muted group-hover:text-ink-soft transition-colors leading-snug">
-                (Opcional) Acepto recibir novedades y actualizaciones académicas.
+                {t('opcionalAceptoRecibirNovedadesY', '(Opcional) Acepto recibir novedades y actualizaciones académicas.')}
               </span>
             </label>
           </div>
@@ -255,11 +257,11 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
               {isSigning ? (
                 <>
                   <div className="w-4 h-4 border-2 border-current/25 border-t-current rounded-full animate-spin" />
-                  <span>Registrando firma con hash...</span>
+                  <span>{t('registrandoFirmaConHash', 'Registrando firma con hash...')}</span>
                 </>
               ) : (
                 <>
-                  <span>Firmar y Continuar</span>
+                  <span>{t('firmarYContinuar', 'Firmar y Continuar')}</span>
                   <ChevronRight aria-hidden="true" className="w-4 h-4" />
                 </>
               )}

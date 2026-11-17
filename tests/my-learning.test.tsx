@@ -8,7 +8,8 @@ import { searchCourseCatalog } from '../src/lib/catalogSearch';
 import { TAB_PATHS, tabFromPath } from '../src/lib/appRoutes';
 import { ConstellationMyLearning } from '../src/experiences/constellation/ConstellationMyLearning';
 import { ConstellationNavbar } from '../src/experiences/constellation/ConstellationNavbar';
-
+
+import './helpers/initI18n.js';
 function course(id: string, overrides: Partial<Course> = {}): Course {
   return { id, title: `Curso ${id}`, description: '', published: true, category: 'Ciberseguridad', price: 10, coverImage: '', hasAccess: true,
     modules: [{ id: `m-${id}`, title: 'Fundamentos', videos: [{ id: `v-${id}`, title: 'Análisis de incidentes', description: 'Revisión de alertas' }] }], resources: [], ...overrides } as Course;

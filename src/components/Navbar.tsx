@@ -217,24 +217,24 @@ export const Navbar: React.FC<NavbarProps> = ({
    * el catálogo entero— y para el alumnado, si el curso abierto está pagado.
    */
   const accessNote = isAdmin
-    ? { label: 'Acceso total', tone: 'lp-tone-accent' }
+    ? { label: t('accesoTotal', 'Acceso total'), tone: 'lp-tone-accent' }
     : currentUser.role === 'VIP'
       ? { label: t('nav.unlimited'), tone: 'lp-tone-gold' }
       : isStaff
-        ? { label: 'Acceso de mentor', tone: 'lp-tone-cyan' }
+        ? { label: t('accesoDeMentor', 'Acceso de mentor'), tone: 'lp-tone-cyan' }
         : hasAccess
-          ? { label: 'Acceso activo', tone: 'lp-tone-green' }
-          : { label: currentUser.role === 'EXTERNAL' ? 'Sin cursos adquiridos' : 'Sin acceso', tone: 'lp-tone-warn' };
+          ? { label: t('accesoActivo', 'Acceso activo'), tone: 'lp-tone-green' }
+          : { label: currentUser.role === 'EXTERNAL' ? t('sinCursosAdquiridos', 'Sin cursos adquiridos') : t('sinAcceso', 'Sin acceso'), tone: 'lp-tone-warn' };
 
   /** Los destinos de la barra, ya filtrados por permisos. */
   const destinations: { tab: Tab; label: string; icon: React.ReactNode }[] = [
     { tab: 'courses', label: t('nav.courses'), icon: <PlayCircle aria-hidden className="h-4 w-4" /> },
     ...(currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR'
-      ? [{ tab: 'mentor' as Tab, label: 'Mentoría', icon: <UserCheck aria-hidden className="h-4 w-4" /> }]
+      ? [{ tab: 'mentor' as Tab, label: t('mentoria', 'Mentoría'), icon: <UserCheck aria-hidden className="h-4 w-4" /> }]
       : []),
     ...(isAdmin
       ? [
-          { tab: 'admin' as Tab, label: 'Administración', icon: <Shield aria-hidden className="h-4 w-4" /> },
+          { tab: 'admin' as Tab, label: t('administracion', 'Administración'), icon: <Shield aria-hidden className="h-4 w-4" /> },
         ]
       : []),
   ];
@@ -249,7 +249,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={() => goTo('landing')}
               className="lp-logo"
-              aria-label={`${displayAppName} — ir a la portada`}
+              aria-label={t('displayAppNameIrALaPortada', '{{displayAppName}} — ir a la portada', { displayAppName })}
             >
               {activeLogoUrl ? (
                 <img src={activeLogoUrl} alt="" className="lp-logo-img" />
@@ -286,7 +286,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <li>
                   <button type="button" onClick={() => goTo('vip')} className="lp-badge-premium">
                     <Crown aria-hidden className="h-3 w-3" fill="currentColor" />
-                    Mentee
+                    {t('mentee', 'Mentee')}
                   </button>
                 </li>
               )}
@@ -301,8 +301,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ref={searchRef}
                 type="search"
                 className="lp-search-input"
-                placeholder="Buscar cursos..."
-                aria-label="Buscar cursos"
+                placeholder={t('buscarCursos', 'Buscar cursos...')}
+                aria-label={t('buscarCursos2', 'Buscar cursos')}
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
@@ -315,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="lp-menu lp-search-results" role="menu">
                   <div className="lp-menu-head">
                     <span className="lp-menu-role">
-                      {matches.length} {matches.length === 1 ? 'curso' : 'cursos'}
+                      {matches.length} {matches.length === 1 ? t('curso', 'curso') : t('cursos', 'cursos')}
                     </span>
                   </div>
                   {matches.length > 0 ? (
@@ -334,7 +334,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     ))
                   ) : (
-                    <p className="lp-search-empty">Ningún curso coincide.</p>
+                    <p className="lp-search-empty">{t('ningunCursoCoincide', 'Ningún curso coincide.')}</p>
                   )}
                 </div>
               )}
@@ -383,8 +383,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               className="lp-icon-btn"
               onClick={handleToggleColorMode}
-              title={colorMode === 'dark' ? 'Cambiar a Modo Blanco / Claro' : 'Cambiar a Modo Oscuro'}
-              aria-label={colorMode === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
+              title={colorMode === 'dark' ? t('cambiarAModoBlancoClaro', 'Cambiar a Modo Blanco / Claro') : t('cambiarAModoOscuro', 'Cambiar a Modo Oscuro')}
+              aria-label={colorMode === 'dark' ? t('activarModoClaro', 'Activar modo claro') : t('activarModoOscuro', 'Activar modo oscuro')}
             >
               {colorMode === 'dark' ? (
                 <Sun aria-hidden className="h-4 w-4 text-amber-400" />
@@ -404,7 +404,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 aria-haspopup="menu"
                 aria-expanded={profileOpen}
-                aria-label="Menú de cuenta"
+                aria-label={t('menuDeCuenta', 'Menú de cuenta')}
               >
                 <span className="lp-avatar-wrapper relative w-9 h-9 shrink-0 rounded-full block">
                   {currentUser.avatarUrl ? (
@@ -412,7 +412,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ) : (
                     <span className="lp-avatar-fallback w-full h-full rounded-full flex items-center justify-center">{initialsOf(currentUser.name)}</span>
                   )}
-                  <span className="lp-status-badge" title="En línea" />
+                  <span className="lp-status-badge" title={t('enLinea', 'En línea')} />
                 </span>
                 <ChevronDown aria-hidden className="h-3.5 w-3.5 text-slate-400" />
               </button>
@@ -432,7 +432,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <span className="lp-menu-item-left">
                       <Home aria-hidden className="h-4 w-4" />
-                      Ir a la portada
+                      {t('irALaPortada', 'Ir a la portada')}
                     </span>
                   </button>
 
@@ -465,7 +465,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <Award aria-hidden className="h-4 w-4" />
-                        Verificar diploma
+                        {t('verificarDiploma', 'Verificar diploma')}
                       </span>
                     </button>
                   )}
@@ -482,10 +482,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <HeartHandshake aria-hidden className="h-4 w-4" />
-                        Buzón de escucha
+                        {t('buzonDeEscucha', 'Buzón de escucha')}
                       </span>
                       {unreadListening > 0 && (
-                        <span className="lp-badge-premium" title="Tienes respuestas nuevas">
+                        <span className="lp-badge-premium" title={t('tienesRespuestasNuevas', 'Tienes respuestas nuevas')}>
                           {unreadListening}
                         </span>
                       )}
@@ -504,7 +504,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <span className="lp-menu-item-left">
                         <KeyRound aria-hidden className="h-4 w-4" />
-                        Seguridad de la cuenta
+                        {t('seguridadDeLaCuenta', 'Seguridad de la cuenta')}
                       </span>
                     </button>
                   )}
@@ -521,17 +521,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {colorMode === 'dark' ? (
                         <>
                           <Sun aria-hidden className="h-4 w-4 text-amber-400" />
-                          <span>Modo Blanco / Claro</span>
+                          <span>{t('modoBlancoClaro', 'Modo Blanco / Claro')}</span>
                         </>
                       ) : (
                         <>
                           <Moon aria-hidden className="h-4 w-4 text-brand-purple" />
-                          <span>Modo Oscuro</span>
+                          <span>{t('modoOscuro', 'Modo Oscuro')}</span>
                         </>
                       )}
                     </span>
                     <span className="text-micro font-bold px-2 py-0.5 rounded bg-raised border border-line text-ink-muted">
-                      {colorMode === 'dark' ? 'Oscuro' : 'Claro'}
+                      {colorMode === 'dark' ? t('oscuro', 'Oscuro') : t('claro', 'Claro')}
                     </span>
                   </button>
 
@@ -597,7 +597,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className={activeTab === 'vip' ? 'is-active' : undefined}
               >
                 <Crown aria-hidden className="lp-tone-gold h-4 w-4" />
-                <span>Pase Mentee</span>
+                <span>{t('paseMentee', 'Pase Mentee')}</span>
               </button>
             </li>
           )}
@@ -612,7 +612,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
               >
                 <Award aria-hidden className="lp-tone-gold h-4 w-4" />
-                <span>Verificar diploma</span>
+                <span>{t('verificarDiploma', 'Verificar diploma')}</span>
               </button>
             </li>
           )}
@@ -627,7 +627,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
               >
                 <HeartHandshake aria-hidden className="lp-tone-cyan h-4 w-4" />
-                <span>Buzón de escucha</span>
+                <span>{t('buzonDeEscucha', 'Buzón de escucha')}</span>
                 {unreadListening > 0 && <span className="lp-badge-premium">{unreadListening}</span>}
               </button>
             </li>
@@ -668,19 +668,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             {colorMode === 'dark' ? (
               <>
                 <Sun aria-hidden className="h-4 w-4 text-amber-400" />
-                <span>Activar Modo Blanco / Claro</span>
+                <span>{t('activarModoBlancoClaro', 'Activar Modo Blanco / Claro')}</span>
               </>
             ) : (
               <>
                 <Moon aria-hidden className="h-4 w-4 text-brand-purple" />
-                <span>Activar Modo Oscuro</span>
+                <span>{t('activarModoOscuro2', 'Activar Modo Oscuro')}</span>
               </>
             )}
           </button>
 
           <button type="button" className="lp-btn-ghost" onClick={() => goTo('landing')}>
             <Home aria-hidden className="h-4 w-4" />
-            Ir a la portada
+            {t('irALaPortada', 'Ir a la portada')}
           </button>
 
           {onChangePassword && (
@@ -693,7 +693,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }}
             >
               <KeyRound aria-hidden className="h-4 w-4" />
-              Seguridad de la cuenta
+              {t('seguridadDeLaCuenta', 'Seguridad de la cuenta')}
             </button>
           )}
 

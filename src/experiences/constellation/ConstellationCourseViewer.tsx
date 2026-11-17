@@ -43,7 +43,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
 
   const effectiveUser: User = currentUser || {
     id: 'guest',
-    name: 'Estudiante',
+    name: t('estudiante', 'Estudiante'),
     email: 'estudiante@docentos.io',
     role: 'PUBLIC_USER',
     strikes: 0,

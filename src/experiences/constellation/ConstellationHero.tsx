@@ -48,9 +48,7 @@ export const ConstellationHero: React.FC<ConstellationHeroProps> = ({
                 </button>
               </div>
               <p className="academy-hero__availability">
-                {totalCoursesCount === 1
-                  ? t('hero.catalogCount_one', '1 curso en el catálogo')
-                  : t('hero.catalogCount_other', { count: totalCoursesCount, defaultValue: `${totalCoursesCount} cursos en el catálogo` })}
+                {t('hero.catalogCount', { count: totalCoursesCount, defaultValue_one: '{{count}} curso en el catálogo', defaultValue_other: '{{count}} cursos en el catálogo' })}
               </p>
             </div>
           </div>

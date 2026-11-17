@@ -13,7 +13,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DriveCourseImport, PlanTree, selectedTotals } from '../src/components/DriveCourseImport.js';
 import type { ImportPlan } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 /** El mismo objeto que devuelve `/api/admin/drive/import/preview`. */
 function samplePlan(): ImportPlan {
   return {

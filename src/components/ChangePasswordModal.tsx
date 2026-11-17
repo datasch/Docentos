@@ -4,6 +4,7 @@ import { AlertCircle, Lock, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { TwoFactorPanel } from './TwoFactorPanel';
+import { useTranslation } from 'react-i18next'
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   onClose,
   onChanged,
 }) => {
+  const { t } = useTranslation()
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,11 +46,11 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     event.preventDefault();
     setError(null);
     if (newPassword.length < 8) {
-      setError('La nueva contraseña debe tener al menos 8 caracteres.');
+      setError(t('laNuevaContrasenaDebeTenerAlMenos8', 'La nueva contraseña debe tener al menos 8 caracteres.'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Las contraseñas nuevas no coinciden.');
+      setError(t('lasContrasenasNuevasNoCoinciden', 'Las contraseñas nuevas no coinciden.'));
       return;
     }
 
@@ -57,7 +59,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       const response = await api.changePassword(currentPassword, newPassword);
       onChanged(response.message);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo cambiar la contraseña.');
+      setError(requestError instanceof Error ? requestError.message : t('noSePudoCambiarLaContrasena', 'No se pudo cambiar la contraseña.'));
     } finally {
       setLoading(false);
     }
@@ -77,16 +79,16 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         aria-modal="true"
         aria-labelledby="change-password-title"
       >
-        <button type="button" onClick={onClose} className="absolute right-4 top-4 p-2 text-slate-400 hover:text-white" aria-label="Cerrar">
+        <button type="button" onClick={onClose} className="absolute right-4 top-4 p-2 text-slate-400 hover:text-white" aria-label={t('cerrar', 'Cerrar')}>
           <X className="h-4 w-4" />
         </button>
-        <h2 id="change-password-title" className="text-xl font-extrabold text-white">Seguridad de la cuenta</h2>
-        <p className="mt-1 text-xs text-ink-muted">Contraseña y verificación en dos pasos.</p>
+        <h2 id="change-password-title" className="text-xl font-extrabold text-white">{t('seguridadDeLaCuenta', 'Seguridad de la cuenta')}</h2>
+        <p className="mt-1 text-xs text-ink-muted">{t('contrasenaYVerificacionEnDosPasos', 'Contraseña y verificación en dos pasos.')}</p>
 
         <h3 className="mt-5 flex items-center gap-2 text-sm font-bold text-ink">
-          <Lock aria-hidden className="h-4 w-4" /> Contraseña
+          <Lock aria-hidden className="h-4 w-4" /> {t('contrasena', 'Contraseña')}
         </h3>
-        <p className="mt-1 text-xs text-slate-400">Al guardar se cerrarán todas las sesiones por seguridad.</p>
+        <p className="mt-1 text-xs text-slate-400">{t('alGuardarSeCerraranTodasLasSesionesPor', 'Al guardar se cerrarán todas las sesiones por seguridad.')}</p>
 
         {error && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
@@ -96,9 +98,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {[
-            { label: 'Contraseña actual', value: currentPassword, setter: setCurrentPassword, autoComplete: 'current-password' },
-            { label: 'Nueva contraseña', value: newPassword, setter: setNewPassword, autoComplete: 'new-password' },
-            { label: 'Confirmar nueva contraseña', value: confirmPassword, setter: setConfirmPassword, autoComplete: 'new-password' },
+            { label: t('contrasenaActual', 'Contraseña actual'), value: currentPassword, setter: setCurrentPassword, autoComplete: 'current-password' },
+            { label: t('nuevaContrasena', 'Nueva contraseña'), value: newPassword, setter: setNewPassword, autoComplete: 'new-password' },
+            { label: t('confirmarNuevaContrasena', 'Confirmar nueva contraseña'), value: confirmPassword, setter: setConfirmPassword, autoComplete: 'new-password' },
           ].map((field) => (
             <label key={field.label} className="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
               {field.label}
@@ -117,7 +119,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </label>
           ))}
           <button type="submit" disabled={loading} className="btn-brand-primary w-full py-3 text-sm font-extrabold disabled:opacity-60">
-            {loading ? 'Guardando...' : 'Cambiar Contraseña'}
+            {loading ? t('guardando', 'Guardando...') : t('cambiarContrasena', 'Cambiar Contraseña')}
           </button>
         </form>
 

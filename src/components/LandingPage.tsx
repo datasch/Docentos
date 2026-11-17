@@ -35,7 +35,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Course, LandingConfig, LandingTestimonial, ModeratedTestimonial } from '../types';
 import { api } from '../lib/api';
 import { DOCENTOS_VERSION } from '../version';
@@ -268,6 +268,7 @@ const CourseCard: React.FC<{
   onExplore,
   brand,
 }) => {
+  const { t } = useTranslation()
   const modules = course.modules?.length || 0;
   const lessons = lessonCount(course);
   const hasEmbeddedSvgLogo = isAiSvgCover(course.coverImage);
@@ -283,7 +284,7 @@ const CourseCard: React.FC<{
             {course.category}
           </span>
           <span className={`lp-price-badge${course.price > 0 ? '' : ' is-free'}`}>
-            {course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : 'Gratis'}
+            {course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : t('gratis', 'Gratis')}
           </span>
         </div>
         {!hasEmbeddedSvgLogo && (
@@ -296,7 +297,7 @@ const CourseCard: React.FC<{
               </span>
             )}
             <span className="lp-card-corner-logo-text">
-              {brand.brandName || 'DocentOS'}
+              {brand.brandName || t('docentos', 'DocentOS')}
               <b>.</b>
             </span>
           </div>
@@ -317,11 +318,11 @@ const CourseCard: React.FC<{
         <div className="lp-card-meta">
           <span className="lp-meta-item">
             <Layers aria-hidden />
-            {modules} {modules === 1 ? 'módulo' : 'módulos'}
+            {modules} {t('modulos2', { defaultValue_one: 'módulo', defaultValue_other: 'módulos', count: modules })}
           </span>
           <span className="lp-meta-item is-violet">
             <PlayCircle aria-hidden />
-            {lessons} {lessons === 1 ? 'lección' : 'lecciones'}
+            {lessons} {lessons === 1 ? t('leccion', 'lección') : t('lecciones', 'lecciones')}
           </span>
         </div>
       </div>
@@ -436,7 +437,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     event.preventDefault();
     const comment = draftComment.trim();
     if (!comment) {
-      setTestimonialError('Escribe tu opinión antes de enviarla');
+      setTestimonialError(t('escribeTuOpinionAntesDeEnviarla', 'Escribe tu opinión antes de enviarla'));
       return;
     }
     setSavingTestimonial(true);
@@ -447,7 +448,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       setShowTestimonialForm(false);
       await loadTestimonials();
     } catch (err: any) {
-      setTestimonialError(err?.message || 'No se pudo enviar tu opinión');
+      setTestimonialError(err?.message || t('noSePudoEnviarTuOpinion', 'No se pudo enviar tu opinión'));
     } finally {
       setSavingTestimonial(false);
     }
@@ -569,14 +570,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
    */
   const navLinks: PublicNavLink[] = useMemo(
     () => [
-      { id: 'cursos', label: 'Catálogo', href: '#cursos' },
-      { id: 'beneficios', label: 'Metodología', href: '#beneficios' },
+      { id: 'cursos', label: t('catalogo', 'Catálogo'), href: '#cursos' },
+      { id: 'beneficios', label: t('metodologia', 'Metodología'), href: '#beneficios' },
       ...(mostrarTestimonios
-        ? [{ id: 'testimonios', label: 'Testimonios', href: '#testimonios' }]
+        ? [{ id: 'testimonios', label: t('testimonios', 'Testimonios'), href: '#testimonios' }]
         : []),
-      ...(MOSTRAR_PLANES ? [{ id: 'planes', label: 'Planes', href: '#planes' }] : []),
+      ...(MOSTRAR_PLANES ? [{ id: 'planes', label: t('planes', 'Planes'), href: '#planes' }] : []),
     ],
-    [mostrarTestimonios],
+    [mostrarTestimonios, t],
   );
 
   // Subraya en la barra la sección que se está mirando.
@@ -640,7 +641,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const showsTrustBar = Boolean(landingConfig.trustRating && landingConfig.trustAudience);
 
-  const pageTitle = `${plainHeroTitle} | DocentOS Open Source LMS`;
+  const pageTitle = t('plainHeroTitleDocentosOpenSourceLms', '{{plainHeroTitle}} | DocentOS Open Source LMS', { plainHeroTitle });
   const pageDescription = landingConfig.heroSubtitle;
 
   return (
@@ -649,7 +650,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Basic Metadata */}
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="LMS, Open Source, e-Learning, DocentOS, Giantucchi, Cursos, Mentoría, IA, React, Node.js" />
+        <meta name="keywords" content={t('lmsOpenSourceElearningDocentosGiantucchi', 'LMS, Open Source, e-Learning, DocentOS, Giantucchi, Cursos, Mentoría, IA, React, Node.js')} />
         <link rel="canonical" href={currentOrigin} />
 
         {/* Open Graph / Facebook */}
@@ -658,7 +659,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:image" content={landingConfig.heroMediaUrl} />
-        <meta property="og:site_name" content="DocentOS LMS" />
+        <meta property="og:site_name" content={t('docentosLms', 'DocentOS LMS')} />
 
         {/* Twitter Cards */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -688,9 +689,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <section className="lp-welcome">
             <div className="lp-welcome-text">
               <h1>
-                Bienvenido de vuelta, <span>{firstName || currentUser.name}</span> 👋
+                {t('bienvenidoDeVuelta', 'Bienvenido de vuelta,')} <span>{firstName || currentUser.name}</span> 👋
               </h1>
-              <p>Continúa aprendiendo hoy para alcanzar tus objetivos profesionales.</p>
+              <p>{t('continuaAprendiendoHoyParaAlcanzarTus', 'Continúa aprendiendo hoy para alcanzar tus objetivos profesionales.')}</p>
             </div>
 
             {studyStats && (
@@ -699,9 +700,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   🔥
                 </div>
                 <div className="lp-streak-info">
-                  <span className="lp-streak-title">Tu progreso</span>
+                  <span className="lp-streak-title">{t('tuProgreso', 'Tu progreso')}</span>
                   <span className="lp-streak-val">
-                    {studyStats.lessons} {studyStats.lessons === 1 ? 'lección completada' : 'lecciones completadas'}
+                    {studyStats.lessons} {t('leccionesCompletadas', { defaultValue_one: 'lección completada', defaultValue_other: 'lecciones completadas', count: studyStats.lessons })}
                   </span>
                 </div>
               </div>
@@ -716,8 +717,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <Sparkles className="h-3 w-3" />
                 </span>
                 <span>
-                  {appName} v{DOCENTOS_VERSION} ·{' '}
-                  <span className="lp-hero-badge-accent">LMS abierto con IA nativa</span>
+                  <Trans i18nKey="appNameVDocentosVersionLmsAbiertoConIa">{{ appName }} v{{ DOCENTOS_VERSION }} ·{' '}
+                  <span className="lp-hero-badge-accent">LMS abierto con IA nativa</span></Trans>
                 </span>
                 <ChevronRight aria-hidden className="lp-hero-badge-arrow h-3.5 w-3.5" />
               </a>
@@ -739,14 +740,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="lp-hero-actions">
                 <a href={resolveLandingCta(landingConfig.heroCtaLink, '#cursos')} className="lp-btn-primary">
                   <BookOpen aria-hidden className="h-4 w-4" />
-                  {landingConfig.heroCtaText || 'Explorar Catálogo'}
+                  {landingConfig.heroCtaText || t('explorarCatalogo', 'Explorar Catálogo')}
                 </a>
                 <a
                   href={resolveLandingCta(landingConfig.heroSecondaryCtaLink, '#cursos')}
                   className="lp-btn-secondary"
                 >
                   <Users aria-hidden className="h-4 w-4" />
-                  {landingConfig.heroSecondaryCtaText || 'Solicitar Admisión VIP'}
+                  {landingConfig.heroSecondaryCtaText || t('solicitarAdmisionVip', 'Solicitar Admisión VIP')}
                 </a>
               </div>
 
@@ -769,12 +770,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       ))}
                     </span>
                     <span>
-                      <strong>{landingConfig.trustRating}</strong> de satisfacción
+                      <strong>{landingConfig.trustRating}</strong> {t('deSatisfaccion', 'de satisfacción')}
                     </span>
                     <span className="lp-trust-dot" aria-hidden />
                     <span>
                       <strong className="lp-trust-highlight">{landingConfig.trustAudience}</strong>{' '}
-                      estudiantes activos
+                      {t('estudiantesActivos', 'estudiantes activos')}
                     </span>
                   </span>
                 </div>
@@ -789,9 +790,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </span>
                     <strong className="lp-stat-number">{catalog.length}</strong>
                     <span className="lp-stat-label">
-                      {catalog.length === 1 ? 'Programa' : 'Programas'}
+                      {t('programas', { defaultValue_one: 'Programa', defaultValue_other: 'Programas', count: catalog.length })}
                     </span>
-                    <p className="lp-stat-note">Rutas completas con temario, video y mentoría.</p>
+                    <p className="lp-stat-note">{t('rutasCompletasConTemarioVideoYMentoria', 'Rutas completas con temario, video y mentoría.')}</p>
                   </article>
 
                   <article className="lp-stat-card">
@@ -799,8 +800,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <Brain className="h-5 w-5" />
                     </span>
                     <strong className="lp-stat-number">{catalogTotals.modules}</strong>
-                    <span className="lp-stat-label">Módulos</span>
-                    <p className="lp-stat-note">Bloques que se abren conforme terminas el anterior.</p>
+                    <span className="lp-stat-label">{t('modulos', 'Módulos')}</span>
+                    <p className="lp-stat-note">{t('bloquesQueSeAbrenConformeTerminasEl', 'Bloques que se abren conforme terminas el anterior.')}</p>
                   </article>
 
                   <article className="lp-stat-card">
@@ -808,8 +809,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <Video className="h-5 w-5" />
                     </span>
                     <strong className="lp-stat-number">{catalogTotals.lessons}</strong>
-                    <span className="lp-stat-label">Lecciones</span>
-                    <p className="lp-stat-note">Clases en video con notas y progreso guardado.</p>
+                    <span className="lp-stat-label">{t('lecciones2', 'Lecciones')}</span>
+                    <p className="lp-stat-note">{t('clasesEnVideoConNotasYProgresoGuardado', 'Clases en video con notas y progreso guardado.')}</p>
                   </article>
                 </div>
               )}
@@ -830,7 +831,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span className="lp-pill-emoji" aria-hidden>
                   {cat === 'ALL' ? '✨' : categoryEmoji(cat)}
                 </span>
-                {cat === 'ALL' ? 'Destacados' : cat}
+                {cat === 'ALL' ? t('destacados', 'Destacados') : cat}
               </button>
             ))}
           </div>
@@ -845,24 +846,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {/* Con sesión la sección deja de ser escaparate: son sus cursos. */}
                 <h2 className="lp-section-title">
                   {currentUser
-                    ? 'Tus cursos'
+                    ? t('tusCursos', 'Tus cursos')
                     : isBrowsing
-                      ? 'Catálogo de cursos y mentorías'
-                      : 'Programas destacados'}
+                      ? t('catalogoDeCursosYMentorias', 'Catálogo de cursos y mentorías')
+                      : t('programasDestacados', 'Programas destacados')}
                 </h2>
                 <p className="lp-section-sub">
                   {currentUser
-                    ? 'Los programas a los que tienes acceso. Entra y sigue por donde lo dejaste.'
+                    ? t('losProgramasALosQueTienesAccesoEntraY', 'Los programas a los que tienes acceso. Entra y sigue por donde lo dejaste.')
                     : isBrowsing
-                      ? 'Estructura modular, clases en video y acompañamiento de mentores en cada programa.'
-                      : 'Una selección de la casa. Filtra por categoría o busca arriba para recorrer todo el catálogo.'}
+                      ? t('estructuraModularClasesEnVideoY', 'Estructura modular, clases en video y acompañamiento de mentores en cada programa.')
+                      : t('unaSeleccionDeLaCasaFiltraPorCategoriaO', 'Una selección de la casa. Filtra por categoría o busca arriba para recorrer todo el catálogo.')}
                 </p>
               </div>
             </div>
 
             {!currentUser && (
               <a href="#cursos" className="lp-see-all">
-                Ver todo el catálogo
+                {t('verTodoElCatalogo', 'Ver todo el catálogo')}
                 <ChevronRight aria-hidden className="h-4 w-4" />
               </a>
             )}
@@ -871,10 +872,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {displayCourses.length === 0 ? (
             <p className="lp-empty">
               {query
-                ? `No encontramos cursos que coincidan con “${searchQuery.trim()}”.`
+                ? t('noEncontramosCursosQueCoincidanConSearch', 'No encontramos cursos que coincidan con “{{searchQuery}}”.', { searchQuery: searchQuery.trim() })
                 : currentUser
-                  ? 'Todavía no tienes ningún curso asignado. En cuanto te matriculen aparecerá aquí.'
-                  : 'Todavía no hay cursos publicados en esta categoría.'}
+                  ? t('todaviaNoTienesNingunCursoAsignadoEn', 'Todavía no tienes ningún curso asignado. En cuanto te matriculen aparecerá aquí.')
+                  : t('todaviaNoHayCursosPublicadosEnEsta', 'Todavía no hay cursos publicados en esta categoría.')}
             </p>
           ) : (
             <div className="lp-courses-grid">
@@ -892,13 +893,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="lp-section-title-wrap">
                 <div className="lp-section-indicator is-gold" />
                 <div>
-                  <h2 className="lp-section-title">Nuevos cursos</h2>
-                  <p className="lp-section-sub">Lo último que se ha publicado en la plataforma.</p>
+                  <h2 className="lp-section-title">{t('nuevosCursos', 'Nuevos cursos')}</h2>
+                  <p className="lp-section-sub">{t('loUltimoQueSeHaPublicadoEnLaPlataforma', 'Lo último que se ha publicado en la plataforma.')}</p>
                 </div>
               </div>
 
               <a href="#cursos" className="lp-see-all">
-                Ver todos los estrenos
+                {t('verTodosLosEstrenos', 'Ver todos los estrenos')}
                 <ChevronRight aria-hidden className="h-4 w-4" />
               </a>
             </div>
@@ -917,9 +918,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="lp-section-title-wrap">
               <div className="lp-section-indicator" />
               <div>
-                <h2 className="lp-section-title">Pilares de metodología y tecnología</h2>
+                <h2 className="lp-section-title">{t('pilaresDeMetodologiaYTecnologia', 'Pilares de metodología y tecnología')}</h2>
                 <p className="lp-section-sub">
-                  Las piezas del motor que sostienen la retención y la aplicación de lo aprendido.
+                  {t('lasPiezasDelMotorQueSostienenLaRetencion', 'Las piezas del motor que sostienen la retención y la aplicación de lo aprendido.')}
                 </p>
               </div>
             </div>
@@ -951,9 +952,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="lp-section-title-wrap">
                 <div className="lp-section-indicator is-violet" />
                 <div>
-                  <h2 className="lp-section-title">Lo que opinan nuestros mentees</h2>
+                  <h2 className="lp-section-title">{t('loQueOpinanNuestrosMentees', 'Lo que opinan nuestros mentees')}</h2>
                   <p className="lp-section-sub">
-                    Opiniones escritas por quienes estudian aquí. Se publican tras revisarlas.
+                    {t('opinionesEscritasPorQuienesEstudianAqui', 'Opiniones escritas por quienes estudian aquí. Se publican tras revisarlas.')}
                   </p>
                 </div>
               </div>
@@ -969,13 +970,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       setShowTestimonialForm(true);
                     }}
                   >
-                    {myTestimonial ? 'Editar mi opinión' : 'Dejar mi opinión'}
+                    {myTestimonial ? t('editarMiOpinion', 'Editar mi opinión') : t('dejarMiOpinion', 'Dejar mi opinión')}
                     <ChevronRight aria-hidden />
                   </button>
                 )
               ) : (
                 <button type="button" className="lp-see-all" onClick={() => onOpenAuth('login')}>
-                  Entra para dejar la tuya
+                  {t('entraParaDejarLaTuya', 'Entra para dejar la tuya')}
                   <ChevronRight aria-hidden />
                 </button>
               )}
@@ -987,19 +988,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {myTestimonial.status === 'PENDING' && (
                   <>
                     <Clock aria-hidden className="h-3.5 w-3.5" />
-                    Tu opinión está pendiente de revisión.
+                    {t('tuOpinionEstaPendienteDeRevision', 'Tu opinión está pendiente de revisión.')}
                   </>
                 )}
                 {myTestimonial.status === 'APPROVED' && (
                   <>
                     <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
-                    Tu opinión ya está publicada. ¡Gracias!
+                    {t('tuOpinionYaEstaPublicadaGracias', 'Tu opinión ya está publicada. ¡Gracias!')}
                   </>
                 )}
                 {myTestimonial.status === 'REJECTED' && (
                   <>
                     <MessageCircle aria-hidden className="h-3.5 w-3.5" />
-                    Tu opinión no se publicó. Puedes editarla y volver a enviarla.
+                    {t('tuOpinionNoSePublicoPuedesEditarlaY', 'Tu opinión no se publicó. Puedes editarla y volver a enviarla.')}
                   </>
                 )}
               </p>
@@ -1008,15 +1009,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {currentUser && showTestimonialForm && (
               <form className="lp-testimonial-form" onSubmit={handleSubmitTestimonial}>
                 <div className="lp-testimonial-form-row">
-                  <span className="lp-testimonial-form-label">Tu valoración</span>
-                  <div className="lp-star-picker" role="radiogroup" aria-label="Valoración de 1 a 5">
+                  <span className="lp-testimonial-form-label">{t('tuValoracion', 'Tu valoración')}</span>
+                  <div className="lp-star-picker" role="radiogroup" aria-label={t('valoracionDe1A5', 'Valoración de 1 a 5')}>
                     {[1, 2, 3, 4, 5].map((value) => (
                       <button
                         key={value}
                         type="button"
                         role="radio"
                         aria-checked={draftRating === value}
-                        aria-label={`${value} de 5`}
+                        aria-label={t('valueDe5', '{{value}} de 5', { value })}
                         className={`lp-star-pick${value <= draftRating ? ' is-on' : ''}`}
                         onClick={() => setDraftRating(value)}
                       >
@@ -1030,10 +1031,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   className="lp-testimonial-textarea"
                   rows={4}
                   maxLength={TESTIMONIAL_MAX_CHARS}
-                  placeholder="Cuenta tu experiencia con la plataforma…"
+                  placeholder={t('cuentaTuExperienciaConLaPlataforma', 'Cuenta tu experiencia con la plataforma…')}
                   value={draftComment}
                   onChange={(event) => setDraftComment(event.target.value)}
-                  aria-label="Tu opinión"
+                  aria-label={t('tuOpinion', 'Tu opinión')}
                 />
 
                 <div className="lp-testimonial-form-foot">
@@ -1051,17 +1052,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         setDraftComment(myTestimonial?.comment ?? '');
                       }}
                     >
-                      Cancelar
+                      {t('cancelar', 'Cancelar')}
                     </button>
                     <button type="submit" className="lp-btn-primary" disabled={savingTestimonial}>
-                      {savingTestimonial ? 'Enviando…' : 'Enviar opinión'}
+                      {savingTestimonial ? t('enviando', 'Enviando…') : t('enviarOpinion', 'Enviar opinión')}
                     </button>
                   </div>
                 </div>
 
                 {testimonialError && <p className="lp-testimonial-error">{testimonialError}</p>}
                 <p className="lp-testimonial-note">
-                  Se publicará con tu nombre y tu foto de perfil, una vez revisada.
+                  {t('sePublicaraConTuNombreYTuFotoDePerfilUna', 'Se publicará con tu nombre y tu foto de perfil, una vez revisada.')}
                 </p>
               </form>
             )}
@@ -1084,7 +1085,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         </div>
                       </div>
 
-                      <div className="lp-stars" aria-label={`${testimonial.rating || 5} de 5`}>
+                      <div className="lp-stars" aria-label={t('ratingDe5', '{{rating}} de 5', { rating: testimonial.rating || 5 })}>
                         {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
                           <Star key={i} aria-hidden className="h-3.5 w-3.5" fill="currentColor" />
                         ))}
@@ -1097,7 +1098,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             ) : (
               <p className="lp-testimonial-empty">
-                Todavía no hay opiniones publicadas. Si ya estudias aquí, la primera puede ser la tuya.
+                {t('todaviaNoHayOpinionesPublicadasSiYa', 'Todavía no hay opiniones publicadas. Si ya estudias aquí, la primera puede ser la tuya.')}
               </p>
             )}
           </section>
@@ -1110,8 +1111,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="lp-section-title-wrap">
                 <div className="lp-section-indicator" />
                 <div>
-                  <h2 className="lp-section-title">Membresías y tiers de admisión</h2>
-                  <p className="lp-section-sub">Elige el formato de acceso que mejor se adapte a tus metas.</p>
+                  <h2 className="lp-section-title">{t('membresiasYTiersDeAdmision', 'Membresías y tiers de admisión')}</h2>
+                  <p className="lp-section-sub">{t('eligeElFormatoDeAccesoQueMejorSeAdapteA', 'Elige el formato de acceso que mejor se adapte a tus metas.')}</p>
                 </div>
               </div>
             </div>
@@ -1120,23 +1121,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <article className="lp-plan">
                 <span className="lp-plan-kicker">
                   <GraduationCap aria-hidden className="h-3.5 w-3.5" />
-                  Público general
+                  {t('publicoGeneral', 'Público general')}
                 </span>
                 <div className="lp-plan-price">
-                  $149 <small>/ curso</small>
+                  <Trans i18nKey="149Curso">$149 <small>/ curso</small></Trans>
                 </div>
                 <p className="lp-plan-desc">
-                  Para estudiantes individuales que desean adquirir programas específicos.
+                  {t('paraEstudiantesIndividualesQueDesean', 'Para estudiantes individuales que desean adquirir programas específicos.')}
                 </p>
                 <ul className="lp-plan-list">
                   <li>
-                    <CheckCircle2 aria-hidden /> Acceso al curso seleccionado
+                    <CheckCircle2 aria-hidden /> {t('accesoAlCursoSeleccionado', 'Acceso al curso seleccionado')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Reproductor con Google Drive
+                    <CheckCircle2 aria-hidden /> {t('reproductorConGoogleDrive', 'Reproductor con Google Drive')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Comentarios de clase
+                    <CheckCircle2 aria-hidden /> {t('comentariosDeClase', 'Comentarios de clase')}
                   </li>
                 </ul>
                 <button
@@ -1144,34 +1145,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
                   className="lp-btn-secondary lp-btn-block lp-plan-cta"
                 >
-                  {currentUser ? 'Ir a mi panel' : 'Registrarme como público'}
+                  {currentUser ? t('irAMiPanel', 'Ir a mi panel') : t('registrarmeComoPublico', 'Registrarme como público')}
                 </button>
               </article>
 
               <article className="lp-plan is-featured">
-                <span className="lp-plan-flag">Recomendado</span>
+                <span className="lp-plan-flag">{t('recomendado', 'Recomendado')}</span>
                 <span className="lp-plan-kicker is-cyan">
                   <Crown aria-hidden className="h-3.5 w-3.5" />
-                  Mentee VIP
+                  {t('menteeVip', 'Mentee VIP')}
                 </span>
                 <div className="lp-plan-price">
-                  Pase total <small className="is-accent">Bypass activo</small>
+                  <Trans i18nKey="paseTotalBypassActivo">Pase total <small className="is-accent">Bypass activo</small></Trans>
                 </div>
                 <p className="lp-plan-desc">
-                  Acceso ilimitado e inmediato a todos los cursos y mentorías del catálogo.
+                  {t('accesoIlimitadoEInmediatoATodosLosCursos', 'Acceso ilimitado e inmediato a todos los cursos y mentorías del catálogo.')}
                 </p>
                 <ul className="lp-plan-list">
                   <li>
-                    <CheckCircle2 aria-hidden /> Todos los programas sin muro de pago
+                    <CheckCircle2 aria-hidden /> {t('todosLosProgramasSinMuroDePago', 'Todos los programas sin muro de pago')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Tutoría prioritaria con mentores
+                    <CheckCircle2 aria-hidden /> {t('tutoriaPrioritariaConMentores', 'Tutoría prioritaria con mentores')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Guías de voz con IA
+                    <CheckCircle2 aria-hidden /> {t('guiasDeVozConIa', 'Guías de voz con IA')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Certificados oficiales en PDF
+                    <CheckCircle2 aria-hidden /> {t('certificadosOficialesEnPdf', 'Certificados oficiales en PDF')}
                   </li>
                 </ul>
                 <button
@@ -1179,33 +1180,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
                   className="lp-btn-primary lp-btn-block lp-plan-cta"
                 >
-                  {currentUser ? 'Gestionar mi acceso' : 'Obtener pase VIP'}
+                  {currentUser ? t('gestionarMiAcceso', 'Gestionar mi acceso') : t('obtenerPaseVip', 'Obtener pase VIP')}
                 </button>
               </article>
 
               <article className="lp-plan is-mentor">
                 <span className="lp-plan-kicker is-violet">
                   <Users aria-hidden className="h-3.5 w-3.5" />
-                  Membresía mentor
+                  {t('membresiaMentor', 'Membresía mentor')}
                 </span>
                 <div className="lp-plan-price">
-                  Docente <small>/ institucional</small>
+                  <Trans i18nKey="docenteInstitucional">Docente <small>/ institucional</small></Trans>
                 </div>
                 <p className="lp-plan-desc">
-                  Para instructores que desean publicar programas y acompañar a sus mentees.
+                  {t('paraInstructoresQueDeseanPublicar', 'Para instructores que desean publicar programas y acompañar a sus mentees.')}
                 </p>
                 <ul className="lp-plan-list">
                   <li>
-                    <CheckCircle2 aria-hidden /> Panel del mentor
+                    <CheckCircle2 aria-hidden /> {t('panelDelMentor', 'Panel del mentor')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Creación y edición de cursos
+                    <CheckCircle2 aria-hidden /> {t('creacionYEdicionDeCursos', 'Creación y edición de cursos')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Seguimiento de mentees asignados
+                    <CheckCircle2 aria-hidden /> {t('seguimientoDeMenteesAsignados', 'Seguimiento de mentees asignados')}
                   </li>
                   <li>
-                    <CheckCircle2 aria-hidden /> Centro de consultas Q&amp;A
+                    <CheckCircle2 aria-hidden /> {t('centroDeConsultasQa', 'Centro de consultas Q&A')}
                   </li>
                 </ul>
                 <button
@@ -1213,7 +1214,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => (currentUser ? onGoToApp?.() : onOpenAuth('register'))}
                   className="lp-btn-secondary lp-btn-block lp-plan-cta"
                 >
-                  {currentUser ? 'Ir a mi panel' : 'Postular como mentor'}
+                  {currentUser ? t('irAMiPanel', 'Ir a mi panel') : t('postularComoMentor', 'Postular como mentor')}
                 </button>
               </article>
             </div>
@@ -1226,7 +1227,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="lp-promo-content">
               <span className="lp-promo-badge">
                 <Rocket aria-hidden className="h-3.5 w-3.5" />
-                Código abierto
+                {t('codigoAbierto', 'Código abierto')}
               </span>
 
               <h2 className="lp-promo-title">{appName}</h2>
@@ -1241,8 +1242,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               <p className="lp-promo-desc">
                 {currentUser
-                  ? 'Tu sesión ya está abierta: vuelve a tus clases, retoma la lección donde la dejaste y sigue avanzando con tus mentores.'
-                  : 'Un motor de aprendizaje autoalojable, modular y con IA nativa. Crea tu cuenta y empieza hoy con las clases, las guías de voz y la mentoría de la plataforma.'}
+                  ? t('tuSesionYaEstaAbiertaVuelveATusClases', 'Tu sesión ya está abierta: vuelve a tus clases, retoma la lección donde la dejaste y sigue avanzando con tus mentores.')
+                  : t('unMotorDeAprendizajeAutoalojableModularY', 'Un motor de aprendizaje autoalojable, modular y con IA nativa. Crea tu cuenta y empieza hoy con las clases, las guías de voz y la mentoría de la plataforma.')}
               </p>
 
               <div className="lp-promo-actions">
@@ -1250,20 +1251,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <>
                     <button type="button" onClick={onGoToApp} className="lp-btn-primary">
                       <Zap aria-hidden className="h-4 w-4" />
-                      Ir a mi panel
+                      {t('irAMiPanel', 'Ir a mi panel')}
                     </button>
                     <a href="#cursos" className="lp-btn-secondary">
-                      Explorar el catálogo
+                      {t('explorarElCatalogo', 'Explorar el catálogo')}
                     </a>
                   </>
                 ) : (
                   <>
                     <button type="button" onClick={() => onOpenAuth('register')} className="lp-btn-primary">
                       <Zap aria-hidden className="h-4 w-4" />
-                      {t('nav.register') || 'Crear mi cuenta'}
+                      {t('nav.register') || t('crearMiCuenta', 'Crear mi cuenta')}
                     </button>
                     <button type="button" onClick={() => onOpenAuth('login')} className="lp-btn-secondary">
-                      {t('nav.login') || 'Iniciar sesión'}
+                      {t('nav.login') || t('iniciarSesion2', 'Iniciar sesión')}
                     </button>
                   </>
                 )}
@@ -1303,18 +1304,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <ul className="lp-footer-links">
               <li>
-                <a href="#cursos">Catálogo</a>
+                <a href="#cursos">{t('catalogo', 'Catálogo')}</a>
               </li>
               {MOSTRAR_PLANES && (
                 <li>
-                  <a href="#planes">Planes</a>
+                  <a href="#planes">{t('planes', 'Planes')}</a>
                 </li>
               )}
               {landingConfig.githubUrl && (
                 <li>
                   <a href={landingConfig.githubUrl} target="_blank" rel="noopener noreferrer">
                     <Github aria-hidden className="h-4 w-4" />
-                    GitHub
+                    {t('github', 'GitHub')}
                   </a>
                 </li>
               )}
@@ -1322,7 +1323,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <li>
                   <a href={landingConfig.discordUrl} target="_blank" rel="noopener noreferrer">
                     <MessageCircle aria-hidden className="h-4 w-4" />
-                    Comunidad
+                    {t('comunidad', 'Comunidad')}
                   </a>
                 </li>
               )}
@@ -1330,7 +1331,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <li>
                   <a href={landingConfig.twitterUrl} target="_blank" rel="noopener noreferrer">
                     <Twitter aria-hidden className="h-4 w-4" />
-                    Twitter
+                    {t('twitter', 'Twitter')}
                   </a>
                 </li>
               )}
@@ -1338,7 +1339,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <li>
                   <a href={landingConfig.linkedinUrl} target="_blank" rel="noopener noreferrer">
                     <Linkedin aria-hidden className="h-4 w-4" />
-                    LinkedIn
+                    {t('linkedin', 'LinkedIn')}
                   </a>
                 </li>
               )}
@@ -1346,7 +1347,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <li>
                   <a href={siteConfig.complaintsBookUrl} target="_blank" rel="noopener noreferrer">
                     <BookOpen aria-hidden className="h-4 w-4" />
-                    Libro de Reclamaciones
+                    {t('libroDeReclamaciones', 'Libro de Reclamaciones')}
                   </a>
                 </li>
               )}
@@ -1355,7 +1356,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="lp-footer-bottom">
             <span>
-              © {new Date().getFullYear()} {appName}. Todos los derechos reservados.
+              © {new Date().getFullYear()} {t('appNameTodosLosDerechosReservados', '{{appName}}. Todos los derechos reservados.', { appName })}
             </span>
             <span>·</span>
             <span className="lp-footer-version">

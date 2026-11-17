@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Lock, Crown, CheckCircle2, ShieldCheck, CreditCard, Sparkles, Zap, RefreshCw, AlertCircle, BookOpen, GraduationCap } from 'lucide-react';
 import { siteConfig } from '../config/theme';
 import { api } from '../lib/api';
@@ -77,11 +77,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         // Ninguna respuesta válida llega sin enlace de pago: antes se cerraba el
         // muro como si se hubiera pagado y el alumno creía estar matriculado.
         setIsProcessing(false);
-        setErrorMessage('No se pudo iniciar el pago. Inténtalo de nuevo en unos minutos.');
+        setErrorMessage(t('noSePudoIniciarElPagoIntentaloDeNuevoEn', 'No se pudo iniciar el pago. Inténtalo de nuevo en unos minutos.'));
       }
     } catch (error: any) {
       console.error('Error al procesar checkout:', error);
-      setErrorMessage(error.message || 'Error al conectar con la pasarela de pago');
+      setErrorMessage(error.message || t('errorAlConectarConLaPasarelaDePago', 'Error al conectar con la pasarela de pago'));
       setIsProcessing(false);
     }
   };
@@ -97,7 +97,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
       onPaymentSuccess();
     } catch (error: any) {
       console.error('Error confirmando pago dev:', error);
-      setErrorMessage(error.message || 'Error al completar el pago simulado');
+      setErrorMessage(error.message || t('errorAlCompletarElPagoSimulado', 'Error al completar el pago simulado'));
       setIsProcessing(false);
     }
   };
@@ -169,20 +169,25 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
         {devCheckoutData ? (
           <div className="bg-raised border-2 border-brand-cyan rounded-xl p-6 text-left space-y-4 max-w-md mx-auto shadow-2xl animate-fade-in">
             <div className="flex items-center gap-2 text-brand-cyan font-bold text-sm border-b border-line pb-3">
-              <CreditCard className="w-5 h-5" /> Entorno de Desarrollo • Stripe Mock Activo
+              <CreditCard className="w-5 h-5" /> {t('entornoDeDesarrolloStripeMockActivo', 'Entorno de Desarrollo • Stripe Mock Activo')}
             </div>
             <p className="text-xs text-slate-300">
-              Se ha generado la sesión de pago <span className="font-mono text-brand-cyan">{devCheckoutData.paymentId}</span> en estado <span className="font-semibold text-amber-400">PENDING</span>.
+              <Trans
+                i18nKey="seHaGeneradoLaSesionDePagoEnEstadoPending"
+                defaultValue="Se ha generado la sesión de pago <0>{{paymentId}}</0> en estado <1>PENDING</1>."
+                values={{ paymentId: devCheckoutData.paymentId }}
+                components={[<span key="id" className="font-mono text-brand-cyan" />, <span key="state" className="font-semibold text-amber-400" />]}
+              />
             </p>
             <p className="text-xs text-slate-400">
-              Al confirmar, el sistema disparará el evento de webhook <code className="text-brand-cyan">checkout.session.completed</code> con idempotencia real y activará tu matrícula.
+              <Trans i18nKey="alConfirmarElSistemaDispararaElEventoDe">Al confirmar, el sistema disparará el evento de webhook <code className="text-brand-cyan">checkout.session.completed</code> con idempotencia real y activará tu matrícula.</Trans>
             </p>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setDevCheckoutData(null)}
                 className="flex-1 py-2.5 px-3 rounded-lg bg-canvas border border-line text-xs font-semibold text-slate-300 hover:text-white"
               >
-                Cancelar
+                {t('cancelar', 'Cancelar')}
               </button>
               <button
                 onClick={handleConfirmDevPayment}
@@ -194,7 +199,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                 ) : (
                   <>
                     <Zap className="w-4 h-4 fill-white" />
-                    Acreditar Pago
+                    {t('acreditarPago', 'Acreditar Pago')}
                   </>
                 )}
               </button>
@@ -210,7 +215,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                   <span className="text-xs bg-brand-blue/20 text-brand-blue px-2 py-0.5 rounded-lg font-bold border border-brand-blue/30">{t('paywall.oneTimePayment', 'Pago Único')}</span>
                 </div>
                 <div className="text-3xl font-black text-white mb-1">
-                  ${price} <span className="text-xs text-slate-400 font-normal">USD</span>
+                  <Trans i18nKey="priceUsd">${{ price }} <span className="text-xs text-slate-400 font-normal">USD</span></Trans>
                 </div>
                 <p className="text-xs text-slate-400 mb-4">{t('paywall.immediateAccess', 'Acceso inmediato con pasarela segura Stripe Checkout.')}</p>
               </div>

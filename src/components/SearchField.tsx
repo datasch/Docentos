@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 
 interface SearchFieldProps {
   value: string;
@@ -10,6 +11,7 @@ interface SearchFieldProps {
 }
 
 export function SearchField({ value, onChange, label, placeholder, className = '' }: SearchFieldProps) {
+  const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className={`academy-search-field ${className}`}>
@@ -17,7 +19,7 @@ export function SearchField({ value, onChange, label, placeholder, className = '
       <input ref={inputRef} type="search" value={value} onChange={event => onChange(event.target.value)}
         aria-label={label} placeholder={placeholder} className="academy-compound-input" />
       {value && (
-        <button type="button" aria-label="Limpiar búsqueda" onClick={event => {
+        <button type="button" aria-label={t('limpiarBusqueda', 'Limpiar búsqueda')} onClick={event => {
           onChange('');
           if (event.detail === 0) inputRef.current?.focus();
         }}>

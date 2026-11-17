@@ -201,8 +201,8 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                 ref={searchRef}
                 type="search"
                 className="lp-search-input academy-compound-input"
-                placeholder="Buscar cursos..."
-                aria-label="Buscar cursos"
+                placeholder={t('buscarCursos', 'Buscar cursos...')}
+                aria-label={t('buscarCursos2', 'Buscar cursos')}
                 value={searchQuery}
                 onChange={(event) => onSearchChange(event.target.value)}
               />
@@ -216,8 +216,8 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                 const newMode = toggleColorMode();
                 setColorMode(newMode);
               }}
-              title={colorMode === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              aria-label={colorMode === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              title={colorMode === 'dark' ? t('cambiarAModoClaro', 'Cambiar a modo claro') : t('cambiarAModoOscuro2', 'Cambiar a modo oscuro')}
+              aria-label={colorMode === 'dark' ? t('cambiarAModoClaro', 'Cambiar a modo claro') : t('cambiarAModoOscuro2', 'Cambiar a modo oscuro')}
             >
               {colorMode === 'dark' ? (
                 <Sun aria-hidden className="h-4 w-4 text-amber-400" />
@@ -237,7 +237,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                 }}
                 aria-haspopup="menu"
                 aria-expanded={langOpen}
-                title="Cambiar idioma"
+                title={t('cambiarIdioma', 'Cambiar idioma')}
               >
                 <Globe aria-hidden className="h-4 w-4" />
                 <span>{currentLangCode}</span>
@@ -271,7 +271,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onClick={onGoToApp}
                   className="lp-btn-primary lp-btn-sm lp-nav-cta-desktop"
                 >
-                  <span>Ir a mi panel</span>
+                  <span>{t('irAMiPanel', 'Ir a mi panel')}</span>
                   <ArrowRight aria-hidden className="h-4 w-4" />
                 </button>
 
@@ -285,7 +285,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                     }}
                     aria-haspopup="menu"
                     aria-expanded={profileOpen}
-                    aria-label="Menú de cuenta"
+                    aria-label={t('menuDeCuenta', 'Menú de cuenta')}
                   >
                     <span className="lp-avatar-wrapper relative w-9 h-9 shrink-0 rounded-full block">
                       {currentUser.avatarUrl ? (
@@ -293,7 +293,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                       ) : (
                         <span className="lp-avatar-fallback w-full h-full rounded-full flex items-center justify-center">{initialsOf(currentUser.name)}</span>
                       )}
-                      <span className="lp-status-badge" title="En línea" />
+                      <span className="lp-status-badge" title={t('enLinea', 'En línea')} />
                     </span>
                     <ChevronDown aria-hidden className="h-3.5 w-3.5 text-slate-400" />
                   </button>
@@ -316,7 +316,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                       >
                         <span className="lp-menu-item-left">
                           <LayoutDashboard aria-hidden className="h-4 w-4" />
-                          Ir a mi panel
+                          {t('irAMiPanel', 'Ir a mi panel')}
                         </span>
                       </button>
 
@@ -333,12 +333,12 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                           {colorMode === 'dark' ? (
                             <>
                               <Sun aria-hidden className="h-4 w-4 text-amber-400" />
-                              Modo Claro
+                              {t('modoClaro', 'Modo Claro')}
                             </>
                           ) : (
                             <>
                               <Moon aria-hidden className="h-4 w-4 text-indigo-600" />
-                              Modo Oscuro
+                              {t('modoOscuro', 'Modo Oscuro')}
                             </>
                           )}
                         </span>
@@ -355,7 +355,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                       >
                         <span className="lp-menu-item-left">
                           <LogOut aria-hidden className="h-4 w-4" />
-                          Cerrar sesión
+                          {t('cerrarSesion', 'Cerrar sesión')}
                         </span>
                       </button>
                     </div>
@@ -369,7 +369,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onClick={() => onOpenAuth('login')}
                   className="lp-btn-ghost lp-nav-cta-desktop"
                 >
-                  {t('nav.login') || 'Iniciar Sesión'}
+                  {t('nav.login') || t('iniciarSesion', 'Iniciar Sesión')}
                 </button>
 
                 {/* En movil no se pinta: ocupaba media barra y competia con el
@@ -380,7 +380,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onClick={() => onOpenAuth('register')}
                   className="lp-btn-primary lp-btn-sm lp-nav-cta-compact"
                 >
-                  <span>{t('nav.register') || 'Registrarse'}</span>
+                  <span>{t('nav.register') || t('registrarse', 'Registrarse')}</span>
                   <ArrowRight aria-hidden className="h-4 w-4" />
                 </button>
               </>
@@ -416,7 +416,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
         <div className="lp-mobile-lang">
           <span className="inline-flex items-center gap-2">
             <Globe aria-hidden className="h-4 w-4" />
-            Idioma
+            {t('idioma', 'Idioma')}
           </span>
           <span className="lp-mobile-lang-options">
             {LANGUAGES.map((lang) => (
@@ -447,7 +447,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
             ) : (
               <Sun aria-hidden className="h-4 w-4 text-amber-500" />
             )}
-            Tema
+            {t('tema', 'Tema')}
           </span>
           <span className="lp-mobile-lang-options">
             <button
@@ -460,7 +460,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
               }}
               className={colorMode === 'light' ? 'is-active' : undefined}
             >
-              ☀️ Claro
+              {t('claro2', '☀️ Claro')}
             </button>
             <button
               type="button"
@@ -472,7 +472,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
               }}
               className={colorMode === 'dark' ? 'is-active' : undefined}
             >
-              🌙 Oscuro
+              {t('oscuro2', '🌙 Oscuro')}
             </button>
           </span>
         </div>
@@ -488,7 +488,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onGoToApp?.();
                 }}
               >
-                Ir a mi panel
+                {t('irAMiPanel', 'Ir a mi panel')}
               </button>
               <button
                 type="button"
@@ -498,7 +498,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onLogout?.();
                 }}
               >
-                Cerrar sesión
+                {t('cerrarSesion', 'Cerrar sesión')}
               </button>
             </>
           ) : (
@@ -511,7 +511,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onOpenAuth('register');
                 }}
               >
-                {t('nav.register') || 'Registrarse'}
+                {t('nav.register') || t('registrarse', 'Registrarse')}
               </button>
               <button
                 type="button"
@@ -521,7 +521,7 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({
                   onOpenAuth('login');
                 }}
               >
-                {t('nav.login') || 'Iniciar Sesión'}
+                {t('nav.login') || t('iniciarSesion', 'Iniciar Sesión')}
               </button>
             </>
           )}
