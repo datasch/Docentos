@@ -19,6 +19,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { LANGUAGES } from '../../i18n/languages';
+import { setLanguage } from '../../i18n';
 import { getCurrentColorMode, toggleColorMode, ColorMode } from '../../lib/themeApplicator';
 import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { avatarSrc } from '../../lib/avatar';
@@ -26,13 +28,6 @@ import { usePlatformBrand, DEFAULT_LOGO_URL } from '../../lib/logoConfig';
 
 export type ConstellationTab = 'explore' | 'learning' | 'courses' | 'viewer' | 'mentor' | 'admin';
 
-const LANGUAGES = [
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-];
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'ADMIN',
@@ -150,8 +145,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
   }, []);
 
   const handleLanguageSelect = (langCode: string) => {
-    i18n.changeLanguage(langCode);
-    localStorage.setItem('giantucchi_lang', langCode);
+    void setLanguage(langCode);
     setLangOpen(false);
   };
 

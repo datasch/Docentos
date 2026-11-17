@@ -9,13 +9,17 @@ import App from './App.tsx';
 import './styles/academy-fonts.css';
 import './styles/academy-system.css';
 import './styles/my-learning.css';
-import './i18n/index.ts';
+import { i18nReady } from './i18n/index.ts';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
-  </StrictMode>,
-);
+// Se espera al idioma inicial para no pintar en español y cambiar un instante después.
+// Si la descarga falla, la app arranca igual con el español incluido en el paquete.
+const mount = () =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    </StrictMode>,
+  );
 
+i18nReady.then(mount, mount);
