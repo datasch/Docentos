@@ -2392,5 +2392,9 @@
   "plugin_youtube_ai_builder_name": "Plugin AI YouTube Course Builder",
   "plugin_youtube_ai_builder_desc": "Gerador e estruturador automático de cursos temáticos a partir de playlists e buscas do YouTube usando o Gemini IA.",
   "plugin_docentos_customizer_name": "Plugin de Personalização e Versões do DocentOS",
-  "plugin_docentos_customizer_desc": "Permite alternar entre o DocentOS Moderna v0.5 (Unificada e Simétrica) e o DocentOS Clássica v0.4 (Distribuída em 11 abas como na versão anterior), além de personalizar temas de cor e densidade."
+  "plugin_docentos_customizer_desc": "Permite alternar entre o DocentOS Moderna v0.5 (Unificada e Simétrica) e o DocentOS Clássica v0.4 (Distribuída em 11 abas como na versão anterior), além de personalizar temas de cor e densidade.",
+  "quitarStrikeDeModeracion": "Remover um strike (corrigir um erro)",
+  "sinStrikesQueQuitar": "Este usuário não tem strikes",
+  "menos1Strike": "−1 Strike",
+  "mentorMayus": "MENTOR"
 }

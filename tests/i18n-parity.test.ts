@@ -117,3 +117,28 @@ test('i18n: coherencia de parámetros {{param}} entre es.json y las traducciones
     );
   }
 });
+
+test('ninguna clave usada en el código coincide con una sección del JSON', () => {
+  // t('mentor', ...) cuando "mentor" es una sección devuelve un objeto y la pantalla muestra
+  // "key 'mentor (es)' returned an object instead of string". Hay que usar otra clave.
+  const sections = new Set(
+    Object.entries(loadJson(path.join(LOCALES_DIR, 'es.json')))
+      .filter(([, value]) => value && typeof value === 'object')
+      .map(([key]) => key),
+  );
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry.name)) {
+        const source = fs.readFileSync(full, 'utf8');
+        for (const match of source.matchAll(/\bt\(\s*['"`]([A-Za-z0-9_]+)['"`]/g)) {
+          if (sections.has(match[1])) offenders.push(`${full}: t('${match[1]}')`);
+        }
+      }
+    }
+  };
+  walk('src');
+  assert.deepEqual(offenders, []);
+});

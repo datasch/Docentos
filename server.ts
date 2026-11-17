@@ -131,6 +131,7 @@ import {
   getPaymentStatus,
   simulateDevPaymentSuccess,
 } from './server/paymentService.js';
+import { MAX_USER_STRIKES } from './src/lib/moderation.js';
 import {
   sendApiError,
   resolveRequestLanguage,
@@ -2702,7 +2703,13 @@ app.put(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const data: { strikes?: number; isActive?: boolean } = {};
-    if (typeof req.body.strikes === 'number') data.strikes = req.body.strikes;
+    if (typeof req.body.strikes === 'number') {
+      // Se puede quitar un strike puesto por error, pero nunca bajar de 0 ni inventar cifras absurdas.
+      if (!Number.isInteger(req.body.strikes) || req.body.strikes < 0 || req.body.strikes > MAX_USER_STRIKES) {
+        return res.status(400).json({ error: 'Número de strikes no válido' });
+      }
+      data.strikes = req.body.strikes;
+    }
     if (typeof req.body.isActive === 'boolean') data.isActive = req.body.isActive;
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });

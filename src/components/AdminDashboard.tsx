@@ -9,6 +9,7 @@
  */
 
 import { dateLocale } from '../i18n/format';
+import { nextStrikes } from '../lib/moderation';
 import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard } from 'lucide-react';
@@ -681,18 +682,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     }
   };
 
-  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'toggle_active' | 'reset') => {
+  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'remove_strike' | 'toggle_active' | 'reset') => {
     try {
       let newStrikes = currentStrikes;
       let newActive = currentActive;
 
-      if (action === 'add_strike') newStrikes += 1;
-      if (action === 'reset') newStrikes = 0;
+      if (action !== 'toggle_active') newStrikes = nextStrikes(currentStrikes, action);
       if (action === 'toggle_active') newActive = !currentActive;
 
       await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
+      // Solo cambia la fila del usuario: se recarga el directorio y no los datos de toda la app,
+      // porque esa recarga reinicia el panel y saca al admin de la pantalla donde estaba.
       loadUsers();
-      onRefreshData();
     } catch (error) {
       console.error('Error updating moderation:', error);
     }
@@ -1738,7 +1739,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 )}
                                 {u.role === 'MENTOR' && (
                                   <span className="bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <UserCheck aria-hidden className="w-3 h-3" /> {t('mentor', 'MENTOR')}
+                                    <UserCheck aria-hidden className="w-3 h-3" /> {t('mentorMayus', 'MENTOR')}
                                   </span>
                                 )}
                                 {u.role === 'MENTEE' && (
@@ -1820,6 +1821,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                   className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
                                 >
                                   {t('1Strike', '+1 Strike')}
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'remove_strike')}
+                                  disabled={strikes <= 0}
+                                  title={strikes > 0
+                                    ? t('quitarStrikeDeModeracion', 'Quitar un strike (corregir un error)')
+                                    : t('sinStrikesQueQuitar', 'Este usuario no tiene strikes')}
+                                  aria-label={t('quitarStrikeDeModeracion', 'Quitar un strike (corregir un error)')}
+                                  className="px-2 py-1 bg-sky-500/10 border border-sky-500/30 hover:bg-sky-500/20 text-sky-300 font-bold rounded-lg text-[10px] transition-all disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-sky-500/10"
+                                >
+                                  {t('menos1Strike', '−1 Strike')}
                                 </button>
                                 <button
                                   onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
