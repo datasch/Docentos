@@ -170,10 +170,11 @@ export default function App() {
   const loadData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      setAccessVerified(false);
+      // Una recarga silenciosa no debe desmontar la vista privada (perdería la pestaña activa).
+      if (!silent) setAccessVerified(false);
       const currentPath = window.location.pathname;
       const privatePath = isPrivatePath(currentPath);
-      if (privatePath) setPrivateRouteStatus('pending');
+      if (privatePath && !silent) setPrivateRouteStatus('pending');
 
       const [setupResult, authResult, coursesResult] = await Promise.allSettled([
         checkSetupStatus(),

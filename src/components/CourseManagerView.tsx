@@ -8,7 +8,7 @@
  * 3. Enlazar, reordenar y eliminar videos dentro de cada módulo
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   BookOpen,
   Plus,
@@ -95,6 +95,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
   // Formulario de alta / edición de curso
   const [form, setForm] = useState<CourseForm>(emptyForm);
+  const formRef = useRef<HTMLDialogElement>(null);
+  const [courseQuery, setCourseQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [savingCourse, setSavingCourse] = useState(false);
   const [generatingCover, setGeneratingCover] = useState(false);
@@ -222,6 +225,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const resetForm = () => {
     setForm(emptyForm);
     setEditingCourseId(null);
+    formRef.current?.close();
+  };
+
+  const openNewCourse = () => {
+    setCreationTab('manual');
+    setForm(emptyForm);
+    setEditingCourseId(null);
+    formRef.current?.showModal();
   };
 
   const startEditing = (course: Course) => {
@@ -237,7 +248,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       openToAllRegistered: Boolean(course.openToAllRegistered),
       sequentialUnlock: Boolean(course.sequentialUnlock),
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    formRef.current?.showModal();
   };
 
   const handleGenerateCover = async () => {
@@ -474,84 +485,61 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const countVideos = (course: Course) =>
     course.modules.reduce((total, m) => total + m.videos.length, 0);
 
+  const statusCounts = {
+    all: courses.length,
+    published: courses.filter((c) => c.published).length,
+    draft: courses.filter((c) => !c.published).length,
+  };
+  const q = courseQuery.trim().toLowerCase();
+  const visibleCourses = courses.filter(
+    (c) =>
+      (statusFilter === 'all' || (statusFilter === 'published') === c.published) &&
+      (!q || `${c.title} ${c.category}`.toLowerCase().includes(q)),
+  );
+
   return (
-    <div className={`space-y-6 ${disableAnimation ? '' : 'animate-fade-in'}`}>
+    <div data-mentor-ui="modern" className="admin-courses-root">
+    <div className={`mentor-courses-panel admin-courses-panel ${disableAnimation ? '' : 'animate-fade-in'}`}>
       {successMsg && (
         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" /> {successMsg}
         </div>
       )}
 
-      {/* Selector de Modos de Creación e Importación */}
-      {!editingCourseId && (
-        <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
-          <div className="space-y-1">
-            <span className="text-micro font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Métodos de Creación de Cursos
-            </span>
-            <h3 className="text-sm font-bold text-ink">
-              ¿Cómo deseas estructurar tu próximo curso?
-            </h3>
-            <p className="text-xs text-ink-muted">
-              Diseña temarios desde cero, genera cursos completos con IA desde YouTube o importa carpetas desde Google Drive.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setCreationTab('manual')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                creationTab === 'manual'
-                  ? 'btn-brand-primary shadow-md'
-                  : 'bg-raised hover:bg-elevated text-ink-muted hover:text-ink border border-line'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Manual</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreationTab('youtube')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                creationTab === 'youtube'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                  : 'bg-raised hover:bg-elevated text-red-400 hover:text-red-300 border border-red-500/30'
-              }`}
-            >
-              <Youtube className="w-3.5 h-3.5" />
-              <span>IA YouTube Builder</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreationTab('drive')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                creationTab === 'drive'
-                  ? 'bg-brand-purple text-ink shadow-md shadow-brand-purple/30'
-                  : 'bg-raised hover:bg-elevated text-ink-muted hover:text-ink border border-line'
-              }`}
-            >
-              <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Google Drive</span>
-            </button>
-          </div>
+      {/* Cabecera: crear curso (manual, YouTube o Drive) */}
+      <div className="mentor-section-heading">
+        <div>
+          <h2 id="admin-courses-title">Cursos</h2>
+          <p>Crea, publica y organiza el temario de cada curso.</p>
         </div>
-      )}
+        <div className="admin-courses-actions">
+          <button type="button" className="mentor-course-control mentor-course-publish" onClick={openNewCourse}>
+            <Plus aria-hidden="true" />
+            Nuevo curso
+          </button>
+          <button
+            type="button"
+            className="mentor-course-control"
+            aria-pressed={creationTab === 'youtube'}
+            onClick={() => setCreationTab(creationTab === 'youtube' ? 'manual' : 'youtube')}
+          >
+            <Youtube aria-hidden="true" />
+            Desde YouTube con IA
+          </button>
+          <button
+            type="button"
+            className="mentor-course-control"
+            aria-pressed={creationTab === 'drive'}
+            onClick={() => setCreationTab(creationTab === 'drive' ? 'manual' : 'drive')}
+          >
+            <HardDrive aria-hidden="true" />
+            Desde Google Drive
+          </button>
+        </div>
+      </div>
 
-      {/* Asistente 1: AI YouTube Course Builder */}
-      {!editingCourseId && creationTab === 'youtube' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-red-400 flex items-center gap-2">
-              <Youtube className="w-4 h-4" /> Asistente de Creación de Cursos desde YouTube con IA
-            </span>
-            <button
-              type="button"
-              onClick={() => setCreationTab('manual')}
-              className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
-            >
-              <X className="w-3.5 h-3.5" /> Volver a Creación Manual
-            </button>
-          </div>
+      {creationTab === 'youtube' && (
+        <div className="admin-courses-wizard">
           <YouTubeCourseBuilder
             currentUser={currentUser}
             onCourseCreated={(newId) => {
@@ -565,387 +553,311 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         </div>
       )}
 
-      {/* Asistente 2: Google Drive Video Engine */}
-      {!editingCourseId && creationTab === 'drive' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-              <HardDrive className="w-4 h-4" /> Importación desde Google Drive Video Engine
-            </span>
-            <button
-              type="button"
-              onClick={() => setCreationTab('manual')}
-              className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
-            >
-              <X className="w-3.5 h-3.5" /> Volver a Creación Manual
-            </button>
-          </div>
+      {creationTab === 'drive' && (
+        <div className="admin-courses-wizard">
           <DriveCourseImport onImported={refreshAll} />
         </div>
       )}
 
-      {/* Asistente 3 / Edición: Formulario Manual */}
-      {(editingCourseId || creationTab === 'manual') && (
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-          <div>
-            <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-cyan-400" />
-              {editingCourseId ? 'Editar Curso' : 'Crear Nuevo Curso'}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Los cursos nuevos se guardan como borrador hasta que los publiques. Un precio de 0 los
-              convierte en cursos públicos y gratuitos.
-            </p>
-          </div>
-          {editingCourseId && (
-            <button
-              onClick={resetForm}
-              className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
-            >
-              <X className="w-4 h-4" /> Cancelar
+      {/* Formulario manual en hoja lateral */}
+      <dialog
+        ref={formRef}
+        className="mentee-sheet"
+        aria-labelledby="admin-course-form-title"
+        onCancel={(e) => { e.preventDefault(); resetForm(); }}
+        onClick={(e) => { if (e.target === e.currentTarget) resetForm(); }}
+      >
+        <div className="mentee-sheet__body">
+          <header className="mentee-sheet__head">
+            <span className="mentee-sheet__icon" aria-hidden="true"><BookOpen /></span>
+            <div className="mentor-mentee-id">
+              <strong id="admin-course-form-title">{editingCourseId ? 'Editar curso' : 'Nuevo curso'}</strong>
+              <span>{editingCourseId ? 'Cambia los datos y guarda.' : 'Los cursos nuevos quedan en borrador hasta publicarlos.'}</span>
+            </div>
+            <button type="button" onClick={resetForm} className="mentee-sheet__close" aria-label="Cerrar">
+              <X aria-hidden="true" />
             </button>
-          )}
-        </div>
+          </header>
 
-        <form onSubmit={handleSubmitCourse} className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Curso</label>
+          <form onSubmit={handleSubmitCourse} className="admin-course-form">
+            <div className="admin-course-fields">
+            <div className="meeting-field">
+              <label htmlFor="admin-course-title">Título del curso</label>
               <input
+                id="admin-course-title"
                 type="text"
                 placeholder="Ej. Arquitectura Cloud Avanzada"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 required
               />
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Categoría</label>
+            <div className="meeting-field">
+              <label htmlFor="admin-course-category">Categoría</label>
               <select
+                id="admin-course-category"
                 value={form.category || 'Mentoría Especializada'}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
               >
                 {form.category && !COURSE_CATEGORIES.includes(form.category as any) && (
                   <option value={form.category}>{form.category}</option>
                 )}
                 <optgroup label="Modalidades de Mentoría">
                   {MENTORSHIP_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </optgroup>
                 <optgroup label="Áreas Temáticas Técnicas">
                   {TECHNICAL_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </optgroup>
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] font-bold text-slate-400 block mb-1">Descripción</label>
-            <textarea
-              rows={3}
-              placeholder="Qué aprenderá el estudiante en este programa."
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Precio</label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+            <div className="meeting-field">
+              <label htmlFor="admin-course-description">Descripción</label>
+              <textarea
+                id="admin-course-description"
+                rows={3}
+                placeholder="Qué aprenderá el estudiante en este programa."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Moneda</label>
-              <select
-                value={form.currency}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="MXN">MXN</option>
-                <option value="COP">COP</option>
-                <option value="ARS">ARS</option>
-              </select>
+            <div className="meeting-field__row">
+              <div className="meeting-field">
+                <label htmlFor="admin-course-price">Precio</label>
+                <input
+                  id="admin-course-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                />
+              </div>
+              <div className="meeting-field">
+                <label htmlFor="admin-course-currency">Moneda</label>
+                <select
+                  id="admin-course-currency"
+                  value={form.currency}
+                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                >
+                  {['USD', 'EUR', 'MXN', 'COP', 'ARS'].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="md:col-span-2 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-[11px] font-bold text-slate-400 block">
-                  Imagen de Portada (Automática con IA + Logo si se deja vacía)
-                </label>
+            <div className="meeting-field">
+              <label htmlFor="admin-course-cover">Imagen de portada</label>
+              <input
+                id="admin-course-cover"
+                type="text"
+                placeholder="Vacía: se genera una portada con IA y el logo"
+                value={form.coverImage}
+                onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+              />
+              <div className="admin-course-cover-tools">
                 <button
                   type="button"
+                  className="mentor-course-control"
                   onClick={handleGenerateCover}
                   disabled={generatingCover}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
                 >
-                  {generatingCover ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{generatingCover ? 'Generando con IA...' : 'Generar con IA + Logo'}</span>
+                  {generatingCover ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
+                  {generatingCover ? 'Generando…' : 'Generar con IA'}
                 </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Dejar vacío para autogenerar portada IA temática con logo del plugin..."
-                  value={form.coverImage}
-                  onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
                 {form.coverImage && (
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, coverImage: '' })}
-                    title="Limpiar portada"
-                    className="p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-rose-400"
-                  >
-                    <X className="w-3.5 h-3.5" />
+                  <button type="button" className="mentor-course-control" onClick={() => setForm({ ...form, coverImage: '' })}>
+                    <X aria-hidden="true" />
+                    Quitar
                   </button>
                 )}
               </div>
-              {form.coverImage && (
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
-                  <img
-                    src={form.coverImage}
-                    alt="Vista previa de portada"
-                    className="w-28 h-16 rounded-lg object-cover border border-cyan-500/30 shrink-0"
-                  />
-                  <div className="text-[11px] text-slate-400 leading-relaxed">
-                    <span className="text-cyan-400 font-bold block">Vista previa de portada activa</span>
-                    Incluye diseño temático adaptado al curso y el emblema configurado en el plugin de personalización.
-                  </div>
-                </div>
-              )}
+              {form.coverImage && <img src={form.coverImage} alt="Vista previa de la portada" className="admin-course-cover-preview" />}
             </div>
-          </div>
 
-          {/* Progresión secuencial: el candado del temario del alumno. Va en su
-              propia caja porque no es una casilla más del formulario, sino la
-              regla con la que se recorre el curso entero. */}
-          <label className="flex items-start gap-3 rounded-xl border border-[#2d2d44] bg-[#0a0a0f] p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.sequentialUnlock}
-              onChange={(e) => setForm({ ...form, sequentialUnlock: e.target.checked })}
-              className="accent-[#06b6d4] w-4 h-4 mt-0.5 shrink-0"
-            />
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                {form.sequentialUnlock ? (
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                ) : (
-                  <Unlock className="w-3.5 h-3.5 text-slate-500" />
-                )}
-                Progresión secuencial (bloquear módulos)
+            <label className="admin-course-check">
+              <input
+                type="checkbox"
+                checked={form.sequentialUnlock}
+                onChange={(e) => setForm({ ...form, sequentialUnlock: e.target.checked })}
+              />
+              <span>
+                <strong>Progresión secuencial</strong>
+                <small>El alumno abre el Módulo 1 y desbloquea cada módulo al terminar el anterior.</small>
               </span>
-              <span className="block text-[11px] text-slate-400 mt-1 leading-relaxed">
-                El alumno empieza con el Módulo 1 abierto y el resto con candado. Cada módulo se
-                desbloquea cuando termina todas las lecciones del anterior. Apagado, el temario se
-                ve completo desde el primer día.
+            </label>
+            <label className="admin-course-check">
+              <input
+                type="checkbox"
+                checked={form.openToAllRegistered}
+                onChange={(e) => setForm({ ...form, openToAllRegistered: e.target.checked })}
+              />
+              <span>
+                <strong>Acceso para miembros</strong>
+                <small>Mentees y personal de la academia. El resto necesita compra o asignación.</small>
               </span>
-            </span>
-          </label>
-
-          {/* Quién entra al curso. Va aparte del precio a propósito: hasta
-              ahora un curso publicado a 0 quedaba abierto a cualquiera —incluso
-              sin cuenta— y nadie lo había pedido. Ahora la apertura se declara,
-              y apagada el acceso lo reparte administración persona a persona. */}
-          <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.openToAllRegistered}
-              onChange={(e) => setForm({ ...form, openToAllRegistered: e.target.checked })}
-              className="accent-brand-cyan w-4 h-4 mt-0.5 shrink-0"
-            />
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                {form.openToAllRegistered ? (
-                  <Globe className="w-3.5 h-3.5 text-brand-cyan" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5 text-ink-faint" />
-                )}
-                Acceso para miembros
-              </span>
-              <span className="block text-micro text-ink-muted mt-1 leading-relaxed">
-                Disponible para mentees y personal de la academia. Los invitados y estudiantes
-                externos necesitan una compra o asignación para acceder.
-              </span>
-            </span>
-          </label>
-
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
+            </label>
+            <label className="admin-course-check">
               <input
                 type="checkbox"
                 checked={form.published}
                 onChange={(e) => setForm({ ...form, published: e.target.checked })}
-                className="accent-[#06b6d4] w-4 h-4"
               />
-              Publicar inmediatamente
+              <span>
+                <strong>Publicar al guardar</strong>
+                <small>Visible en el catálogo desde ahora.</small>
+              </span>
             </label>
 
-            <button
-              type="submit"
-              disabled={savingCourse}
-              className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              {savingCourse ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : editingCourseId ? (
-                <Save className="w-4 h-4" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {editingCourseId ? 'Guardar Cambios' : 'Crear Curso'}
-            </button>
-          </div>
-        </form>
-      </div>
-      )}
+            </div>
 
-      {/* Catálogo de cursos */}
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-          <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#06b6d4]" />
-            Catálogo ({courses.length})
-          </h3>
-          <button
-            onClick={loadCourses}
-            className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar
-          </button>
+            <div className="mentee-sheet__foot">
+              <button type="button" className="mentor-course-control" onClick={resetForm}>Cancelar</button>
+              <button type="submit" disabled={savingCourse} className="mentor-course-control mentor-course-publish">
+                {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                {editingCourseId ? 'Guardar cambios' : 'Crear curso'}
+              </button>
+            </div>
+          </form>
         </div>
+      </dialog>
 
+      {/* Catálogo */}
+      <div className="mentor-course-toolbar">
+        <label className="mentor-mentee-search">
+          <Search aria-hidden="true" />
+          <input
+            type="search"
+            value={courseQuery}
+            onChange={(e) => setCourseQuery(e.target.value)}
+            placeholder="Buscar curso"
+            aria-label="Buscar curso"
+          />
+        </label>
+        <div className="mentor-publication-filters" role="group" aria-label="Filtrar por publicación">
+          {(['all', 'published', 'draft'] as const).map((filter) => (
+            <button key={filter} type="button" aria-pressed={statusFilter === filter} onClick={() => setStatusFilter(filter)}>
+              <span>{filter === 'all' ? 'Todos' : filter === 'published' ? 'Publicados' : 'Borradores'}</span>
+              <span className="mentor-publication-count">{statusCounts[filter]}</span>
+            </button>
+          ))}
+        </div>
+        <span className="mentor-course-filter-result" role="status" aria-live="polite">
+          {visibleCourses.length} de {courses.length} cursos
+        </span>
+        <button type="button" className="mentor-course-control" onClick={loadCourses} aria-label="Actualizar catálogo">
+          <RefreshCw aria-hidden="true" className={loading ? 'animate-spin' : ''} />
+          Actualizar
+        </button>
+      </div>
+
+      <div>
         {loading && courses.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">Cargando cursos…</p>
+          <div className="mentor-courses-empty" role="status">
+            <Loader2 aria-hidden="true" className="animate-spin" />
+            <p>Cargando cursos…</p>
+          </div>
         ) : courses.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">
-            Todavía no hay cursos. Crea el primero con el formulario de arriba.
-          </p>
+          <div className="mentor-courses-empty">
+            <BookOpen aria-hidden="true" />
+            <p>Todavía no hay cursos. Crea el primero con «Nuevo curso».</p>
+          </div>
+        ) : visibleCourses.length === 0 ? (
+          <div className="mentor-courses-empty">
+            <BookOpen aria-hidden="true" />
+            <p>Ningún curso coincide con la búsqueda.</p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {courses.map((course) => {
+          <div className="admin-courses-list">
+            {visibleCourses.map((course) => {
               const isExpanded = expandedCourseId === course.id;
               const modules = [...course.modules].sort((a, b) => a.order - b.order);
 
               return (
-                <div
-                  key={course.id}
-                  className="rounded-xl bg-[#0a0a0f] border border-[#2d2d44] overflow-hidden"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {course.coverImage && (
-                        <img
-                          src={course.coverImage}
-                          alt=""
-                          className="w-14 h-10 rounded-lg object-cover border border-[#2d2d44] shrink-0"
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-xs font-bold text-white truncate">{course.title}</p>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              course.published
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            }`}
-                          >
-                            {course.published ? 'Publicado' : 'Borrador'}
-                          </span>
-                          {course.isDemo && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                              Demo
-                            </span>
-                          )}
-                          {course.openToAllRegistered && (
-                            <span
-                              title="Disponible para mentees y personal de la academia"
-                              className="text-micro font-bold px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1"
-                            >
-                              <Globe className="w-2.5 h-2.5" /> Miembros
-                            </span>
-                          )}
-                          {course.sequentialUnlock && (
-                            <span
-                              title="Los módulos se desbloquean uno a uno"
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1"
-                            >
-                              <Lock className="w-2.5 h-2.5" /> Secuencial
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-slate-500">
-                          {course.category} • {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : 'Gratuito'} •{' '}
-                          {modules.length} módulo(s) • {countVideos(course)} video(s)
+                <div key={course.id} className="admin-course-row">
+                  <div className="admin-course-row__head">
+                  <div className="admin-course-row__main">
+                    {course.coverImage ? (
+                      <img src={course.coverImage} alt="" className="admin-course-row__cover" />
+                    ) : (
+                      <span className="admin-course-row__cover" aria-hidden="true" />
+                    )}
+                    <div className="admin-course-row__info">
+                      <h3>{course.title}</h3>
+                      <div className="admin-course-row__tags">
+                        <span className="mentor-course-card__status" data-published={course.published}>
+                          {course.published ? 'Publicado' : 'Borrador'}
                         </span>
+                        {course.isDemo && <span className="admin-course-tag">Demo</span>}
+                        {course.openToAllRegistered && (
+                          <span className="admin-course-tag" title="Disponible para mentees y personal de la academia">
+                            <Globe aria-hidden="true" /> Miembros
+                          </span>
+                        )}
+                        {course.sequentialUnlock && (
+                          <span className="admin-course-tag" title="Los módulos se desbloquean uno a uno">
+                            <Lock aria-hidden="true" /> Secuencial
+                          </span>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCourseMentors(course)}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44] text-[11px] font-bold text-brand-cyan hover:text-white transition-colors flex items-center gap-1.5"
-                        title="Asignar mentores autorizados a este curso"
-                      >
-                        <Users className="w-3.5 h-3.5 text-brand-cyan" /> Mentores
-                      </button>
-                      <button
-                        onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44] text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
-                      >
-                        <Layers className="w-3.5 h-3.5" /> Temario
-                      </button>
-                      <button
-                        onClick={() => startEditing(course)}
-                        className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors"
-                        title="Editar curso"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleTogglePublished(course)}
-                        disabled={busyId === course.id}
-                        className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors disabled:opacity-50"
-                        title={course.published ? 'Pasar a borrador' : 'Publicar'}
-                      >
-                        {course.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCourse(course)}
-                        disabled={busyId === course.id}
-                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors disabled:opacity-50"
-                        title="Eliminar curso"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <p>
+                        {course.category} · {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : 'Gratuito'} ·{' '}
+                        {modules.length} módulo(s) · {countVideos(course)} video(s)
+                      </p>
                     </div>
                   </div>
+
+                  <div className="admin-course-row__actions">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCourseMentors(course)}
+                      className="mentor-course-control"
+                      aria-haspopup="dialog"
+                      aria-label={`Asignar mentores a ${course.title}`}
+                    >
+                      <Users aria-hidden="true" /> <span>Mentores</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
+                      className="mentor-course-control"
+                      aria-expanded={isExpanded}
+                      aria-label={`Temario de ${course.title}`}
+                    >
+                      <Layers aria-hidden="true" /> <span>Temario</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEditing(course)}
+                      className="mentor-course-control"
+                      aria-label={`Editar ${course.title}`}
+                    >
+                      <Pencil aria-hidden="true" /> <span>Editar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublished(course)}
+                      disabled={busyId === course.id}
+                      className="mentor-course-control"
+                      aria-label={`${course.published ? 'Pasar a borrador' : 'Publicar'}: ${course.title}`}
+                    >
+                      {course.published ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                      <span>{course.published ? 'Despublicar' : 'Publicar'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCourse(course)}
+                      disabled={busyId === course.id}
+                      className="mentor-course-control admin-course-delete"
+                      aria-label={`Eliminar ${course.title}`}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
 
                   {/* Temario del curso */}
                   {isExpanded && (
@@ -1520,6 +1432,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

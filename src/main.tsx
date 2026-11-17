@@ -10,6 +10,7 @@ import './styles/academy-fonts.css';
 import './styles/academy-system.css';
 import './styles/my-learning.css';
 import './styles/mentor-courses.css';
+import './styles/admin-courses.css';
 import './styles/mentor-mentees.css';
 import './styles/mentor-qna.css';
 import './styles/mentor-meetings.css';
