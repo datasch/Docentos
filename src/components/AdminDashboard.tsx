@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
@@ -340,7 +340,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       const res = await api.getAdminMentorCourses(mentor.id);
       setMentorAssignedCourseIds(res.courseIds || []);
     } catch (err: any) {
-      setMentorCoursesNotice(err?.message || 'Error al cargar cursos del mentor');
+      setMentorCoursesNotice(err?.message || t('errorAlCargarCursosDelMentor', 'Error al cargar cursos del mentor'));
     } finally {
       setLoadingMentorCourses(false);
     }
@@ -359,13 +359,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     try {
       const res = await api.setAdminMentorCourses(selectedMentorForCourses.id, mentorAssignedCourseIds);
       setMentorAssignedCourseIds(res.courseIds || []);
-      setMentorCoursesNotice('Cursos asignados correctamente al mentor');
+      setMentorCoursesNotice(t('cursosAsignadosCorrectamenteAlMentor', 'Cursos asignados correctamente al mentor'));
       setTimeout(() => {
         setSelectedMentorForCourses(null);
         setMentorCoursesNotice(null);
       }, 1000);
     } catch (err: any) {
-      setMentorCoursesNotice(err?.message || 'Error al guardar los cursos del mentor');
+      setMentorCoursesNotice(err?.message || t('errorAlGuardarLosCursosDelMentor', 'Error al guardar los cursos del mentor'));
     } finally {
       setSavingMentorCourses(false);
     }
@@ -444,12 +444,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       const enrolledUser = users.find((item) => item.id === newEnrollUserId);
       const enrolledCourse = allCourses.find((item) => item.id === newEnrollCourseId);
       setEnrollSuccessMsg(
-        `${enrolledUser?.name || 'El usuario'} queda matriculado en «${enrolledCourse?.title || 'el curso'}».`,
+        t('valQuedaMatriculadoEnVal2', '{{val}} queda matriculado en «{{val2}}».', { val: enrolledUser?.name || 'El usuario', val2: enrolledCourse?.title || 'el curso' }),
       );
       setTimeout(() => setEnrollSuccessMsg(''), 3000);
       loadEnrollments();
     } catch (err: any) {
-      alert(err.message || 'Error al registrar matrícula');
+      alert(err.message || t('errorAlRegistrarMatricula', 'Error al registrar matrícula'));
     }
   };
 
@@ -458,19 +458,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.updateEnrollmentStatus(enrollmentId, status);
       loadEnrollments();
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar matrícula');
+      alert(err.message || t('errorAlActualizarMatricula', 'Error al actualizar matrícula'));
     }
   };
 
   const handleRevokeCertificate = async (certId: string) => {
-    const reason = revokeReason.trim() || 'Revocado por administración docente';
+    const reason = revokeReason.trim() || t('revocadoPorAdministracionDocente', 'Revocado por administración docente');
     try {
       await api.revokeCertificate(certId, reason);
       setRevokingCertId(null);
       setRevokeReason('');
       loadCertificates();
     } catch (err: any) {
-      alert(err.message || 'Error al revocar certificado');
+      alert(err.message || t('errorAlRevocarCertificado', 'Error al revocar certificado'));
     }
   };
 
@@ -487,24 +487,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       });
       const target = workModules.find((m) => m.id === resModuleId);
       setResSuccessMsg(
-        `«${resTitle.trim()}» añadido a ${target ? target.title : 'General del Curso'} en «${workCourse.title}».`,
+        t('resTitleAnadidoAValEnTitle', '«{{resTitle}}» añadido a {{val}} en «{{title}}».', { resTitle: resTitle.trim(), val: target ? target.title : 'General del Curso', title: workCourse.title }),
       );
       setResTitle('');
       setResPrivateUrl('');
       setTimeout(() => setResSuccessMsg(''), 4000);
       refreshEverything();
     } catch (err: any) {
-      setResErrorMsg(err.message || 'Error al agregar recurso');
+      setResErrorMsg(err.message || t('errorAlAgregarRecurso', 'Error al agregar recurso'));
     }
   };
 
   const handleDeleteResource = async (resourceId: string) => {
-    if (!confirm('¿Deseas eliminar este recurso?')) return;
+    if (!confirm(t('deseasEliminarEsteRecurso', '¿Deseas eliminar este recurso?'))) return;
     try {
       await api.deleteCourseResource(resourceId);
       refreshEverything();
     } catch (err: any) {
-      setResErrorMsg(err.message || 'Error al eliminar recurso');
+      setResErrorMsg(err.message || t('errorAlEliminarRecurso', 'Error al eliminar recurso'));
     }
   };
 
@@ -512,7 +512,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     setIsGeneratingAiScript(true);
     try {
       // Find selected video title
-      let targetVideoTitle = 'Lección de Mentoría Técnica';
+      let targetVideoTitle = t('leccionDeMentoriaTecnica', 'Lección de Mentoría Técnica');
       for (const mod of workModules) {
         const foundVid = mod.videos.find((v) => v.id === ttsTargetVideoId);
         if (foundVid) {
@@ -531,7 +531,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
       if (res.scriptText) {
         setTtsScript(res.scriptText);
-        setTtsSuccessMsg('¡Guion generado por IA exitosamente!');
+        setTtsSuccessMsg(t('guionGeneradoPorIaExitosamente', '¡Guion generado por IA exitosamente!'));
         setTimeout(() => setTtsSuccessMsg(''), 3000);
       }
     } catch (err) {
@@ -561,12 +561,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
   const handlePreviewAudio = () => {
     if (!ttsScript.trim()) {
-      alert('Por favor escribe un script para la guía antes de previsualizar el audio.');
+      alert(t('porFavorEscribeUnScriptParaLaGuiaAntesDe', 'Por favor escribe un script para la guía antes de previsualizar el audio.'));
       return;
     }
 
     if (!('speechSynthesis' in window)) {
-      alert('Tu navegador no soporta síntesis de voz Web Speech API.');
+      alert(t('tuNavegadorNoSoportaSintesisDeVozWeb', 'Tu navegador no soporta síntesis de voz Web Speech API.'));
       return;
     }
 
@@ -595,7 +595,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     // Una guía sin clase destino no se le puede reproducir a nadie: el
     // servidor la aceptaba y caía en un `videoId` por defecto de otro curso.
     if (!ttsTargetVideoId) {
-      setTtsErrorMsg('Elige primero un curso con clases y la lección a la que acompaña la guía.');
+      setTtsErrorMsg(t('eligePrimeroUnCursoConClasesYLaLeccionA', 'Elige primero un curso con clases y la lección a la que acompaña la guía.'));
       return;
     }
     setTtsErrorMsg('');
@@ -609,7 +609,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         courseId: workCourse.id,
         moduleId: selectedModule?.id || workModules[0]?.id,
         videoId: ttsTargetVideoId,
-        title: ttsTitle.trim() || 'Guía de Orientación de Mentoría',
+        title: ttsTitle.trim() || t('guiaDeOrientacionDeMentoria', 'Guía de Orientación de Mentoría'),
         scriptText: ttsScript.trim(),
         voiceId: ttsVoice,
         voiceSpeed: ttsSpeed,
@@ -617,14 +617,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       });
 
       if (res.success) {
-        setTtsSuccessMsg(`Guía guardada en «${workCourse.title}».`);
+        setTtsSuccessMsg(t('guiaGuardadaEnTitle', 'Guía guardada en «{{title}}».', { title: workCourse.title }));
         setTtsScript('');
         setTtsTitle('');
         loadTTSGuides();
         setTimeout(() => setTtsSuccessMsg(''), 3500);
       }
     } catch (error: any) {
-      setTtsErrorMsg(error?.message || 'No se pudo guardar la guía TTS.');
+      setTtsErrorMsg(error?.message || t('noSePudoGuardarLaGuiaTts', 'No se pudo guardar la guía TTS.'));
     }
   };
 
@@ -633,7 +633,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.deleteTTSGuide(id);
       loadTTSGuides();
     } catch (error: any) {
-      setTtsErrorMsg(error?.message || 'No se pudo eliminar la guía.');
+      setTtsErrorMsg(error?.message || t('noSePudoEliminarLaGuia', 'No se pudo eliminar la guía.'));
     }
   };
 
@@ -660,7 +660,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       // cuyos identificadores no existen: enlazarlos deja el reproductor negro.
       setDriveIsDemo(Boolean(res.isDemo));
     } catch (error: any) {
-      setDriveErrorMsg(error?.message || 'No se pudo consultar Google Drive.');
+      setDriveErrorMsg(error?.message || t('noSePudoConsultarGoogleDrive', 'No se pudo consultar Google Drive.'));
     } finally {
       setLoadingDrive(false);
     }
@@ -676,7 +676,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       // Antes esto solo llegaba a la consola del navegador: el boton parecia no
       // hacer nada y no habia forma de saber que el servidor lo habia
       // rechazado.
-      setRoleErrorMsg(error?.message || 'No se pudo cambiar el rol.');
+      setRoleErrorMsg(error?.message || t('noSePudoCambiarElRol', 'No se pudo cambiar el rol.'));
     }
   };
 
@@ -706,7 +706,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     setUpdatingPrice(true);
     try {
       await api.updateCoursePrice(course.id, coursePrice);
-      setPriceSuccessMsg('¡Precio del curso actualizado exitosamente!');
+      setPriceSuccessMsg(t('precioDelCursoActualizadoExitosamente', '¡Precio del curso actualizado exitosamente!'));
       onRefreshData();
       setTimeout(() => setPriceSuccessMsg(''), 3000);
     } catch (err) {
@@ -718,7 +718,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
   const handleLinkDriveVideo = async (video: DriveVideoFile) => {
     if (!selectedModuleId) {
-      setDriveErrorMsg('Elige antes el curso y el módulo de destino.');
+      setDriveErrorMsg(t('eligeAntesElCursoYElModuloDeDestino', 'Elige antes el curso y el módulo de destino.'));
       return;
     }
     setLinkingVideo(video);
@@ -727,12 +727,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.addDriveVideoToModule(selectedModuleId, video);
       const target = workModules.find((m) => m.id === selectedModuleId);
       setLinkSuccessMsg(
-        `«${video.name}» enlazado a ${target?.title || 'el módulo'} de «${workCourse.title}».`,
+        t('nameEnlazadoAValDeTitle', '«{{name}}» enlazado a {{val}} de «{{title}}».', { name: video.name, val: target?.title || 'el módulo', title: workCourse.title }),
       );
       refreshEverything();
       setTimeout(() => setLinkSuccessMsg(''), 4000);
     } catch (error: any) {
-      setDriveErrorMsg(error?.message || 'No se pudo enlazar el video.');
+      setDriveErrorMsg(error?.message || t('noSePudoEnlazarElVideo', 'No se pudo enlazar el video.'));
     } finally {
       setLinkingVideo(null);
     }
@@ -749,7 +749,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     e.preventDefault();
     if (!manualVideoUrl.trim() || !manualVideoTitle.trim()) return;
     if (!selectedModuleId) {
-      setDriveErrorMsg('Elige antes el curso y el módulo de destino.');
+      setDriveErrorMsg(t('eligeAntesElCursoYElModuloDeDestino', 'Elige antes el curso y el módulo de destino.'));
       return;
     }
 
@@ -770,7 +770,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       });
       const target = workModules.find((m) => m.id === selectedModuleId);
       setLinkSuccessMsg(
-        `«${manualVideoTitle.trim()}» añadido a ${target?.title || 'el módulo'} de «${workCourse.title}».`,
+        t('manualVideoTitleAnadidoAValDeTitle', '«{{manualVideoTitle}}» añadido a {{val}} de «{{title}}».', { manualVideoTitle: manualVideoTitle.trim(), val: target?.title || 'el módulo', title: workCourse.title }),
       );
       setManualVideoUrl('');
       setManualVideoTitle('');
@@ -778,7 +778,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       refreshEverything();
       setTimeout(() => setLinkSuccessMsg(''), 4000);
     } catch (error: any) {
-      setDriveErrorMsg(error?.message || 'No se pudo añadir el video.');
+      setDriveErrorMsg(error?.message || t('noSePudoAnadirElVideo', 'No se pudo añadir el video.'));
     } finally {
       setAddingManualVideo(false);
     }
@@ -812,7 +812,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     <div className="bg-raised border border-line rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
       <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-2 w-full xl:w-auto">
         <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider shrink-0">
-          Curso sobre el que trabajas
+          {t('cursoSobreElQueTrabajas', 'Curso sobre el que trabajas')}
         </label>
         <select
           value={workCourseId}
@@ -821,14 +821,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         >
           {allCourses.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.title}{item.published ? '' : ' — borrador'}
+              {item.title}{item.published ? '' : t('borradorGuion', ' — borrador')}
             </option>
           ))}
         </select>
       </div>
 
       <span className="text-[11px] font-mono text-ink-muted shrink-0">
-        {workModules.length} módulos · {workLessonCount} clases
+        {t('lengthModulosWorkLessonCountClases', '{{length}} módulos · {{workLessonCount}} clases', { length: workModules.length, workLessonCount })}
       </span>
     </div>
   );
@@ -837,8 +837,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-xl flex items-start gap-2">
       <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
       <span>
-        «{workCourse.title}» todavía no tiene módulos. Créalos en la pestaña Cursos o importando
-        una carpeta de Drive antes de asignarle contenido.
+        {t('titleTodaviaNoTieneModulosCrealosEnLa', '«{{title}}» todavía no tiene módulos. Créalos en la pestaña Cursos o importando una carpeta de Drive antes de asignarle contenido.', { title: workCourse.title })}
       </span>
     </div>
   );
@@ -846,32 +845,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const animClass = uiVersion === 'v0.4-classic' ? '' : 'animate-fade-in';
   const modernContextActions: Array<{ label: string; target: SubTab }> = activeTab === 'courses'
     ? [
-      { label: 'Catálogo y contenido', target: 'courses' },
-      { label: 'Recursos', target: 'resources' },
+      { label: t('catalogoYContenido', 'Catálogo y contenido'), target: 'courses' },
+      { label: t('recursos', 'Recursos'), target: 'resources' },
     ]
     : ['users', 'enrollments'].includes(activeTab)
       ? [
-        { label: 'Directorio', target: 'users' },
-        { label: 'Matrículas', target: 'enrollments' },
+        { label: t('directorio', 'Directorio'), target: 'users' },
+        { label: t('matriculas', 'Matrículas'), target: 'enrollments' },
       ]
       : ['resources', 'drive', 'tts'].includes(activeTab)
         ? [
-          { label: 'Materiales', target: 'resources' },
-          { label: 'Google Drive', target: 'drive' },
-          { label: 'Audio TTS', target: 'tts' },
+          { label: t('materiales', 'Materiales'), target: 'resources' },
+          { label: t('googleDrive', 'Google Drive'), target: 'drive' },
+          { label: t('audioTts', 'Audio TTS'), target: 'tts' },
         ]
         : ['certificates', 'contracts'].includes(activeTab)
           ? [
-            { label: 'Certificados', target: 'certificates' },
-            { label: 'Contratos', target: 'contracts' },
+            { label: t('certificados', 'Certificados'), target: 'certificates' },
+            { label: t('contratos', 'Contratos'), target: 'contracts' },
           ]
           : ['landing', 'listening'].includes(activeTab)
             ? [
-              { label: 'Portada', target: 'landing' },
-              { label: 'Escucha', target: 'listening' },
+              { label: t('portada', 'Portada'), target: 'landing' },
+              { label: t('escucha', 'Escucha'), target: 'listening' },
             ]
             : activeTab === 'plugins'
-              ? [{ label: 'Plugins y configuración', target: 'plugins' }]
+              ? [{ label: t('pluginsYConfiguracion', 'Plugins y configuración'), target: 'plugins' }]
               : [];
 
   return (
@@ -884,7 +883,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="w-12 h-12 rounded-xl bg-black/40 border border-line flex items-center justify-center p-1.5 shrink-0 relative overflow-visible shadow-inner">
               <img
                 src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
-                alt="Logo"
+                alt={t('logo', 'Logo')}
                 className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
@@ -895,13 +894,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider">
                 <Shield className="w-3.5 h-3.5" />
-                <span>PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC</span>
+                <span>{t('panelDeMentoriaAdministracionRbac', 'PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC')}</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Control Center`}
+                {customizerConfig.customCampusName || t('customBrandNameControlCenter', '{{customBrandName}} Control Center', { customBrandName: customizerConfig.customBrandName || 'DocentOS' })}
               </h1>
               <p className="text-ink-muted text-xs mt-1 max-w-md leading-relaxed">
-                Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
+                {t('gestionDePermisosDeUsuariosAsignacionDe', 'Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.')}
               </p>
             </div>
           </div>
@@ -911,12 +910,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {/* Fila 1 */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {[
-                { id: 'users' as SubTab, label: 'Usuarios', icon: Users, iconColor: 'text-white/70' },
-                { id: 'courses' as SubTab, label: 'Cursos', icon: BookOpen, iconColor: 'text-cyan-400' },
-                { id: 'enrollments' as SubTab, label: 'Matrículas', icon: GraduationCap, iconColor: 'text-emerald-400' },
-                { id: 'certificates' as SubTab, label: 'Certificados', icon: Award, iconColor: 'text-amber-400' },
-                { id: 'contracts' as SubTab, label: 'Contratos', icon: FileCheck, iconColor: 'text-blue-400' },
-                { id: 'resources' as SubTab, label: 'Recursos', icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'users' as SubTab, label: t('usuarios', 'Usuarios'), icon: Users, iconColor: 'text-white/70' },
+                { id: 'courses' as SubTab, label: t('cursosCapital', 'Cursos'), icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'enrollments' as SubTab, label: t('matriculas', 'Matrículas'), icon: GraduationCap, iconColor: 'text-emerald-400' },
+                { id: 'certificates' as SubTab, label: t('certificados', 'Certificados'), icon: Award, iconColor: 'text-amber-400' },
+                { id: 'contracts' as SubTab, label: t('contratos', 'Contratos'), icon: FileCheck, iconColor: 'text-blue-400' },
+                { id: 'resources' as SubTab, label: t('recursos', 'Recursos'), icon: BookOpen, iconColor: 'text-cyan-400' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -941,11 +940,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {/* Fila 2 */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {[
-                { id: 'drive' as SubTab, label: 'Videos Drive', icon: HardDrive, iconColor: 'text-white/70' },
-                { id: 'tts' as SubTab, label: 'Guías TTS', icon: Sparkles, iconColor: 'text-amber-300' },
-                { id: 'plugins' as SubTab, label: 'Plugins', icon: Layers, iconColor: 'text-cyan-400' },
-                { id: 'landing' as SubTab, label: 'Portada', icon: Sliders, iconColor: 'text-cyan-400' },
-                { id: 'listening' as SubTab, label: 'Escucha', icon: HeartHandshake, iconColor: 'text-cyan-400' },
+                { id: 'drive' as SubTab, label: t('videosDrive', 'Videos Drive'), icon: HardDrive, iconColor: 'text-white/70' },
+                { id: 'tts' as SubTab, label: t('guiasTts', 'Guías TTS'), icon: Sparkles, iconColor: 'text-amber-300' },
+                { id: 'plugins' as SubTab, label: t('plugins', 'Plugins'), icon: Layers, iconColor: 'text-cyan-400' },
+                { id: 'landing' as SubTab, label: t('portada', 'Portada'), icon: Sliders, iconColor: 'text-cyan-400' },
+                { id: 'listening' as SubTab, label: t('escucha', 'Escucha'), icon: HeartHandshake, iconColor: 'text-cyan-400' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -990,7 +989,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <span>{t('admin.badge', 'Panel de Control & Administración Global RBAC')}</span>
                 </div>
                 <h2 className="text-2xl font-extrabold text-ink tracking-tight">
-                  {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Command Center`}
+                  {customizerConfig.customCampusName || t('customBrandNameCommandCenter', '{{customBrandName}} Command Center', { customBrandName: customizerConfig.customBrandName || 'DocentOS' })}
                 </h2>
                 <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
                   {t('admin.desc', 'Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.')}
@@ -1012,7 +1011,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* Navegación única de DocentOS 0.5 Moderna */}
           <nav
-            aria-label="Módulos de administración"
+            aria-label={t('modulosDeAdministracion', 'Módulos de administración')}
             className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl"
           >
             {MODERN_ADMIN_MODULES.map((module) => {
@@ -1060,8 +1059,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           </nav>
 
           {modernContextActions.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-1" aria-label="Acciones del módulo actual">
-              <span className="text-xs font-medium text-ink-muted shrink-0">En este módulo</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-1" aria-label={t('accionesDelModuloActual', 'Acciones del módulo actual')}>
+              <span className="text-xs font-medium text-ink-muted shrink-0">{t('enEsteModulo', 'En este módulo')}</span>
               <div className="flex flex-wrap gap-1.5">
                 {modernContextActions.map((action) => (
                   <button
@@ -1109,7 +1108,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <BookOpen className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              {allCourses.length} cursos
+              {t('lengthCursos', '{{length}} cursos', { length: allCourses.length })}
             </span>
           </div>
           <div>
@@ -1139,7 +1138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <Users className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              {users.length} usuarios • {enrollments.length} matrículas
+              {t('lengthUsuariosLength2Matriculas', '{{length}} usuarios • {{length2}} matrículas', { length: users.length, length2: enrollments.length })}
             </span>
           </div>
           <div>
@@ -1171,7 +1170,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <Award className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              {certificates.length} diplomas
+              {t('lengthDiplomas', '{{length}} diplomas', { length: certificates.length })}
             </span>
           </div>
           <div>
@@ -1203,7 +1202,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <Sliders className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              Configuración
+              {t('configuracion', 'Configuración')}
             </span>
           </div>
           <div>
@@ -1359,19 +1358,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         <section className={`space-y-6 ${animClass}`} aria-labelledby="admin-overview-title">
           <div className="flex flex-col gap-2">
             <h1 id="admin-overview-title" className="text-2xl sm:text-3xl font-semibold text-ink tracking-tight">
-              Estado general
+              {t('estadoGeneral', 'Estado general')}
             </h1>
             <p className="max-w-2xl text-sm text-ink-muted">
-              Un punto de entrada para revisar el sistema y continuar con la tarea que necesita atención.
+              {t('unPuntoDeEntradaParaRevisarElSistemaY', 'Un punto de entrada para revisar el sistema y continuar con la tarea que necesita atención.')}
             </p>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Cursos', value: allCourses.length, target: 'courses' as SubTab },
-              { label: 'Personas', value: users.length, target: 'users' as SubTab },
-              { label: 'Matrículas', value: enrollments.length, target: 'enrollments' as SubTab },
-              { label: 'Certificados', value: certificates.length, target: 'certificates' as SubTab },
+              { label: t('cursosCapital', 'Cursos'), value: allCourses.length, target: 'courses' as SubTab },
+              { label: t('personas', 'Personas'), value: users.length, target: 'users' as SubTab },
+              { label: t('matriculas', 'Matrículas'), value: enrollments.length, target: 'enrollments' as SubTab },
+              { label: t('certificados', 'Certificados'), value: certificates.length, target: 'certificates' as SubTab },
             ].map((stat) => (
               <button
                 key={stat.label}
@@ -1381,7 +1380,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               >
                 <span className="block text-xs text-ink-muted">{stat.label}</span>
                 <span className="block mt-2 text-2xl font-semibold text-ink tabular-nums">{stat.value}</span>
-                <span className="block mt-1 text-[11px] text-brand-cyan">Abrir módulo</span>
+                <span className="block mt-1 text-[11px] text-brand-cyan">{t('abrirModulo', 'Abrir módulo')}</span>
               </button>
             ))}
           </div>
@@ -1390,8 +1389,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="bg-raised border border-line rounded-xl p-5">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="text-base font-semibold text-ink">Entradas principales</h2>
-                  <p className="mt-1 text-xs text-ink-muted">Accede directamente a las áreas de trabajo.</p>
+                  <h2 className="text-base font-semibold text-ink">{t('entradasPrincipales', 'Entradas principales')}</h2>
+                  <p className="mt-1 text-xs text-ink-muted">{t('accedeDirectamenteALasAreasDeTrabajo', 'Accede directamente a las áreas de trabajo.')}</p>
                 </div>
                 <LayoutDashboard className="w-5 h-5 text-brand-cyan" aria-hidden />
               </div>
@@ -1414,16 +1413,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
 
             <div className="bg-raised border border-line rounded-xl p-5">
-              <h2 className="text-base font-semibold text-ink">Siguiente paso</h2>
+              <h2 className="text-base font-semibold text-ink">{t('siguientePaso', 'Siguiente paso')}</h2>
               <p className="mt-1 text-xs text-ink-muted">
-                Selecciona un módulo para trabajar con su contexto y herramientas específicas.
+                {t('seleccionaUnModuloParaTrabajarConSu', 'Selecciona un módulo para trabajar con su contexto y herramientas específicas.')}
               </p>
               <button
                 type="button"
                 onClick={() => selectTab('courses')}
                 className="mt-5 w-full min-h-11 px-4 rounded-lg btn-brand-primary text-sm font-semibold"
               >
-                Abrir cursos
+                {t('abrirCursos', 'Abrir cursos')}
               </button>
             </div>
           </div>
@@ -1448,14 +1447,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <Users className="w-5 h-5 text-brand-cyan" />
                 <span>
                   {userSectionView === 'directory'
-                    ? 'Directorio de Usuarios y Roles RBAC'
-                    : 'Registro Histórico de Matrículas'}
+                    ? t('directorioDeUsuariosYRolesRbac', 'Directorio de Usuarios y Roles RBAC')
+                    : t('registroHistoricoDeMatriculas', 'Registro Histórico de Matrículas')}
                 </span>
               </h2>
               <p className="text-xs text-ink-muted mt-1">
                 {userSectionView === 'directory'
-                  ? 'Control de acceso RBAC, moderación disciplinaria y asignación de permisos.'
-                  : 'Auditoría, control de estados de admisión y activación o revocación de matrículas.'}
+                  ? t('controlDeAccesoRbacModeracion', 'Control de acceso RBAC, moderación disciplinaria y asignación de permisos.')
+                  : t('auditoriaControlDeEstadosDeAdmisionY', 'Auditoría, control de estados de admisión y activación o revocación de matrículas.')}
               </p>
             </div>
 
@@ -1466,7 +1465,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 className="btn-brand-primary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-md"
               >
                 <Plus className="w-4 h-4" />
-                <span>{showQuickEnroll ? 'Ocultar Formulario' : 'Nueva Matrícula'}</span>
+                <span>{showQuickEnroll ? t('ocultarFormulario', 'Ocultar Formulario') : t('nuevaMatricula', 'Nueva Matrícula')}</span>
               </button>
 
               <button
@@ -1477,10 +1476,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }}
                 disabled={loadingUsers || loadingEnrollments}
                 className="p-2 rounded-xl bg-surface hover:bg-elevated border border-line text-ink-soft hover:text-white transition-all text-xs flex items-center gap-1.5"
-                title="Actualizar directorio y matrículas"
+                title={t('actualizarDirectorioYMatriculas', 'Actualizar directorio y matrículas')}
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers || loadingEnrollments ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Actualizar</span>
+                <span className="hidden sm:inline">{t('actualizar', 'Actualizar')}</span>
               </button>
             </div>
           </div>
@@ -1492,7 +1491,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <div className="flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-emerald-400" />
                   <h3 className="text-sm font-extrabold text-white">
-                    Matricular Usuario en Curso
+                    {t('matricularUsuarioEnCurso', 'Matricular Usuario en Curso')}
                   </h3>
                 </div>
                 {userSectionView !== 'enrollments' && (
@@ -1501,13 +1500,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     onClick={() => setShowQuickEnroll(false)}
                     className="text-xs text-ink-muted hover:text-white px-2 py-1 rounded-lg hover:bg-elevated transition-colors"
                   >
-                    ✕ Cerrar
+                    {t('cerrarConX', '✕ Cerrar')}
                   </button>
                 )}
               </div>
 
               <p className="text-xs text-ink-muted">
-                Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).
+                {t('asignaOActualizaLaMatriculaDeUnUsuario', 'Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).')}
               </p>
 
               {enrollSuccessMsg && (
@@ -1518,14 +1517,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
               <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
                 <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Usuario</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('usuario', 'Usuario')}</label>
                   <select
                     value={newEnrollUserId}
                     onChange={(e) => setNewEnrollUserId(e.target.value)}
                     className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                     required
                   >
-                    <option value="">Selecciona usuario...</option>
+                    <option value="">{t('seleccionaUsuario', 'Selecciona usuario...')}</option>
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.email}) [{u.role}]
@@ -1535,51 +1534,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Curso</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('cursoCapital', 'Curso')}</label>
                   <select
                     value={newEnrollCourseId}
                     onChange={(e) => setNewEnrollCourseId(e.target.value)}
                     className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                     required
                   >
-                    <option value="">Selecciona curso...</option>
+                    <option value="">{t('seleccionaCurso', 'Selecciona curso...')}</option>
                     {allCourses.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.title}{item.published === false ? ' (borrador)' : ''}
+                        {item.title}{item.published === false ? t('borrador2', ' (borrador)') : ''}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Estado</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('estado', 'Estado')}</label>
                   <select
                     value={newEnrollStatus}
                     onChange={(e) => setNewEnrollStatus(e.target.value as any)}
                     className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                   >
-                    <option value="ACTIVE">ACTIVE (Activa)</option>
-                    <option value="COMPLETED">COMPLETED (Graduado)</option>
-                    <option value="REVOKED">REVOKED (Revocada)</option>
-                    <option value="EXPIRED">EXPIRED (Expirada)</option>
+                    <option value="ACTIVE">{t('activeActiva', 'ACTIVE (Activa)')}</option>
+                    <option value="COMPLETED">{t('completedGraduado', 'COMPLETED (Graduado)')}</option>
+                    <option value="REVOKED">{t('revokedRevocada', 'REVOKED (Revocada)')}</option>
+                    <option value="EXPIRED">{t('expiredExpirada', 'EXPIRED (Expirada)')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Origen</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('origen', 'Origen')}</label>
                   <select
                     value={newEnrollSource}
                     onChange={(e) => setNewEnrollSource(e.target.value as any)}
                     className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
                   >
-                    <option value="ADMIN">ADMIN (Asignación Directa)</option>
-                    <option value="PAYMENT">PAYMENT (Pago)</option>
-                    <option value="MENTORSHIP">MENTORSHIP (Mentoría)</option>
+                    <option value="ADMIN">{t('adminAsignacionDirecta', 'ADMIN (Asignación Directa)')}</option>
+                    <option value="PAYMENT">{t('paymentPago', 'PAYMENT (Pago)')}</option>
+                    <option value="MENTORSHIP">{t('mentorshipMentoria', 'MENTORSHIP (Mentoría)')}</option>
                   </select>
                 </div>
 
                 <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
-                  <Plus className="w-4 h-4" /> Matricular
+                  <Plus className="w-4 h-4" /> {t('matricular', 'Matricular')}
                 </button>
               </form>
             </div>
@@ -1595,11 +1594,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <div>
                       <h3 className="font-extrabold text-base text-white flex items-center gap-2">
                         <Crown className="w-5 h-5 text-[#eab308]" />
-                        Monetización y Precio del Programa de Mentoría
+                        {t('monetizacionYPrecioDelProgramaDeMentoria', 'Monetización y Precio del Programa de Mentoría')}
                       </h3>
                       <p className="text-xs text-ink-muted">
-                        Precio público de <span className="font-bold text-ink">«{course?.title}»</span>.
-                        Deja en 0 para que sea completamente público y gratuito.
+                        <Trans
+                          i18nKey="precioPublicoDeCurso"
+                          defaults="Precio público de <1>«{{title}}»</1>. Deja en 0 para que sea completamente público y gratuito."
+                          values={{ title: course?.title ?? '' }}
+                          components={{ 1: <span className="font-bold text-ink" /> }}
+                        />
                       </p>
                     </div>
                     {priceSuccessMsg && (
@@ -1618,10 +1621,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         step="1"
                         value={coursePrice}
                         onChange={(e) => setCoursePrice(Number(e.target.value))}
-                        placeholder="Ej. 49"
+                        placeholder={t('ej49', 'Ej. 49')}
                         className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
                       />
-                      <span className="text-ink-muted text-xs uppercase font-bold">USD</span>
+                      <span className="text-ink-muted text-xs uppercase font-bold">{t('usd', 'USD')}</span>
                     </div>
 
                     <button
@@ -1630,7 +1633,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
                     >
                       {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
-                      <span>Guardar Precio del Curso</span>
+                      <span>{t('guardarPrecioDelCurso', 'Guardar Precio del Curso')}</span>
                     </button>
                   </div>
                 </div>
@@ -1640,7 +1643,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-3">
                   <h3 className="font-bold text-base text-white flex items-center gap-2">
                     <Users className="w-5 h-5 text-[#06b6d4]" />
-                    <span>Directorio de Usuarios y Moderación</span>
+                    <span>{t('directorioDeUsuariosYModeracion', 'Directorio de Usuarios y Moderación')}</span>
                   </h3>
 
                   {/* Filtro por Rol y Búsqueda */}
@@ -1649,7 +1652,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5" />
                       <input
                         type="text"
-                        placeholder="Buscar por nombre o email..."
+                        placeholder={t('buscarPorNombreOEmail', 'Buscar por nombre o email...')}
                         value={userSearchText}
                         onChange={(e) => setUserSearchText(e.target.value)}
                         className="w-full bg-surface border border-line text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
@@ -1660,13 +1663,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       onChange={(e) => setUserRoleFilter(e.target.value)}
                       className="bg-surface border border-line text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
                     >
-                      <option value="ALL">Todos los roles</option>
-                      <option value="ADMIN">Administradores</option>
-                      <option value="MENTOR">Mentores</option>
-                      <option value="MENTEE">Mentees</option>
-                      <option value="PUBLIC_USER">Estudiantes</option>
-                      <option value="VIP">Estudiantes (VIP)</option>
-                      <option value="EXTERNAL">Invitados</option>
+                      <option value="ALL">{t('todosLosRoles', 'Todos los roles')}</option>
+                      <option value="ADMIN">{t('administradores', 'Administradores')}</option>
+                      <option value="MENTOR">{t('mentores', 'Mentores')}</option>
+                      <option value="MENTEE">{t('mentees', 'Mentees')}</option>
+                      <option value="PUBLIC_USER">{t('estudiantes', 'Estudiantes')}</option>
+                      <option value="VIP">{t('estudiantesVip', 'Estudiantes (VIP)')}</option>
+                      <option value="EXTERNAL">{t('invitados', 'Invitados')}</option>
                     </select>
                   </div>
                 </div>
@@ -1685,12 +1688,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
                     <thead className="bg-surface text-ink-muted uppercase font-semibold text-[11px] border-b border-line">
                       <tr>
-                        <th className="p-3.5">Usuario</th>
-                        <th className="p-3.5">Email</th>
-                        <th className="p-3.5">Rol Actual</th>
-                        <th className="p-3.5">Matrículas</th>
-                        <th className="p-3.5">Strikes & Estado</th>
-                        <th className="p-3.5 text-right">Moderación & Roles</th>
+                        <th className="p-3.5">{t('usuario', 'Usuario')}</th>
+                        <th className="p-3.5">{t('email', 'Email')}</th>
+                        <th className="p-3.5">{t('rolActual', 'Rol Actual')}</th>
+                        <th className="p-3.5">{t('matriculas', 'Matrículas')}</th>
+                        <th className="p-3.5">{t('strikesEstado', 'Strikes & Estado')}</th>
+                        <th className="p-3.5 text-right">{t('moderacionRoles', 'Moderación & Roles')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#2d2d44]">
@@ -1721,7 +1724,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 <div>
                                   <span className="font-semibold text-white block">{u.name}</span>
                                   {!isActive && (
-                                    <span className="text-[10px] text-red-400 font-bold uppercase">Cuenta Suspendida</span>
+                                    <span className="text-[10px] text-red-400 font-bold uppercase">{t('cuentaSuspendida', 'Cuenta Suspendida')}</span>
                                   )}
                                 </div>
                               </td>
@@ -1729,32 +1732,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                               <td className="p-3.5">
                                 {u.role === 'ADMIN' && (
                                   <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <Shield aria-hidden className="w-3 h-3" /> ADMINISTRADOR
+                                    <Shield aria-hidden className="w-3 h-3" /> {t('administrador', 'ADMINISTRADOR')}
                                   </span>
                                 )}
                                 {u.role === 'MENTOR' && (
                                   <span className="bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <UserCheck aria-hidden className="w-3 h-3" /> MENTOR
+                                    <UserCheck aria-hidden className="w-3 h-3" /> {t('mentor', 'MENTOR')}
                                   </span>
                                 )}
                                 {u.role === 'MENTEE' && (
                                   <span className="bg-success/20 text-success border border-success/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <GraduationCap aria-hidden className="w-3 h-3" /> MENTEE
+                                    <GraduationCap aria-hidden className="w-3 h-3" /> {t('menteeMayus', 'MENTEE')}
                                   </span>
                                 )}
                                 {u.role === 'PUBLIC_USER' && (
                                   <span className="bg-elevated text-ink-soft border border-line font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
-                                    <BookOpen aria-hidden className="w-3 h-3" /> ESTUDIANTE
+                                    <BookOpen aria-hidden className="w-3 h-3" /> {t('estudianteMayus', 'ESTUDIANTE')}
                                   </span>
                                 )}
                                 {u.role === 'VIP' && (
                                   <span className="bg-warning/20 text-warning border border-warning/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <Crown aria-hidden className="w-3 h-3" /> ESTUDIANTE (VIP)
+                                    <Crown aria-hidden className="w-3 h-3" /> {t('estudianteVip', 'ESTUDIANTE (VIP)')}
                                   </span>
                                 )}
                                 {u.role === 'EXTERNAL' && (
                                   <span className="bg-elevated border border-line text-ink-muted font-medium px-2.5 py-1 rounded-lg text-[10px]">
-                                    INVITADO
+                                    {t('invitado', 'INVITADO')}
                                   </span>
                                 )}
                               </td>
@@ -1769,7 +1772,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                         : 'bg-slate-800 text-ink-muted border-slate-700'
                                     }`}
                                   >
-                                    {userEnrs.length} {userEnrs.length === 1 ? 'curso' : 'cursos'}
+                                    {t('userCursosCount', { count: userEnrs.length, defaultValue_one: '{{count}} curso', defaultValue_other: '{{count}} cursos' })}
                                   </span>
                                   <button
                                     type="button"
@@ -1778,19 +1781,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                       setShowQuickEnroll(true);
                                     }}
                                     className="px-2 py-0.5 rounded bg-surface hover:bg-elevated border border-line hover:border-brand-cyan text-brand-cyan text-[10px] font-bold transition-all"
-                                    title={`Matricular a ${u.name}`}
+                                    title={t('matricularAName', 'Matricular a {{name}}', { name: u.name })}
                                   >
-                                    + Matricular
+                                    {t('matricular2', '+ Matricular')}
                                   </button>
                                   {u.role === 'MENTOR' && (
                                     <button
                                       type="button"
                                       onClick={() => handleOpenMentorCourses(u)}
                                       className="px-2 py-0.5 rounded bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm"
-                                      title={`Gestionar cursos a cargo de ${u.name}`}
+                                      title={t('gestionarCursosACargoDeName', 'Gestionar cursos a cargo de {{name}}', { name: u.name })}
                                     >
                                       <BookOpen className="w-3 h-3" />
-                                      <span>Cursos a Cargo</span>
+                                      <span>{t('cursosACargo', 'Cursos a Cargo')}</span>
                                     </button>
                                   )}
                                 </div>
@@ -1800,11 +1803,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 <div className="flex items-center gap-2">
                                   <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-ink-muted border-slate-700'
                                     }`}>
-                                    ⚠️ {strikes} Strikes
+                                    {t('strikesStrikes', '⚠️ {{strikes}} Strikes', { strikes })}
                                   </span>
                                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
                                     }`}>
-                                    {isActive ? 'Activo' : 'Suspendido'}
+                                    {isActive ? t('activo2', 'Activo') : t('suspendido', 'Suspendido')}
                                   </span>
                                 </div>
                               </td>
@@ -1812,10 +1815,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 {/* Moderation actions */}
                                 <button
                                   onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'add_strike')}
-                                  title="Dar Strike de Moderación"
+                                  title={t('darStrikeDeModeracion', 'Dar Strike de Moderación')}
                                   className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
                                 >
-                                  +1 Strike
+                                  {t('1Strike', '+1 Strike')}
                                 </button>
                                 <button
                                   onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
@@ -1825,23 +1828,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                       : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400'
                                     }`}
                                 >
-                                  {isActive ? 'Suspender' : 'Activar'}
+                                  {isActive ? t('suspender', 'Suspender') : t('activar', 'Activar')}
                                 </button>
 
                                 {/* Selector de Rol Dinámico */}
                                 <select
                                   value={u.role}
                                   onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
-                                  aria-label="Asignar rol al usuario"
+                                  aria-label={t('asignarRolAlUsuario', 'Asignar rol al usuario')}
                                   className="bg-canvas border border-line hover:border-brand-cyan/50 text-white rounded-lg px-2.5 py-1 text-micro font-bold focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-canvas transition-all cursor-pointer inline-block align-middle"
-                                  title="Asignar Rol al Usuario"
+                                  title={t('asignarRolAlUsuario2', 'Asignar Rol al Usuario')}
                                 >
-                                  <option value="ADMIN">Administrador</option>
-                                  <option value="MENTOR">Mentor</option>
-                                  <option value="MENTEE">Mentee</option>
-                                  <option value="PUBLIC_USER">Estudiante</option>
-                                  <option value="VIP">Estudiante (Pase VIP)</option>
-                                  <option value="EXTERNAL">Invitado</option>
+                                  <option value="ADMIN">{t('administrador2', 'Administrador')}</option>
+                                  <option value="MENTOR">{t('mentorSinDosPuntos', 'Mentor')}</option>
+                                  <option value="MENTEE">{t('mentee2', 'Mentee')}</option>
+                                  <option value="PUBLIC_USER">{t('estudiante2', 'Estudiante')}</option>
+                                  <option value="VIP">{t('estudiantePaseVip', 'Estudiante (Pase VIP)')}</option>
+                                  <option value="EXTERNAL">{t('invitado2', 'Invitado')}</option>
                                 </select>
                               </td>
                             </tr>
@@ -1860,7 +1863,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-3">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-emerald-400" />
-                  <span>Matrículas Registradas ({enrollments.length})</span>
+                  <span>{t('matriculasRegistradasLength', 'Matrículas Registradas ({{length}})', { length: enrollments.length })}</span>
                 </h3>
 
                 {/* Filtros de Matrículas */}
@@ -1869,7 +1872,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5" />
                     <input
                       type="text"
-                      placeholder="Buscar estudiante o curso..."
+                      placeholder={t('buscarEstudianteOCurso', 'Buscar estudiante o curso...')}
                       value={enrollmentSearchText}
                       onChange={(e) => setEnrollmentSearchText(e.target.value)}
                       className="w-full bg-surface border border-line text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
@@ -1880,11 +1883,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     onChange={(e) => setEnrollmentStatusFilter(e.target.value)}
                     className="bg-surface border border-line text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
                   >
-                    <option value="ALL">Todos los estados</option>
-                    <option value="ACTIVE">ACTIVE (Activas)</option>
-                    <option value="COMPLETED">COMPLETED (Graduados)</option>
-                    <option value="REVOKED">REVOKED (Revocadas)</option>
-                    <option value="EXPIRED">EXPIRED (Expiradas)</option>
+                    <option value="ALL">{t('todosLosEstados', 'Todos los estados')}</option>
+                    <option value="ACTIVE">{t('activeActivas', 'ACTIVE (Activas)')}</option>
+                    <option value="COMPLETED">{t('completedGraduados', 'COMPLETED (Graduados)')}</option>
+                    <option value="REVOKED">{t('revokedRevocadas', 'REVOKED (Revocadas)')}</option>
+                    <option value="EXPIRED">{t('expiredExpiradas', 'EXPIRED (Expiradas)')}</option>
                   </select>
                 </div>
               </div>
@@ -1893,12 +1896,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
                   <thead className="bg-surface text-ink-muted uppercase font-mono text-[10px] border-b border-line">
                     <tr>
-                      <th className="py-3 px-4">Estudiante</th>
-                      <th className="py-3 px-4">Curso</th>
-                      <th className="py-3 px-4">Estado</th>
-                      <th className="py-3 px-4">Origen</th>
-                      <th className="py-3 px-4">Fecha</th>
-                      <th className="py-3 px-4 text-right">Acciones</th>
+                      <th className="py-3 px-4">{t('estudiante2', 'Estudiante')}</th>
+                      <th className="py-3 px-4">{t('cursoCapital', 'Curso')}</th>
+                      <th className="py-3 px-4">{t('estado', 'Estado')}</th>
+                      <th className="py-3 px-4">{t('origen', 'Origen')}</th>
+                      <th className="py-3 px-4">{t('fecha', 'Fecha')}</th>
+                      <th className="py-3 px-4 text-right">{t('acciones', 'Acciones')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#2d2d44]/50">
@@ -1945,7 +1948,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 onClick={() => handleUpdateEnrollmentStatus(enr.id, 'ACTIVE')}
                                 className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-bold"
                               >
-                                Activar
+                                {t('activar', 'Activar')}
                               </button>
                             )}
                             {enr.status !== 'REVOKED' && (
@@ -1953,7 +1956,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 onClick={() => handleUpdateEnrollmentStatus(enr.id, 'REVOKED')}
                                 className="px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-[10px] font-bold"
                               >
-                                Revocar
+                                {t('revocar', 'Revocar')}
                               </button>
                             )}
                           </td>
@@ -1962,7 +1965,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     {enrollments.length === 0 && (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-ink-muted">
-                          No hay matrículas registradas aún.
+                          {t('noHayMatriculasRegistradasAun', 'No hay matrículas registradas aún.')}
                         </td>
                       </tr>
                     )}
@@ -1996,7 +1999,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                <span>Materiales y Archivos Descargables ({workResources.length})</span>
+                <span>{t('materialesYArchivosDescargablesLength', 'Materiales y Archivos Descargables ({{length}})', { length: workResources.length })}</span>
               </button>
 
               <button
@@ -2012,7 +2015,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <HardDrive className="w-4 h-4" />
-                <span>Videos de Google Drive</span>
+                <span>{t('videosDeGoogleDrive', 'Videos de Google Drive')}</span>
               </button>
 
               <button
@@ -2028,7 +2031,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Guías de Audio TTS con IA</span>
+                <span>{t('guiasDeAudioTtsConIa', 'Guías de Audio TTS con IA')}</span>
               </button>
             </div>
           )}
@@ -2039,12 +2042,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-cyan-400" />
-                  <span>Agregar Recurso Descargable Protegido</span>
+                  <span>{t('agregarRecursoDescargableProtegido', 'Agregar Recurso Descargable Protegido')}</span>
                 </h3>
                 <p className="text-xs text-ink-muted">
-                  Material complementario (guías, PDF, repositorios o archivos ZIP) para
-                  «{workCourse.title}». La URL privada queda protegida y sólo será accesible mediante
-                  token de sesión autorizado.
+                  {t('materialComplementarioGuiasPdf', 'Material complementario (guías, PDF, repositorios o archivos ZIP) para «{{title}}». La URL privada queda protegida y sólo será accesible mediante token de sesión autorizado.', { title: workCourse.title })}
                 </p>
 
                 {resSuccessMsg && (
@@ -2061,10 +2062,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
                 <form onSubmit={handleAddResource} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Título del Recurso</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('tituloDelRecurso', 'Título del Recurso')}</label>
                     <input
                       type="text"
-                      placeholder="Ej. Guía de Arquitectura.pdf"
+                      placeholder={t('ejGuiaDeArquitecturapdf', 'Ej. Guía de Arquitectura.pdf')}
                       value={resTitle}
                       onChange={(e) => setResTitle(e.target.value)}
                       className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -2073,7 +2074,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">URL Privada / Archivo</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('urlPrivadaArchivo', 'URL Privada / Archivo')}</label>
                     <input
                       type="url"
                       placeholder="https://drive.google.com/..."
@@ -2085,13 +2086,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Asignar a Módulo</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('asignarAModulo', 'Asignar a Módulo')}</label>
                     <select
                       value={resModuleId}
                       onChange={(e) => setResModuleId(e.target.value)}
                       className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                     >
-                      <option value="">General del Curso</option>
+                      <option value="">{t('generalDelCurso', 'General del Curso')}</option>
                       {workModules.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.title}
@@ -2101,7 +2102,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
 
                   <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
-                    <Plus className="w-4 h-4" /> Agregar Recurso
+                    <Plus className="w-4 h-4" /> {t('agregarRecurso', 'Agregar Recurso')}
                   </button>
                 </form>
               </div>
@@ -2110,7 +2111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
                 <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#06b6d4]" />
-                  <span>Recursos de «{workCourse.title}» ({workResources.length})</span>
+                  <span>{t('recursosDeTitleLength', 'Recursos de «{{title}}» ({{length}})', { title: workCourse.title, length: workResources.length })}</span>
                 </h3>
 
                 <div className="space-y-2 max-h-[32rem] overflow-y-auto">
@@ -2122,7 +2123,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-white truncate">{resource.title}</p>
                             <span className="text-[10px] text-ink-muted font-mono truncate block">
-                              {moduleTitle || 'General del Curso'} • {resource.kind} • {resource.downloadUrl}
+                              {moduleTitle || t('generalDelCurso', 'General del Curso')} • {resource.kind} • {resource.downloadUrl}
                             </span>
                           </div>
                         </div>
@@ -2135,7 +2136,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-ink-muted py-4 text-center">Este curso todavía no tiene recursos.</p>
+                    <p className="text-xs text-ink-muted py-4 text-center">{t('esteCursoTodaviaNoTieneRecursos', 'Este curso todavía no tiene recursos.')}</p>
                   )}
                 </div>
               </div>
@@ -2149,22 +2150,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div>
                 <h3 className="font-bold text-base text-white flex items-center gap-2">
                   <HardDrive className="w-5 h-5 text-[#06b6d4]" />
-                  Enlazar Contenido de Google Drive al Temario
+                  {t('enlazarContenidoDeGoogleDriveAlTemario', 'Enlazar Contenido de Google Drive al Temario')}
                 </h3>
                 <p className="text-xs text-ink-muted mt-0.5">
-                  Elige el módulo de «{workCourse.title}» y asóciale videos alojados en Google Drive.
+                  {t('eligeElModuloDeTitleYAsocialeVideos', 'Elige el módulo de «{{title}}» y asóciale videos alojados en Google Drive.', { title: workCourse.title })}
                 </p>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <label className="text-xs text-ink-muted font-semibold shrink-0">Módulo Destino:</label>
+                <label className="text-xs text-ink-muted font-semibold shrink-0">{t('moduloDestino', 'Módulo Destino:')}</label>
                 <select
                   value={selectedModuleId}
                   onChange={(e) => setSelectedModuleId(e.target.value)}
                   disabled={workModules.length === 0}
                   className="bg-surface border border-line text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
                 >
-                  {workModules.length === 0 && <option value="">Sin módulos</option>}
+                  {workModules.length === 0 && <option value="">{t('sinModulos', 'Sin módulos')}</option>}
                   {workModules.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
@@ -2194,23 +2195,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {driveIsDemo ? (
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 space-y-1.5">
                 <p className="font-bold flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Google Drive no está conectado: esto es un catálogo de demostración
+                  <AlertTriangle className="w-4 h-4" /> {t('googleDriveNoEstaConectadoEstoEsUn', 'Google Drive no está conectado: esto es un catálogo de demostración')}
                 </p>
                 <p className="text-amber-200/80 leading-relaxed">
-                  Los videos de abajo son ejemplos y sus identificadores no existen; si los enlazas, el
+                  <Trans i18nKey="losVideosDeAbajoSonEjemplosYSus">Los videos de abajo son ejemplos y sus identificadores no existen; si los enlazas, el
                   reproductor saldrá vacío. Para ver los archivos reales de tu cuenta, configura en el
                   servidor <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
                   <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code> (cuenta de servicio) o{' '}
                   <code className="font-mono">GOOGLE_DRIVE_API_KEY</code>, más{' '}
                   <code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code> con la carpeta a listar, y
-                  comparte esa carpeta con la cuenta de servicio. Mientras tanto, usa el alta por enlace.
+                  comparte esa carpeta con la cuenta de servicio. Mientras tanto, usa el alta por enlace.</Trans>
                 </p>
               </div>
             ) : (
               <p className="text-[11px] text-ink-muted">
-                Listando los videos de la carpeta de Drive configurada en el servidor
+                <Trans i18nKey="listandoLosVideosDeLaCarpetaDeDrive">Listando los videos de la carpeta de Drive configurada en el servidor
                 (<code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code>). Si el video vive en otra
-                carpeta, añádelo por enlace.
+                carpeta, añádelo por enlace.</Trans>
               </p>
             )}
 
@@ -2220,13 +2221,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               className="bg-surface border border-line rounded-xl p-4 space-y-3"
             >
               <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
+                <Link2 className="w-4 h-4 text-[#a855f7]" /> {t('anadirUnaClasePegandoSuEnlace', 'Añadir una clase pegando su enlace')}
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
                 <div className="md:col-span-2">
                   <label className="text-[11px] font-bold text-ink-muted block mb-1">
-                    Enlace de Drive o URL de reproducción
+                    {t('enlaceDeDriveOUrlDeReproduccion', 'Enlace de Drive o URL de reproducción')}
                   </label>
                   <input
                     type="text"
@@ -2239,12 +2240,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Título de la clase</label>
+                  <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('tituloDeLaClase', 'Título de la clase')}</label>
                   <input
                     type="text"
                     value={manualVideoTitle}
                     onChange={(e) => setManualVideoTitle(e.target.value)}
-                    placeholder="Ej. 03. Índices en PostgreSQL"
+                    placeholder={t('ej03IndicesEnPostgresql', 'Ej. 03. Índices en PostgreSQL')}
                     className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                     required
                   />
@@ -2252,7 +2253,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Duración</label>
+                    <label className="text-[11px] font-bold text-ink-muted block mb-1">{t('duracion', 'Duración')}</label>
                     <input
                       type="text"
                       value={manualVideoDuration}
@@ -2267,7 +2268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     className="btn-brand-primary h-[38px] px-3 text-xs font-bold flex items-center justify-center gap-1.5 self-end disabled:opacity-50"
                   >
                     {addingManualVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    Añadir
+                    {t('anadir', 'Añadir')}
                   </button>
                 </div>
               </div>
@@ -2287,7 +2288,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por nombre en la carpeta de Drive..."
+                  placeholder={t('buscarPorNombreEnLaCarpetaDeDrive', 'Buscar por nombre en la carpeta de Drive...')}
                   className="w-full bg-transparent py-2 text-xs text-white focus:outline-none"
                 />
               </div>
@@ -2296,13 +2297,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 disabled={loadingDrive}
                 className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> Buscar
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> {t('buscar', 'Buscar')}
               </button>
             </form>
 
             {!loadingDrive && driveVideos.length === 0 && (
               <p className="text-xs text-ink-muted py-6 text-center">
-                No hay videos que mostrar para esa búsqueda.
+                {t('noHayVideosQueMostrarParaEsaBusqueda', 'No hay videos que mostrar para esa búsqueda.')}
               </p>
             )}
 
@@ -2330,7 +2331,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-line flex items-center justify-between">
-                    <span className="text-[10px] text-ink-muted font-mono">ID: {video.id.substring(0, 12)}...</span>
+                    <span className="text-[10px] text-ink-muted font-mono">{t('idId', 'ID: {{id}}...', { id: video.id.substring(0, 12) })}</span>
                     <button
                       onClick={() => handleLinkDriveVideo(video)}
                       disabled={linkingVideo?.id === video.id || workModules.length === 0}
@@ -2340,7 +2341,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <>
-                          <Plus className="w-3.5 h-3.5" /> Enlazar al Módulo
+                          <Plus className="w-3.5 h-3.5" /> {t('enlazarAlModulo', 'Enlazar al Módulo')}
                         </>
                       )}
                     </button>
@@ -2360,11 +2361,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="border-b border-line pb-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#06b6d4]" />
-                <h3 className="font-bold text-base text-white">Gestión de Guías de Mentoría (TTS Gamificado)</h3>
+                <h3 className="font-bold text-base text-white">{t('gestionDeGuiasDeMentoriaTtsGamificado', 'Gestión de Guías de Mentoría (TTS Gamificado)')}</h3>
               </div>
               <p className="text-xs text-ink-muted mt-1">
-                Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada lección de
-                «{workCourse.title}» y recompénsalos con XP por escuchar la introducción.
+                {t('creaGuiasDeVozSinteticasQueOrientenALos', 'Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada lección de «{{title}}» y recompénsalos con XP por escuchar la introducción.', { title: workCourse.title })}
               </p>
             </div>
 
@@ -2388,12 +2388,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 {/* Title */}
                 <div>
                   <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
-                    Título de la Guía
+                    {t('tituloDeLaGuia', 'Título de la Guía')}
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Guía de Orientación: Metodología Giantucchi"
+                    placeholder={t('ejGuiaDeOrientacionMetodologiaGiantucchi', 'Ej. Guía de Orientación: Metodología Giantucchi')}
                     value={ttsTitle}
                     onChange={(e) => setTtsTitle(e.target.value)}
                     className="w-full bg-surface border border-line rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
@@ -2403,7 +2403,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 {/* Target Lesson/Video Selector */}
                 <div>
                   <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
-                    Asociar a Clase / Lección Destino
+                    {t('asociarAClaseLeccionDestino', 'Asociar a Clase / Lección Destino')}
                   </label>
                   <select
                     value={ttsTargetVideoId}
@@ -2411,7 +2411,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     disabled={workLessonCount === 0}
                     className="w-full bg-surface border border-line text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
                   >
-                    {workLessonCount === 0 && <option value="">Este curso aún no tiene clases</option>}
+                    {workLessonCount === 0 && <option value="">{t('esteCursoAunNoTieneClases', 'Este curso aún no tiene clases')}</option>}
                     {workModules.flatMap((m) =>
                       m.videos.map((v) => (
                         <option key={v.id} value={v.id}>
@@ -2428,14 +2428,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider">
-                      Voz Sintética TTS (Multilenguaje)
+                      {t('vozSinteticaTtsMultilenguaje', 'Voz Sintética TTS (Multilenguaje)')}
                     </label>
                     <button
                       type="button"
                       onClick={() => ttsService.testVoice(ttsVoice, ttsSpeed)}
                       className="text-[11px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg hover:bg-[#06b6d4]/20 flex items-center gap-1 transition-all"
                     >
-                      <Volume2 className="w-3.5 h-3.5" /> Probar Voz Seleccionada
+                      <Volume2 className="w-3.5 h-3.5" /> {t('probarVozSeleccionada', 'Probar Voz Seleccionada')}
                     </button>
                   </div>
                   <select
@@ -2453,7 +2453,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
                 <div>
                   <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
-                    Velocidad de Lectura (Speed: {ttsSpeed}x)
+                    {t('velocidadDeLecturaSpeedTtsSpeedX', 'Velocidad de Lectura (Speed: {{ttsSpeed}}x)', { ttsSpeed })}
                   </label>
                   <input
                     type="range"
@@ -2470,7 +2470,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               {/* Widget de Pruebas Rápidas de Voz Multilenguaje */}
               <div className="bg-surface border border-line rounded-xl p-4 space-y-2">
                 <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">
-                  🔊 Banco de Prueba Rápida de Voces por Idioma
+                  {t('bancoDePruebaRapidaDeVocesPorIdioma', '🔊 Banco de Prueba Rápida de Voces por Idioma')}
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                   {SUPPORTED_TTS_VOICES.map((v) => (
@@ -2497,7 +2497,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider">
-                    Guion del Mensaje de Mentoría (Texto para TTS)
+                    {t('guionDelMensajeDeMentoriaTextoParaTts', 'Guion del Mensaje de Mentoría (Texto para TTS)')}
                   </label>
 
                   <button
@@ -2509,12 +2509,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     {isGeneratingAiScript ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Generando...</span>
+                        <span>{t('generando', 'Generando...')}</span>
                       </>
                     ) : (
                       <>
                         <Wand2 className="w-3.5 h-3.5 text-[#eab308]" />
-                        <span>Generar con IA</span>
+                        <span>{t('generarConIa', 'Generar con IA')}</span>
                       </>
                     )}
                   </button>
@@ -2523,7 +2523,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <textarea
                   rows={4}
                   required
-                  placeholder="Escribe o genera con IA las instrucciones iniciales que el alumno escuchará antes de ver la lección..."
+                  placeholder={t('escribeOGeneraConIaLasInstrucciones', 'Escribe o genera con IA las instrucciones iniciales que el alumno escuchará antes de ver la lección...')}
                   value={ttsScript}
                   onChange={(e) => setTtsScript(e.target.value)}
                   className="w-full bg-surface border border-line rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4] transition-all"
@@ -2538,7 +2538,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
                 >
                   <Volume2 className={`w-4 h-4 ${isPreviewingAudio ? 'text-[#06b6d4]' : ''}`} />
-                  {isPreviewingAudio ? 'Reproduciendo Audio de Prueba...' : 'Previsualizar Audio'}
+                  {isPreviewingAudio ? t('reproduciendoAudioDePrueba', 'Reproduciendo Audio de Prueba...') : t('previsualizarAudio', 'Previsualizar Audio')}
                 </button>
 
                 <button
@@ -2546,7 +2546,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   disabled={!ttsTargetVideoId}
                   className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20 disabled:opacity-50"
                 >
-                  <Sparkles className="w-4 h-4 text-[#eab308]" /> Generar y Guardar Guía TTS
+                  <Sparkles className="w-4 h-4 text-[#eab308]" /> {t('generarYGuardarGuiaTts', 'Generar y Guardar Guía TTS')}
                 </button>
               </div>
 
@@ -2556,13 +2556,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           {/* List of Existing TTS Guides */}
           <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-4">
             <h4 className="font-bold text-sm text-white flex items-center gap-2 border-b border-line pb-3">
-              <Award className="w-4 h-4 text-[#a855f7]" /> Guías de «{workCourse.title}» ({ttsGuides.length})
+              <Award className="w-4 h-4 text-[#a855f7]" /> {t('guiasDeTitleLength', 'Guías de «{{title}}» ({{length}})', { title: workCourse.title, length: ttsGuides.length })}
             </h4>
 
             {loadingTtsGuides ? (
-              <p className="text-xs text-ink-muted py-4 text-center">Cargando guías...</p>
+              <p className="text-xs text-ink-muted py-4 text-center">{t('cargandoGuias', 'Cargando guías...')}</p>
             ) : ttsGuides.length === 0 ? (
-              <p className="text-xs text-ink-muted py-4 text-center">Este curso todavía no tiene guías TTS.</p>
+              <p className="text-xs text-ink-muted py-4 text-center">{t('esteCursoTodaviaNoTieneGuiasTts', 'Este curso todavía no tiene guías TTS.')}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {ttsGuides.map((guide) => (
@@ -2586,7 +2586,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                       <button
                         onClick={() => handleDeleteTTSGuide(guide.id)}
                         className="p-1.5 text-ink-muted hover:text-red-400 rounded-lg hover:bg-raised"
-                        title="Eliminar guía"
+                        title={t('eliminarGuia', 'Eliminar guía')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -2603,12 +2603,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           onClick={() => ttsService.speak({ text: guide.scriptText, voiceId: guide.voiceId, speed: guide.voiceSpeed })}
                           className="px-2.5 py-1 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] font-bold rounded-lg hover:bg-[#06b6d4]/20 flex items-center gap-1 transition-all"
                         >
-                          <Volume2 className="w-3 h-3" /> Escuchar Guía
+                          <Volume2 className="w-3 h-3" /> {t('escucharGuia', 'Escuchar Guía')}
                         </button>
-                        <span className="font-mono text-[#a855f7]">Voz: {guide.voiceId}</span>
+                        <span className="font-mono text-[#a855f7]">{t('vozVoiceId', 'Voz: {{voiceId}}', { voiceId: guide.voiceId })}</span>
                       </div>
                       <span className="font-bold text-[#eab308] bg-[#eab308]/10 px-2 py-0.5 rounded-lg border border-[#eab308]/20">
-                        +{guide.xpReward} XP
+                        {t('xpRewardXp', '+{{xpReward}} XP', { xpReward: guide.xpReward })}
                       </span>
                     </div>
                   </div>
@@ -2645,7 +2645,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Sliders className="w-4 h-4" />
-                <span>Editor Visual de Portada</span>
+                <span>{t('editorVisualDePortada', 'Editor Visual de Portada')}</span>
               </button>
 
               <button
@@ -2661,7 +2661,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <HeartHandshake className="w-4 h-4" />
-                <span>Buzón de Escucha y NPS del Alumnado</span>
+                <span>{t('buzonDeEscuchaYNpsDelAlumnado', 'Buzón de Escucha y NPS del Alumnado')}</span>
               </button>
             </div>
           )}
@@ -2685,10 +2685,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div>
               <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-400" />
-                <span>Certificados Oficiales Emitidos ({certificates.length})</span>
+                <span>{t('certificadosOficialesEmitidosLength', 'Certificados Oficiales Emitidos ({{length}})', { length: certificates.length })}</span>
               </h3>
               <p className="text-xs text-ink-muted mt-1">
-                Certificados con código alfanumérico persistente y verificación pública contra base de datos.
+                {t('certificadosConCodigoAlfanumerico', 'Certificados con código alfanumérico persistente y verificación pública contra base de datos.')}
               </p>
             </div>
             <button
@@ -2697,7 +2697,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               className="p-2 bg-surface hover:bg-elevated text-ink-soft rounded-xl border border-line transition-all text-xs flex items-center gap-1"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingCertificates ? 'animate-spin' : ''}`} />
-              <span>Actualizar</span>
+              <span>{t('actualizar', 'Actualizar')}</span>
             </button>
           </div>
 
@@ -2705,12 +2705,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
               <thead className="bg-surface text-ink-muted uppercase font-mono text-[10px] border-b border-line">
                 <tr>
-                  <th className="py-3 px-4">Código Único</th>
-                  <th className="py-3 px-4">Graduado</th>
-                  <th className="py-3 px-4">Programa</th>
-                  <th className="py-3 px-4">Emisión</th>
-                  <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-right">Acciones</th>
+                  <th className="py-3 px-4">{t('codigoUnico', 'Código Único')}</th>
+                  <th className="py-3 px-4">{t('graduado', 'Graduado')}</th>
+                  <th className="py-3 px-4">{t('programa', 'Programa')}</th>
+                  <th className="py-3 px-4">{t('emision', 'Emisión')}</th>
+                  <th className="py-3 px-4">{t('estado', 'Estado')}</th>
+                  <th className="py-3 px-4 text-right">{t('acciones', 'Acciones')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2d2d44]/50">
@@ -2730,11 +2730,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <td className="py-3 px-4">
                       {cert.revokedAt ? (
                         <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-bold">
-                          Revocado
+                          {t('revocado', 'Revocado')}
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                          Válido
+                          {t('valido', 'Válido')}
                         </span>
                       )}
                     </td>
@@ -2744,7 +2744,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           <div className="flex items-center gap-1 justify-end">
                             <input
                               type="text"
-                              placeholder="Motivo..."
+                              placeholder={t('motivo', 'Motivo...')}
                               value={revokeReason}
                               onChange={(e) => setRevokeReason(e.target.value)}
                               className="bg-surface border border-line px-2 py-1 rounded text-[10px] text-white w-32"
@@ -2753,7 +2753,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                               onClick={() => handleRevokeCertificate(cert.id)}
                               className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold"
                             >
-                              Confirmar
+                              {t('confirmar', 'Confirmar')}
                             </button>
                             <button
                               onClick={() => setRevokingCertId(null)}
@@ -2770,7 +2770,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                             }}
                             className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold"
                           >
-                            Revocar
+                            {t('revocar', 'Revocar')}
                           </button>
                         )
                       )}
@@ -2780,7 +2780,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 {certificates.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-ink-muted">
-                      No se han emitido certificados todavía.
+                      {t('noSeHanEmitidoCertificadosTodavia', 'No se han emitido certificados todavía.')}
                     </td>
                   </tr>
                 )}
@@ -2800,10 +2800,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div>
                 <h3 className="text-lg font-bold text-ink flex items-center gap-2">
                   <FileCheck aria-hidden="true" className="w-5 h-5 text-brand-blue" />
-                  Auditoría de Contratos y Consentimientos Legales
+                  {t('auditoriaDeContratosYConsentimientos', 'Auditoría de Contratos y Consentimientos Legales')}
                 </h3>
                 <p className="text-xs text-ink-muted mt-1">
-                  Evidencia forense inmutable de términos, fechas de vigencia y custodia de datos por usuario.
+                  {t('evidenciaForenseInmutableDeTerminos', 'Evidencia forense inmutable de términos, fechas de vigencia y custodia de datos por usuario.')}
                 </p>
               </div>
 
@@ -2812,8 +2812,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <Search aria-hidden="true" className="w-4 h-4 text-ink-muted absolute left-3 top-2.5" />
                   <input
                     type="text"
-                    placeholder="Buscar por alumno o IP..."
-                    aria-label="Buscar firmas por alumno o IP"
+                    placeholder={t('buscarPorAlumnoOIp', 'Buscar por alumno o IP...')}
+                    aria-label={t('buscarFirmasPorAlumnoOIp', 'Buscar firmas por alumno o IP')}
                     value={contractSearch}
                     onChange={(e) => {
                       setContractSearch(e.target.value);
@@ -2825,7 +2825,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <button
                   onClick={() => loadContracts(contractSearch)}
                   className="p-2 bg-surface border border-line hover:border-line-strong text-ink-soft rounded-xl transition-colors shrink-0"
-                  title="Recargar firmas"
+                  title={t('recargarFirmas', 'Recargar firmas')}
                 >
                   <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loadingContracts ? 'animate-spin text-brand-blue' : ''}`} />
                 </button>
@@ -2835,24 +2835,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {loadingContracts ? (
               <div className="py-16 text-center text-ink-faint flex flex-col items-center justify-center gap-2">
                 <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin text-brand-blue" />
-                <span className="text-xs">Consultando evidencias en base de datos...</span>
+                <span className="text-xs">{t('consultandoEvidenciasEnBaseDeDatos', 'Consultando evidencias en base de datos...')}</span>
               </div>
             ) : contractSignatures.length === 0 ? (
               <div className="py-16 text-center text-ink-faint text-xs bg-surface/50 border border-dashed border-line rounded-xl">
-                No se encontraron firmas de contratos registradas.
+                {t('noSeEncontraronFirmasDeContratos', 'No se encontraron firmas de contratos registradas.')}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
                   <thead className="bg-surface text-ink-muted uppercase font-semibold text-micro tracking-wider border-b border-line">
                     <tr>
-                      <th className="p-3">Alumno</th>
-                      <th className="p-3">Fecha Firma</th>
-                      <th className="p-3">Vigencia Acceso</th>
-                      <th className="p-3">Custodia Datos</th>
-                      <th className="p-3">IP Origen</th>
-                      <th className="p-3">Estado</th>
-                      <th className="p-3 text-right">Evidencia</th>
+                      <th className="p-3">{t('alumno', 'Alumno')}</th>
+                      <th className="p-3">{t('fechaFirma', 'Fecha Firma')}</th>
+                      <th className="p-3">{t('vigenciaAcceso', 'Vigencia Acceso')}</th>
+                      <th className="p-3">{t('custodiaDatos', 'Custodia Datos')}</th>
+                      <th className="p-3">{t('ipOrigen', 'IP Origen')}</th>
+                      <th className="p-3">{t('estado', 'Estado')}</th>
+                      <th className="p-3 text-right">{t('evidencia', 'Evidencia')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -2896,17 +2896,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         <td className="p-3">
                           {sig.status === 'VIGENTE' && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-success/10 text-success-light border border-success/20">
-                              <CheckCircle2 aria-hidden="true" className="w-3 h-3" /> Vigente
+                              <CheckCircle2 aria-hidden="true" className="w-3 h-3" /> {t('vigente', 'Vigente')}
                             </span>
                           )}
                           {sig.status === 'POR_VENCER' && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-warning/10 text-warning-light border border-warning/20">
-                              <AlertTriangle aria-hidden="true" className="w-3 h-3" /> Por Vencer
+                              <AlertTriangle aria-hidden="true" className="w-3 h-3" /> {t('porVencer', 'Por Vencer')}
                             </span>
                           )}
                           {sig.status === 'EXPIRADO' && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-danger/10 text-danger-light border border-danger/20">
-                              <XCircle aria-hidden="true" className="w-3 h-3" /> Expirado
+                              <XCircle aria-hidden="true" className="w-3 h-3" /> {t('expirado', 'Expirado')}
                             </span>
                           )}
                         </td>
@@ -2916,7 +2916,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                             className="p-1.5 rounded-lg bg-brand-blue/10 hover:bg-brand-blue/20 text-brand-blue border border-brand-blue/20 transition-colors inline-flex items-center gap-1 text-[11px] font-medium"
                           >
                             <Eye aria-hidden="true" className="w-3.5 h-3.5" />
-                            <span>Ver Acta</span>
+                            <span>{t('verActa', 'Ver Acta')}</span>
                           </button>
                         </td>
                       </tr>
@@ -2936,11 +2936,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2">
                 <FileCheck aria-hidden="true" className="w-5 h-5 text-brand-blue" />
-                <h3 id="contract-audit-title" className="text-base font-bold text-ink">Acta Digital de Firma y Consentimiento</h3>
+                <h3 id="contract-audit-title" className="text-base font-bold text-ink">{t('actaDigitalDeFirmaYConsentimiento', 'Acta Digital de Firma y Consentimiento')}</h3>
               </div>
               <button
                 onClick={() => setSelectedAuditSignature(null)}
-                aria-label="Cerrar acta"
+                aria-label={t('cerrarActa', 'Cerrar acta')}
                 className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink"
               >
                 ✕
@@ -2948,25 +2948,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
 
             <div className="space-y-2 bg-surface p-4 rounded-xl border border-line font-mono text-[11px]">
-              <div><strong className="text-ink-muted">ID Registro:</strong> {selectedAuditSignature.id}</div>
-              <div><strong className="text-ink-muted">Titular:</strong> {selectedAuditSignature.userName} ({selectedAuditSignature.userEmail})</div>
-              <div><strong className="text-ink-muted">Fecha y Hora UTC:</strong> {new Date(selectedAuditSignature.signedAt).toISOString()}</div>
-              <div><strong className="text-ink-muted">IP de Firma:</strong> {selectedAuditSignature.ipAddress}</div>
-              <div><strong className="text-ink-muted">SHA-256 Hash:</strong> <span className="text-brand-blue break-all">{selectedAuditSignature.contractHash}</span></div>
+              <div><strong className="text-ink-muted">{t('idRegistro', 'ID Registro:')}</strong> {selectedAuditSignature.id}</div>
+              <div><Trans i18nKey="titularUserNameUserEmail"><strong className="text-ink-muted">Titular:</strong> {{ userName: selectedAuditSignature.userName }} ({{ userEmail: selectedAuditSignature.userEmail }})</Trans></div>
+              <div><strong className="text-ink-muted">{t('fechaYHoraUtc', 'Fecha y Hora UTC:')}</strong> {new Date(selectedAuditSignature.signedAt).toISOString()}</div>
+              <div><strong className="text-ink-muted">{t('ipDeFirma', 'IP de Firma:')}</strong> {selectedAuditSignature.ipAddress}</div>
+              <div><strong className="text-ink-muted">{t('sha256Hash', 'SHA-256 Hash:')}</strong> <span className="text-brand-blue break-all">{selectedAuditSignature.contractHash}</span></div>
               <div className="pt-2 border-t border-line/60 text-ink-muted break-all text-micro">
-                <strong>User-Agent:</strong> {selectedAuditSignature.userAgent}
+                <strong>{t('useragent', 'User-Agent:')}</strong> {selectedAuditSignature.userAgent}
               </div>
             </div>
 
             <div className="space-y-1 text-ink-soft text-[11px]">
               <div className="flex items-center gap-1.5 text-success-light">
-                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Términos y Condiciones Generales Aceptados
+                <Check aria-hidden="true" className="w-3.5 h-3.5" /> {t('terminosYCondicionesGeneralesAceptados', 'Términos y Condiciones Generales Aceptados')}
               </div>
               <div className="flex items-center gap-1.5 text-success-light">
-                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Política de Privacidad Aceptada
+                <Check aria-hidden="true" className="w-3.5 h-3.5" /> {t('politicaDePrivacidadAceptada', 'Política de Privacidad Aceptada')}
               </div>
               <div className="flex items-center gap-1.5 text-success-light">
-                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Custodia de Datos Personales y Progreso (24 meses)
+                <Check aria-hidden="true" className="w-3.5 h-3.5" /> {t('custodiaDeDatosPersonalesYProgreso24', 'Custodia de Datos Personales y Progreso (24 meses)')}
               </div>
             </div>
 
@@ -2975,7 +2975,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 onClick={() => setSelectedAuditSignature(null)}
                 className="px-4 py-2 bg-raised hover:bg-elevated text-ink font-medium rounded-xl transition-colors"
               >
-                Cerrar Acta
+                {t('cerrarActa2', 'Cerrar Acta')}
               </button>
             </div>
           </div>
@@ -3002,7 +3002,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-white">
-                    Cursos Asignados al Mentor
+                    {t('cursosAsignadosAlMentor', 'Cursos Asignados al Mentor')}
                   </h3>
                   <p className="text-xs text-ink-muted">
                     {selectedMentorForCourses.name} ({selectedMentorForCourses.email})
@@ -3020,7 +3020,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
 
             <p className="text-xs text-ink-soft">
-              Marca los cursos que este mentor puede gestionar. Solo podrá ver, inscribir y tutelar estudiantes en los cursos seleccionados.
+              {t('marcaLosCursosQueEsteMentorPuede', 'Marca los cursos que este mentor puede gestionar. Solo podrá ver, inscribir y tutelar estudiantes en los cursos seleccionados.')}
             </p>
 
             {mentorCoursesNotice && (
@@ -3032,12 +3032,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {loadingMentorCourses ? (
               <div className="py-8 flex flex-col items-center justify-center text-ink-muted gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
-                <span className="text-xs">Cargando cursos asignados...</span>
+                <span className="text-xs">{t('cargandoCursosAsignados', 'Cargando cursos asignados...')}</span>
               </div>
             ) : (
               <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                 {allCourses.length === 0 ? (
-                  <p className="text-xs text-ink-muted py-4 text-center">No hay cursos en el catálogo.</p>
+                  <p className="text-xs text-ink-muted py-4 text-center">{t('noHayCursosEnElCatalogo', 'No hay cursos en el catálogo.')}</p>
                 ) : (
                   allCourses.map((c) => {
                     const isChecked = mentorAssignedCourseIds.includes(c.id);
@@ -3064,7 +3064,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         </div>
                         {isChecked && (
                           <span className="text-[10px] font-mono font-bold text-brand-cyan uppercase ml-2 shrink-0">
-                            Asignado
+                            {t('asignado', 'Asignado')}
                           </span>
                         )}
                       </label>
@@ -3076,7 +3076,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
             <div className="flex items-center justify-between pt-3 border-t border-line">
               <span className="text-xs text-ink-muted font-mono">
-                {mentorAssignedCourseIds.length} curso{mentorAssignedCourseIds.length === 1 ? '' : 's'} asignado{mentorAssignedCourseIds.length === 1 ? '' : 's'}
+                {t('countCursosAsignados', { defaultValue_one: '{{count}} curso asignado', defaultValue_other: '{{count}} cursos asignados', count: mentorAssignedCourseIds.length })}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -3085,7 +3085,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   onClick={() => setSelectedMentorForCourses(null)}
                   className="px-3 py-1.5 rounded-xl text-xs font-bold text-ink-muted hover:text-white"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="button"
@@ -3094,7 +3094,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
                 >
                   {savingMentorCourses && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Guardar Asignaciones</span>
+                  <span>{t('guardarAsignaciones', 'Guardar Asignaciones')}</span>
                 </button>
               </div>
             </div>
