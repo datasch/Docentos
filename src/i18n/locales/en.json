@@ -2319,5 +2319,22 @@
   "mood_2": "Bad",
   "mood_3": "Okay",
   "mood_4": "Good",
-  "mood_5": "I love it"
+  "mood_5": "I love it",
+  "season_halloween_nombre": "Halloween Night",
+  "season_halloween_badge": "🎃 Halloween Special",
+  "season_halloween_mensaje": "Happy Halloween! Conquer your missions with supernatural energy.",
+  "season_christmas_nombre": "Christmas Season",
+  "season_christmas_badge": "🎄 Christmas Special",
+  "season_christmas_mensaje": "Happy Holidays! Your learning and dedication are the best gift.",
+  "season_none_nombre": "Cosmic Standard",
+  "season_none_badge": "✨ Standard Constellation",
+  "season_none_mensaje": "Official DocentOS Learning Path",
+  "routeUnavailableTitle": "Service temporarily unavailable",
+  "routeUnavailableDesc": "Could not verify the session. Please try again in a moment.",
+  "route404Title": "404 — Page not available",
+  "route404Desc": "The requested address is not available.",
+  "apiRateLimitMsg": "Please wait a moment before retrying.",
+  "apiServiceBusyMsg": "The service is temporarily busy. Please try again in a moment.",
+  "platformTitle": "Educational Platform",
+  "apiRateLimitMsgSeconds": "Please wait a moment before retrying. You can try again in {{seconds}} seconds."
 }

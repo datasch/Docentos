@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 export class ApiRequestError extends Error {
   constructor(message: string, readonly status: number, readonly retryAfterSeconds?: number) {
     super(message);
@@ -20,8 +22,10 @@ export const apiRequest: typeof globalThis.fetch = async (input, init) => {
       const seconds = Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : undefined;
       throw new ApiRequestError(
         response.status === 429
-          ? `Espera un momento antes de reintentar.${seconds ? ` Podrás hacerlo en ${seconds} segundos.` : ''}`
-          : 'El servicio está temporalmente ocupado. Inténtalo de nuevo en unos momentos.',
+          ? seconds
+            ? i18n.t('apiRateLimitMsgSeconds', 'Espera un momento antes de reintentar. Podrás hacerlo en {{seconds}} segundos.', { seconds })
+            : i18n.t('apiRateLimitMsg', 'Espera un momento antes de reintentar.')
+          : i18n.t('apiServiceBusyMsg', 'El servicio está temporalmente ocupado. Inténtalo de nuevo en unos momentos.'),
         response.status, seconds,
       );
     }

@@ -1,4 +1,5 @@
 import type { UserRole } from '../types';
+import i18n from '../i18n';
 
 export type ActiveTab = 'landing' | 'courses' | 'learning' | 'viewer' | 'mentor' | 'admin' | 'plugins' | 'vip';
 
@@ -24,14 +25,14 @@ export function privateRouteView(status: 'unauthorized' | 'unavailable'): {
 } {
   if (status === 'unavailable') {
     return {
-      title: 'Servicio temporalmente no disponible',
-      description: 'No se pudo verificar la sesión. Inténtalo de nuevo en unos momentos.',
+      title: i18n.t('routeUnavailableTitle', 'Servicio temporalmente no disponible'),
+      description: i18n.t('routeUnavailableDesc', 'No se pudo verificar la sesión. Inténtalo de nuevo en unos momentos.'),
     };
   }
 
   return {
-    title: '404 — Página no disponible',
-    description: 'La dirección solicitada no está disponible.',
+    title: i18n.t('route404Title', '404 — Página no disponible'),
+    description: i18n.t('route404Desc', 'La dirección solicitada no está disponible.'),
   };
 }
 

@@ -2353,5 +2353,22 @@
   "mood_2": "Male",
   "mood_3": "Normale",
   "mood_4": "Bene",
-  "mood_5": "Mi piace molto"
+  "mood_5": "Mi piace molto",
+  "season_halloween_nombre": "Notte di Halloween",
+  "season_halloween_badge": "🎃 Speciale Halloween",
+  "season_halloween_mensaje": "Buon Halloween! Conquista le tue missioni con energia soprannaturale.",
+  "season_christmas_nombre": "Stagione Natalizia",
+  "season_christmas_badge": "🎄 Speciale Natale",
+  "season_christmas_mensaje": "Buone Feste! Il tuo apprendimento e la tua dedizione sono il regalo migliore.",
+  "season_none_nombre": "Standard Cosmico",
+  "season_none_badge": "✨ Costellazione Standard",
+  "season_none_mensaje": "Percorso Ufficiale di Apprendimento DocentOS",
+  "routeUnavailableTitle": "Servizio temporaneamente non disponibile",
+  "routeUnavailableDesc": "Impossibile verificare la sessione. Riprova tra qualche istante.",
+  "route404Title": "404 — Pagina non disponibile",
+  "route404Desc": "L'indirizzo richiesto non è disponibile.",
+  "apiRateLimitMsg": "Attendi un momento prima di riprovare.",
+  "apiServiceBusyMsg": "Il servizio è temporaneamente occupato. Riprova tra qualche istante.",
+  "platformTitle": "Piattaforma Educativa",
+  "apiRateLimitMsgSeconds": "Attendi un momento prima di riprovare. Potrai riprovare tra {{seconds}} secondi."
 }
