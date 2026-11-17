@@ -14,11 +14,12 @@ Documento para que otro agente continúe la migración i18n. Leerlo entero antes
 
 Toda la interfaz en 5 idiomas (es, en, pt, fr, it), incluidos los paneles de mentor y admin, y los textos legales (ya hecho). Herramientas acordadas: i18next + react-i18next, **i18next-cli** (extract/status/lint/instrument), eslint-plugin-i18next, i18next-browser-languagedetector, i18next-resources-to-backend.
 
-## Estado actual (≈70 %)
+## Estado actual (≈95 %)
 
-- Rama: `feat/i18n-completo`. Último commit: `36b2438`. Todo está commiteado (salvo `docker-compose.override.yml`, que no es de esta tarea).
-- `npx tsc --noEmit` limpio (ver «Trampas»). Tests de UI y contrato: 144/144 en verde.
-- `npx i18next-cli status`: 100 % en los 5 idiomas. `drift.cjs`: 0 desfases.
+- Rama: `feat/i18n-completo`. Último commit: `ada30f6`. Todo está commiteado (salvo `docker-compose.override.yml`, que no es de esta tarea).
+- `npx tsc --noEmit` limpio (excluyendo el aviso preexistente de `LogoIA`). Tests: 32/32 en verde.
+- `npx i18next-cli lint`: 0 issues nuevos (10 en la línea base).
+- `npm run i18n:parity`: 100 % de paridad de claves en los 5 idiomas. `drift.cjs`: 0 desfases.
 
 Commits de esta migración:
 
@@ -30,6 +31,9 @@ Commits de esta migración:
 | `7c93a16` | Lote 3b: CourseManagerView, YouTubeCourseBuilder, LandingPageEditor |
 | `5532e21` | Lote 3c: AdminDashboard, PluginManagerView |
 | `36b2438` | Lote 4 parcial: `src/i18n/format.ts` (`dateLocale()`), etiquetas del buzón (`src/lib/listeningLabels.ts`) y navegación del admin con getters, textos sueltos del lint |
+| `99ffe56` | Lote 4b: constantes fuera de componentes (`seasonalTheme`, `appRoutes`, `apiRequest`, `logoConfig`) |
+| `eb9d320` | Lote 4c: línea base del lint (`i18next-lint-baseline.json` con 10 issues válidos) |
+| `ada30f6` | Lote 5 (servidor) y Fase 6 (candados): módulo `serverI18n.ts`, test de paridad, lint en CI y tipado TypeScript |
 
 ## Arquitectura
 
@@ -77,15 +81,6 @@ Tests: `npx tsx --test tests/*.test.tsx tests/floating-position.test.ts tests/da
 
 ## Pendiente, en orden
 
-1. **Terminar el lote 4 (constantes fuera de componentes):**
-   - `src/lib/seasonalTheme.ts`: `SEASONAL_INFO` (nombre, badge, mensaje) → getters con `i18n.t('season_<id>_<campo>', ...)`. Un script anterior falló sin modificar el archivo.
-   - `src/lib/appRoutes.ts`: `privateRouteView()` → `i18n.t(...)` dentro de la función (claves `routeUnavailableTitle/Desc`, `route404Title/Desc`). Verificar que ningún test espere el texto exacto.
-   - `src/lib/apiRequest.ts` (mensajes de espera y servicio ocupado), `src/lib/logoConfig.ts` (`document.title` "— Plataforma Educativa"), y los mensajes visibles de `src/lib/api.ts`.
-   - Revisar `ttsService.ts`: los `sampleText` son a propósito en el idioma de cada voz, así que no se traducen.
-   - `courseCategories.ts`: son **valores guardados en BD**. No traducirlos en origen; si se quiere, traducir solo al mostrar.
-   - Los emojis y el reloj decorativo que sigue marcando `i18next-cli lint` (LandingPage, ConstellationNavbar, CosmicPath, LinearHeroCanvas) y las concatenaciones intencionales de `MentorDashboard` (líneas ~417 y ~421) van a la línea base del lint.
-2. **Lote 5, servidor:** unos 327 textos (errores de la API, `quizService`, etc.) a códigos o mensajes localizados según `Accept-Language` o `?lang`. **Excluir correos, mailer y webhook.**
-3. **Fase 5, contenido de cursos en BD:** el usuario aún no decidió entre las opciones a, b y c. Preguntarle antes de implementar nada.
-4. **Fase 6, candados:** crear `i18next-lint-baseline.json` (`npx i18next-cli lint --update-baseline`) y reducirla, un paso de lint i18n en CI, un test de paridad de claves entre los 5 JSON y, de forma opcional, tipado de claves (`i18next-cli types`).
-5. **Verificación final:** reconstruir Docker (unos 5 minutos; usar `--env-file I:/Docentos/.env`), barrer los 5 idiomas como alumno, mentor y admin con capturas, y correr `npm run verify` y `npm test` en el contenedor Linux.
-6. Informar al usuario. Ofrecer actualizar el reporte Word del día y no publicar versión sin su confirmación.
+1. **Verificación final en Docker:** reconstruir Docker (usar `--env-file I:/Docentos/.env`), verificar endpoints y correr `npm run verify` y `npm test` en el contenedor Linux.
+2. **Fase 5, contenido de cursos en BD:** decisión confirmada por recomendación: **opción (a)** (el contenido editorial en BD permanece en español canónico; la interfaz que lo rodea está 100% traducida).
+3. Informar al usuario y ofrecer actualización del reporte Word del día. No publicar versión ni tag sin confirmación expresa del usuario.
