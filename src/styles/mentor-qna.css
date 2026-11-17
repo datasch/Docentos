@@ -1,0 +1,256 @@
+/* Consultas: mismo sistema que Gestión y Mentees (encabezado, barra de herramientas,
+   tarjetas simétricas, estado sin caja). Reusa .mentor-section-heading, .mentor-course-toolbar,
+   .mentor-mentee-search y .mentor-course-control. */
+[data-mentor-ui='modern'] .mentor-qna-panel svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
+  flex-shrink: 0;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-courses-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  align-items: stretch;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--course-line);
+  border-radius: 12px;
+  background: var(--mentor-surface);
+  transition: border-color 160ms var(--course-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card:hover {
+  border-color: var(--mentor-line);
+}
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card__head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mentor-muted);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-status[data-state='pending']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-warning-light);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-status[data-state='resolved'] {
+  color: var(--mentor-text);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-status svg {
+  color: var(--mentor-accent);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card__origin {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card__origin svg {
+  width: 14px;
+  height: 14px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card__text {
+  max-height: 176px;
+  margin: 0;
+  overflow-y: auto;
+  color: var(--mentor-text);
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--course-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mentor-text);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms var(--course-ease), border-color 160ms var(--course-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle:hover {
+  background: var(--mentor-raised);
+  border-color: var(--mentor-muted);
+}
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle:focus-visible {
+  outline: 2px solid var(--mentor-accent);
+  outline-offset: 3px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle svg {
+  color: var(--mentor-muted);
+  transition: transform 200ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-replies {
+  display: grid;
+  gap: 12px;
+  max-height: 264px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-replies > li {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--mentor-raised);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-replies > li > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-replies strong {
+  color: var(--mentor-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-replies span {
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-replies p {
+  margin: 0;
+  color: var(--mentor-text);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card > .mentor-course-control,
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form {
+  margin-top: auto;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form {
+  display: grid;
+  gap: 12px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px solid var(--course-line) !important;
+  border-radius: 8px;
+  background: var(--mentor-surface) !important;
+  color: var(--mentor-text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  resize: vertical;
+  box-shadow: none !important;
+  outline: 0;
+  transition: border-color 160ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form textarea::placeholder {
+  color: var(--mentor-muted);
+  opacity: 1;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form textarea:focus {
+  border-color: var(--mentor-accent) !important;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-form__actions .mentor-course-import {
+  grid-column: auto;
+  width: 100%;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-mentee-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 16px;
+}
+@media (max-width: 640px) {
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card {
+    padding: 16px;
+  }
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-section-heading > .mentor-course-control,
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-mentee-more .mentor-course-control {
+    width: 100%;
+  }
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-mentee-more {
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-card,
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle,
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-toggle svg {
+    transition: none;
+  }
+}
+
+/* Actualizar: botón cuadrado a la derecha del título en todos los tamaños. */
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-section-heading {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+[data-mentor-ui='modern'] .mentor-qna-panel .mentor-qna-refresh {
+  flex-shrink: 0;
+  width: 44px;
+  padding: 0;
+}
+@media (max-width: 640px) {
+  [data-mentor-ui='modern'] .mentor-qna-panel .mentor-section-heading > .mentor-qna-refresh {
+    width: 44px;
+  }
+}

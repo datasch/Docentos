@@ -1,3 +1,4 @@
+import type { CourseCardPatch } from '../../lib/courseCardUpdate';
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Course } from '../../types';
@@ -82,6 +83,7 @@ interface ConstellationAppShellProps {
   onLogout: () => void;
   onOpenPaywall: () => void;
   onRefreshData: () => void;
+  onCourseUpdated?: (courseId: string, patch: CourseCardPatch) => void;
   onPaymentSuccess?: () => void;
   onVipActivated?: () => void;
   onRestartTour?: () => void;
@@ -108,6 +110,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   onLogout,
   onOpenPaywall,
   onRefreshData,
+  onCourseUpdated,
   onPaymentSuccess,
   onVipActivated,
   onRestartTour,
@@ -498,6 +501,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                       currentUser={currentUser}
                       courses={localizedCourses}
                       onRefreshCourses={onRefreshData}
+                      onCourseUpdated={onCourseUpdated}
                     />
                   </div>
                 ) : (

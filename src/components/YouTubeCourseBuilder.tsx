@@ -20,36 +20,19 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight,
   ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  Eye,
-  Lock,
   Globe,
-  Sliders,
-  Play,
-  Layers,
-  BookOpen,
-  HelpCircle,
-  Clock,
   Trash2,
   MoveUp,
   MoveDown,
-  ShieldCheck,
-  CheckSquare,
-  Square,
   ExternalLink,
-  Edit3,
   Save,
   Search,
-  Tag,
   Film,
-  ListFilter,
   X,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { stripEmoji } from '../lib/stripEmoji';
 import { ApiRequestError } from '../lib/apiRequest';
 import {
   User,
@@ -490,408 +473,222 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
     }
   };
 
+  const privacyLabel = (value?: string) => {
+    const v = String(value || '').toUpperCase();
+    return v === 'PRIVATE' ? 'Privado' : v === 'UNLISTED' ? 'No listado' : v === 'PUBLIC' ? 'Público' : '';
+  };
+  const selectedVideos = videos.filter((v) => !v.excluded);
+  const totalSeconds = selectedVideos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0);
+  const totalLabel = totalSeconds >= 3600
+    ? `${Math.floor(totalSeconds / 3600)} h ${Math.round((totalSeconds % 3600) / 60)} min`
+    : `${Math.max(1, Math.round(totalSeconds / 60))} min`;
+  const steps = ['Buscar o importar', 'Elegir videos', 'Generar con IA', 'Revisar y guardar'];
+  const activeStep = Math.min(currentStep, 4);
+
+  const field = (label: string, hint?: string) => (
+    <span className="yt-field__label">
+      {label}
+      {hint && <em> {hint}</em>}
+    </span>
+  );
+
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
-      {/* Encabezado */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold mb-3">
-              <Youtube className="w-3.5 h-3.5" />
-              <span>AI YouTube Course Builder</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Crear Cursos Inteligentes desde YouTube
-            </h1>
-            <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Importa playlists públicas, no listadas o privadas y deja que la IA organice los videos en un temario pedagógico estructurado con módulos y lecciones.
-            </p>
-          </div>
-
-          {/* Estado de conexión con YouTube */}
-          <div className="flex items-center gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800 self-start md:self-auto">
-            {loadingStatus ? (
-              <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-            ) : ytStatus.connected ? (
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <div className="text-xs">
-                  <p className="font-semibold text-white">YouTube Conectado</p>
-                  <p className="text-slate-400 truncate max-w-[160px]">{ytStatus.googleEmail}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDisconnectYouTube}
-                  className="text-xs text-red-400 hover:text-red-300 ml-1 underline"
-                >
-                  Desconectar
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleConnectYouTube}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition"
-              >
-                <Youtube className="w-4 h-4" />
-                <span>Conectar con Google OAuth</span>
-              </button>
-            )}
-          </div>
+    <section className="mentor-youtube-panel" aria-labelledby="yt-title">
+      <div className="mentor-section-heading">
+        <div>
+          <h2 id="yt-title">Crear curso desde YouTube</h2>
+          <p>Importa una playlist o busca videos, ordénalos y la IA arma el temario con módulos y lecciones</p>
         </div>
-
-        {/* Wizard Progress Steps */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-800/80 text-xs font-medium">
-          <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-red-400' : 'text-slate-500'}`}>
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 1 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
-            <span>Buscar / Importar</span>
-          </div>
-          <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-red-400' : 'text-slate-500'}`}>
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 2 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>2</span>
-            <span>Curar Videos</span>
-          </div>
-          <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-red-400' : 'text-slate-500'}`}>
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 3 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>3</span>
-            <span>Generación IA</span>
-          </div>
-          <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-red-400' : 'text-slate-500'}`}>
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${currentStep >= 4 ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-400'}`}>4</span>
-            <span>Revisar y Guardar</span>
-          </div>
+        <div className="yt-connection">
+          {loadingStatus ? (
+            <Loader2 aria-hidden="true" className="animate-spin" />
+          ) : ytStatus.connected ? (
+            <>
+              <span className="yt-connection__text">
+                <strong>YouTube conectado</strong>
+                <small title={ytStatus.googleEmail}>{ytStatus.googleEmail}</small>
+              </span>
+              <button type="button" className="mentor-course-control" onClick={handleDisconnectYouTube}>
+                Desconectar
+              </button>
+            </>
+          ) : (
+            <button type="button" className="mentor-course-control mentor-course-import" onClick={handleConnectYouTube}>
+              <Youtube aria-hidden="true" />
+              Conectar YouTube
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 1: Modalidad de Entrada (Búsqueda Inteligente o URL)
-      ───────────────────────────────────────────────────────────────────────────── */}
+      <ol className="yt-steps" aria-label="Progreso">
+        {steps.map((label, i) => {
+          const n = i + 1;
+          const state = currentStep > n || currentStep === 5 ? 'done' : activeStep === n ? 'current' : 'todo';
+          return (
+            <li key={label} data-state={state} aria-current={state === 'current' ? 'step' : undefined}>
+              <span className="yt-steps__dot">{state === 'done' ? <CheckCircle2 aria-hidden="true" /> : n}</span>
+              <span className="yt-steps__label">{label}</span>
+            </li>
+          );
+        })}
+      </ol>
+
       {currentStep === 1 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
-          {/* Tabs para seleccionar el método de obtención */}
-          <div className="flex items-center gap-2 p-1 bg-slate-950/80 rounded-xl border border-slate-800/80 max-w-lg">
-            <button
-              type="button"
-              onClick={() => {
-                setInputMode('search');
-                setImportError(null);
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition ${
-                inputMode === 'search'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Búsqueda Inteligente (Título / Keywords)</span>
+        <div className="yt-card">
+          <div className="mentor-publication-filters yt-mode" data-options="2" role="group" aria-label="Cómo quieres empezar">
+            <button type="button" aria-pressed={inputMode === 'search'} onClick={() => { setInputMode('search'); setImportError(null); }}>
+              <Search aria-hidden="true" />
+              <span>Buscar por tema</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setInputMode('url');
-                setImportError(null);
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold transition ${
-                inputMode === 'url'
-                  ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
-              }`}
-            >
-              <Link className="w-3.5 h-3.5" />
-              <span>Pegar URL de Playlist</span>
+            <button type="button" aria-pressed={inputMode === 'url'} onClick={() => { setInputMode('url'); setImportError(null); }}>
+              <Link aria-hidden="true" />
+              <span>Pegar URL de playlist</span>
             </button>
           </div>
 
-          {/* Formulario 1: Búsqueda Inteligente por Título y Palabras Clave */}
           {inputMode === 'search' && (
-            <form onSubmit={handleSearchContent} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-white mb-2">
-                    1. Título o Tema del Curso
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={courseTitle}
-                      onChange={(e) => setCourseTitle(e.target.value)}
-                      placeholder="Ej: Curso de Python desde Cero a Avanzado"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-                      required
-                    />
-                    <Film className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    Define el tema central para localizar los mejores contenidos.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-white mb-2">
-                    2. Palabras Clave (Keywords / Temario)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={keywords}
-                      onChange={(e) => setKeywords(e.target.value)}
-                      placeholder="Ej: variables, bucles, funciones, POO, fastapi, proyectos"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-                    />
-                    <Tag className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    Términos separados por comas que guiarán la selección de lecciones.
-                  </p>
-                </div>
-              </div>
-
-              {/* Selector de tipo de búsqueda */}
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  3. ¿Qué deseas buscar en YouTube?
+            <form onSubmit={handleSearchContent} className="yt-form">
+              <div className="yt-grid">
+                <label className="yt-field">
+                  {field('Tema del curso')}
+                  <input
+                    type="text"
+                    value={courseTitle}
+                    onChange={(e) => setCourseTitle(e.target.value)}
+                    placeholder="Ej: Curso de Python desde cero"
+                    required
+                  />
+                  <small>El tema central para encontrar los mejores contenidos.</small>
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchType('videos');
-                      setFoundPlaylists([]);
-                    }}
-                    className={`flex items-start gap-3 p-3 rounded-xl border text-left transition ${
-                      searchType === 'videos'
-                        ? 'border-red-500 bg-red-500/10 text-white'
-                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
-                    }`}
-                  >
-                    <Film className={`w-5 h-5 mt-0.5 ${searchType === 'videos' ? 'text-red-400' : 'text-slate-500'}`} />
-                    <div>
-                      <p className="text-xs font-semibold text-white">Videos Temáticos</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Busca los mejores videos individuales y los reúne listos para curar.
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchType('playlists');
-                    }}
-                    className={`flex items-start gap-3 p-3 rounded-xl border text-left transition ${
-                      searchType === 'playlists'
-                        ? 'border-red-500 bg-red-500/10 text-white'
-                        : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
-                    }`}
-                  >
-                    <ListFilter className={`w-5 h-5 mt-0.5 ${searchType === 'playlists' ? 'text-red-400' : 'text-slate-500'}`} />
-                    <div>
-                      <p className="text-xs font-semibold text-white">Playlists Completas</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Busca listas de reproducción existentes para seleccionar una con 1 clic.
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  4. Instrucción Pedagógica para la IA
+                <label className="yt-field">
+                  {field('Palabras clave', '(opcional)')}
+                  <input
+                    type="text"
+                    value={keywords}
+                    onChange={(e) => setKeywords(e.target.value)}
+                    placeholder="Ej: variables, bucles, funciones, proyectos"
+                  />
+                  <small>Términos separados por comas que guían la selección.</small>
                 </label>
-                <textarea
-                  rows={2}
-                  value={coursePrompt}
-                  onChange={(e) => setCoursePrompt(e.target.value)}
-                  placeholder="Ej: Quiero un curso práctico y estructurado de fundamentos a proyectos..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-                />
-                <p className="text-xs text-slate-400 mt-1">
-                  La IA estructurará las lecciones según este criterio pedagógico.
-                </p>
               </div>
 
-              {/* Botón de Acción */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                {onCancel && (
-                  <button
-                    type="button"
-                    onClick={onCancel}
-                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
-                  >
-                    Cancelar
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={isSearching}
-                  className="ml-auto flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Buscando en YouTube...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4" />
-                      <span>
-                        {searchType === 'videos'
-                          ? 'Buscar Videos y Curar'
-                          : 'Buscar Playlists en YouTube'}
-                      </span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Resultados de Playlists encontradas (si eligió buscar playlists) */}
-          {inputMode === 'search' && searchType === 'playlists' && foundPlaylists.length > 0 && (
-            <div className="pt-4 border-t border-slate-800 space-y-3">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <ListFilter className="w-4 h-4 text-red-400" />
-                <span>Playlists encontradas en YouTube ({foundPlaylists.length})</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
-                {foundPlaylists.map((pl) => (
-                  <div
-                    key={pl.youtubeId}
-                    className="flex flex-col justify-between p-3 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition"
-                  >
-                    <div className="flex gap-3">
-                      {pl.thumbnailUrl && (
-                        <img
-                          src={pl.thumbnailUrl}
-                          alt={pl.title}
-                          className="w-24 h-16 object-cover rounded-lg border border-slate-800 flex-shrink-0"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-white line-clamp-1">{pl.title}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{pl.channelTitle}</p>
-                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{pl.description || 'Sin descripción'}</p>
-                      </div>
-                    </div>
+              <fieldset className="yt-field">
+                <legend>Qué buscar en YouTube</legend>
+                <div className="yt-options" role="radiogroup" aria-label="Qué buscar en YouTube">
+                  {([
+                    { id: 'videos', label: 'Videos sueltos', hint: 'Reúne los mejores videos para que elijas cuáles usar' },
+                    { id: 'playlists', label: 'Playlists completas', hint: 'Busca listas existentes y elige una con un clic' },
+                  ] as const).map((o) => (
                     <button
+                      key={o.id}
                       type="button"
-                      disabled={importing}
-                      onClick={() => handleSelectFoundPlaylist(pl)}
-                      className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white text-xs font-medium transition"
+                      role="radio"
+                      aria-checked={searchType === o.id}
+                      onClick={() => { setSearchType(o.id); if (o.id === 'videos') setFoundPlaylists([]); }}
                     >
-                      {importing ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Importando videos...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Curar videos de esta playlist</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </>
-                      )}
+                      <strong>{o.label}</strong>
+                      <small>{o.hint}</small>
                     </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  ))}
+                </div>
+              </fieldset>
 
-          {/* Formulario 2: URL Manual de Playlist */}
-          {inputMode === 'url' && (
-            <form onSubmit={handleImportPlaylist} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  1. ¿Qué curso quieres que la IA diseñe a partir de esta playlist?
-                </label>
+              <label className="yt-field">
+                {field('Instrucción para la IA')}
                 <textarea
                   rows={3}
                   value={coursePrompt}
                   onChange={(e) => setCoursePrompt(e.target.value)}
-                  placeholder="Ej: Quiero un curso intensivo de Node.js y Microservicios para desarrolladores con experiencia previa en JavaScript..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
-                  required
+                  placeholder="Ej: Un curso práctico que vaya de fundamentos a proyectos"
                 />
-                <p className="text-xs text-slate-400 mt-1.5">
-                  La IA utilizará esta indicación pedagógica junto con los títulos y descripciones de los videos para estructurar los módulos.
-                </p>
-              </div>
+                <small>La IA organiza las lecciones según este criterio pedagógico.</small>
+              </label>
 
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  2. URL o ID de la Playlist de YouTube
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={playlistUrl}
-                    onChange={(e) => setPlaylistUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/playlist?list=PL4cUxeGndae..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition font-mono text-xs sm:text-sm"
-                    required
-                  />
-                  <Link className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
-                  <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                    <Globe className="w-3.5 h-3.5" /> Públicas
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 text-sky-400 font-medium">
-                    <Eye className="w-3.5 h-3.5" /> No listadas
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 text-amber-400 font-medium">
-                    <Lock className="w-3.5 h-3.5" /> Privadas (requiere OAuth de la cuenta)
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <div className="yt-actions">
                 {onCancel && (
-                  <button
-                    type="button"
-                    onClick={onCancel}
-                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
-                  >
+                  <button type="button" className="mentor-course-control" onClick={onCancel}>
                     Cancelar
                   </button>
                 )}
-                <button
-                  type="submit"
-                  disabled={importing}
-                  className="ml-auto flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20"
-                >
-                  {importing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Consultando YouTube API...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Importar Playlist</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
+                <button type="submit" className="mentor-course-control mentor-course-import" disabled={isSearching}>
+                  {isSearching ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
+                  {isSearching ? 'Buscando en YouTube' : searchType === 'videos' ? 'Buscar videos' : 'Buscar playlists'}
                 </button>
               </div>
             </form>
           )}
 
-          {/* Mensaje de Error en Paso 1 */}
+          {inputMode === 'search' && searchType === 'playlists' && foundPlaylists.length > 0 && (
+            <div className="yt-results">
+              <h3>{foundPlaylists.length} {foundPlaylists.length === 1 ? 'playlist encontrada' : 'playlists encontradas'}</h3>
+              <ul className="yt-playlists">
+                {foundPlaylists.map((pl) => (
+                  <li key={pl.youtubeId} className="yt-playlist">
+                    <div className="yt-playlist__body">
+                      {pl.thumbnailUrl && <img src={pl.thumbnailUrl} alt="" />}
+                      <div>
+                        <strong title={stripEmoji(pl.title)}>{stripEmoji(pl.title)}</strong>
+                        <span>{pl.channelTitle}</span>
+                        <p>{stripEmoji(pl.description) || 'Sin descripción'}</p>
+                      </div>
+                    </div>
+                    <button type="button" className="mentor-course-control" disabled={importing} onClick={() => handleSelectFoundPlaylist(pl)}>
+                      {importing && <Loader2 aria-hidden="true" className="animate-spin" />}
+                      {importing ? 'Importando videos' : 'Usar esta playlist'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {inputMode === 'url' && (
+            <form onSubmit={handleImportPlaylist} className="yt-form">
+              <label className="yt-field">
+                {field('Qué curso debe diseñar la IA')}
+                <textarea
+                  rows={3}
+                  value={coursePrompt}
+                  onChange={(e) => setCoursePrompt(e.target.value)}
+                  placeholder="Ej: Un curso intensivo de Node.js para quienes ya conocen JavaScript"
+                  required
+                />
+                <small>Junto con los títulos y descripciones de los videos, guía cómo se arman los módulos.</small>
+              </label>
+              <label className="yt-field">
+                {field('URL o ID de la playlist')}
+                <input
+                  type="text"
+                  value={playlistUrl}
+                  onChange={(e) => setPlaylistUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/playlist?list=..."
+                  required
+                />
+                <small>Sirven playlists públicas y no listadas. Las privadas requieren conectar la cuenta.</small>
+              </label>
+              <div className="yt-actions">
+                {onCancel && (
+                  <button type="button" className="mentor-course-control" onClick={onCancel}>
+                    Cancelar
+                  </button>
+                )}
+                <button type="submit" className="mentor-course-control mentor-course-import" disabled={importing}>
+                  {importing && <Loader2 aria-hidden="true" className="animate-spin" />}
+                  {importing ? 'Consultando YouTube' : 'Importar playlist'}
+                </button>
+              </div>
+            </form>
+          )}
+
           {importError && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
+            <div className="yt-error" role="alert">
+              <AlertCircle aria-hidden="true" />
               <div>
-                <p className="font-medium">{importError}</p>
+                <p>{importError}</p>
                 {!ytStatus.connected && (
-                  <button
-                    type="button"
-                    onClick={handleConnectYouTube}
-                    className="mt-2 text-xs underline font-semibold text-red-400 hover:text-white"
-                  >
-                    Conectar cuenta de YouTube ahora
+                  <button type="button" className="mentor-course-control" onClick={handleConnectYouTube}>
+                    Conectar cuenta de YouTube
                   </button>
                 )}
               </div>
@@ -900,619 +697,319 @@ export const YouTubeCourseBuilder: React.FC<YouTubeCourseBuilderProps> = ({
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 2: Revisión y Curación de Videos (Selección, Orden y Eliminación)
-      ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 2 && playlist && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
-          {/* Tarjeta de la Playlist o Búsqueda */}
-          <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl bg-slate-950 border border-slate-800/80">
-            {playlist.thumbnailUrl ? (
-              <img
-                src={playlist.thumbnailUrl}
-                alt={playlist.title}
-                className="w-full sm:w-48 h-28 object-cover rounded-lg border border-slate-800 flex-shrink-0"
-              />
-            ) : (
-              <div className="w-full sm:w-48 h-28 rounded-lg border border-slate-800 bg-slate-900 flex items-center justify-center flex-shrink-0">
-                <Film className="w-8 h-8 text-red-500" />
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-red-600/20 text-red-300 uppercase flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-300" />
-                  {playlist.youtubeId === 'custom-search' ? 'Búsqueda Inteligente' : playlist.privacyStatus}
-                </span>
-                <span className="text-xs text-slate-400">• {playlist.channelTitle}</span>
-              </div>
-              <h2 className="text-lg font-bold text-white truncate">{playlist.title}</h2>
-              <p className="text-xs text-slate-400 mt-1 line-clamp-2">{playlist.description || 'Sin descripción'}</p>
-              <div className="flex items-center gap-4 mt-3 text-xs text-slate-400">
-                <span>{videos.length} videos disponibles</span>
-                <span className="text-emerald-400 font-medium">
-                  {videos.filter((v) => !v.excluded).length} seleccionados para el temario
-                </span>
-              </div>
+        <div className="yt-card">
+          <div className="yt-summary">
+            {playlist.thumbnailUrl ? <img src={playlist.thumbnailUrl} alt="" /> : <span className="yt-summary__empty" aria-hidden="true"><Film /></span>}
+            <div>
+              <span className="yt-summary__kicker">
+                {playlist.youtubeId === 'custom-search' ? 'Búsqueda por tema' : privacyLabel(playlist.privacyStatus) || 'Playlist'} · {playlist.channelTitle}
+              </span>
+              <h3 title={stripEmoji(playlist.title)}>{stripEmoji(playlist.title)}</h3>
+              <p>{stripEmoji(playlist.description) || 'Sin descripción'}</p>
+              <dl>
+                <div><dt>Disponibles</dt><dd>{videos.length}</dd></div>
+                <div><dt>Seleccionados</dt><dd>{selectedVideos.length}</dd></div>
+                <div><dt>Duración</dt><dd>{selectedVideos.length > 0 ? totalLabel : '—'}</dd></div>
+              </dl>
             </div>
           </div>
 
-          {/* Barra de Controles de Videos */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => toggleSelectAll(true)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
-              >
-                Seleccionar todos
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleSelectAll(false)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
-              >
-                Deseleccionar todos
-              </button>
+          <div className="yt-bar">
+            <div>
+              <button type="button" className="mentor-course-control" onClick={() => toggleSelectAll(true)}>Seleccionar todos</button>
+              <button type="button" className="mentor-course-control" onClick={() => toggleSelectAll(false)}>Quitar selección</button>
             </div>
-            <p className="text-xs text-slate-400">
-              Usa las flechas para ordenar, desmarca los no prioritarios o el ícono de papelera para eliminar videos que no desees mostrar.
-            </p>
+            <span>Ordena con las flechas, desmarca lo que no sirva o elimínalo de la lista.</span>
           </div>
 
-          {/* Lista de Videos */}
           {videos.length === 0 ? (
-            <div className="p-8 text-center bg-slate-950/60 rounded-xl border border-slate-800 text-slate-400 space-y-2">
-              <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-              <p className="font-semibold text-white">No quedan videos en la lista.</p>
-              <p className="text-xs text-slate-400">
-                Has eliminado todos los videos. Haz clic en "Atrás" para realizar una nueva búsqueda.
-              </p>
+            <div className="yt-empty" role="status">
+              <strong>No quedan videos en la lista</strong>
+              <p>Eliminaste todos los videos. Vuelve atrás para hacer una nueva búsqueda.</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[460px] overflow-y-auto pr-2 divide-y divide-slate-800/60">
+            <ul className="yt-videos">
               {videos.map((vid, idx) => (
-                <div
-                  key={vid.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition ${
-                    vid.excluded
-                      ? 'opacity-40 bg-slate-950/40'
-                      : 'bg-slate-950/80 hover:bg-slate-950 border border-slate-800/60'
-                  }`}
-                >
-                  {/* Checkbox */}
-                  <button
-                    type="button"
-                    onClick={() => toggleVideoExcluded(vid.id)}
-                    className="text-red-500 hover:text-red-400 transition flex-shrink-0"
-                    title={vid.excluded ? 'Incluir en el temario' : 'Excluir del temario'}
-                  >
-                    {vid.excluded ? (
-                      <Square className="w-5 h-5 text-slate-600" />
-                    ) : (
-                      <CheckSquare className="w-5 h-5 text-red-500" />
-                    )}
-                  </button>
-
-                  {/* Número / Orden */}
-                  <span className="w-6 text-center text-xs font-mono font-semibold text-slate-500">
-                    {idx + 1}
-                  </span>
-
-                  {/* Thumbnail */}
-                  {vid.thumbnailUrl && (
-                    <img
-                      src={vid.thumbnailUrl}
-                      alt={vid.title}
-                      className="w-16 h-10 object-cover rounded border border-slate-800 flex-shrink-0"
+                <li key={vid.id} className="yt-video" data-excluded={vid.excluded || undefined}>
+                  <label className="yt-video__pick">
+                    <input
+                      type="checkbox"
+                      checked={!vid.excluded}
+                      onChange={() => toggleVideoExcluded(vid.id)}
+                      aria-label={`${vid.excluded ? 'Incluir' : 'Excluir'} ${stripEmoji(vid.title)}`}
                     />
-                  )}
-
-                  {/* Datos del Video */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{vid.title}</p>
-                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                      <span className="flex items-center gap-1 font-mono text-[11px]">
-                        <Clock className="w-3 h-3 text-slate-500" />
-                        {vid.durationFormatted || '0:00'}
-                      </span>
-                      {vid.channelTitle && (
-                        <span className="text-[11px] text-slate-500 truncate max-w-[150px]">
-                          {vid.channelTitle}
-                        </span>
-                      )}
-                      {vid.privacyStatus === 'PRIVATE' && (
-                        <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Privado
-                        </span>
-                      )}
-                    </div>
+                  </label>
+                  <span className="yt-video__n" aria-hidden="true">{idx + 1}</span>
+                  {vid.thumbnailUrl && <img className="yt-video__thumb" src={vid.thumbnailUrl} alt="" />}
+                  <div className="yt-video__text">
+                    <strong title={stripEmoji(vid.title)}>{stripEmoji(vid.title)}</strong>
+                    <span>
+                      {vid.durationFormatted || '0:00'}
+                      {vid.channelTitle && ` · ${vid.channelTitle}`}
+                      {privacyLabel(vid.privacyStatus) && String(vid.privacyStatus).toUpperCase() !== 'PUBLIC' && ` · ${privacyLabel(vid.privacyStatus)}`}
+                    </span>
                   </div>
-
-                  {/* Controles de Orden y Eliminación */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={idx === 0}
-                      onClick={() => moveVideo(idx, 'up')}
-                      className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
-                      title="Mover arriba"
-                    >
-                      <MoveUp className="w-4 h-4" />
+                  <div className="yt-video__actions">
+                    <button type="button" disabled={idx === 0} onClick={() => moveVideo(idx, 'up')} aria-label="Subir video" title="Subir">
+                      <MoveUp aria-hidden="true" />
                     </button>
-                    <button
-                      type="button"
-                      disabled={idx === videos.length - 1}
-                      onClick={() => moveVideo(idx, 'down')}
-                      className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-20 hover:bg-slate-800 transition"
-                      title="Mover abajo"
-                    >
-                      <MoveDown className="w-4 h-4" />
+                    <button type="button" disabled={idx === videos.length - 1} onClick={() => moveVideo(idx, 'down')} aria-label="Bajar video" title="Bajar">
+                      <MoveDown aria-hidden="true" />
                     </button>
-                    {/* Botón de Eliminación (Descartar Video) */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveVideo(vid.id)}
-                      className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition ml-1"
-                      title="Eliminar este video de la lista"
-                    >
-                      <Trash2 className="w-4 h-4" />
+                    <button type="button" data-danger="true" onClick={() => handleRemoveVideo(vid.id)} aria-label="Quitar de la lista" title="Quitar de la lista">
+                      <Trash2 aria-hidden="true" />
                     </button>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
-          {/* Botones de acción */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={() => setCurrentStep(1)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Atrás</span>
+          <div className="yt-actions yt-actions--split">
+            <button type="button" className="mentor-course-control" onClick={() => setCurrentStep(1)}>
+              <ArrowLeft aria-hidden="true" />
+              Atrás
             </button>
-            <button
-              type="button"
-              onClick={handleStartAiGeneration}
-              disabled={videos.filter((v) => !v.excluded).length === 0}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold text-sm transition shadow-lg shadow-red-600/20 disabled:opacity-40"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Generar Estructura con IA ({videos.filter((v) => !v.excluded).length} videos)</span>
+            <button type="button" className="mentor-course-control mentor-course-import" onClick={handleStartAiGeneration} disabled={selectedVideos.length === 0}>
+              <Sparkles aria-hidden="true" />
+              Generar con IA ({selectedVideos.length} {selectedVideos.length === 1 ? 'video' : 'videos'})
             </button>
           </div>
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 3: Progreso de Generación IA
-      ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 3 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center space-y-6 shadow-xl max-w-xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center mx-auto relative">
-            <Sparkles className="w-8 h-8 animate-pulse text-red-400" />
+        <div className="yt-card yt-progress" role="status" aria-live="polite">
+          <h3>Diseñando el curso</h3>
+          <p>{jobStatusText}</p>
+          <div className="yt-bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(jobProgress)} aria-label="Progreso de la generación">
+            <span style={{ width: `${jobProgress}%` }} />
           </div>
-
-          <div>
-            <h2 className="text-xl font-bold text-white mb-1">
-              Diseñando el Curso con Inteligencia Artificial
-            </h2>
-            <p className="text-sm text-slate-400">{jobStatusText}</p>
-          </div>
-
-          {/* Barra de Progreso */}
-          <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800 p-0.5">
-            <div
-              className="bg-gradient-to-r from-red-600 to-amber-500 h-full rounded-full transition-all duration-500"
-              style={{ width: `${jobProgress}%` }}
-            />
-          </div>
-
-          <div className="text-xs text-slate-500 space-y-1">
-            <p>• Categorizando temas y nivel pedagógico</p>
-            <p>• Asignando videos a lecciones con objetivos de aprendizaje</p>
-            <p>• Formulando preguntas de comprensión para autoevaluación</p>
-          </div>
-
+          <span className="yt-progress__pct">{Math.round(jobProgress)}%</span>
+          <ul>
+            <li>Agrupa los videos por tema y nivel</li>
+            <li>Asigna cada video a una lección con sus objetivos</li>
+            <li>Redacta preguntas de comprensión</li>
+          </ul>
           {generationError && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm mt-4">
-              <p className="font-semibold">Ocurrió un error en la generación:</p>
-              <p className="text-xs mt-1">{generationError}</p>
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="mt-3 px-4 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold"
-              >
-                Volver a la selección de videos
-              </button>
+            <div className="yt-error" role="alert">
+              <AlertCircle aria-hidden="true" />
+              <div>
+                <p>No se pudo generar el curso: {generationError}</p>
+                <button type="button" className="mentor-course-control" onClick={() => setCurrentStep(2)}>
+                  Volver a la selección
+                </button>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 4: Revisión y Edición Granular del Curso Generado
-      ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 4 && draftCourse && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800 flex-wrap gap-3">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-1">
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Estructura generada por IA — Puedes personalizar todo</span>
-              </div>
-              <h2 className="text-xl font-bold text-white">Estructura del Curso Propuesta</h2>
-            </div>
-            <div className="flex items-center gap-4 flex-wrap">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={publishImmediately}
-                  onChange={(e) => setPublishImmediately(e.target.checked)}
-                  className="accent-[#06b6d4] w-4 h-4 rounded cursor-pointer"
-                />
-                <span>Publicar inmediatamente</span>
-              </label>
-
-              <button
-                type="button"
-                onClick={handleSaveDraftCourse}
-                disabled={savingCourse}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-              >
-                {savingCourse ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{publishImmediately ? 'Publicando en DocentOS...' : 'Guardando en DocentOS...'}</span>
-                  </>
-                ) : (
-                  <>
-                    {publishImmediately ? <Globe className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    <span>{publishImmediately ? 'Guardar y Publicar Curso' : 'Guardar como Curso Borrador'}</span>
-                  </>
-                )}
-              </button>
-            </div>
+        <div className="yt-card">
+          <div className="yt-review-head">
+            <h3>Estructura propuesta</h3>
+            <p>Todo es editable: título, módulos y lecciones.</p>
           </div>
 
-          {/* Metadatos Generales del Curso */}
-          <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Datos Principales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Título del Curso</label>
+          <section className="yt-block" aria-labelledby="yt-main">
+            <h4 id="yt-main">Datos principales</h4>
+            <div className="yt-grid">
+              <label className="yt-field">
+                {field('Título')}
                 <input
                   type="text"
                   value={draftCourse.course.title}
-                  onChange={(e) =>
-                    setDraftCourse({
-                      ...draftCourse,
-                      course: { ...draftCourse.course, title: e.target.value },
-                    })
-                  }
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white"
+                  onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, title: e.target.value } })}
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Nivel y Categoría</label>
-                <div className="flex gap-2">
+              </label>
+              <div className="yt-grid yt-grid--tight">
+                <label className="yt-field">
+                  {field('Nivel')}
                   <input
                     type="text"
                     value={draftCourse.course.level}
-                    onChange={(e) =>
-                      setDraftCourse({
-                        ...draftCourse,
-                        course: { ...draftCourse.course, level: e.target.value },
-                      })
-                    }
-                    className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500"
-                    placeholder="Nivel (Ej: Principiante)"
+                    onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, level: e.target.value } })}
+                    placeholder="Ej: Principiante"
                   />
+                </label>
+                <label className="yt-field">
+                  {field('Categoría')}
                   <select
                     value={draftCourse.course.category || 'Mentoría Especializada'}
-                    onChange={(e) =>
-                      setDraftCourse({
-                        ...draftCourse,
-                        course: { ...draftCourse.course, category: e.target.value },
-                      })
-                    }
-                    className="w-1/2 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500 cursor-pointer"
+                    onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, category: e.target.value } })}
                   >
                     {draftCourse.course.category && !COURSE_CATEGORIES.includes(draftCourse.course.category as any) && (
                       <option value={draftCourse.course.category}>{draftCourse.course.category}</option>
                     )}
-                    <optgroup label="Modalidades de Mentoría">
+                    <optgroup label="Modalidades de mentoría">
                       {MENTORSHIP_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="Áreas Temáticas Técnicas">
+                    <optgroup label="Áreas temáticas">
                       {TECHNICAL_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </optgroup>
                   </select>
-                </div>
+                </label>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Descripción del Curso</label>
+            <label className="yt-field">
+              {field('Descripción')}
               <textarea
-                rows={2}
+                rows={3}
                 value={draftCourse.course.description}
-                onChange={(e) =>
-                  setDraftCourse({
-                    ...draftCourse,
-                    course: { ...draftCourse.course, description: e.target.value },
-                  })
-                }
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-red-500"
+                onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, description: e.target.value } })}
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Objetivos Generales (uno por línea)</label>
+            <label className="yt-field">
+              {field('Objetivos generales', '(uno por línea)')}
               <textarea
-                rows={2}
+                rows={3}
                 value={(draftCourse.course.generalObjectives || []).join('\n')}
                 onChange={(e) =>
                   setDraftCourse({
                     ...draftCourse,
-                    course: {
-                      ...draftCourse.course,
-                      generalObjectives: e.target.value.split('\n').filter(Boolean),
-                    },
+                    course: { ...draftCourse.course, generalObjectives: e.target.value.split('\n').filter(Boolean) },
                   })
                 }
-                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white font-mono text-xs focus:outline-none focus:border-red-500"
               />
-            </div>
+            </label>
 
-            {/* Imagen de Portada (Generación Temática con IA + Logo) */}
-            <div className="space-y-2 pt-3 border-t border-slate-800/80">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-medium text-slate-300 block">
-                  Imagen de Portada (Automática con IA + Logo si se deja vacía)
-                </label>
-                <button
-                  type="button"
-                  onClick={handleGenerateCover}
-                  disabled={generatingCover}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {generatingCover ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{generatingCover ? 'Generando con IA...' : 'Generar con IA + Logo'}</span>
+            <div className="yt-field">
+              <div className="yt-field__row">
+                <span className="yt-field__label">Imagen de portada {<em>(si la dejas vacía se genera sola)</em>}</span>
+                <button type="button" className="mentor-course-control" onClick={handleGenerateCover} disabled={generatingCover}>
+                  {generatingCover ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
+                  {generatingCover ? 'Generando portada' : 'Generar con IA'}
                 </button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="yt-cover-input">
                 <input
                   type="text"
-                  placeholder="Dejar vacío para autogenerar portada IA temática con logo del plugin..."
+                  placeholder="URL de la imagen"
+                  aria-label="URL de la imagen de portada"
                   value={draftCourse.course.coverImage || ''}
-                  onChange={(e) =>
-                    setDraftCourse({
-                      ...draftCourse,
-                      course: { ...draftCourse.course, coverImage: e.target.value },
-                    })
-                  }
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+                  onChange={(e) => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, coverImage: e.target.value } })}
                 />
                 {draftCourse.course.coverImage && (
                   <button
                     type="button"
-                    onClick={() =>
-                      setDraftCourse({
-                        ...draftCourse,
-                        course: { ...draftCourse.course, coverImage: '' },
-                      })
-                    }
-                    title="Limpiar portada"
-                    className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 cursor-pointer"
+                    className="mentor-course-control mentor-icon-control"
+                    onClick={() => setDraftCourse({ ...draftCourse, course: { ...draftCourse.course, coverImage: '' } })}
+                    aria-label="Quitar portada"
+                    title="Quitar portada"
                   >
-                    <X className="w-4 h-4" />
+                    <X aria-hidden="true" />
                   </button>
                 )}
               </div>
               {draftCourse.course.coverImage && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800 mt-2">
-                  <img
-                    src={draftCourse.course.coverImage}
-                    alt="Vista previa de portada"
-                    className="w-32 h-20 rounded-lg object-cover border border-cyan-500/30 shrink-0"
-                  />
-                  <div className="text-xs text-slate-400 leading-relaxed">
-                    <span className="text-cyan-400 font-bold block mb-0.5">Vista previa de portada activa</span>
-                    Diseño temático adaptado al curso con el emblema y colores configurados en el plugin de personalización.
-                  </div>
-                </div>
+                <img className="yt-cover" src={draftCourse.course.coverImage} alt="Vista previa de la portada" />
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Módulos y Lecciones */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-red-500" />
-              <span>Módulos y Lecciones ({draftCourse.modules.length} módulos)</span>
-            </h3>
-
-            {draftCourse.modules.map((mod, mIdx) => (
-              <div key={mIdx} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-lg bg-red-600/20 text-red-400 font-bold text-xs flex items-center justify-center">
-                    {mIdx + 1}
-                  </span>
-                  <input
-                    type="text"
-                    value={mod.title}
-                    onChange={(e) => {
-                      const newMods = [...draftCourse.modules];
-                      newMods[mIdx].title = e.target.value;
-                      setDraftCourse({ ...draftCourse, modules: newMods });
-                    }}
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
-                  />
-                  <span className="text-xs text-slate-500">{mod.lessons.length} lecciones</span>
-                </div>
-
-                {/* Lecciones del módulo */}
-                <div className="pl-9 space-y-2 pt-1">
-                  {mod.lessons.map((les, lIdx) => (
-                    <div
-                      key={lIdx}
-                      className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/60 space-y-2 text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Play className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                        <input
-                          type="text"
-                          value={les.title}
-                          onChange={(e) => {
-                            const newMods = [...draftCourse.modules];
-                            newMods[mIdx].lessons[lIdx].title = e.target.value;
-                            setDraftCourse({ ...draftCourse, modules: newMods });
-                          }}
-                          className="flex-1 bg-transparent border-b border-transparent hover:border-slate-700 focus:border-red-500 font-medium text-white px-1 py-0.5"
-                        />
-                        <span className="font-mono text-slate-400">{les.durationFormatted || '0:00'}</span>
-                        <a
-                          href={`https://www.youtube.com/watch?v=${les.youtubeVideoId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-slate-500 hover:text-red-400 ml-1"
-                          title="Ver en YouTube"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-
-                      {les.learningObjectives && les.learningObjectives.length > 0 && (
-                        <div className="text-[11px] text-slate-400 pl-5">
-                          <span className="font-semibold text-slate-300">Objetivo: </span>
-                          {les.learningObjectives[0]}
+          <section className="yt-block" aria-labelledby="yt-modules">
+            <h4 id="yt-modules">Módulos y lecciones <span>{draftCourse.modules.length} {draftCourse.modules.length === 1 ? 'módulo' : 'módulos'}</span></h4>
+            <ul className="yt-modules">
+              {draftCourse.modules.map((mod, mIdx) => (
+                <li key={mIdx} className="yt-module">
+                  <div className="yt-module__head">
+                    <span className="yt-module__n" aria-hidden="true">{mIdx + 1}</span>
+                    <textarea
+                      rows={1}
+                      value={mod.title}
+                      aria-label={`Título del módulo ${mIdx + 1}`}
+                      onChange={(e) => {
+                        const newMods = [...draftCourse.modules];
+                        newMods[mIdx].title = e.target.value;
+                        setDraftCourse({ ...draftCourse, modules: newMods });
+                      }}
+                    />
+                    <span className="yt-module__count">{mod.lessons.length} {mod.lessons.length === 1 ? 'lección' : 'lecciones'}</span>
+                  </div>
+                  <ul className="yt-lessons">
+                    {mod.lessons.map((les, lIdx) => (
+                      <li key={lIdx}>
+                        <div className="yt-lesson__row">
+                          <textarea
+                            rows={1}
+                            value={les.title}
+                            aria-label={`Título de la lección ${lIdx + 1} del módulo ${mIdx + 1}`}
+                            onChange={(e) => {
+                              const newMods = [...draftCourse.modules];
+                              newMods[mIdx].lessons[lIdx].title = e.target.value;
+                              setDraftCourse({ ...draftCourse, modules: newMods });
+                            }}
+                          />
+                          <span>{les.durationFormatted || '0:00'}</span>
+                          <a href={`https://www.youtube.com/watch?v=${les.youtubeVideoId}`} target="_blank" rel="noreferrer" aria-label="Ver en YouTube" title="Ver en YouTube">
+                            <ExternalLink aria-hidden="true" />
+                          </a>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+                        {les.learningObjectives && les.learningObjectives.length > 0 && (
+                          <p><strong>Objetivo:</strong> {les.learningObjectives[0]}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-          {/* Pie con botón de guardado */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800 flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setCurrentStep(2)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-slate-400 hover:text-white text-sm transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Atrás</span>
+          <div className="yt-actions yt-actions--split">
+            <button type="button" className="mentor-course-control" onClick={() => setCurrentStep(2)}>
+              <ArrowLeft aria-hidden="true" />
+              Atrás
             </button>
-            <div className="flex items-center gap-4 flex-wrap">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={publishImmediately}
-                  onChange={(e) => setPublishImmediately(e.target.checked)}
-                  className="accent-[#06b6d4] w-4 h-4 rounded cursor-pointer"
-                />
-                <span>Publicar inmediatamente</span>
+            <div className="yt-save">
+              <label className="yt-check">
+                <input type="checkbox" checked={publishImmediately} onChange={(e) => setPublishImmediately(e.target.checked)} />
+                <span>Publicar al guardar</span>
               </label>
-
-              <button
-                type="button"
-                onClick={handleSaveDraftCourse}
-                disabled={savingCourse}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-              >
-                {savingCourse ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{publishImmediately ? 'Publicando...' : 'Guardando...'}</span>
-                  </>
-                ) : (
-                  <>
-                    {publishImmediately ? <Globe className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    <span>{publishImmediately ? 'Guardar y Publicar Curso' : 'Guardar como Borrador en DocentOS'}</span>
-                  </>
-                )}
+              <button type="button" className="mentor-course-control mentor-course-import" onClick={handleSaveDraftCourse} disabled={savingCourse}>
+                {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : publishImmediately ? <Globe aria-hidden="true" /> : <Save aria-hidden="true" />}
+                {savingCourse ? (publishImmediately ? 'Publicando' : 'Guardando') : publishImmediately ? 'Guardar y publicar' : 'Guardar como borrador'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          PASO 5: Confirmación de Creación Exitosa
-      ───────────────────────────────────────────────────────────────────────────── */}
       {currentStep === 5 && saveSuccess && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center space-y-6 shadow-xl max-w-lg mx-auto">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-2">
-              {saveSuccess.published ? '¡Curso Creado y Publicado con Éxito!' : '¡Curso Creado Exitosamente!'}
-            </h2>
-            <p className="text-sm text-slate-400">
-              El curso <span className="text-white font-semibold font-mono">"{saveSuccess.courseTitle}"</span> ha sido{' '}
-              {saveSuccess.published ? (
-                <strong className="text-emerald-400">PUBLICADO</strong>
-              ) : (
-                <strong className="text-amber-400">guardado como BORRADOR</strong>
-              )}{' '}
-              en DocentOS.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 text-left space-y-2">
-            <p>✅ Videos vinculados con reproducción nativa sin cookies de YouTube</p>
-            <p>✅ Módulos y lecciones sincronizados en PostgreSQL</p>
-            <p>
-              {saveSuccess.published
-                ? '✅ Visible inmediatamente para todos los estudiantes en el Catálogo'
-                : '✅ Solo los mentores y administradores pueden verlo mientras esté en borrador'}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            {!saveSuccess.published ? (
-              <button
-                type="button"
-                onClick={handlePublishNow}
-                disabled={publishing}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-              >
-                {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-                <span>Publicar Ahora en el Catálogo</span>
+        <div className="yt-card yt-done">
+          <span className="yt-done__icon" aria-hidden="true"><CheckCircle2 /></span>
+          <h3>{saveSuccess.published ? 'Curso creado y publicado' : 'Curso creado como borrador'}</h3>
+          <p>
+            <strong>{saveSuccess.courseTitle}</strong> {saveSuccess.published ? 'ya está en el catálogo.' : 'quedó guardado y solo lo ven mentores y administradores.'}
+          </p>
+          <ul>
+            <li><CheckCircle2 aria-hidden="true" />Videos vinculados con reproducción sin cookies de YouTube</li>
+            <li><CheckCircle2 aria-hidden="true" />Módulos y lecciones guardados</li>
+            <li><CheckCircle2 aria-hidden="true" />{saveSuccess.published ? 'Visible para todos los alumnos en el catálogo' : 'Podrás publicarlo cuando quieras'}</li>
+          </ul>
+          <div className="yt-actions yt-actions--center">
+            {!saveSuccess.published && (
+              <button type="button" className="mentor-course-control mentor-course-import" onClick={handlePublishNow} disabled={publishing}>
+                {publishing ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Globe aria-hidden="true" />}
+                Publicar ahora
               </button>
-            ) : null}
+            )}
             {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold transition"
-              >
-                Cerrar y Volver
+              <button type="button" className="mentor-course-control" onClick={onCancel}>
+                Cerrar y volver
               </button>
             )}
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

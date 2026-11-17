@@ -16,6 +16,7 @@ import {
 } from './lib/appRoutes';
 import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
+import { patchCourseCard } from './lib/courseCardUpdate';
 import { RefreshCw } from 'lucide-react';
 import { initSavedTheme } from './lib/themeApplicator';
 import { applySeasonalTheme } from './lib/seasonalTheme';
@@ -446,6 +447,14 @@ export default function App() {
           }
         }}
         onRefreshData={() => loadData(true)}
+        onCourseUpdated={(courseId, patch) => {
+          setCourses(previous => {
+            const updated = patchCourseCard(previous, courseId, patch);
+            writeCachedCourses(updated);
+            return updated;
+          });
+          setCourse(previous => previous?.id === courseId ? { ...previous, ...patch } : previous);
+        }}
         onPaymentSuccess={handlePaymentSuccess}
         onVipActivated={handleVipActivated}
         onRestartTour={() => setShowTour(true)}

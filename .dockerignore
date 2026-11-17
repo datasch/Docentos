@@ -8,3 +8,6 @@ generated
 .agents
 coverage
 *.log
+
+# Local design review artifacts and database snapshots
+.codex-tmp

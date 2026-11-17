@@ -8,14 +8,18 @@
  * 3. Responder dudas e interactuar en el Centro de Preguntas Q&A
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  UserCheck,
+  ArrowUpRight,
+  UsersRound,
+  LockKeyhole,
+  LockKeyholeOpen,
   BookOpen,
   Plus,
   MessageSquare,
   CheckCircle2,
+  Check,
   Users,
   Clock,
   Send,
@@ -31,10 +35,21 @@ import {
   Video,
   Radio,
   Youtube,
+  Download,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { MeetingManager } from './MeetingManager';
+import { CourseCardDescription } from './CourseCardDescription';
+import { MenteeCoursesDialog } from './MenteeCoursesDialog';
+import { QuizCourseSheet } from './QuizCourseSheet';
+import { courseHue } from '../lib/courseHue';
+import { stripEmoji } from '../lib/stripEmoji';
+import { relativeTime } from './notifications/NotificationBell';
 import { avatarSrc } from '../lib/avatar.js';
 import { api, type AppNotification } from '../lib/api';
+import { patchCourseCard, type CourseCardPatch } from '../lib/courseCardUpdate';
+import { filterCoursesByPublication, type CoursePublicationFilter } from '../lib/coursePublication';
 import { MENTOR_QNA_EVENT, MENTOR_TAB_STORAGE_KEY, NOTIFICATION_EVENT } from '../lib/useNotifications';
 import { Course, Module, User, MenteeStudent, MenteeCandidate, MentorshipComment, QuizQuestion, CourseAccessRequest } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
@@ -48,7 +63,11 @@ interface MentorDashboardProps {
   currentUser: User;
   courses: Course[];
   onRefreshCourses: () => void;
+  onCourseUpdated?: (courseId: string, patch: CourseCardPatch) => void;
 }
+
+const MENTOR_TABS = ['courses', 'mentees', 'qna', 'meetings', 'quizzes', 'youtube-builder'] as const;
+type MentorTab = (typeof MENTOR_TABS)[number];
 
 /** La fecha cruda ISO del servidor no se lee; en la bandeja importa el cuándo. */
 function formatDate(value: string): string {
@@ -62,6 +81,12 @@ function formatDate(value: string): string {
   });
 }
 
+/** «hace 2 h» hasta un mes; más allá, la fecha. */
+function askedAt(value: string): string {
+  const age = Date.now() - new Date(value).getTime();
+  return Number.isNaN(age) || age > 30 * 24 * 3600 * 1000 ? formatDate(value) : relativeTime(value);
+}
+
 /** De qué clase salió la consulta, dicho en una línea. */
 function questionOrigin(comment: MentorshipComment): string {
   const parts = [comment.courseTitle, comment.moduleTitle, comment.videoTitle].filter(Boolean);
@@ -72,9 +97,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   currentUser,
   courses,
   onRefreshCourses,
+  onCourseUpdated,
 }) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>(() => {
+  const [activeTab, setActiveTab] = useState<MentorTab>(() => {
     // Al abrir un aviso de pregunta nueva se entra directo a las consultas.
     try {
       if (sessionStorage.getItem(MENTOR_TAB_STORAGE_KEY) === 'qna') {
@@ -84,10 +110,15 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     } catch {
       // Sin almacenamiento se queda en la pestaña por defecto.
     }
-    return 'courses';
+    // Al recargar se vuelve a la pestaña de la URL, no a la de por defecto.
+    const fromUrl = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('tab');
+    return MENTOR_TABS.find(tab => tab === fromUrl) ?? 'courses';
   });
   const [selectedQuizModule, setSelectedQuizModule] = useState<Module | null>(null);
-  const [quizCourseExpanded, setQuizCourseExpanded] = useState<string | null>(null);
+  const [quizQuery, setQuizQuery] = useState<string>('');
+  const [quizFilter, setQuizFilter] = useState<'all' | 'without' | 'complete'>('all');
+  const [quizLimit, setQuizLimit] = useState<number>(12);
+  const [quizSheetCourseId, setQuizSheetCourseId] = useState<string | null>(null);
   const [quizzesMap, setQuizzesMap] = useState<Record<string, QuizQuestion[]>>({});
 
   // Cursos asignados estrictamente a este mentor (Principio de Menor Privilegio)
@@ -115,15 +146,35 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     loadScopedCourses();
   }, [loadScopedCourses]);
 
-  const displayCourses = currentUser.role === 'ADMIN' ? courses : scopedCourses;
+  const displayCourses = scopedCourses;
+  const [publicationFilter, setPublicationFilter] = useState<CoursePublicationFilter>('all');
+  const [courseQuery, setCourseQuery] = useState<string>('');
+  const courseNeedle = courseQuery.trim().toLowerCase();
+  const visibleCourses = filterCoursesByPublication(displayCourses, publicationFilter)
+    .filter(course => !courseNeedle || course.title.toLowerCase().includes(courseNeedle));
+  const publicationCounts = {
+    all: displayCourses.length,
+    published: displayCourses.filter(course => course.published).length,
+    draft: displayCourses.filter(course => !course.published).length,
+  };
+  const [courseNotices, setCourseNotices] = useState<Record<string, { error?: boolean; message: string }>>({});
+
+  const updateCourseCard = (courseId: string, patch: CourseCardPatch) => {
+    setScopedCourses(previous => patchCourseCard(previous, courseId, patch));
+    onCourseUpdated?.(courseId, patch);
+  };
 
   useEffect(() => {
     loadAllQuizzes();
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'youtube-builder') {
-      setActiveTab('youtube-builder');
-    }
   }, []);
+
+  // La pestaña queda en la URL (?tab=) para que recargar no devuelva a Cursos.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') === activeTab) return;
+    url.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', url);
+  }, [activeTab]);
 
   const loadAllQuizzes = async () => {
     try {
@@ -157,6 +208,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   // Mentees State
   const [mentees, setMentees] = useState<MenteeStudent[]>([]);
   const [loadingMentees, setLoadingMentees] = useState<boolean>(true);
+  const [menteeQuery, setMenteeQuery] = useState<string>('');
+  const [menteeFilter, setMenteeFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [menteeLimit, setMenteeLimit] = useState<number>(12);
+  const [detailMenteeId, setDetailMenteeId] = useState<string | null>(null);
   const [showAssignMenteeModal, setShowAssignMenteeModal] = useState<boolean>(false);
   const [newMenteeName, setNewMenteeName] = useState<string>('');
   const [newMenteeEmail, setNewMenteeEmail] = useState<string>('');
@@ -177,12 +232,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const handlePublishMentorCourse = async (courseId: string) => {
     try {
       setPublishingCourseId(courseId);
-      await api.youtube.publishCourse(courseId, true);
-      if (onRefreshCourses) {
-        onRefreshCourses();
-      }
+      setCourseNotices(previous => ({ ...previous, [courseId]: { message: '' } }));
+      const published = await api.youtube.publishCourse(courseId, true);
+      if (!published) throw new Error(t('mentor.publishFailed', 'No se pudo publicar el curso'));
+      updateCourseCard(courseId, { published: true });
+      setCourseNotices(previous => ({ ...previous, [courseId]: { message: t('mentor.publishSaved', 'Curso publicado') } }));
     } catch (err: any) {
-      alert(`Error al publicar curso: ${err.message}`);
+      setCourseNotices(previous => ({ ...previous, [courseId]: { error: true, message: err?.message || t('mentor.publishFailed', 'No se pudo publicar el curso') } }));
     } finally {
       setPublishingCourseId(null);
     }
@@ -192,10 +248,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [qnaComments, setQnaComments] = useState<MentorshipComment[]>([]);
   const [loadingQna, setLoadingQna] = useState<boolean>(true);
   const [qnaError, setQnaError] = useState<string>('');
-  const [qnaFilter, setQnaFilter] = useState<'pending' | 'all'>('pending');
+  const [qnaFilter, setQnaFilter] = useState<'pending' | 'resolved'>('pending');
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyErrorMap, setReplyErrorMap] = useState<Record<string, string>>({});
+  const [qnaQuery, setQnaQuery] = useState<string>('');
+  const [qnaLimit, setQnaLimit] = useState<number>(10);
+  // Respondida en esta sesión: se queda a la vista como «Resuelta» en vez de desaparecer de Pendientes.
+  const [answeredIds, setAnsweredIds] = useState<Set<string>>(() => new Set());
+  const [openThreads, setOpenThreads] = useState<Set<string>>(() => new Set());
+  const [openReplies, setOpenReplies] = useState<Set<string>>(() => new Set());
 
   const [accessRequests, setAccessRequests] = useState<CourseAccessRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState<boolean>(false);
@@ -206,7 +268,6 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
   /** Curso cuyo interruptor de apertura se está guardando ahora mismo. */
   const [openingCourseId, setOpeningCourseId] = useState<string | null>(null);
-  const [openError, setOpenError] = useState<string>('');
 
   useEffect(() => {
     loadMenteesData();
@@ -288,19 +349,15 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
    * botón, y el servidor lo vuelve a exigir: la ruta es `requireRole(['ADMIN'])`.
    */
   const toggleOpenToAll = async (course: Course) => {
-    const abrir = !course.openToAllRegistered;
-    setOpenError('');
+    const openToAllRegistered = !course.openToAllRegistered;
     setOpeningCourseId(course.id);
+    setCourseNotices(previous => ({ ...previous, [course.id]: { message: '' } }));
     try {
-      await api.updateCourse(course.id, { openToAllRegistered: abrir });
-      onRefreshCourses();
-      announce(
-        abrir
-          ? `«${course.title}» queda abierto a todas las cuentas registradas.`
-          : `«${course.title}» vuelve a entrar solo por asignación.`,
-      );
+      await api.updateCourse(course.id, { openToAllRegistered });
+      updateCourseCard(course.id, { openToAllRegistered });
+      setCourseNotices(previous => ({ ...previous, [course.id]: { message: t('mentor.accessSaved', 'Acceso actualizado') } }));
     } catch (error: any) {
-      setOpenError(error?.message || 'No se pudo cambiar la apertura del curso.');
+      setCourseNotices(previous => ({ ...previous, [course.id]: { error: true, message: error?.message || t('mentor.accessFailed', 'No se pudo cambiar el acceso') } }));
     } finally {
       setOpeningCourseId(null);
     }
@@ -368,6 +425,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     setRosterQuery('');
     setRosterError('');
   };
+
+  const rosterRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = rosterRef.current;
+    if (rosterMode && d && !d.open) d.showModal();
+  }, [rosterMode]);
 
   const closeRoster = () => {
     setRosterMode(null);
@@ -525,6 +588,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     try {
       await api.replyToComment(commentId, replyText.trim());
       setReplyTextMap((prev) => ({ ...prev, [commentId]: '' }));
+      setAnsweredIds((prev) => new Set(prev).add(commentId));
+      setOpenReplies((prev) => { const next = new Set(prev); next.delete(commentId); return next; });
+      setOpenThreads((prev) => new Set(prev).add(commentId));
+      announce('Respuesta enviada');
       loadQnaData();
     } catch (error: any) {
       setReplyErrorMap((prev) => ({
@@ -537,7 +604,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   };
 
   const pendingQuestions = qnaComments.filter((c) => !c.isResolved);
-  const visibleQuestions = qnaFilter === 'pending' ? pendingQuestions : qnaComments;
+  const resolvedQuestions = qnaComments.filter((c) => c.isResolved);
+  const visibleQuestions = qnaFilter === 'pending' ? pendingQuestions : resolvedQuestions;
   const answeredPct =
     qnaComments.length > 0
       ? Math.round(((qnaComments.length - pendingQuestions.length) / qnaComments.length) * 100)
@@ -549,48 +617,47 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       className="academy-mentor-dashboard mentor-workspace min-h-screen bg-canvas text-ink px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full max-w-7xl mx-auto overflow-x-hidden"
     >
 
-      {/* Command center */}
-      <section className="mentor-command-header bg-surface border border-line rounded-2xl p-5 sm:p-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] items-end">
-        <div className="space-y-3">
-          <div className="mentor-eyebrow flex items-center gap-2 text-xs font-medium text-brand-cyan">
-            <UserCheck className="w-4 h-4" />
-            <span>{t('mentor.workspaceBadge', 'Mentoría / Espacio de trabajo')}</span>
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-4xl font-semibold text-ink tracking-tight">
-              {t('mentor.workspaceTitle', 'Operación de mentoría')}
-            </h1>
-            <p className="mt-2 text-sm text-ink-muted max-w-2xl">
-              {t('mentor.workspaceDescription', 'Organiza tus programas, acompaña el progreso de tus mentees y resuelve las consultas que requieren tu atención.')}
-            </p>
-          </div>
-        </div>
-        <div className="mentor-priority-card bg-raised border border-line rounded-xl p-4">
-          <span className="text-xs font-medium text-ink-muted">Atención prioritaria</span>
-          <strong className="mt-1 block text-lg font-semibold text-ink tabular-nums">
-            {pendingQuestions.length} {pendingQuestions.length === 1 ? 'consulta pendiente' : 'consultas pendientes'}
-          </strong>
+      <section className="mentor-command-header" aria-labelledby="mentor-workspace-title">
+        <div className="mentor-header-main">
+          <h1 id="mentor-workspace-title">{t('mentor.workspaceTitle', 'Mentoría')}</h1>
+          <p>{t('mentor.workspaceDescription', 'Cursos y mentees a tu cargo')}</p>
           <button
             type="button"
-            onClick={() => setActiveTab('qna')}
-            className="mt-3 text-xs font-semibold text-brand-cyan hover:text-ink transition-colors"
+            className="mentor-review-button"
+            disabled={loadingQna}
+            onClick={() => {
+              if (qnaError) {
+                loadQnaData();
+              } else {
+                setQnaFilter('pending');
+                setActiveTab('qna');
+              }
+            }}
           >
-            Revisar consultas
+            {qnaError ? t('mentor.retryInbox', 'Reintentar carga') : t('mentor.reviewInbox', 'Revisar consultas')}
+            {loadingQna ? <Loader2 aria-hidden="true" className="animate-spin" /> : <ArrowUpRight aria-hidden="true" />}
           </button>
+        </div>
+        <div className="mentor-priority-card" data-state={loadingQna ? 'loading' : qnaError ? 'error' : pendingQuestions.length > 0 ? 'pending' : 'clear'}>
+          <span className="mentor-inbox-label">{t('mentor.inboxLabel', 'Consultas')}</span>
+          <strong role="status" aria-live="polite">
+            {loadingQna
+              ? t('mentor.inboxLoading', 'Cargando consultas…')
+              : qnaError
+                ? t('mentor.inboxUnavailable', 'No se pudieron cargar')
+                : pendingQuestions.length === 0
+                  ? t('mentor.inboxClear', 'Sin consultas pendientes')
+                  : t('mentor.inboxPending', {
+                      count: pendingQuestions.length,
+                      defaultValue: pendingQuestions.length === 1 ? '1 consulta por responder' : `${pendingQuestions.length} consultas por responder`,
+                    })}
+          </strong>
         </div>
       </section>
 
       {actionNotice && (
         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in">
           <CheckCircle2 className="w-4 h-4" /> {actionNotice}
-        </div>
-      )}
-
-      {/* Si el interruptor de apertura falla hay que decirlo: el botón vuelve a
-          su estado anterior y sin este aviso el fallo pasa por «no hice clic». */}
-      {openError && (
-        <div role="alert" className="p-3 bg-brand-orange/10 border border-brand-orange/30 text-brand-orange text-xs font-bold rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" /> {openError}
         </div>
       )}
 
@@ -700,7 +767,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <CheckSquare className="w-4 h-4 shrink-0" />
-          <span>{t('mentor.tabQuizzes', 'Evaluaciones & Quizzes IA')}</span>
+          <span>{t('mentor.tabQuizzes', 'Evaluaciones')}</span>
         </button>
 
         <button
@@ -713,611 +780,723 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           }`}
         >
           <Youtube className="w-4 h-4 shrink-0" />
-          <span>{t('mentor.tabYoutubeBuilder', 'AI YouTube Course Builder')}</span>
+          <span>{t('mentor.tabYoutubeBuilder', 'Curso desde YouTube')}</span>
         </button>
       </nav>
 
       {/* Tab Content 1: Courses Management */}
       {activeTab === 'courses' && (
-        <div className="mentor-courses-panel space-y-6">
+        <section className="mentor-courses-panel" aria-labelledby="mentor-courses-title">
           <div className="mentor-section-heading">
             <div>
-              <span className="mentor-section-kicker">Programas</span>
-              <h2>Gestiona tus cursos</h2>
-              <p>Revisa el estado de publicación, asigna mentees y controla el acceso de cada programa.</p>
+              <h2 id="mentor-courses-title">{t('mentor.coursesTitle', 'Cursos')}</h2>
+              <p>{t('mentor.coursesDescription', 'Publicación, acceso y mentees de cada curso')}</p>
             </div>
-            <span className="mentor-section-count">{displayCourses.length} programas</span>
           </div>
-          <div className="mentor-promo flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-raised border border-line">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-red-600/20 border border-red-500/30 text-red-400">
-                <Youtube className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-ink">{t('mentor.aiPromoTitle', '¿Quieres crear un curso rápidamente?')}</h3>
-                <p className="text-xs text-ink-muted">{t('mentor.aiPromoDesc', 'Utiliza la IA para importar una playlist de YouTube y generar un temario completo en minutos.')}</p>
-              </div>
+
+          <div className="mentor-promo">
+            <Youtube aria-hidden="true" />
+            <div>
+              <h3>{t('mentor.aiPromoTitle', 'Importar un curso')}</h3>
+              <p>{t('mentor.aiPromoDesc', 'Usa una playlist de YouTube para crear el temario')}</p>
             </div>
             <button
+              type="button"
               onClick={() => setActiveTab('youtube-builder')}
-              className="btn-brand-primary px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2 self-stretch sm:self-auto justify-center"
+              className="mentor-course-control mentor-course-import"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>{t('mentor.aiPromoBtn', 'Crear con IA desde YouTube')}</span>
+              <Download aria-hidden="true" />
+              {t('mentor.aiPromoBtn', 'Importar desde YouTube')}
             </button>
           </div>
-          {displayCourses.length === 0 ? (
-            <div className="bg-surface border border-line rounded-2xl p-10 text-center space-y-3">
-              <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-ink-muted">
+
+          <div className="mentor-course-toolbar">
+            <label className="mentor-mentee-search">
+              <Search aria-hidden="true" />
+              <input
+                type="search"
+                value={courseQuery}
+                onChange={(e) => setCourseQuery(e.target.value)}
+                placeholder={t('mentor.courseSearch', 'Buscar curso')}
+                aria-label={t('mentor.courseSearch', 'Buscar curso')}
+              />
+            </label>
+            <div className="mentor-publication-filters" role="group" aria-label={t('mentor.publicationFilter', 'Filtrar por publicación')}>
+              {(['all', 'published', 'draft'] as const).map(filter => (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={publicationFilter === filter}
+                  onClick={() => setPublicationFilter(filter)}
+                >
+                  <span>{filter === 'all'
+                    ? t('mentor.publicationAll', 'Todos')
+                    : filter === 'published'
+                      ? t('mentor.filterPublished', 'Publicados')
+                      : t('mentor.filterDrafts', 'Borradores')}</span>
+                  <span className="mentor-publication-count">{publicationCounts[filter]}</span>
+                </button>
+              ))}
+            </div>
+            <span className="mentor-course-filter-result" role="status" aria-live="polite">
+              {t('mentor.filterResults', { count: visibleCourses.length, total: displayCourses.length, defaultValue: `${visibleCourses.length} de ${displayCourses.length} cursos` })}
+            </span>
+          </div>
+
+          {loadingScopedCourses && displayCourses.length === 0 ? (
+            <div className="mentor-courses-empty" role="status">
+              <Loader2 aria-hidden="true" className="animate-spin" />
+              <p>{t('mentor.loadingCourses', 'Cargando tus cursos…')}</p>
+            </div>
+          ) : displayCourses.length === 0 ? (
+            <div className="mentor-courses-empty">
+              <BookOpen aria-hidden="true" />
+              <p>
                 {currentUser.role === 'MENTOR'
-                  ? t('mentor.noCoursesMentor', 'No tienes cursos asignados actualmente. Contacta a un administrador para que te asigne tus programas a cargo.')
-                  : t('mentor.noCoursesAdmin', 'Todavía no hay programas. Los crea administración, desde Administración › Cursos.')}
+                  ? t('mentor.noCoursesMentor', 'Aún no tienes cursos asignados. Contacta con administración para empezar.')
+                  : t('mentor.noCoursesAdmin', 'Aún no hay cursos. Puedes crearlos desde Administración › Cursos.')}
               </p>
             </div>
+          ) : visibleCourses.length === 0 ? (
+            <div className="mentor-courses-empty">
+              <BookOpen aria-hidden="true" />
+              <p>{publicationFilter === 'draft'
+                ? t('mentor.noDraftCourses', 'No hay cursos en borrador')
+                : t('mentor.noPublishedCourses', 'No hay cursos publicados')}</p>
+              <button type="button" className="mentor-course-control" onClick={() => setPublicationFilter('all')}>
+                {t('mentor.showAllCourses', 'Ver todos los cursos')}
+              </button>
+            </div>
           ) : (
-            <div className="mentor-courses-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {displayCourses.map((course) => (
-                <div key={course.id} className="mentor-course-card bg-surface border border-line rounded-xl p-5 space-y-4 hover:border-brand-cyan transition-colors">
-                  <div className="mentor-course-card__header flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg">
-                      {course.category}
+            <div className="mentor-courses-grid">
+              {visibleCourses.map((course) => (
+                <article key={course.id} className="mentor-course-card" aria-labelledby={`mentor-course-${course.id}`}>
+                  <div className="mentor-course-card__header">
+                    <span className="mentor-course-card__category">{course.category}</span>
+                    <span className="mentor-course-card__status" data-published={course.published}>
+                      {course.published ? t('mentor.published', 'Publicado') : t('mentor.draft', 'Borrador')}
                     </span>
-                    {/* Un curso recién creado nace sin publicar: decir siempre
-                        «Publicado» mentía sobre lo que ve el alumnado. */}
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-xs font-mono font-bold ${
-                          course.published ? 'text-emerald-400' : 'text-amber-400'
-                        }`}
+                  </div>
+
+                  <div className="mentor-course-card__body">
+                    <h3 id={`mentor-course-${course.id}`} className="mentor-course-card__title">
+                      {course.title}
+                    </h3>
+                    {course.description && (
+                      <CourseCardDescription text={course.description} />
+                    )}
+                  </div>
+
+                  <div className="mentor-course-card__footer">
+                    <span className="mentor-course-access-label" data-access={course.openToAllRegistered ? 'members' : 'assigned'}>
+                      {course.openToAllRegistered ? <Globe aria-hidden="true" /> : <Lock aria-hidden="true" />}
+                      {course.openToAllRegistered ? t('mentor.membersAccess', 'Acceso para miembros') : t('mentor.onlyAssigned', 'Solo asignados')}
+                    </span>
+                    <div className="mentor-course-card__meta">
+                      <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} módulos` })}</span>
+                      <span>${course.price} USD</span>
+                    </div>
+                    <div className="mentor-course-card__actions">
+                      <button
+                        type="button"
+                        onClick={() => openCourseRoster(course)}
+                        className="mentor-course-control mentor-course-roster"
+                        aria-haspopup="dialog"
+                        aria-label={t('mentor.manageCourseMentees', { title: course.title, defaultValue: `Gestionar mentees de ${course.title}` })}
                       >
-                        {course.published ? t('mentor.published', 'Publicado') : t('mentor.draft', 'Borrador')}
-                      </span>
-                      {!course.published && (
+                        <UsersRound aria-hidden="true" />
+                        <span>{t('mentor.assignedMenteesBtn', { count: menteesOfCourse(course.id).length, defaultValue: `Gestionar (${menteesOfCourse(course.id).length})` })}</span>
+                      </button>
+                      {currentUser.role === 'ADMIN' && (
                         <button
                           type="button"
-                          onClick={() => handlePublishMentorCourse(course.id)}
-                          disabled={publishingCourseId === course.id}
-                          className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50"
-                          title="Publicar curso de inmediato en el catálogo de DocentOS"
+                          onClick={() => toggleOpenToAll(course)}
+                          disabled={openingCourseId === course.id}
+                          aria-pressed={Boolean(course.openToAllRegistered)}
+                          aria-label={t('mentor.toggleMembersAccess', { title: course.title, defaultValue: `Acceso para miembros: ${course.title}` })}
+                          aria-busy={openingCourseId === course.id}
+                          className="mentor-course-control mentor-course-access"
                         >
-                          {publishingCourseId === course.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                          {openingCourseId === course.id ? (
+                            <Loader2 aria-hidden="true" className="animate-spin" />
+                          ) : course.openToAllRegistered ? (
+                            <LockKeyhole aria-hidden="true" />
                           ) : (
-                            <Globe className="w-3 h-3" />
+                            <LockKeyholeOpen aria-hidden="true" />
                           )}
-                          {t('mentor.publish', 'Publicar')}
+                          <span>{course.openToAllRegistered ? t('mentor.restrictAccess', 'Solo asignados') : t('mentor.openMembers', 'Abrir a miembros')}</span>
                         </button>
                       )}
                     </div>
+                    {!course.published ? (
+                      <button
+                        type="button"
+                        onClick={() => handlePublishMentorCourse(course.id)}
+                        disabled={publishingCourseId === course.id}
+                        aria-busy={publishingCourseId === course.id}
+                        className="mentor-course-control mentor-course-publish"
+                      >
+                        {publishingCourseId === course.id ? (
+                          <Loader2 aria-hidden="true" className="animate-spin" />
+                        ) : (
+                          <BookOpen aria-hidden="true" />
+                        )}
+                        {t('mentor.publishCourseAction', 'Publicar en catálogo')}
+                      </button>
+                    ) : (
+                      <span className="mentor-course-published-note">
+                        <CheckCircle2 aria-hidden="true" />
+                        {t('mentor.visibleInCatalog', 'Visible en el catálogo')}
+                      </span>
+                    )}
+                    <p className="mentor-course-feedback" role="status" aria-live="polite" data-error={courseNotices[course.id]?.error || undefined}>
+                      {courseNotices[course.id]?.message || ''}
+                    </p>
                   </div>
-
-                  <h3 className="mentor-course-card__title font-extrabold text-base text-white line-clamp-2">
-                    {course.title}
-                  </h3>
-
-                  <p className="mentor-course-card__description text-xs text-ink-muted line-clamp-2">
-                    {course.description}
-                  </p>
-
-                  <div className="mentor-course-card__meta pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
-                    <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} Módulos` })}</span>
-                    <span>${course.price} USD</span>
-                  </div>
-
-                  {/* Reparto de plazas: se elige el curso y se marcan las
-                      personas, que es como se piensa al planificar un grupo. */}
-                  <button
-                    onClick={() => openCourseRoster(course)}
-                    className="w-full py-2 bg-raised hover:bg-elevated border border-line hover:border-[#06b6d4] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <Users className="w-3.5 h-3.5 text-[#06b6d4]" />
-                    {t('mentor.assignedMenteesBtn', { count: menteesOfCourse(course.id).length, defaultValue: `Mentees asignados (${menteesOfCourse(course.id).length})` })}
-                  </button>
-
-                  {/* La excepción, dicha en voz alta. Mientras esté apagado, a
-                      este curso solo se entra por asignación: es lo que evita
-                      que alguien recién registrado se encuentre cursos activos
-                      que nadie le dio. Solo administración lo ve y lo toca. */}
-                  {currentUser.role === 'ADMIN' && (
-                    <button
-                      onClick={() => toggleOpenToAll(course)}
-                      disabled={openingCourseId === course.id}
-                      aria-pressed={Boolean(course.openToAllRegistered)}
-                      className={`w-full py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-cyan disabled:opacity-60 ${
-                        course.openToAllRegistered
-                          ? 'bg-brand-cyan/10 border-brand-cyan/40 text-brand-cyan'
-                          : 'bg-raised border-line text-ink-soft hover:border-brand-cyan'
-                      }`}
-                    >
-                      {openingCourseId === course.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : course.openToAllRegistered ? (
-                        <Globe className="w-3.5 h-3.5" />
-                      ) : (
-                        <Lock className="w-3.5 h-3.5 text-ink-faint" />
-                      )}
-                      {course.openToAllRegistered ? t('mentor.membersAccess', 'Acceso para miembros') : t('mentor.onlyAssigned', 'Solo asignados')}
-                    </button>
-                  )}
-                </div>
+                </article>
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* Tab Content 2: Mentees Progress Monitoring */}
       {activeTab === 'mentees' && (
-        <div className="mentor-mentees-panel space-y-6">
+        <section className="mentor-mentees-panel" aria-labelledby="mentor-mentees-title">
+          <div className="mentor-section-heading">
+            <div>
+              <h2 id="mentor-mentees-title">{t('mentor.menteesTitle', 'Mentees')}</h2>
+              <p>{t('mentor.menteesDescription', 'Progreso individual y cursos asignados')}</p>
+            </div>
+          </div>
+
           {accessRequests.length > 0 && (
-            <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/30 via-[#0a0a0f] to-[#0a0a0f] p-5 shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    <Clock className="w-4 h-4 animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                      {t('mentor.pendingRequestsTitle', 'Solicitudes de Acceso a Cursos Pendientes')}
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
-                        {accessRequests.length}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-ink-muted">
-                      {t('mentor.pendingRequestsDesc', 'Mentees que solicitaron acceso en 1 clic desde la plataforma')}
-                    </p>
-                  </div>
-                </div>
+            <div className="mentor-surface-block" aria-labelledby="mentor-requests-title">
+              <div className="mentor-surface-block__head">
+                <h3 id="mentor-requests-title">
+                  {t('mentor.pendingRequestsTitle', 'Solicitudes de acceso pendientes')}
+                </h3>
+                <span className="mentor-section-count">{accessRequests.length}</span>
               </div>
+              <p className="mentor-surface-block__hint">
+                {t('mentor.pendingRequestsDesc', 'Mentees que pidieron acceso en 1 clic desde la plataforma')}
+              </p>
 
-              <div className="space-y-3">
+              <ul className="mentor-mentee-list">
                 {accessRequests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-black/40 border border-line hover:border-amber-500/30 transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={avatarSrc(req.menteeAvatarUrl)}
-                        alt={req.menteeName}
-                        className="w-10 h-10 rounded-xl object-cover border border-line"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-white">{req.menteeName}</span>
-                          <span className="text-[10px] text-ink-muted">({req.menteeEmail})</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs">
-                          <span className="text-ink-muted">Solicita acceso a:</span>
-                          <span className="font-semibold text-purple-400 flex items-center gap-1">
-                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-                            {req.courseTitle}
-                          </span>
-                          <span className="text-[10px] text-ink-muted font-mono">
-                            • {formatDate(req.createdAt)}
-                          </span>
-                        </div>
-                      </div>
+                  <li key={req.id} className="mentor-mentee-row mentor-mentee-row--request">
+                    <img src={avatarSrc(req.menteeAvatarUrl)} alt="" className="mentor-mentee-avatar" />
+                    <div className="mentor-mentee-id">
+                      <strong>{req.menteeName}</strong>
+                      <span>{req.menteeEmail}</span>
                     </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <p className="mentor-mentee-request">
+                      <GraduationCap aria-hidden="true" />
+                      <span>{req.courseTitle}</span>
+                      <time>{formatDate(req.createdAt)}</time>
+                    </p>
+                    <div className="mentor-mentee-actions">
                       <button
                         type="button"
                         onClick={() => handleApproveRequest(req.id)}
                         disabled={processingRequestId === req.id}
-                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                        className="mentor-course-control mentor-course-import"
                       >
                         {processingRequestId === req.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2 aria-hidden="true" className="animate-spin" />
                         ) : (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 aria-hidden="true" />
                         )}
-                        <span>{t('mentor.approve', 'Aprobar Acceso')}</span>
+                        {t('mentor.approve', 'Aprobar acceso')}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleRejectRequest(req.id)}
                         disabled={processingRequestId === req.id}
-                        className="px-3 py-1.5 bg-raised hover:bg-rose-950/40 text-ink-muted hover:text-rose-400 border border-line hover:border-rose-500/30 text-xs font-medium rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                        className="mentor-course-control"
                       >
                         {t('mentor.reject', 'Rechazar')}
                       </button>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
 
-          <div className="bg-surface border border-line rounded-2xl overflow-hidden">
-            <div className="p-5 border-b border-line flex items-center justify-between">
-              {/* El alta y el reparto viven ahora en «Gestión de Cursos»: se
-                  asigna desde el curso, que es donde se sabe a que se asigna. */}
-              <div>
-                <h3 className="font-bold text-sm text-white">Seguimiento de Mentees</h3>
-                <p className="text-xs text-ink-muted">Progreso individual y estado de estudio de alumnos asignados</p>
-              </div>
-            </div>
+          {loadingMentees && (
+            <p className="mentor-courses-empty" role="status">{t('mentor.menteesLoading', 'Cargando mentees')}</p>
+          )}
 
-            <div className="divide-y divide-[#262626]">
-              {loadingMentees && (
-                <p className="p-6 text-center text-xs text-ink-muted">Cargando mentees...</p>
-              )}
+          {!loadingMentees && mentees.length === 0 && (
+            <p className="mentor-courses-empty" role="status">
+              {t('mentor.menteesEmpty', 'Aún no tienes mentees asignados')}
+            </p>
+          )}
 
-              {!loadingMentees && mentees.length === 0 && (
-                <p className="p-6 text-center text-xs text-ink-muted">
-                  Aún no tienes mentees asignados.
-                </p>
-              )}
-
-              {mentees.map((m) => (
-                <div key={m.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-raised/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={avatarSrc(m.avatarUrl)}
-                      alt={m.name}
-                      className="w-10 h-10 rounded-xl object-cover border border-line"
+          {mentees.length > 0 && (() => {
+            const q = menteeQuery.trim().toLowerCase();
+            // Graduado solo si TODOS sus cursos lo están (lo decide el servidor).
+            const isDone = (m: MenteeStudent) => m.status === 'GRADUATED';
+            const counts = {
+              all: mentees.length,
+              active: mentees.filter(m => !isDone(m)).length,
+              completed: mentees.filter(isDone).length,
+            };
+            const visible = mentees.filter(m =>
+              (menteeFilter === 'all' || (menteeFilter === 'completed' ? isDone(m) : !isDone(m))) &&
+              (!q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+            );
+            return (
+              <>
+                <div className="mentor-course-toolbar">
+                  <label className="mentor-mentee-search">
+                    <Search aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={menteeQuery}
+                      onChange={(e) => { setMenteeQuery(e.target.value); setMenteeLimit(12); }}
+                      placeholder={t('mentor.menteeSearch', 'Buscar mentee')}
+                      aria-label={t('mentor.menteeSearch', 'Buscar mentee')}
                     />
-                    <div>
-                      <h4 className="font-bold text-xs text-white flex items-center gap-2">
-                        {m.name}
-                        <span className="text-[9px] font-extrabold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-1.5 py-0.2 rounded">
-                          {m.status}
-                        </span>
-                      </h4>
-                      <span className="text-[11px] text-ink-muted">{m.email}</span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar Column */}
-                  <div className="w-full sm:w-64 space-y-1">
-                    <div className="flex items-center justify-between text-[10px] font-mono">
-                      <span className="text-ink-muted">Progreso en Curso</span>
-                      <span className="font-bold text-[#06b6d4]">{m.courseProgress}%</span>
-                    </div>
-                    <div className="w-full bg-canvas rounded-full h-2 border border-line overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-[#06b6d4] to-[#a855f7] h-full rounded-full transition-all"
-                        style={{ width: `${m.courseProgress}%` }}
-                      />
-                    </div>
-                    <div className="text-[9px] text-ink-muted font-mono text-right">
-                      {m.completedVideosCount} de {m.totalVideosCount} lecciones • Activo {m.lastActiveDate}
-                    </div>
-                  </div>
-
-                  {/* Sus cursos, con nombre. Antes esta persona salía repetida
-                      una vez por curso y ninguna fila decía de cuál hablaba. */}
-                  <div className="w-full sm:w-auto sm:max-w-xs space-y-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      {m.courses.length === 0 ? (
-                        <span className="text-[10px] text-ink-muted italic">Sin cursos asignados</span>
-                      ) : (
-                        m.courses.map((c) => (
-                          <span
-                            key={c.assignmentId}
-                            title={`${c.courseProgress}% · ${c.completedVideosCount} de ${c.totalVideosCount} lecciones`}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[#a855f7] bg-[#a855f7]/10 border border-[#a855f7]/30 px-2 py-0.5 rounded-lg max-w-[180px]"
-                          >
-                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">{c.courseTitle}</span>
-                            <span className="font-mono text-ink-muted">{c.courseProgress}%</span>
-                          </span>
-                        ))
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => openMenteeRoster(m)}
-                      className="w-full sm:w-auto px-3 py-1.5 bg-raised hover:bg-elevated border border-line hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
-                    >
-                      Editar cursos
-                    </button>
+                  </label>
+                  <div className="mentor-publication-filters" role="group" aria-label={t('mentor.menteeFilter', 'Filtrar mentees')}>
+                    {(['all', 'active', 'completed'] as const).map(f => (
+                      <button key={f} type="button" aria-pressed={menteeFilter === f} onClick={() => { setMenteeFilter(f); setMenteeLimit(12); }}>
+                        <span>{f === 'all' ? t('mentor.publicationAll', 'Todos') : f === 'active' ? t('mentor.menteeActive', 'En curso') : t('mentor.menteeCompleted', 'Completados')}</span>
+                        <span className="mentor-publication-count">{counts[f]}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
+
+                {visible.length === 0 ? (
+                  <p className="mentor-courses-empty" role="status">{t('mentor.menteesNoMatch', 'Ningún mentee coincide con el filtro')}</p>
+                ) : (
+                  <ul className="mentor-mentee-grid">
+                    {visible.slice(0, menteeLimit).map((m) => {
+                      const graduatedCount = m.courses.filter(c => c.status === 'GRADUATED').length;
+                      return (
+                        <li key={m.id} className="mentor-mentee-card">
+                          <div className="mentor-mentee-card__head">
+                            <img src={avatarSrc(m.avatarUrl)} alt="" className="mentor-mentee-avatar" />
+                            <div className="mentor-mentee-id">
+                              <strong>{m.name}</strong>
+                              <span title={m.email}>{m.email}</span>
+                            </div>
+                          </div>
+
+                          <div className="mentor-mentee-card__progress">
+                            <div className="mentor-mentee-card__figure">
+                              <b>{m.courses.length === 0 ? '—' : `${m.courseProgress}%`}</b>
+                              <span className="mentor-mentee-status" data-state={m.status === 'GRADUATED' ? 'graduated' : 'active'}>
+                                {m.status === 'GRADUATED' && <Check aria-hidden="true" />}
+                                {m.status === 'GRADUATED' ? t('mentor.statusGraduated', 'Graduado') : m.status === 'PENDING' ? t('mentor.statusPending', 'Pendiente') : t('mentor.statusActive', 'En curso')}
+                              </span>
+                            </div>
+                            <div
+                              className="mentor-mentee-bar"
+                              role="progressbar"
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={m.courseProgress}
+                              aria-label={t('mentor.menteeProgress', { defaultValue: 'Progreso de {{name}}', name: m.name })}
+                            >
+                              <span style={{ width: `${m.courseProgress}%` }} />
+                            </div>
+                            <div className="mentor-mentee-card__foot">
+                              <span>
+                                {m.totalVideosCount > 0 ? `${m.completedVideosCount} de ${m.totalVideosCount} lecciones` : ''}
+                              </span>
+                              <span>
+                                {m.courses.length === 0 || !m.lastActiveDate || m.lastActiveDate === '-'
+                                  ? t('mentor.noActivity', 'Sin actividad')
+                                  : `Activo ${m.lastActiveDate}`}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Sus cursos, con nombre: antes la persona salía repetida
+                              una vez por curso y ninguna fila decía de cuál hablaba. */}
+                          <button
+                            type="button"
+                            className="mentor-mentee-toggle"
+                            disabled={m.courses.length === 0}
+                            onClick={() => setDetailMenteeId(m.id)}
+                          >
+                            <GraduationCap aria-hidden="true" />
+                            <span>
+                              {m.courses.length === 0
+                                ? t('mentor.noCoursesAssigned', 'Sin cursos asignados')
+                                : t('mentor.menteeCoursesSummary', { defaultValue: '{{done}} de {{total}} cursos graduados', done: graduatedCount, total: m.courses.length })}
+                            </span>
+                            {m.courses.length > 0 && <ChevronRight aria-hidden="true" className="mentor-mentee-toggle__chevron" />}
+                          </button>
+
+                          <button type="button" onClick={() => openMenteeRoster(m)} className="mentor-course-control">
+                            {t('mentor.editCourses', 'Editar cursos')}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {visible.length > menteeLimit && (
+                  <div className="mentor-mentee-more">
+                    <span className="mentor-course-filter-result" role="status">
+                      {t('mentor.menteesShown', { defaultValue: '{{shown}} de {{total}} mentees', shown: menteeLimit, total: visible.length })}
+                    </span>
+                    <button type="button" className="mentor-course-control" onClick={() => setMenteeLimit(l => l + 12)}>
+                      {t('mentor.showMore', 'Mostrar más')}
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          <MenteeCoursesDialog
+            mentee={mentees.find(m => m.id === detailMenteeId) ?? null}
+            onClose={() => setDetailMenteeId(null)}
+            onEdit={(m) => { setDetailMenteeId(null); openMenteeRoster(m); }}
+          />
+        </section>
       )}
 
       {/* Tab Content 3: Mentorship Q&A Center */}
-      {activeTab === 'qna' && (
-        <div className="mentor-qna-panel space-y-4">
-          <div className="bg-surface border border-line rounded-2xl p-5">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+      {activeTab === 'qna' && (() => {
+        const needle = qnaQuery.trim().toLowerCase();
+        const matches = (c: MentorshipComment) =>
+          !needle ||
+          c.userName.toLowerCase().includes(needle) ||
+          c.content.toLowerCase().includes(needle) ||
+          questionOrigin(c).toLowerCase().includes(needle);
+        // Pendientes: la más antigua primero (es la que más espera). Todas: la más reciente primero.
+        const byDate = (a: MentorshipComment, b: MentorshipComment) =>
+          qnaFilter === 'pending'
+            ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const rows = qnaComments
+          .filter((c) => (qnaFilter === 'pending' ? !c.isResolved || answeredIds.has(c.id) : c.isResolved))
+          .filter(matches)
+          .sort(byDate);
+        const toggle = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) =>
+          setter((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+          });
+        return (
+          <section className="mentor-qna-panel" aria-labelledby="mentor-qna-title">
+            <div className="mentor-section-heading">
               <div>
-                <h3 className="font-extrabold text-sm text-white mb-1">{t('mentor.qnaTitle', 'Centro de Consultas de Mentoría')}</h3>
-                <p className="text-xs text-ink-muted">
-                  {t('mentor.qnaSubtitle', 'Responde las preguntas de tus alumnos directamente para resolver bloqueos de aprendizaje.')}
-                </p>
+                <h2 id="mentor-qna-title">{t('mentor.qnaTitle', 'Consultas')}</h2>
+                <p>{t('mentor.qnaSubtitle', 'Responde las preguntas de tus alumnos para resolver bloqueos de aprendizaje')}</p>
               </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Pendientes primero: es lo único que pide acción. */}
-                <div className="flex bg-raised border border-line rounded-xl p-1">
-                  {(['pending', 'all'] as const).map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => setQnaFilter(option)}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                        qnaFilter === option ? 'bg-[#06b6d4] text-black' : 'text-ink-muted hover:text-white'
-                      }`}
-                    >
-                      {option === 'pending'
-                        ? `${t('mentor.qnaPending', 'Pendientes')} (${pendingQuestions.length})`
-                        : `${t('mentor.qnaAll', 'Todas')} (${qnaComments.length})`}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={loadQnaData}
-                  disabled={loadingQna}
-                  className="p-2 bg-raised border border-line rounded-xl text-ink-muted hover:text-white transition-colors disabled:opacity-50"
-                  title="Actualizar consultas"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loadingQna ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
+              <button
+                type="button"
+                className="mentor-course-control mentor-qna-refresh"
+                onClick={loadQnaData}
+                disabled={loadingQna}
+                aria-label={t('mentor.qnaRefresh', 'Actualizar consultas')}
+                title={t('mentor.qnaRefresh', 'Actualizar consultas')}
+              >
+                <RefreshCw aria-hidden="true" className={loadingQna ? 'animate-spin' : ''} />
+              </button>
             </div>
 
             {qnaError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" /> {qnaError}
-              </div>
+              <p className="mentee-sheet__error" role="alert">
+                <AlertCircle aria-hidden="true" /> <span>{qnaError}</span>
+              </p>
             )}
 
-            <div className="space-y-4">
-              {loadingQna && qnaComments.length === 0 && (
-                <p className="py-8 text-center text-xs text-ink-muted">Cargando consultas...</p>
-              )}
-
-              {!loadingQna && visibleQuestions.length === 0 && (
-                <div className="py-10 text-center space-y-2">
-                  <Inbox className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p className="text-xs text-ink-muted">
-                    {qnaFilter === 'pending'
-                      ? 'No hay consultas pendientes. Todo respondido.'
-                      : 'Todavía no hay consultas publicadas por el alumnado.'}
-                  </p>
-                </div>
-              )}
-
-              {visibleQuestions.map((comment) => (
-                <div key={comment.id} className="p-4 bg-raised border border-line rounded-xl space-y-3">
-                  {/* Sin saber de qué clase salió, la pregunta no se puede responder. */}
-                  <div className="text-[10px] font-bold text-[#a855f7] uppercase tracking-wider">
-                    {questionOrigin(comment)}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <img
-                        src={avatarSrc(comment.userAvatar)}
-                        alt={comment.userName}
-                        className="w-7 h-7 rounded-full object-cover shrink-0"
-                      />
-                      <span className="font-bold text-xs text-white truncate">{comment.userName}</span>
-                      <span className="text-[10px] text-ink-muted font-mono shrink-0">
-                        {formatDate(comment.createdAt)}
-                      </span>
-                    </div>
-
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shrink-0 ${
-                      comment.isResolved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                    }`}>
-                      {comment.isResolved ? 'Resuelta por Mentor' : 'Pendiente'}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-ink">{comment.content}</p>
-
-                  {/* Existing Replies */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="pl-4 border-l-2 border-[#06b6d4] space-y-2 pt-1">
-                      {comment.replies.map((r) => (
-                        <div key={r.id} className="text-xs space-y-1">
-                          <span className="font-bold text-[#06b6d4]">{r.userName}:</span>
-                          <p className="text-ink-soft">{r.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {replyErrorMap[comment.id] && (
-                    <div className="p-2.5 bg-red-500/10 border border-red-500/30 text-red-300 text-[11px] rounded-lg flex items-center gap-2">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {replyErrorMap[comment.id]}
-                    </div>
-                  )}
-
-                  {/* Mentor Reply Input */}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleReplySubmit(comment.id);
-                    }}
-                    className="flex items-center gap-2 pt-2"
+            <div className="mentor-course-toolbar">
+              <label className="mentor-mentee-search">
+                <Search aria-hidden="true" />
+                <input
+                  type="search"
+                  value={qnaQuery}
+                  onChange={(e) => { setQnaQuery(e.target.value); setQnaLimit(10); }}
+                  placeholder={t('mentor.qnaSearch', 'Buscar consulta')}
+                  aria-label={t('mentor.qnaSearch', 'Buscar consulta')}
+                />
+              </label>
+              <div className="mentor-publication-filters" role="group" aria-label={t('mentor.qnaFilter', 'Filtrar consultas')}>
+                {(['resolved', 'pending'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={qnaFilter === option}
+                    onClick={() => { setQnaFilter(option); setQnaLimit(10); }}
                   >
-                    <input
-                      type="text"
-                      placeholder="Escribe tu respuesta como Mentor..."
-                      value={replyTextMap[comment.id] || ''}
-                      onChange={(e) =>
-                        setReplyTextMap({ ...replyTextMap, [comment.id]: e.target.value })
-                      }
-                      className="flex-1 py-2 px-3 bg-canvas border border-line focus:border-[#06b6d4] rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      disabled={replyingId === comment.id || !(replyTextMap[comment.id] || '').trim()}
-                      className="px-4 py-2 bg-[#06b6d4] text-black font-extrabold text-xs rounded-xl flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-40"
-                    >
-                      {replyingId === comment.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Send className="w-3.5 h-3.5" />
-                      )}
-                      Responder
-                    </button>
-                  </form>
-                </div>
-              ))}
+                    <span>{option === 'pending' ? t('mentor.qnaPending', 'Pendientes') : t('mentor.qnaResolvedTab', 'Resueltas')}</span>
+                    <span className="mentor-publication-count">{option === 'pending' ? pendingQuestions.length : resolvedQuestions.length}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+
+            {loadingQna && qnaComments.length === 0 ? (
+              <p className="mentor-courses-empty" role="status">
+                <Loader2 aria-hidden="true" className="animate-spin" />
+                {t('mentor.qnaLoading', 'Cargando consultas')}
+              </p>
+            ) : rows.length === 0 ? (
+              <p className="mentor-courses-empty" role="status">
+                <Inbox aria-hidden="true" />
+                {needle
+                  ? t('mentor.qnaNoMatch', 'Ninguna consulta coincide con la búsqueda')
+                  : qnaFilter === 'pending'
+                    ? t('mentor.qnaNonePending', 'No hay consultas pendientes')
+                    : t('mentor.qnaNoneResolved', 'No hay consultas resueltas')}
+              </p>
+            ) : (
+              <ul className="mentor-qna-list">
+                {rows.slice(0, qnaLimit).map((comment) => {
+                  const replies = comment.replies ?? [];
+                  const threadOpen = openThreads.has(comment.id);
+                  const replyOpen = openReplies.has(comment.id);
+                  const text = replyTextMap[comment.id] || '';
+                  return (
+                    <li key={comment.id} className="mentor-qna-card">
+                      <header className="mentor-qna-card__head">
+                        <img src={avatarSrc(comment.userAvatar)} alt="" className="mentor-mentee-avatar" />
+                        <div className="mentor-mentee-id">
+                          <strong>{comment.userName}</strong>
+                          <span title={formatDate(comment.createdAt)}>{askedAt(comment.createdAt)}</span>
+                        </div>
+                        <span className="mentor-qna-status" data-state={comment.isResolved ? 'resolved' : 'pending'}>
+                          {comment.isResolved && <Check aria-hidden="true" />}
+                          {comment.isResolved ? t('mentor.qnaResolved', 'Resuelta') : t('mentor.qnaPendingOne', 'Pendiente')}
+                        </span>
+                      </header>
+
+                      {/* Sin saber de qué clase salió, la pregunta no se puede responder. */}
+                      <p className="mentor-qna-card__origin">
+                        <BookOpen aria-hidden="true" />
+                        <span>{questionOrigin(comment)}</span>
+                      </p>
+
+                      <p className="mentor-qna-card__text">{comment.content}</p>
+
+                      {replies.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            className="mentor-qna-toggle"
+                            aria-expanded={threadOpen}
+                            aria-controls={`qna-replies-${comment.id}`}
+                            onClick={() => toggle(setOpenThreads, comment.id)}
+                          >
+                            <span>{t('mentor.qnaReplies', { defaultValue: '{{count}} respuestas', count: replies.length })}</span>
+                            <ChevronDown aria-hidden="true" />
+                          </button>
+                          {threadOpen && (
+                            <ul id={`qna-replies-${comment.id}`} className="mentor-qna-replies">
+                              {replies.map((r) => (
+                                <li key={r.id}>
+                                  <div>
+                                    <strong>{r.userName}</strong>
+                                    <span title={formatDate(r.createdAt)}>{askedAt(r.createdAt)}</span>
+                                  </div>
+                                  <p>{r.content}</p>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </>
+                      )}
+
+                      {replyErrorMap[comment.id] && (
+                        <p className="mentee-sheet__error" role="alert">
+                          <AlertCircle aria-hidden="true" /> <span>{replyErrorMap[comment.id]}</span>
+                        </p>
+                      )}
+
+                      {replyOpen ? (
+                        <form
+                          className="mentor-qna-form"
+                          onSubmit={(e) => { e.preventDefault(); handleReplySubmit(comment.id); }}
+                        >
+                          <textarea
+                            autoFocus
+                            rows={3}
+                            value={text}
+                            placeholder={t('mentor.qnaReplyPlaceholder', 'Escribe tu respuesta')}
+                            aria-label={t('mentor.qnaReplyPlaceholder', 'Escribe tu respuesta')}
+                            onChange={(e) => setReplyTextMap({ ...replyTextMap, [comment.id]: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                e.preventDefault();
+                                handleReplySubmit(comment.id);
+                              }
+                            }}
+                          />
+                          <div className="mentor-qna-form__actions">
+                            <button type="button" className="mentor-course-control" onClick={() => toggle(setOpenReplies, comment.id)}>
+                              {t('mentor.cancel', 'Cancelar')}
+                            </button>
+                            <button
+                              type="submit"
+                              className="mentor-course-control mentor-course-import"
+                              disabled={replyingId === comment.id || !text.trim()}
+                            >
+                              {replyingId === comment.id ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Send aria-hidden="true" />}
+                              {t('mentor.reply', 'Responder')}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button type="button" className="mentor-course-control" onClick={() => toggle(setOpenReplies, comment.id)}>
+                          {t('mentor.reply', 'Responder')}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {rows.length > qnaLimit && (
+              <div className="mentor-mentee-more">
+                <span className="mentor-course-filter-result" role="status">
+                  {t('mentor.qnaShown', { defaultValue: '{{shown}} de {{total}} consultas', shown: qnaLimit, total: rows.length })}
+                </span>
+                <button type="button" className="mentor-course-control" onClick={() => setQnaLimit((l) => l + 10)}>
+                  {t('mentor.showMore', 'Mostrar más')}
+                </button>
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Tab Content 4: Live & Synchronous Meetings */}
       {activeTab === 'meetings' && (
-        <div className="mentor-meetings-panel">
-          <MeetingManager
-            currentUser={currentUser}
-            courses={displayCourses}
-            onRefreshCourses={onRefreshCourses}
-          />
-        </div>
+        <MeetingManager
+          currentUser={currentUser}
+          courses={displayCourses}
+          onRefreshCourses={onRefreshCourses}
+        />
       )}
 
-            {/* Tab Content 5: Quizzes & Evaluaciones con IA */}
-      {activeTab === 'quizzes' && (
-        <div className="mentor-quiz-panel space-y-6">
-          <div className="bg-surface border border-line rounded-2xl p-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line pb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-raised border border-line rounded-xl text-ink-muted">
-                  <CheckSquare className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                    Evaluaciones y exámenes
-                  </h3>
-                  <p className="text-xs text-ink-muted">
-                    Crea cuestionarios por módulo o genera una propuesta a partir del temario
-                  </p>
-                </div>
+      {/* Tab Content 5: Evaluaciones */}
+      {activeTab === 'quizzes' && (() => {
+        const needle = quizQuery.trim().toLowerCase();
+        const questionsOf = (moduleId: string) => quizzesMap[moduleId] || getModuleQuestions(moduleId);
+        const stats = displayCourses.map((course) => {
+          const modules = course.modules || [];
+          const withExam = modules.filter((m) => questionsOf(m.id).length > 0).length;
+          const questions = modules.reduce((sum, m) => sum + questionsOf(m.id).length, 0);
+          return { course, modules: modules.length, withExam, questions };
+        });
+        const counts = {
+          all: stats.length,
+          without: stats.filter((s) => s.withExam < s.modules).length,
+          complete: stats.filter((s) => s.modules > 0 && s.withExam === s.modules).length,
+        };
+        const rows = stats.filter((s) =>
+          (!needle || stripEmoji(s.course.title).toLowerCase().includes(needle) || s.course.category.toLowerCase().includes(needle)) &&
+          (quizFilter === 'all' || (quizFilter === 'without' ? s.withExam < s.modules : s.modules > 0 && s.withExam === s.modules))
+        );
+        const filterLabel = { all: 'Todos', without: 'Por completar', complete: 'Completos' } as const;
+        return (
+          <section className="mentor-quiz-panel" aria-labelledby="mentor-quiz-title">
+            <div className="mentor-section-heading">
+              <div>
+                <h2 id="mentor-quiz-title">Evaluaciones</h2>
+                <p>Crea exámenes por módulo o genera una propuesta a partir del temario</p>
+              </div>
+            </div>
+
+            <div className="mentor-course-toolbar">
+              <label className="mentor-mentee-search">
+                <Search aria-hidden="true" />
+                <input
+                  type="search"
+                  value={quizQuery}
+                  onChange={(e) => { setQuizQuery(e.target.value); setQuizLimit(12); }}
+                  placeholder="Buscar curso"
+                  aria-label="Buscar curso"
+                />
+              </label>
+              <div className="mentor-publication-filters" role="group" aria-label="Filtrar cursos">
+                {(['all', 'without', 'complete'] as const).map((f) => (
+                  <button key={f} type="button" aria-pressed={quizFilter === f} onClick={() => { setQuizFilter(f); setQuizLimit(12); }}>
+                    <span>{filterLabel[f]}</span>
+                    <span className="mentor-publication-count">{counts[f]}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
             {displayCourses.length === 0 ? (
-              <div className="py-12 text-center text-ink-muted text-xs">
-                No hay cursos disponibles para gestionar evaluaciones.
-              </div>
+              <p className="mentor-courses-empty" role="status">No hay cursos disponibles para gestionar evaluaciones</p>
+            ) : rows.length === 0 ? (
+              <p className="mentor-courses-empty" role="status">Ningún curso coincide con los filtros</p>
             ) : (
-              <div className="mt-6 space-y-4">
-                {displayCourses.map((course) => {
-                  const isExpanded = quizCourseExpanded === course.id || displayCourses.length === 1;
-                  const modules = [...(course.modules || [])].sort((a, b) => a.order - b.order);
-
+              <ul className="mentor-quiz-list">
+                {rows.slice(0, quizLimit).map(({ course, modules, withExam, questions }) => {
+                  const pct = modules > 0 ? Math.round((withExam / modules) * 100) : 0;
                   return (
-                    <div
-                      key={course.id}
-                      className="bg-raised border border-line rounded-2xl overflow-hidden transition-all shadow-md"
-                    >
-                      <div
-                        onClick={() => setQuizCourseExpanded(isExpanded ? null : course.id)}
-                        className="p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-elevated/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400">
-                            <Layers className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-bold text-white truncate">{course.title}</h4>
-                            <p className="text-[11px] text-ink-muted">
-                              {course.category} • {modules.length} módulo(s) de aprendizaje
-                            </p>
-                          </div>
+                    <li key={course.id} className="mentor-quiz-card" style={{ '--course-hue': courseHue(displayCourses, course.id) } as React.CSSProperties}>
+                      <header className="mentor-quiz-card__head">
+                        <span className="mentor-quiz-card__category"><i aria-hidden="true" />{course.category}</span>
+                        <span className="mentor-quiz-status" data-state={modules > 0 && withExam === modules ? 'resolved' : 'pending'}>
+                          {modules > 0 && withExam === modules && <Check aria-hidden="true" />}
+                          {modules === 0 ? 'Sin módulos' : withExam === modules ? 'Completo' : 'Por completar'}
+                        </span>
+                      </header>
+                      <h3 title={stripEmoji(course.title)}>{stripEmoji(course.title)}</h3>
+                      <div className="mentor-quiz-card__progress">
+                        <div className="mentor-quiz-card__figure">
+                          <b>{withExam} de {modules}</b>
+                          <span>módulos con examen</span>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold px-3 py-1 bg-surface border border-line rounded-xl text-ink-soft">
-                            {modules.filter((m) => getModuleQuestions(m.id).length > 0).length} de {modules.length} con examen
-                          </span>
-                          <span className="text-xs font-bold text-purple-400">
-                            {isExpanded ? 'Ocultar ▲' : 'Ver Módulos ▼'}
-                          </span>
+                        <div className="mentor-mentee-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Exámenes de ${stripEmoji(course.title)}`}>
+                          <span style={{ width: `${pct}%` }} />
                         </div>
+                        <span className="mentor-quiz-card__meta">{questions} {questions === 1 ? 'pregunta' : 'preguntas'} en total</span>
                       </div>
-
-                      {isExpanded && (
-                        <div className="p-4 border-t border-line bg-surface/60 space-y-3">
-                          {modules.length === 0 ? (
-                            <p className="text-xs text-ink-muted py-3 text-center">
-                              Este curso aún no tiene módulos configurados.
-                            </p>
-                          ) : (
-                            modules.map((module) => {
-                              const questions = quizzesMap[module.id] || getModuleQuestions(module.id);
-                              const hasQuiz = questions.length > 0;
-
-                              return (
-                                <div
-                                  key={module.id}
-                                  className="p-3.5 rounded-xl bg-raised border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-purple-500/40 transition-all"
-                                >
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                                        Módulo {module.order}
-                                      </span>
-                                      <p className="text-xs font-bold text-white truncate">{module.title}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-[10px] text-ink-muted">
-                                        {module.videos?.length || 0} clase(s)
-                                      </span>
-                                      <span className="text-slate-600">•</span>
-                                      {hasQuiz ? (
-                                        <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                                          <CheckCircle2 className="w-3 h-3" />
-                                          {questions.length} preguntas configuradas
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
-                                          Sin examen asignado
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedQuizModule(module)}
-                                    className="btn-brand-primary px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0"
-                                  >
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    <span>{hasQuiz ? 'Editar Examen' : 'Generar con IA'}</span>
-                                  </button>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      )}
-                    </div>
+                      <button type="button" className="mentor-course-control" disabled={modules === 0} onClick={() => setQuizSheetCourseId(course.id)}>
+                        Ver módulos
+                      </button>
+                    </li>
                   );
                 })}
+              </ul>
+            )}
+
+            {rows.length > quizLimit && (
+              <div className="mentor-mentee-more">
+                <span className="mentor-course-filter-result" role="status">{quizLimit} de {rows.length} cursos</span>
+                <button type="button" className="mentor-course-control" onClick={() => setQuizLimit((l) => l + 12)}>Mostrar más</button>
               </div>
             )}
-          </div>
-        </div>
-      )}
+
+            <QuizCourseSheet
+              course={displayCourses.find((c) => c.id === quizSheetCourseId) ?? null}
+              questionsOf={questionsOf}
+              onClose={() => setQuizSheetCourseId(null)}
+              onOpenEditor={(m) => setSelectedQuizModule(m)}
+            />
+          </section>
+        );
+      })()}
 
       {/* Tab Content: YouTube AI Course Builder */}
       {activeTab === 'youtube-builder' && (
-        <div className="mentor-youtube-panel">
-          <YouTubeCourseBuilder
-            currentUser={currentUser}
-            onCourseCreated={(_courseId) => {
-              onRefreshCourses();
-              announce('¡Curso generado y guardado exitosamente desde YouTube!');
-              setActiveTab('courses');
-            }}
-            onCancel={() => setActiveTab('courses')}
-          />
-        </div>
+        <YouTubeCourseBuilder
+          currentUser={currentUser}
+          onCourseCreated={(_courseId) => {
+            onRefreshCourses();
+            announce('Curso generado y guardado desde YouTube');
+            setActiveTab('courses');
+          }}
+          onCancel={() => setActiveTab('courses')}
+        />
       )}
 
       {/* Modal de Exámenes para Mentores */}
@@ -1338,61 +1517,64 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           «mentee», cursos. Lo marcado es el estado final: lo que se desmarca
           se retira al guardar. */}
       {rosterMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="app-dialog bg-surface border border-line rounded-2xl w-full max-w-lg flex flex-col max-h-[calc(100dvh-1.5rem)]">
-            <div className="p-5 border-b border-line flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="font-extrabold text-base text-white">
-                  {rosterMode === 'course' ? 'Asignar mentees al curso' : 'Cursos de este mentee'}
-                </h3>
-                <p className="text-xs text-ink-muted truncate">
+        <dialog
+          ref={rosterRef}
+          className="mentee-sheet"
+          aria-labelledby="roster-title"
+          onCancel={(e) => { e.preventDefault(); closeRoster(); }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeRoster(); }}
+        >
+          <div className="mentee-sheet__body">
+            <header className="mentee-sheet__head">
+              {rosterMode === 'mentee' && rosterMentee ? (
+                <img src={avatarSrc(rosterMentee.avatarUrl)} alt="" className="mentor-mentee-avatar" />
+              ) : (
+                <span className="mentee-sheet__icon" aria-hidden="true"><GraduationCap /></span>
+              )}
+              <div className="mentor-mentee-id">
+                <strong id="roster-title">
                   {rosterMode === 'course' ? rosterCourse?.title : rosterMentee?.name}
-                </p>
+                </strong>
+                <span>{rosterMode === 'course' ? 'Asignar mentees al curso' : 'Elegir los cursos de este mentee'}</span>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* Unica via para incorporar a alguien que todavia no tiene
-                    cuenta. Vive aqui, junto a la lista de quien si la tiene. */}
-                {rosterMode === 'course' && (
-                  <button
-                    onClick={() => {
-                      setAssignError('');
-                      setShowAssignMenteeModal(true);
-                    }}
-                    className="px-2.5 py-1.5 bg-raised border border-line hover:border-brand-cyan text-brand-cyan font-bold text-micro rounded-xl flex items-center gap-1.5 transition-colors"
-                  >
-                    <Plus aria-hidden className="w-3.5 h-3.5" /> Dar de alta
-                  </button>
-                )}
-                <button
-                  onClick={closeRoster}
-                  className="p-1.5 text-ink-muted hover:text-white rounded-lg hover:bg-raised"
-                  aria-label="Cerrar"
-                >
-                  <X aria-hidden className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+              <button type="button" onClick={closeRoster} className="mentee-sheet__close" aria-label="Cerrar">
+                <X aria-hidden="true" />
+              </button>
+            </header>
 
-            {rosterError && (
-              <div className="mx-5 mt-4 p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> <span>{rosterError}</span>
-              </div>
-            )}
-
-            <div className="p-5 pb-3">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="mentee-sheet__tools">
+              <label className="mentor-mentee-search">
+                <Search aria-hidden="true" />
                 <input
                   type="search"
                   value={rosterQuery}
                   onChange={(e) => setRosterQuery(e.target.value)}
-                  placeholder={rosterMode === 'course' ? 'Buscar mentee por nombre o correo…' : 'Buscar curso…'}
-                  className="w-full py-2 pl-9 pr-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  placeholder={rosterMode === 'course' ? 'Buscar mentee' : 'Buscar curso'}
+                  aria-label={rosterMode === 'course' ? 'Buscar mentee por nombre o correo' : 'Buscar curso'}
                 />
-              </div>
+              </label>
+              {/* Unica via para incorporar a alguien que todavia no tiene
+                  cuenta. Vive aqui, junto a la lista de quien si la tiene. */}
+              {rosterMode === 'course' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssignError('');
+                    setShowAssignMenteeModal(true);
+                  }}
+                  className="mentor-course-control"
+                >
+                  <Plus aria-hidden="true" /> Dar de alta
+                </button>
+              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 space-y-1.5">
+            <div className="mentee-sheet__list">
+              {rosterError && (
+                <p className="mentee-sheet__error" role="alert">
+                  <AlertCircle aria-hidden="true" /> <span>{rosterError}</span>
+                </p>
+              )}
               {rosterMode === 'course'
                 ? (() => {
                     const filtrados = candidates.filter((c) => {
@@ -1401,33 +1583,21 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     });
                     if (filtrados.length === 0) {
                       return (
-                        <p className="py-8 text-center text-xs text-ink-muted">
+                        <p className="mentee-sheet__empty">
                           {candidates.length === 0
-                            ? 'No hay cuentas mentee todavía. Crea una con «Dar de alta», aquí arriba.'
-                            : 'Ningún mentee coincide con la búsqueda.'}
+                            ? 'No hay cuentas mentee todavía. Crea una con «Dar de alta».'
+                            : 'Ningún mentee coincide con la búsqueda'}
                         </p>
                       );
                     }
                     return filtrados.map((c) => (
-                      <label
-                        key={c.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-raised cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={rosterSelection.includes(c.id)}
-                          onChange={() => toggleRosterItem(c.id)}
-                          className="w-4 h-4 accent-[#06b6d4] cursor-pointer"
-                        />
-                        <img
-                          src={avatarSrc(c.avatarUrl)}
-                          alt=""
-                          className="w-8 h-8 rounded-lg object-cover border border-line"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{c.name}</p>
-                          <p className="text-[10px] text-ink-muted truncate">{c.email}</p>
-                        </div>
+                      <label key={c.id} className="roster-option">
+                        <input type="checkbox" checked={rosterSelection.includes(c.id)} onChange={() => toggleRosterItem(c.id)} />
+                        <img src={avatarSrc(c.avatarUrl)} alt="" className="roster-option__avatar" />
+                        <span className="roster-option__text">
+                          <strong>{c.name}</strong>
+                          <small>{c.email}</small>
+                        </span>
                       </label>
                     ));
                   })()
@@ -1437,56 +1607,37 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       return !q || course.title.toLowerCase().includes(q);
                     });
                     if (filtrados.length === 0) {
-                      return <p className="py-8 text-center text-xs text-ink-muted">Ningún curso coincide.</p>;
+                      return <p className="mentee-sheet__empty">Ningún curso coincide</p>;
                     }
                     return filtrados.map((course) => (
-                      <label
-                        key={course.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-raised cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={rosterSelection.includes(course.id)}
-                          onChange={() => toggleRosterItem(course.id)}
-                          className="w-4 h-4 accent-[#a855f7] cursor-pointer"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate">{course.title}</p>
-                          <p className="text-[10px] text-ink-muted">
-                            {course.category} · {course.modules?.length || 0} módulos
-                          </p>
-                        </div>
-                        {!course.published && (
-                          <span className="text-[9px] font-bold text-amber-400 shrink-0">Borrador</span>
-                        )}
+                      <label key={course.id} className="roster-option">
+                        <input type="checkbox" checked={rosterSelection.includes(course.id)} onChange={() => toggleRosterItem(course.id)} />
+                        <span className="roster-option__text">
+                          <strong>{course.title}</strong>
+                          <small>{course.category} · {course.modules?.length || 0} módulos</small>
+                        </span>
+                        {!course.published && <span className="roster-option__tag">Borrador</span>}
                       </label>
                     ));
                   })()}
             </div>
 
-            <div className="p-5 border-t border-line flex items-center justify-between gap-3">
-              <span className="text-[11px] text-ink-muted">
+            <footer className="mentee-sheet__foot mentee-sheet__foot--actions">
+              <span role="status" aria-live="polite">
                 {rosterSelection.length} seleccionado{rosterSelection.length === 1 ? '' : 's'}
               </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={closeRoster}
-                  className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
-                >
+              <div>
+                <button type="button" onClick={closeRoster} className="mentor-course-control">
                   Cancelar
                 </button>
-                <button
-                  onClick={handleSaveRoster}
-                  disabled={savingRoster}
-                  className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {savingRoster && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <button type="button" onClick={handleSaveRoster} disabled={savingRoster} className="mentor-course-control mentor-course-import">
+                  {savingRoster && <Loader2 aria-hidden="true" className="animate-spin" />}
                   Guardar cambios
                 </button>
               </div>
-            </div>
+            </footer>
           </div>
-        </div>
+        </dialog>
       )}
 
       {showAssignMenteeModal && (

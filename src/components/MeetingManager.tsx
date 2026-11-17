@@ -9,11 +9,16 @@
  * 4. Gestionar salas, copiar enlaces y sincronizar con los cursos y módulos del catálogo
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Video,
+  UsersRound,
+  Play,
+  Square,
+  ChevronLeft,
+  ChevronRight,
+  CirclePlay,
   Radio,
-  Calendar,
   Clock,
   Plus,
   Trash2,
@@ -22,17 +27,10 @@ import {
   Copy,
   Check,
   RefreshCw,
-  Sparkles,
-  Link2,
-  PlaySquare,
-  Globe,
   Layers,
   Search,
   X,
   AlertCircle,
-  Save,
-  CheckCircle2,
-  Users,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { Course, Meeting, MeetingType, User } from '../types';
@@ -43,6 +41,7 @@ import {
   normalizeMeetingUrl,
 } from '../plugins/LiveMeetingsPlugin';
 import { pluginManager } from '../plugins/PluginManager';
+import { stripEmoji } from '../lib/stripEmoji';
 
 interface MeetingManagerProps {
   currentUser: User;
@@ -85,6 +84,25 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   useEffect(() => {
     loadMeetings();
   }, []);
+
+  const [meetingLimit, setMeetingLimit] = useState<number>(12);
+  const [slide, setSlide] = useState<number>(0);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Meeting | null>(null);
+  const confirmRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = confirmRef.current;
+    if (!d) return;
+    if (deleteTarget && !d.open) d.showModal();
+    if (!deleteTarget && d.open) d.close();
+  }, [deleteTarget]);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (!d) return;
+    if (isModalOpen && !d.open) d.showModal();
+    if (!isModalOpen && d.open) d.close();
+  }, [isModalOpen]);
 
   const flashNotice = (msg: string) => {
     setActionNotice(msg);
@@ -160,7 +178,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
   const handleSaveMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle.trim()) {
+    if (!stripEmoji(formTitle)) {
       setModalError('El título de la clase es obligatorio');
       return;
     }
@@ -176,8 +194,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
       if (editingMeeting) {
         const res = await api.updateMeeting(editingMeeting.id, {
-          title: formTitle.trim(),
-          description: formDescription.trim() || null,
+          title: stripEmoji(formTitle),
+          description: stripEmoji(formDescription) || null,
           meetingType: formType,
           meetingUrl: normalizedUrl,
           scheduledAt: new Date(formScheduledAt).toISOString(),
@@ -193,8 +211,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         }
       } else {
         const res = await api.createMeeting({
-          title: formTitle.trim(),
-          description: formDescription.trim() || undefined,
+          title: stripEmoji(formTitle),
+          description: stripEmoji(formDescription) || undefined,
           meetingType: formType,
           meetingUrl: normalizedUrl,
           scheduledAt: new Date(formScheduledAt).toISOString(),
@@ -223,8 +241,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         setMeetings((prev) => prev.map((m) => (m.id === res.meeting.id ? res.meeting : m)));
         flashNotice(
           res.meeting.isLive
-            ? `🔴 Transmisión EN VIVO iniciada: "${meeting.title}"`
-            : `Transmisión finalizada: "${meeting.title}"`
+            ? `Transmisión en vivo iniciada: "${stripEmoji(meeting.title)}"`
+            : `Transmisión finalizada: "${stripEmoji(meeting.title)}"`
         );
       }
     } catch (err: any) {
@@ -233,13 +251,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   };
 
   const handleDeleteMeeting = async (meeting: Meeting) => {
-    if (!window.confirm(`¿Seguro que deseas eliminar la clase "${meeting.title}"?`)) return;
     try {
       await api.deleteMeeting(meeting.id);
       setMeetings((prev) => prev.filter((m) => m.id !== meeting.id));
-      flashNotice('Clase eliminada del catálogo');
+      flashNotice('Clase eliminada');
     } catch (err: any) {
       flashNotice(err.message || 'Error al eliminar la clase');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -277,662 +296,479 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
     });
   }, [meetings, filterType, selectedCourseId, searchQuery]);
 
+  useEffect(() => {
+    setMeetingLimit(12);
+    setSlide(0);
+    if (listRef.current) listRef.current.scrollLeft = 0;
+  }, [filterType, selectedCourseId, searchQuery]);
+
   const liveCount = meetings.filter((m) => m.isLive).length;
   const syncCount = meetings.filter((m) => m.meetingType !== 'async_record').length;
   const asyncCount = meetings.filter((m) => m.meetingType === 'async_record').length;
 
+  const stateOf = (m: Meeting): 'live' | 'recording' | 'ended' | 'scheduled' =>
+    m.isLive
+      ? 'live'
+      : m.meetingType === 'async_record'
+        ? 'recording'
+        : formatMeetingScheduledAt(m.scheduledAt).isPast
+          ? 'ended'
+          : 'scheduled';
+
+  /** Un color estable por curso: así se distingue de un vistazo a qué curso pertenece cada clase. */
+  const courseHue = (id?: string | null) => {
+    if (!id) return 0;
+    // Ángulo áureo sobre la posición del curso: tonos bien separados aunque haya muchos cursos.
+    const index = courses.findIndex((c) => c.id === id);
+    if (index >= 0) return Math.round((255 + index * 137.508) % 360);
+    let h = 0;
+    for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    return h;
+  };
+
+  const slideStep = () => {
+    const list = listRef.current;
+    const first = list?.firstElementChild as HTMLElement | null;
+    return first ? first.offsetWidth + 12 : 0;
+  };
+  const goToSlide = (direction: 1 | -1) => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    listRef.current?.scrollBy({ left: direction * slideStep(), behavior: reduce ? 'auto' : 'smooth' });
+  };
+
+  const typeLabel = (m: Meeting) =>
+    m.meetingType === 'jitsi' ? 'Jitsi Meet' : m.meetingType === 'meet' ? 'Google Meet' : 'Grabación';
+
+  const whenLabel = (value: string) => {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    const day = d.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
+    const time = d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    return `${day} · ${time}`;
+  };
+
+  const filterOptions = [
+    { id: 'ALL', label: 'Todas', count: meetings.length },
+    { id: 'LIVE', label: 'En vivo', count: liveCount },
+    { id: 'SYNC', label: 'Sesiones', count: syncCount },
+    { id: 'ASYNC', label: 'Grabaciones', count: asyncCount },
+  ] as const;
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Toast Notification Banner */}
-      {actionNotice && (
-        <div className="p-3 bg-brand-cyan/15 border border-brand-cyan/40 rounded-xl text-brand-cyan text-xs font-semibold flex items-center justify-between shadow-lg shadow-brand-cyan/10 animate-fade-in">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-brand-cyan" />
-            <span>{actionNotice}</span>
-          </div>
-          <button onClick={() => setActionNotice('')} className="text-brand-cyan/70 hover:text-brand-cyan">
-            <X className="w-3.5 h-3.5" />
+    <section className="mentor-meetings-panel" aria-labelledby="mentor-meetings-title">
+      <div className="mentor-section-heading">
+        <div>
+          <h2 id="mentor-meetings-title">Clases en vivo</h2>
+          <p>Programa sesiones, comparte la sala y publica las grabaciones</p>
+        </div>
+        <div className="mentor-meetings-actions">
+          <button type="button" className="mentor-course-control mentor-course-import" onClick={openCreateModal}>
+            <Plus aria-hidden="true" />
+            Programar clase
           </button>
-        </div>
-      )}
-
-      {/* Header Banner - Giantucchi Design System */}
-      <div className="bg-canvas border border-line rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold">
-            <Radio className="w-3.5 h-3.5 animate-pulse text-brand-cyan" />
-            <span>LiveMeetings Engine · Google Meet, Jitsi & Grabaciones</span>
-          </div>
-          <h2 className="text-2xl font-bold text-ink tracking-tight flex items-center gap-3">
-            Gestor de Clases Sincrónicas & En Vivo
-            {liveCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/40 animate-pulse-slow">
-                <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
-                {liveCount} EN VIVO
-              </span>
-            )}
-          </h2>
-          <p className="text-xs text-ink-muted max-w-2xl leading-relaxed">
-            Programa sesiones sincrónicas con generación de salas instantáneas en Jitsi Meet, integra tus enlaces corporativos de Google Meet o publica grabaciones asincrónicas con streaming optimizado.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <button
+            type="button"
+            className="mentor-course-control mentor-icon-control"
             onClick={loadMeetings}
             disabled={loading}
-            className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-lg transition-all flex items-center gap-2"
-            title="Recargar reuniones"
+            aria-label="Actualizar clases"
+            title="Actualizar clases"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-brand-cyan ${loading ? 'animate-spin' : ''}`} />
-            <span>Sincronizar</span>
-          </button>
-          <button
-            onClick={openCreateModal}
-            className="btn-brand-primary px-4 py-2.5 text-xs font-bold rounded-lg flex items-center gap-2 shadow-lg shadow-brand-cyan/20"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Programar Clase</span>
+            <RefreshCw aria-hidden="true" className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-ink-muted">Total Clases</p>
-            <h3 className="text-xl font-bold text-ink mt-0.5">{meetings.length}</h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan">
-            <Video className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-danger-light">En Vivo Ahora</p>
-            <h3 className="text-xl font-bold text-danger-light mt-0.5">{liveCount}</h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-danger/10 border border-danger/30 flex items-center justify-center text-danger-light">
-            <Radio className="w-4 h-4 animate-pulse" />
-          </div>
-        </div>
-
-        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-brand-purple">Sincrónicas</p>
-            <h3 className="text-xl font-bold text-brand-purple mt-0.5">{syncCount}</h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-brand-purple/10 border border-brand-purple/30 flex items-center justify-center text-brand-purple">
-            <Calendar className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-success-light">Asincrónicas</p>
-            <h3 className="text-xl font-bold text-success-light mt-0.5">{asyncCount}</h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-success/10 border border-success/30 flex items-center justify-center text-success-light">
-            <PlaySquare className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        {/* Type Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => setFilterType('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterType === 'ALL'
-                ? 'bg-brand-cyan text-black shadow-md'
-                : 'bg-raised text-ink-muted hover:text-ink border border-line'
-              }`}
-          >
-            Todas ({meetings.length})
-          </button>
-          <button
-            onClick={() => setFilterType('LIVE')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${filterType === 'LIVE'
-                ? 'bg-danger text-ink shadow-md'
-                : 'bg-raised text-ink-muted hover:text-danger-light border border-line'
-              }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-danger-light" />
-            En Vivo ({liveCount})
-          </button>
-          <button
-            onClick={() => setFilterType('SYNC')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterType === 'SYNC'
-                ? 'bg-brand-purple text-ink shadow-md'
-                : 'bg-raised text-ink-muted hover:text-ink border border-line'
-              }`}
-          >
-            Sincrónicas ({syncCount})
-          </button>
-          <button
-            onClick={() => setFilterType('ASYNC')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filterType === 'ASYNC'
-                ? 'bg-success text-black shadow-md'
-                : 'bg-raised text-ink-muted hover:text-ink border border-line'
-              }`}
-          >
-            Grabaciones ({asyncCount})
-          </button>
-        </div>
-
-        {/* Course Filter Dropdown & Search */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-          <select
-            value={selectedCourseId}
-            onChange={(e) => setSelectedCourseId(e.target.value)}
-            className="w-full sm:w-48 md:w-56 truncate bg-raised border border-line text-ink-soft text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-cyan shrink-0"
-          >
-            <option value="ALL">Todos los Cursos</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-
-          <div className="relative flex-1 sm:w-52 md:w-60">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar clase..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-raised border border-line rounded-lg pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink-faint focus:outline-none focus:border-brand-cyan"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Meetings List */}
-      {loading && meetings.length === 0 ? (
-        <div className="py-20 text-center space-y-3 bg-raised/50 border border-line rounded-2xl">
-          <RefreshCw className="w-8 h-8 mx-auto text-brand-cyan animate-spin" />
-          <p className="text-xs font-bold text-ink-muted">Cargando catálogo de clases sincrónicas...</p>
-        </div>
-      ) : filteredMeetings.length === 0 ? (
-        <div className="py-16 text-center space-y-3 bg-raised/50 border border-line rounded-2xl p-6">
-          <Video className="w-10 h-10 mx-auto text-ink-faint" />
-          <h3 className="text-sm font-bold text-ink">No se encontraron clases</h3>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto">
-            {searchQuery || filterType !== 'ALL' || selectedCourseId !== 'ALL'
-              ? 'No hay reuniones que coincidan con los filtros seleccionados.'
-              : 'Programa tu primera clase sincrónica con Google Meet o Jitsi Meet.'}
-          </p>
-          <button
-            onClick={openCreateModal}
-            className="btn-brand-primary px-4 py-2 text-xs font-bold rounded-lg inline-flex items-center gap-2 mt-2"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Crear Clase Ahora</span>
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredMeetings.map((meeting) => {
-            const schedInfo = formatMeetingScheduledAt(meeting.scheduledAt);
-            const isLive = meeting.isLive;
-
-            return (
-              <div
-                key={meeting.id}
-                className={`bg-raised border rounded-xl p-5 flex flex-col justify-between transition-all space-y-4 ${isLive
-                    ? 'border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/30'
-                    : 'border-line hover:border-line-strong'
-                  }`}
-              >
-                {/* Top Row: Badges & Actions */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {isLive ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/50 animate-pulse-slow">
-                          <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
-                          🔴 ¡EN VIVO AHORA!
-                        </span>
-                      ) : meeting.meetingType === 'async_record' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro font-bold bg-success/10 text-success-light border border-success/30">
-                          <PlaySquare className="w-3 h-3" />
-                          Grabación Asincrónica
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro font-bold bg-brand-purple/10 text-brand-purple border border-brand-purple/30">
-                          <Calendar className="w-3 h-3" />
-                          Sincrónica Programada
-                        </span>
-                      )}
-
-                      {/* Provider Badge */}
-                      <span className="px-2 py-0.5 rounded-md bg-elevated border border-line text-micro font-bold text-ink-soft uppercase">
-                        {meeting.meetingType === 'jitsi'
-                          ? 'Jitsi Meet'
-                          : meeting.meetingType === 'meet'
-                            ? 'Google Meet'
-                            : 'Grabación'}
-                      </span>
-                    </div>
-
-                    {/* Action menu buttons */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => openEditModal(meeting)}
-                        className="p-1.5 rounded-lg bg-elevated hover:bg-elevated border border-line text-ink-soft hover:text-ink transition-colors"
-                        title="Editar clase"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-brand-cyan" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMeeting(meeting)}
-                        className="p-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger-light transition-colors"
-                        title="Eliminar clase"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Title & Description */}
-                  <div>
-                    <h3 className="font-bold text-sm text-ink leading-snug line-clamp-2">
-                      {meeting.title}
-                    </h3>
-                    {meeting.description && (
-                      <p className="text-xs text-ink-muted mt-1 line-clamp-2 leading-relaxed">
-                        {meeting.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Course & Module Context */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-ink-muted pt-1">
-                    {meeting.courseTitle && (
-                      <span className="flex items-center gap-1 text-brand-cyan font-semibold">
-                        <Layers className="w-3 h-3" />
-                        {meeting.courseTitle}
-                      </span>
-                    )}
-                    {meeting.moduleTitle && (
-                      <span className="text-ink-faint">
-                        • {meeting.moduleTitle}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom Row: Scheduling, Host & Main CTA */}
-                <div className="pt-3 border-t border-line/80 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between text-micro text-ink-muted gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-brand-cyan" />
-                      <span>{schedInfo.dateFormatted} · {schedInfo.timeFormatted}</span>
-                      <span className="text-micro text-ink-faint font-medium">({schedInfo.relativeLabel})</span>
-                    </div>
-
-                    {meeting.hostName && (
-                      <div className="flex items-center gap-1.5 text-ink-muted">
-                        <Users className="w-3 h-3 text-brand-purple" />
-                        <span>{meeting.hostName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Buttons Toolbar */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <a
-                      href={meeting.meetingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex-1 min-w-[120px] px-3.5 py-2 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2 transition-all ${isLive
-                          ? 'btn-brand-primary text-ink shadow-lg shadow-brand-cyan/20'
-                          : 'bg-elevated hover:bg-elevated border border-brand-cyan/40 text-brand-cyan'
-                        }`}
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      <span>{isLive ? 'Unirse a la Clase en Vivo' : 'Abrir Sala / Enlace'}</span>
-                      <ExternalLink className="w-3 h-3 opacity-70" />
-                    </a>
-
-                    <button
-                      onClick={() => handleCopyLink(meeting)}
-                      className="px-3 py-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold transition-colors flex items-center gap-1.5"
-                      title="Copiar enlace de la clase"
-                    >
-                      {copiedId === meeting.id ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-success-light" />
-                          <span className="text-success-light">¡Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-ink-muted" />
-                          <span>Copiar</span>
-                        </>
-                      )}
-                    </button>
-
-                    {meeting.meetingType !== 'async_record' && (
-                      <button
-                        onClick={() => handleToggleLive(meeting)}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 ${isLive
-                            ? 'bg-danger/10 hover:bg-danger/20 border-danger/40 text-danger-light'
-                            : 'bg-success/10 hover:bg-success/20 border-success/40 text-success-light'
-                          }`}
-                        title={isLive ? 'Finalizar sesión en vivo' : 'Iniciar sesión en vivo ahora'}
-                      >
-                        <Radio className="w-3.5 h-3.5" />
-                        <span>{isLive ? 'Finalizar' : 'Iniciar En Vivo'}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {actionNotice && (
+        <p className="mentee-sheet__error mentor-meetings-notice" role="status">
+          <Check aria-hidden="true" />
+          <span>{actionNotice}</span>
+        </p>
       )}
 
-      {/* Programar / Editar Clase Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="app-dialog bg-raised border border-line rounded-2xl w-full max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-7 space-y-6 shadow-2xl relative my-auto">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-3 right-3 flex h-11 w-11 items-center justify-center text-ink-muted hover:text-ink rounded-lg hover:bg-elevated"
-            >
-              <X className="w-5 h-5" />
+      <div className="mentor-course-toolbar">
+        <label className="mentor-mentee-search">
+          <Search aria-hidden="true" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar clase"
+            aria-label="Buscar clase"
+          />
+        </label>
+        {courses.length > 1 && (
+          <select
+            className="mentor-meetings-select"
+            value={selectedCourseId}
+            onChange={(e) => setSelectedCourseId(e.target.value)}
+            aria-label="Filtrar por curso"
+          >
+            <option value="ALL">Todos los cursos</option>
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>{stripEmoji(c.title)}</option>
+            ))}
+          </select>
+        )}
+        <div className="mentor-publication-filters" data-options="4" role="group" aria-label="Filtrar clases">
+          {filterOptions.map((o) => (
+            <button key={o.id} type="button" aria-pressed={filterType === o.id} onClick={() => setFilterType(o.id)}>
+              <span>{o.label}</span>
+              <span className="mentor-publication-count">{o.count}</span>
             </button>
+          ))}
+        </div>
+      </div>
 
-            <div className="space-y-1 pr-10">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-micro font-bold">
-                <Video className="w-3 h-3" />
-                <span>LiveMeetings · Programador de Sesiones</span>
+      {loading && meetings.length === 0 ? (
+        <p className="mentor-courses-empty" role="status">
+          <RefreshCw aria-hidden="true" className="animate-spin" />
+          Cargando clases
+        </p>
+      ) : filteredMeetings.length === 0 ? (
+        <div className="mentor-courses-empty" role="status">
+          <Video aria-hidden="true" />
+          <p>{meetings.length === 0 ? 'Aún no hay clases programadas' : 'Ninguna clase coincide con los filtros'}</p>
+          {meetings.length === 0 && (
+            <button type="button" className="mentor-course-control mentor-course-import" onClick={openCreateModal}>
+              <Plus aria-hidden="true" />
+              Programar clase
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+        <ul
+          ref={listRef}
+          className="mentor-meetings-list"
+          onScroll={(e) => {
+            const step = slideStep();
+            if (step > 0) setSlide(Math.round(e.currentTarget.scrollLeft / step));
+          }}
+        >
+          {filteredMeetings.slice(0, meetingLimit).map((meeting) => {
+            const state = stateOf(meeting);
+            const info = formatMeetingScheduledAt(meeting.scheduledAt);
+            return (
+              <li key={meeting.id} className="mentor-meeting-card" data-state={state}>
+                <header className="mentor-meeting-card__head">
+                  <div className="mentor-meeting-card__when">
+                    <strong>{typeLabel(meeting)}</strong>
+                    <span>{whenLabel(meeting.scheduledAt)}</span>
+                  </div>
+                  <span className="mentor-meeting-status" data-state={state}>
+                    {state === 'live' ? 'En vivo ahora' : state === 'recording' ? 'Disponible' : state === 'ended' ? 'Finalizada' : 'Programada'}
+                  </span>
+                </header>
+
+                <div className="mentor-meeting-card__body">
+                  <p
+                    className="mentor-meeting-card__course"
+                    data-empty={meeting.courseTitle ? undefined : 'true'}
+                    style={{ '--course-hue': courseHue(meeting.courseId) } as React.CSSProperties}
+                    title={[meeting.courseTitle, meeting.moduleTitle].filter(Boolean).join(' · ') || undefined}
+                  >
+                    <i aria-hidden="true" />
+                    <span>
+                      <strong>{stripEmoji(meeting.courseTitle) || 'Sin curso asignado'}</strong>
+                      <small>{stripEmoji(meeting.moduleTitle) || (meeting.courseTitle ? 'Todo el curso' : '')}</small>
+                    </span>
+                  </p>
+                  <h3 title={stripEmoji(meeting.title)}>{stripEmoji(meeting.title)}</h3>
+                  {stripEmoji(meeting.description) && <p className="mentor-meeting-card__desc">{stripEmoji(meeting.description)}</p>}
+                </div>
+
+                <div className="mentor-meeting-card__meta">
+                  <span><Clock aria-hidden="true" />{state === 'recording' ? 'Bajo demanda' : info.relativeLabel}</span>
+                  {meeting.hostName && <span><UsersRound aria-hidden="true" />{meeting.hostName}</span>}
+                </div>
+
+                <div className="mentor-meeting-card__actions">
+                  {state === 'live' && (
+                    <>
+                      <a className="mentor-course-control mentor-course-import mentor-span-2" href={meeting.meetingUrl} target="_blank" rel="noopener noreferrer">
+                        <Video aria-hidden="true" />
+                        Unirse a la clase
+                      </a>
+                      <button type="button" className="mentor-course-control" onClick={() => handleCopyLink(meeting)}>
+                        {copiedId === meeting.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                        {copiedId === meeting.id ? 'Copiado' : 'Copiar enlace'}
+                      </button>
+                      <button type="button" className="mentor-course-control" onClick={() => handleToggleLive(meeting)}>
+                        <Square aria-hidden="true" />
+                        Terminar clase
+                      </button>
+                    </>
+                  )}
+                  {state === 'scheduled' && (
+                    <>
+                      <button type="button" className="mentor-course-control mentor-course-import mentor-span-2" onClick={() => handleToggleLive(meeting)}>
+                        <Play aria-hidden="true" />
+                        Iniciar clase en vivo
+                      </button>
+                      <a className="mentor-course-control" href={meeting.meetingUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink aria-hidden="true" />
+                        Abrir sala
+                      </a>
+                      <button type="button" className="mentor-course-control" onClick={() => handleCopyLink(meeting)}>
+                        {copiedId === meeting.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                        {copiedId === meeting.id ? 'Copiado' : 'Copiar enlace'}
+                      </button>
+                    </>
+                  )}
+                  {(state === 'recording' || state === 'ended') && (
+                    <>
+                      <a
+                        className={`mentor-course-control mentor-span-2${state === 'recording' ? ' mentor-course-import' : ''}`}
+                        href={meeting.recordingUrl || meeting.meetingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {state === 'recording' ? <CirclePlay aria-hidden="true" /> : <ExternalLink aria-hidden="true" />}
+                        {state === 'recording' || meeting.recordingUrl ? 'Ver grabación' : 'Abrir sala'}
+                      </a>
+                      <button type="button" className="mentor-course-control mentor-span-2" onClick={() => handleCopyLink(meeting)}>
+                        {copiedId === meeting.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                        {copiedId === meeting.id ? 'Copiado' : 'Copiar enlace'}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <footer className="mentor-meeting-card__foot">
+                  <button type="button" className="mentor-course-control" onClick={() => openEditModal(meeting)}>
+                    <Pencil aria-hidden="true" />
+                    Editar
+                  </button>
+                  <button type="button" className="mentor-course-control" data-danger="true" onClick={() => setDeleteTarget(meeting)}>
+                    <Trash2 aria-hidden="true" />
+                    Eliminar
+                  </button>
+                </footer>
+              </li>
+            );
+          })}
+        </ul>
+
+        {filteredMeetings.length > 1 && (
+          <div className="mentor-meetings-carousel" role="group" aria-label="Desplazar clases">
+            <button type="button" className="mentor-course-control mentor-icon-control" onClick={() => goToSlide(-1)} disabled={slide <= 0} aria-label="Clase anterior">
+              <ChevronLeft aria-hidden="true" />
+            </button>
+            <span role="status" aria-live="polite">{Math.min(slide + 1, Math.min(filteredMeetings.length, meetingLimit))} de {Math.min(filteredMeetings.length, meetingLimit)}</span>
+            <button type="button" className="mentor-course-control mentor-icon-control" onClick={() => goToSlide(1)} disabled={slide >= Math.min(filteredMeetings.length, meetingLimit) - 1} aria-label="Clase siguiente">
+              <ChevronRight aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        {filteredMeetings.length > meetingLimit && (
+          <div className="mentor-mentee-more">
+            <span className="mentor-course-filter-result" role="status">{meetingLimit} de {filteredMeetings.length} clases</span>
+            <button type="button" className="mentor-course-control" onClick={() => setMeetingLimit((l) => l + 12)}>Mostrar más</button>
+          </div>
+        )}
+        </>
+      )}
+
+      <dialog
+        ref={dialogRef}
+        className="mentee-sheet"
+        aria-labelledby="meeting-form-title"
+        onCancel={(e) => { e.preventDefault(); setIsModalOpen(false); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+      >
+        {isModalOpen && (
+          <form className="mentee-sheet__body" onSubmit={handleSaveMeeting}>
+            <header className="mentee-sheet__head mentee-sheet__head--plain">
+              <div className="mentor-mentee-id">
+                <strong id="meeting-form-title">{editingMeeting ? 'Editar clase' : 'Programar clase'}</strong>
+                <span>Tipo de sesión, enlace y fecha</span>
               </div>
-              <h3 className="text-lg font-bold text-ink">
-                {editingMeeting ? 'Editar Clase' : 'Programar Nueva Clase'}
-              </h3>
-              <p className="text-xs text-ink-muted">
-                Configura el tipo de sesión, enlace de transmisión y fecha programada.
-              </p>
-            </div>
+              <button type="button" className="mentee-sheet__close" onClick={() => setIsModalOpen(false)} aria-label="Cerrar">
+                <X aria-hidden="true" />
+              </button>
+            </header>
 
-            {modalError && (
-              <div className="p-3 rounded-xl bg-danger/15 border border-danger/40 text-danger-light text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{modalError}</span>
-              </div>
-            )}
+            <div className="mentee-sheet__list mentor-meeting-form">
+              {modalError && (
+                <p className="mentee-sheet__error" role="alert">
+                  <AlertCircle aria-hidden="true" /> <span>{modalError}</span>
+                </p>
+              )}
 
-            <form onSubmit={handleSaveMeeting} className="space-y-4">
-              {/* Título de la clase */}
-              <div>
-                <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                  Título de la Clase / Sesión <span className="text-danger-light">*</span>
-                </label>
+              <label className="meeting-field">
+                <span>Título</span>
                 <input
                   type="text"
-                  placeholder="Ej: Masterclass Sincrónica: Arquitectura Limpia y Despliegue"
+                  placeholder="Ej: Masterclass de arquitectura limpia"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   required
-                  className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan"
                 />
-              </div>
+              </label>
 
-              {/* Selector de Tipo de Clase (Segmented Control) */}
-              <div>
-                <label className="block text-xs font-bold text-ink-soft mb-2">
-                  Tipo de Clase & Proveedor
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormType('jitsi');
-                      if (!formUrl || formUrl.includes('meet.google.com') || formUrl.includes('youtube.com')) {
-                        setFormUrl(generateJitsiMeetingUrl());
-                      }
-                    }}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'jitsi'
-                        ? 'bg-brand-cyan/10 border-brand-cyan text-brand-cyan shadow-md shadow-brand-cyan/10'
-                        : 'bg-canvas border-line text-ink-muted hover:text-ink'
-                      }`}
-                  >
-                    <Globe className="w-4 h-4 mb-1" />
-                    <div>
-                      <p className="text-xs font-bold text-ink">Jitsi Meet</p>
-                      <p className="text-micro text-ink-faint">Sala Dinámica 1-Clic</p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormType('meet');
-                      if (formUrl.includes('meet.jit.si')) setFormUrl('');
-                    }}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'meet'
-                        ? 'bg-brand-purple/10 border-brand-purple text-brand-purple shadow-md shadow-brand-purple/10'
-                        : 'bg-canvas border-line text-ink-muted hover:text-ink'
-                      }`}
-                  >
-                    <Video className="w-4 h-4 mb-1" />
-                    <div>
-                      <p className="text-xs font-bold text-ink">Google Meet</p>
-                      <p className="text-micro text-ink-faint">Enlace Corporativo</p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormType('async_record');
-                      setFormIsLive(false);
-                      if (formUrl.includes('meet.jit.si') || formUrl.includes('meet.google.com')) setFormUrl('');
-                    }}
-                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${formType === 'async_record'
-                        ? 'bg-success/10 border-success text-success-light shadow-md shadow-emerald-500/10'
-                        : 'bg-canvas border-line text-ink-muted hover:text-ink'
-                      }`}
-                  >
-                    <PlaySquare className="w-4 h-4 mb-1" />
-                    <div>
-                      <p className="text-xs font-bold text-ink">Asincrónica</p>
-                      <p className="text-micro text-ink-faint">Video Grabado</p>
-                    </div>
-                  </button>
+              <fieldset className="meeting-field">
+                <legend>Tipo de clase</legend>
+                <div className="meeting-types" role="radiogroup" aria-label="Tipo de clase">
+                  {([
+                    { id: 'jitsi', label: 'Jitsi Meet', hint: 'Sala al instante' },
+                    { id: 'meet', label: 'Google Meet', hint: 'Tu enlace' },
+                    { id: 'async_record', label: 'Grabación', hint: 'Video previo' },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={formType === option.id}
+                      onClick={() => {
+                        setFormType(option.id);
+                        if (option.id === 'jitsi') {
+                          if (!formUrl || formUrl.includes('meet.google.com') || formUrl.includes('youtube.com')) {
+                            setFormUrl(generateJitsiMeetingUrl());
+                          }
+                        } else if (option.id === 'meet') {
+                          if (formUrl.includes('meet.jit.si')) setFormUrl('');
+                        } else {
+                          setFormIsLive(false);
+                          if (formUrl.includes('meet.jit.si') || formUrl.includes('meet.google.com')) setFormUrl('');
+                        }
+                      }}
+                    >
+                      <strong>{option.label}</strong>
+                      <small>{option.hint}</small>
+                    </button>
+                  ))}
                 </div>
-              </div>
+              </fieldset>
 
-              {/* URL del Enlace */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-ink-soft">
-                    {formType === 'jitsi'
-                      ? 'Enlace de Sala Jitsi Meet'
-                      : formType === 'meet'
-                        ? 'Enlace de Google Meet'
-                        : 'Enlace de la Grabación (YouTube / Vimeo / Drive)'}
-                    <span className="text-danger-light"> *</span>
+              <div className="meeting-field">
+                <div className="meeting-field__row">
+                  <label htmlFor="meeting-url">
+                    {formType === 'jitsi' ? 'Enlace de la sala' : formType === 'meet' ? 'Enlace de Google Meet' : 'Enlace de la grabación'}
                   </label>
                   {formType === 'jitsi' && (
-                    <button
-                      type="button"
-                      onClick={handleGenerateJitsiUrl}
-                      className="text-micro text-brand-cyan font-bold hover:underline flex items-center gap-1"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      Generar Sala Nueva
+                    <button type="button" className="meeting-field__link" onClick={handleGenerateJitsiUrl}>
+                      Generar sala nueva
                     </button>
                   )}
                 </div>
-
-                <div className="relative">
-                  <Link2 className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-                  <input
-                    type="url"
-                    placeholder={
-                      formType === 'jitsi'
-                        ? 'https://meet.jit.si/docentos-mastery-live'
-                        : formType === 'meet'
-                          ? 'https://meet.google.com/abc-defg-hij'
-                          : 'https://www.youtube.com/watch?v=...'
-                    }
-                    value={formUrl}
-                    onChange={(e) => setFormUrl(e.target.value)}
-                    required
-                    className="w-full bg-canvas border border-line rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan"
-                  />
-                </div>
-                <p className="text-micro text-ink-faint mt-1">
+                <input
+                  id="meeting-url"
+                  type="url"
+                  placeholder={
+                    formType === 'jitsi'
+                      ? 'https://meet.jit.si/docentos-sala'
+                      : formType === 'meet'
+                        ? 'https://meet.google.com/abc-defg-hij'
+                        : 'https://www.youtube.com/watch?v=...'
+                  }
+                  value={formUrl}
+                  onChange={(e) => setFormUrl(e.target.value)}
+                  required
+                />
+                <small>
                   {formType === 'jitsi'
-                    ? 'Los estudiantes podrán ingresar sin instalar aplicaciones adicionales directamente desde el navegador.'
+                    ? 'Los alumnos entran desde el navegador, sin instalar nada.'
                     : formType === 'meet'
-                      ? 'Pega el enlace creado desde tu cuenta de Google Workspace o Meet.'
-                      : 'Permite a los estudiantes ver la grabación de una clase previa directamente en su reproductor.'}
-                </p>
+                      ? 'Pega el enlace creado desde tu cuenta de Google.'
+                      : 'YouTube, Vimeo o Drive. Se reproduce dentro de la plataforma.'}
+                </small>
               </div>
 
-              {/* Fecha y Hora Programada & Estado En Vivo */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                    Fecha y Hora Programada
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formScheduledAt}
-                    onChange={(e) => setFormScheduledAt(e.target.value)}
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan"
-                  />
-                </div>
+              <label className="meeting-field">
+                <span>Fecha y hora</span>
+                <input type="datetime-local" value={formScheduledAt} onChange={(e) => setFormScheduledAt(e.target.value)} />
+              </label>
 
-                <div>
-                  {formType === 'async_record' ? (
-                    <div>
-                      <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                        Modalidad
-                      </label>
-                      <div className="w-full py-2 px-3 rounded-xl border border-success/30 bg-success/10 text-success-light text-xs font-semibold flex items-center justify-center gap-2">
-                        <PlaySquare className="w-3.5 h-3.5 text-success-light" />
-                        <span>Grabación Bajo Demanda</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                        Estado de Transmisión
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setFormIsLive(!formIsLive)}
-                        className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${formIsLive
-                            ? 'bg-danger/20 border-danger/50 text-danger-light'
-                            : 'bg-canvas border-line text-ink-muted'
-                          }`}
-                      >
-                        <Radio className={`w-3.5 h-3.5 ${formIsLive ? 'animate-pulse text-danger-light' : ''}`} />
-                        <span>{formIsLive ? '🔴 EN VIVO AHORA' : 'Programada (Offline)'}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Curso y Módulo Vinculados */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                    Curso Asociado
-                  </label>
-                  <select
-                    value={formCourseId}
-                    onChange={(e) => {
-                      setFormCourseId(e.target.value);
-                      setFormModuleId('');
-                    }}
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan"
-                  >
-                    <option value="">Sin curso asignado</option>
-                    {courses.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                    Módulo Específico (Opcional)
-                  </label>
-                  <select
-                    value={formModuleId}
-                    onChange={(e) => setFormModuleId(e.target.value)}
-                    disabled={!selectedCourse || selectedCourse.modules.length === 0}
-                    className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan disabled:opacity-40"
-                  >
-                    <option value="">Todo el curso</option>
-                    {selectedCourse?.modules.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Descripción opcional */}
-              <div>
-                <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                  Descripción o Temas a Tratar (Opcional)
+              {formType !== 'async_record' && (
+                <label className="roster-option">
+                  <input type="checkbox" checked={formIsLive} onChange={(e) => setFormIsLive(e.target.checked)} />
+                  <span className="roster-option__text">
+                    <strong>Transmitir en vivo ahora</strong>
+                    <small>Los alumnos verán la clase como activa</small>
+                  </span>
                 </label>
+              )}
+
+              <label className="meeting-field">
+                <span>Curso</span>
+                <select
+                  value={formCourseId}
+                  onChange={(e) => { setFormCourseId(e.target.value); setFormModuleId(''); }}
+                >
+                  <option value="">Sin curso asignado</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{stripEmoji(c.title)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="meeting-field">
+                <span>Módulo <em>(opcional)</em></span>
+                <select
+                  value={formModuleId}
+                  onChange={(e) => setFormModuleId(e.target.value)}
+                  disabled={!selectedCourse || selectedCourse.modules.length === 0}
+                >
+                  <option value="">Todo el curso</option>
+                  {selectedCourse?.modules.map((m) => (
+                    <option key={m.id} value={m.id}>{stripEmoji(m.title)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="meeting-field">
+                <span>Descripción <em>(opcional)</em></span>
                 <textarea
-                  rows={2}
-                  placeholder="Detalles sobre los puntos que se abordarán durante la sesión..."
+                  rows={3}
+                  placeholder="Temas que se tratarán en la sesión"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan resize-none"
                 />
-              </div>
+              </label>
+            </div>
 
-              {/* Botones de acción del Modal */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-elevated hover:bg-elevated border border-line text-xs font-bold text-ink-soft transition-colors"
-                >
+            <footer className="mentee-sheet__foot mentee-sheet__foot--actions">
+              <div>
+                <button type="button" className="mentor-course-control" onClick={() => setIsModalOpen(false)}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="btn-brand-primary px-5 py-2 rounded-lg text-xs font-bold flex items-center gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Guardando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{editingMeeting ? 'Guardar Cambios' : 'Crear Clase'}</span>
-                    </>
-                  )}
+                <button type="submit" className="mentor-course-control mentor-course-import" disabled={saving}>
+                  {saving && <RefreshCw aria-hidden="true" className="animate-spin" />}
+                  {editingMeeting ? 'Guardar cambios' : 'Crear clase'}
                 </button>
               </div>
-            </form>
+            </footer>
+          </form>
+        )}
+      </dialog>
+
+      <dialog
+        ref={confirmRef}
+        className="mentor-confirm"
+        aria-labelledby="meeting-delete-title"
+        onCancel={(e) => { e.preventDefault(); setDeleteTarget(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setDeleteTarget(null); }}
+      >
+        {deleteTarget && (
+          <div className="mentor-confirm__body">
+            <h3 id="meeting-delete-title">Eliminar clase</h3>
+            <p>
+              Vas a eliminar <strong>{stripEmoji(deleteTarget.title)}</strong>. Los alumnos dejarán de verla y no se puede deshacer.
+            </p>
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" onClick={() => setDeleteTarget(null)}>
+                Cancelar
+              </button>
+              <button type="button" className="mentor-course-control" data-danger="true" onClick={() => handleDeleteMeeting(deleteTarget)}>
+                <Trash2 aria-hidden="true" />
+                Eliminar
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </dialog>
+    </section>
   );
 };
