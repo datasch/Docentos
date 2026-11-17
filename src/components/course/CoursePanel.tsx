@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { LucideIcon, Maximize2, Minimize2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 
 export type PanelTabId = 'syllabus' | 'notes' | 'mentorship' | 'sessions';
 
@@ -35,6 +36,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
   theaterMode,
   onToggleTheater,
 }) => {
+  const { t } = useTranslation()
   const tabRefs = useRef(new Map<PanelTabId, HTMLButtonElement>());
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -57,7 +59,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
   return (
     <section className="academy-course-panel flex h-full flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
       <div className="flex shrink-0 items-stretch border-b border-line">
-        <div role="tablist" aria-label="Paneles del curso" className="flex min-w-0 flex-1">
+        <div role="tablist" aria-label={t('panelesDelCurso', 'Paneles del curso')} className="flex min-w-0 flex-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = tab.id === active;
@@ -105,7 +107,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
             <Maximize2 aria-hidden className="h-4 w-4" />
           )}
           <span className="sr-only">
-            {theaterMode ? 'Salir del modo cine' : 'Ver en modo cine'}
+            {theaterMode ? t('salirDelModoCine', 'Salir del modo cine') : t('verEnModoCine', 'Ver en modo cine')}
           </span>
         </button>
       </div>

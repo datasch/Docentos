@@ -43,6 +43,7 @@ import {
 } from '../lib/listening';
 import type { OwnListeningEntry } from '../lib/listeningTypes';
 import type { Course } from '../types';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface ListeningBoxModalProps {
   isOpen: boolean;
@@ -108,7 +109,9 @@ const Step: React.FC<{
   done?: boolean;
   optional?: boolean;
   children: React.ReactNode;
-}> = ({ number, title, hint, done = false, optional = false, children }) => (
+}> = ({ number, title, hint, done = false, optional = false, children }) => {
+  const { t } = useTranslation()
+  return (
   <section className="rounded-2xl border border-line bg-canvas/30 p-4 sm:p-5">
     <div className="mb-4 flex items-start gap-3">
       <span
@@ -121,10 +124,10 @@ const Step: React.FC<{
       </span>
       <div className="min-w-0">
         <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold text-ink" style={DISPLAY_FONT}>
-          <span className="sr-only">Paso {number}: </span>
+          <span className="sr-only">{t('pasoNumber', 'Paso {{number}}:', { number })} </span>
           {title}
           {optional && (
-            <span className="rounded-full border border-line px-2 py-0.5 text-xs font-medium text-ink-muted">Opcional</span>
+            <span className="rounded-full border border-line px-2 py-0.5 text-xs font-medium text-ink-muted">{t('opcional', 'Opcional')}</span>
           )}
         </h3>
         {hint && <p className="mt-0.5 text-sm text-ink-muted">{hint}</p>}
@@ -132,7 +135,8 @@ const Step: React.FC<{
     </div>
     {children}
   </section>
-);
+)
+};
 
 export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
   isOpen,
@@ -140,6 +144,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
   courses = [],
   onUnreadChange,
 }) => {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<'new' | 'mine'>('new');
   const [mood, setMood] = useState<number | null>(null);
   const [type, setType] = useState<ListeningType>('SUGGESTION');
@@ -261,9 +266,9 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
   const canSend = missing.length === 0;
 
   const GUIDANCE: Record<RequiredField, string> = {
-    mood: 'Falta elegir cómo te sientes (paso 1).',
-    subject: `Falta un título de al menos ${LISTENING_LIMITS.subjectMin} letras (paso 3).`,
-    message: `Falta tu mensaje, de al menos ${LISTENING_LIMITS.messageMin} caracteres (paso 3).`,
+    mood: t('faltaElegirComoTeSientesPaso1', 'Falta elegir cómo te sientes (paso 1).'),
+    subject: t('faltaUnTituloDeAlMenosSubjectMinLetras', 'Falta un título de al menos {{subjectMin}} letras (paso 3).', { subjectMin: LISTENING_LIMITS.subjectMin }),
+    message: t('faltaTuMensajeDeAlMenosMessageMin', 'Falta tu mensaje, de al menos {{messageMin}} caracteres (paso 3).', { messageMin: LISTENING_LIMITS.messageMin }),
   };
   // Mientras falte algo tras un intento de envío, el aviso se actualiza solo al corregirlo.
   const guidance = attempted && missing.length > 0 ? GUIDANCE[missing[0]] : null;
@@ -311,7 +316,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
       scrollRef.current?.scrollTo({ top: 0 });
       await loadMine();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'No se pudo enviar tu mensaje.');
+      setError(requestError instanceof Error ? requestError.message : t('noSePudoEnviarTuMensaje', 'No se pudo enviar tu mensaje.'));
     } finally {
       setSending(false);
     }
@@ -320,9 +325,9 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
   const newReplies = entries.filter((entry) => entry.unreadReply).length;
 
   const checklist: { field: RequiredField; label: string; done: boolean }[] = [
-    { field: 'mood', label: 'Ánimo', done: mood !== null },
-    { field: 'subject', label: 'Título', done: subjectOk },
-    { field: 'message', label: 'Mensaje', done: messageOk },
+    { field: 'mood', label: t('animo', 'Ánimo'), done: mood !== null },
+    { field: 'subject', label: t('titulo', 'Título'), done: subjectOk },
+    { field: 'message', label: t('mensaje', 'Mensaje'), done: messageOk },
   ];
 
   return createPortal(
@@ -345,17 +350,17 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
           </span>
           <div className="min-w-0 flex-1">
             <h2 id="listening-title" className="text-xl font-bold text-ink" style={DISPLAY_FONT}>
-              Buzón de escucha
+              {t('buzonDeEscucha', 'Buzón de escucha')}
             </h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Cuéntanos cómo te sientes o qué mejorar. Una persona del equipo te responde.
+              {t('cuentanosComoTeSientesOQueMejorarUna', 'Cuéntanos cómo te sientes o qué mejorar. Una persona del equipo te responde.')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="-mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-ink/10 hover:text-ink"
-            aria-label="Cerrar"
+            aria-label={t('cerrar', 'Cerrar')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -363,8 +368,8 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
 
         <div role="tablist" className="flex gap-1 border-b border-line px-4 pt-2 sm:px-6">
           {[
-            { id: 'new' as const, label: 'Escribir mensaje', icon: <MessageSquareText aria-hidden className="h-4 w-4" /> },
-            { id: 'mine' as const, label: 'Mis mensajes', icon: <Clock aria-hidden className="h-4 w-4" /> },
+            { id: 'new' as const, label: t('escribirMensaje', 'Escribir mensaje'), icon: <MessageSquareText aria-hidden className="h-4 w-4" /> },
+            { id: 'mine' as const, label: t('misMensajes', 'Mis mensajes'), icon: <Clock aria-hidden className="h-4 w-4" /> },
           ].map((item) => (
             <button
               key={item.id}
@@ -400,27 +405,27 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     <div className="flex items-start gap-3 rounded-2xl border border-success-light/30 bg-success-light/10 p-4 text-sm text-success-light">
                       <CheckCircle2 aria-hidden className="mt-0.5 h-5 w-5 shrink-0" />
                       <div>
-                        <p className="font-bold">¡Gracias por escribirnos!</p>
+                        <p className="font-bold">{t('graciasPorEscribirnos', '¡Gracias por escribirnos!')}</p>
                         <p className="mt-0.5 text-sm text-success-light/80">{sentNotice}</p>
                         <button
                           type="button"
                           onClick={() => setTab('mine')}
                           className="mt-2 text-sm font-bold underline underline-offset-2"
                         >
-                          Ver mis mensajes
+                          {t('verMisMensajes', 'Ver mis mensajes')}
                         </button>
                       </div>
                     </div>
                   )}
 
-                  <Step number={1} title="¿Cómo te sientes hoy?" hint="Toca la carita que mejor te represente." done={mood !== null}>
+                  <Step number={1} title={t('comoTeSientesHoy', '¿Cómo te sientes hoy?')} hint="Toca la carita que mejor te represente." done={mood !== null}>
                     <div
                       ref={moodRef}
                       className={`grid grid-cols-5 gap-1.5 rounded-2xl sm:gap-2 ${
                         attempted && mood === null ? 'outline-2 outline-offset-4 outline-danger-light/70' : ''
                       }`}
                       role="radiogroup"
-                      aria-label="Cómo te sientes"
+                      aria-label={t('comoTeSientes', 'Cómo te sientes')}
                       aria-required="true"
                     >
                       {MOODS.map((item) => (
@@ -443,10 +448,10 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     </div>
                   </Step>
 
-                  <Step number={2} title="¿Qué quieres contarnos?" hint="Ya dejamos una opción marcada en cada grupo; cámbiala si quieres.">
+                  <Step number={2} title={t('queQuieresContarnos', '¿Qué quieres contarnos?')} hint="Ya dejamos una opción marcada en cada grupo; cámbiala si quieres.">
                     <div className="space-y-4">
                       <fieldset>
-                        <legend className={labelClass}>Tipo de mensaje</legend>
+                        <legend className={labelClass}>{t('tipoDeMensaje', 'Tipo de mensaje')}</legend>
                         <div className="flex flex-wrap gap-2">
                           {LISTENING_TYPES.map((value) => (
                             <button
@@ -468,7 +473,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                       </fieldset>
 
                       <fieldset>
-                        <legend className={labelClass}>Tema</legend>
+                        <legend className={labelClass}>{t('tema', 'Tema')}</legend>
                         <div className="flex flex-wrap gap-2">
                           {LISTENING_TOPICS.map((value) => (
                             <button
@@ -491,10 +496,10 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                       {courses.length > 0 && (
                         <label className="block">
                           <span className={labelClass}>
-                            Curso relacionado <span className="font-normal text-ink-muted">(opcional)</span>
+                            <Trans i18nKey="cursoRelacionadoOpcional">Curso relacionado <span className="font-normal text-ink-muted">(opcional)</span></Trans>
                           </span>
                           <select value={courseId} onChange={(event) => setCourseId(event.target.value)} className={fieldClass}>
-                            <option value="">Ninguno en particular</option>
+                            <option value="">{t('ningunoEnParticular', 'Ninguno en particular')}</option>
                             {courses.map((course) => (
                               <option key={course.id} value={course.id}>
                                 {course.title}
@@ -508,13 +513,13 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
 
                   <Step
                     number={3}
-                    title="Cuéntanos más"
+                    title={t('cuentanosMas', 'Cuéntanos más')}
                     hint="Un título corto y tu mensaje. Escribe con confianza."
                     done={subjectOk && messageOk}
                   >
                     <div className="space-y-4">
                       <label className="block">
-                        <span className={labelClass}>Título</span>
+                        <span className={labelClass}>{t('titulo', 'Título')}</span>
                         <input
                           ref={subjectRef}
                           value={subject}
@@ -522,14 +527,14 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                           maxLength={LISTENING_LIMITS.subjectMax}
                           aria-required="true"
                           aria-invalid={attempted && !subjectOk}
-                          placeholder="Ej: Tengo una duda con el ejercicio 3"
+                          placeholder={t('ejTengoUnaDudaConElEjercicio3', 'Ej: Tengo una duda con el ejercicio 3')}
                           className={`${fieldClass} ${attempted && !subjectOk ? fieldErrorClass : ''}`}
                         />
                       </label>
 
                       <label className="block">
                         <span className={`${labelClass} flex justify-between gap-2`}>
-                          <span>Tu mensaje</span>
+                          <span>{t('tuMensaje', 'Tu mensaje')}</span>
                           <span className="text-xs font-normal text-ink-muted">
                             {message.length}/{LISTENING_LIMITS.messageMax}
                           </span>
@@ -542,23 +547,23 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                           aria-required="true"
                           aria-invalid={attempted && !messageOk}
                           rows={5}
-                          placeholder="Cuéntanos qué te ocurre, qué necesitas o qué idea tienes."
+                          placeholder={t('cuentanosQueTeOcurreQueNecesitasOQueIdea', 'Cuéntanos qué te ocurre, qué necesitas o qué idea tienes.')}
                           className={`${fieldClass} resize-y ${attempted && !messageOk ? fieldErrorClass : ''}`}
                         />
                       </label>
                     </div>
                   </Step>
 
-                  <Step number={4} title="Antes de enviar" hint="Estas dos opciones no son obligatorias." optional>
+                  <Step number={4} title={t('antesDeEnviar', 'Antes de enviar')} hint="Estas dos opciones no son obligatorias." optional>
                     <div className="space-y-4">
                       <fieldset>
                         <legend className="mb-3 text-sm font-semibold text-ink">
-                          Del 0 al 10, ¿qué tan probable es que recomiendes esta plataforma a un colega?
+                          {t('del0Al10QueTanProbableEsQueRecomiendes', 'Del 0 al 10, ¿qué tan probable es que recomiendes esta plataforma a un colega?')}
                         </legend>
                         <div
                           className="grid grid-cols-6 gap-1.5 sm:grid-cols-11"
                           role="radiogroup"
-                          aria-label="Probabilidad de recomendarnos, de 0 a 10"
+                          aria-label={t('probabilidadDeRecomendarnosDe0A10', 'Probabilidad de recomendarnos, de 0 a 10')}
                         >
                           {Array.from({ length: 11 }, (_, score) => {
                             const group = classifyNps(score);
@@ -580,8 +585,8 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                           })}
                         </div>
                         <div className="mt-1.5 flex justify-between text-xs text-ink-muted">
-                          <span>0 · Nada probable</span>
-                          <span>Muy probable · 10</span>
+                          <span>{t('0NadaProbable', '0 · Nada probable')}</span>
+                          <span>{t('muyProbable10', 'Muy probable · 10')}</span>
                         </div>
                       </fieldset>
 
@@ -589,9 +594,9 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                         <span className="flex items-start gap-3">
                           <ShieldCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-cyan" />
                           <span>
-                            <span className="block text-sm font-semibold text-ink">Enviar de forma anónima</span>
+                            <span className="block text-sm font-semibold text-ink">{t('enviarDeFormaAnonima', 'Enviar de forma anónima')}</span>
                             <span className="block text-sm text-ink-muted">
-                              Tu nombre y correo no se mostrarán al equipo. Tú sí verás tu mensaje y la respuesta.
+                              {t('tuNombreYCorreoNoSeMostraranAlEquipoTuSi', 'Tu nombre y correo no se mostrarán al equipo. Tú sí verás tu mensaje y la respuesta.')}
                             </span>
                           </span>
                         </span>
@@ -626,7 +631,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-brand-cyan/50 bg-card px-3.5 py-1.5 text-sm font-semibold text-brand-cyan shadow-lg hover:bg-brand-cyan/10"
                   >
                     <ChevronsDown aria-hidden className="h-4 w-4 motion-safe:animate-bounce" />
-                    Desliza para completar
+                    {t('deslizaParaCompletar', 'Desliza para completar')}
                   </button>
                 </div>
               )}
@@ -644,7 +649,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 [@media(max-height:520px)]:hidden">
                   <p id="listening-status" className="mb-1.5 text-xs font-semibold text-ink-muted" aria-live="polite">
-                    {canSend ? 'Todo listo para enviar' : 'Completa lo obligatorio:'}
+                    {canSend ? t('todoListoParaEnviar', 'Todo listo para enviar') : t('completaLoObligatorio', 'Completa lo obligatorio:')}
                   </p>
                   <ul className="flex flex-wrap gap-1.5">
                     {checklist.map((item) => (
@@ -661,7 +666,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                         >
                           {item.done ? <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={3} /> : <Circle aria-hidden className="h-3.5 w-3.5" />}
                           {item.label}
-                          <span className="sr-only">{item.done ? ' (completado)' : ' (pendiente)'}</span>
+                          <span className="sr-only"> ({item.done ? t('completado', 'completado') : t('pendiente', 'pendiente')})</span>
                         </button>
                       </li>
                     ))}
@@ -678,7 +683,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                   } disabled:opacity-60`}
                 >
                   <Send aria-hidden className="h-4 w-4" />
-                  {sending ? 'Enviando...' : 'Enviar mensaje'}
+                  {sending ? t('enviando', 'Enviando…') : t('enviarMensaje', 'Enviar mensaje')}
                 </button>
               </div>
             </div>
@@ -688,16 +693,16 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
         {tab === 'mine' && (
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
             <div className="space-y-3">
-              {loadingEntries && entries.length === 0 && <p className="text-sm text-ink-muted">Cargando tus mensajes...</p>}
+              {loadingEntries && entries.length === 0 && <p className="text-sm text-ink-muted">{t('cargandoTusMensajes', 'Cargando tus mensajes...')}</p>}
 
               {!loadingEntries && entries.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-line p-8 text-center">
-                  <p className="text-sm font-bold text-ink">Todavía no nos has escrito</p>
+                  <p className="text-sm font-bold text-ink">{t('todaviaNoNosHasEscrito', 'Todavía no nos has escrito')}</p>
                   <p className="mt-1 text-xs text-ink-muted">
-                    Cuando lo hagas, aquí verás en qué punto está tu mensaje y la respuesta del equipo.
+                    {t('cuandoLoHagasAquiVerasEnQuePuntoEstaTu', 'Cuando lo hagas, aquí verás en qué punto está tu mensaje y la respuesta del equipo.')}
                   </p>
                   <button type="button" onClick={() => setTab('new')} className="btn-brand-primary mt-4 px-4 py-2 text-xs font-bold">
-                    Escribir ahora
+                    {t('escribirAhora', 'Escribir ahora')}
                   </button>
                 </div>
               )}
@@ -729,16 +734,16 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{entry.message}</p>
                     <p className="mt-2 text-micro text-ink-faint">
                       {new Date(entry.createdAt).toLocaleString('es')}
-                      {entry.anonymous && ' · Anónimo para el equipo'}
+                      {entry.anonymous && <> · {t('anonimoParaElEquipo', 'Anónimo para el equipo')}</>}
                     </p>
 
                     {entry.reply && (
                       <div className="mt-3 rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3">
                         <p className="flex items-center gap-1.5 text-[11px] font-bold text-brand-cyan">
                           <HeartHandshake aria-hidden className="h-3.5 w-3.5" />
-                          Respuesta del equipo{entry.repliedBy ? ` · ${entry.repliedBy}` : ''}
+                          {t('respuestaDelEquipo', 'Respuesta del equipo')}{entry.repliedBy ? ` · ${entry.repliedBy}` : ''}
                           {entry.unreadReply && (
-                            <span className="rounded-full bg-brand-cyan px-1.5 py-0.5 text-micro text-canvas">Nueva</span>
+                            <span className="rounded-full bg-brand-cyan px-1.5 py-0.5 text-micro text-canvas">{t('nueva', 'Nueva')}</span>
                           )}
                         </p>
                         <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{entry.reply}</p>

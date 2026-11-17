@@ -17,6 +17,7 @@ import { getModuleQuestions, setModuleQuiz, quizzesPluginEngine, QuizQuestion } 
 import { api } from '../lib/api';
 import { ApiRequestError, retryDelayMs } from '../lib/apiRequest';
 import { pluginManager } from '../plugins/PluginManager';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface ModuleQuizCardProps {
   module: Module;
@@ -42,6 +43,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   onPassed,
   onExit,
 }) => {
+  const { t, i18n } = useTranslation()
   const [questions, setQuestions] = useState<QuizQuestion[]>(() => getModuleQuestions(module.id));
   /**
    * Solo se espera cuando no hay nada que pintar. El gestor de cursos y el
@@ -111,7 +113,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       control.failures++;
       control.permanent = error instanceof ApiRequestError && [401, 403, 404].includes(error.status);
       control.nextAt = Date.now() + retryDelayMs(error, control.failures);
-      setSubmitError('No se pudo verificar el examen. Reintentaremos en unos momentos.');
+      setSubmitError(t('noSePudoVerificarElExamenReintentaremos', 'No se pudo verificar el examen. Reintentaremos en unos momentos.'));
     }).finally(() => { control.pending = false; });
     return () => { active = false; };
   }, [module.id, user?.id]);
@@ -139,7 +141,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
         control.failures++;
         control.permanent = error instanceof ApiRequestError && [401, 403, 404].includes(error.status);
         control.nextAt = Date.now() + retryDelayMs(error, control.failures);
-        setSubmitError('No se pudo actualizar la disponibilidad. Reintentando…');
+        setSubmitError(t('noSePudoActualizarLaDisponibilidad', 'No se pudo actualizar la disponibilidad. Reintentando…'));
       }).finally(() => { control.pending = false; });
     }
   }, [clockNow, attemptStatus, module.id, user?.id]);
@@ -218,7 +220,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       }
     } catch (error) {
       if ((error as any)?.attemptStatus) applyStatus((error as any).attemptStatus);
-      setSubmitError(error instanceof Error ? error.message : 'No se pudo calificar el examen.');
+      setSubmitError(error instanceof Error ? error.message : t('noSePudoCalificarElExamen', 'No se pudo calificar el examen.'));
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -242,7 +244,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
         const status = await refreshStatus();
         if (!status || status.passed || status.cooldownUntil) return;
       } catch {
-        setSubmitError('No se pudo verificar el examen. Inténtalo nuevamente.');
+        setSubmitError(t('noSePudoVerificarElExamenIntentalo', 'No se pudo verificar el examen. Inténtalo nuevamente.'));
         return;
       }
     }
@@ -275,18 +277,23 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   // Keep the button blocked until the server confirms that the wait expired.
   const intentosAgotados = !statusReady || Boolean(attemptStatus?.cooldownUntil) || passed;
   const retryLabel = passed ? 'Examen aprobado' : !statusReady ? 'Verificando intentos…'
-    : attemptStatus?.cooldownUntil ? (waitSeconds > 0 ? `Reintentar en ${waitTime}` : 'Verificando disponibilidad…') : 'Reintentar examen';
+    : attemptStatus?.cooldownUntil ? (waitSeconds > 0 ? t('reintentarEnWaitTime', 'Reintentar en {{waitTime}}', { waitTime }) : t('verificandoDisponibilidad', 'Verificando disponibilidad…')) : 'Reintentar examen';
   const attemptLabel = attemptStatus
-    ? `${attemptStatus.initialAttemptsRemaining}/${attemptStatus.maxAttempts} iniciales disponibles`
-    : `${Math.max(0, maxAttempts - attemptsUsed)}/${maxAttempts} iniciales disponibles`;
+    ? t('initialAttemptsRemainingMaxAttempts', '{{initialAttemptsRemaining}}/{{maxAttempts}} iniciales disponibles', { initialAttemptsRemaining: attemptStatus.initialAttemptsRemaining, maxAttempts: attemptStatus.maxAttempts })
+    : t('valMaxAttemptsInicialesDisponibles', '{{val}}/{{maxAttempts}} iniciales disponibles', { val: Math.max(0, maxAttempts - attemptsUsed), maxAttempts });
   const waitNotice = attemptStatus?.cooldownUntil ? (
     <div role="status" className="rounded-xl border border-line bg-raised p-4 text-sm text-ink-soft">
-      <p className="font-semibold text-ink">Prepárate para tu próximo intento</p>
+      <p className="font-semibold text-ink">{t('preparateParaTuProximoIntento', 'Prepárate para tu próximo intento')}</p>
       <p className="mt-2 leading-relaxed">
-        Repasa los temas que te resultaron más difíciles.{' '}
+        {t('repasaLosTemasQueTeResultaronMas', 'Repasa los temas que te resultaron más difíciles.')}{' '}
         {waitSeconds > 0 ? (
-          <>Podrás volver a intentarlo a las <strong className="font-semibold text-ink">{new Date(attemptStatus.cooldownUntil).toLocaleTimeString('es-PE', { timeZone: attemptStatus.resetTimeZone, hour: 'numeric', minute: '2-digit' })}</strong>.</>
-        ) : 'Estamos verificando la disponibilidad de tu próximo intento…'}
+          <Trans
+            i18nKey="podrasVolverAIntentarloALasHora"
+            defaultValue="Podrás volver a intentarlo a las <0>{{time}}</0>."
+            values={{ time: new Date(attemptStatus.cooldownUntil).toLocaleTimeString(i18n.language, { timeZone: attemptStatus.resetTimeZone, hour: 'numeric', minute: '2-digit' }) }}
+            components={[<strong key="time" className="font-semibold text-ink" />]}
+          />
+        ) : t('estamosVerificandoLaDisponibilidadDeTu', 'Estamos verificando la disponibilidad de tu próximo intento…')}
       </p>
     </div>
   ) : null;
@@ -301,7 +308,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       className="flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
     >
       <ArrowLeft aria-hidden className="h-4 w-4" />
-      {attemptStatus?.cooldownUntil ? 'Volver al módulo' : 'Volver a la clase'}
+      {attemptStatus?.cooldownUntil ? t('volverAlModulo', 'Volver al módulo') : t('volverALaClase', 'Volver a la clase')}
     </button>
   ) : null;
 
@@ -312,7 +319,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     return (
       <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-surface p-6">
         <Loader2 aria-hidden className="h-6 w-6 animate-spin text-ink-muted" />
-        <p className="text-meta text-ink-muted">Cargando el examen del módulo…</p>
+        <p className="text-meta text-ink-muted">{t('cargandoElExamenDelModulo', 'Cargando el examen del módulo…')}</p>
         {/* La salida acompaña también a la espera: si la carga se atasca, el
             alumno no se queda encerrado en una pantalla que gira. */}
         {botonVolver}
@@ -329,14 +336,14 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       <div className="flex min-h-60 flex-col items-center justify-center gap-4 rounded-2xl border border-line bg-surface p-6 text-center">
         <CheckSquare aria-hidden className="h-7 w-7 text-ink-muted" />
         <div>
-          <h2 className="text-section font-semibold text-ink">{questionsError ? 'No pudimos cargar el examen' : 'Este módulo todavía no tiene examen'}</h2>
+          <h2 className="text-section font-semibold text-ink">{questionsError ? t('noPudimosCargarElExamen', 'No pudimos cargar el examen') : t('esteModuloTodaviaNoTieneExamen', 'Este módulo todavía no tiene examen')}</h2>
           <p className="mx-auto mt-1.5 max-w-sm text-meta leading-relaxed text-ink-muted">
-            {questionsError ? 'No pudimos cargar la evaluación. Puedes volver a intentarlo en unos momentos.' : 'Cuando el mentor publique la evaluación aparecerá aquí.'}
+            {questionsError ? t('noPudimosCargarLaEvaluacionPuedesVolverA', 'No pudimos cargar la evaluación. Puedes volver a intentarlo en unos momentos.') : t('cuandoElMentorPubliqueLaEvaluacion', 'Cuando el mentor publique la evaluación aparecerá aquí.')}
           </p>
         </div>
         {questionsError && (
           <button type="button" disabled={questionRetryAt > Date.now()} onClick={() => setQuestionReload(value => value + 1)} className="rounded-xl border border-line px-4 py-2 text-meta font-semibold disabled:opacity-50">
-            {questionRetryAt > Date.now() ? `Reintentar en ${Math.ceil((questionRetryAt - Date.now()) / 1000)} s` : 'Volver a cargar'}
+            {questionRetryAt > Date.now() ? t('reintentarEnValS', 'Reintentar en {{val}} s', { val: Math.ceil((questionRetryAt - Date.now()) / 1000) }) : t('volverACargar', 'Volver a cargar')}
           </button>
         )}
         {botonVolver}
@@ -353,7 +360,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             <CheckSquare aria-hidden className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-section font-semibold text-ink">Examen de validación</h2>
+            <h2 className="text-section font-semibold text-ink">{t('examenDeValidacion', 'Examen de validación')}</h2>
             <p className="mt-0.5 text-meta text-ink-muted">{module.title}</p>
           </div>
         </div>
@@ -362,7 +369,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           {[
             { etiqueta: 'Preguntas', valor: String(questions.length) },
             { etiqueta: 'Para aprobar', valor: `${passingScore}%` },
-            { etiqueta: 'Tiempo', valor: hasTimer ? `${timeLimitMinutes} min` : 'Sin límite' },
+            { etiqueta: 'Tiempo', valor: hasTimer ? t('timeLimitMinutesMin', '{{timeLimitMinutes}} min', { timeLimitMinutes }) : t('sinLimite', 'Sin límite') },
             { etiqueta: 'Intentos', valor: attemptLabel },
           ].map((dato) => (
             <div key={dato.etiqueta} className="rounded-xl border border-line bg-raised px-3 py-2.5">
@@ -376,20 +383,19 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           <p className="flex items-start gap-2 text-meta leading-relaxed text-ink-soft">
             <Clock aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-cyan" />
             <span>
-              El cronómetro arranca al pulsar «Comenzar examen» y no se detiene. Al agotarse, el examen se
-              entrega con lo que haya contestado.
+              {t('elCronometroArrancaAlPulsarComenzar', 'El cronómetro arranca al pulsar «Comenzar examen» y no se detiene. Al agotarse, el examen se entrega con lo que haya contestado.')}
             </span>
           </p>
         )}
 
         {attemptStatus && !passed && !attemptStatus.cooldownUntil && attemptStatus.initialAttemptsRemaining === 0 && (
-          <p role="status" className="text-meta text-ink-soft">Tienes un intento adicional disponible. Si no apruebas, habrá una nueva espera.</p>
+          <p role="status" className="text-meta text-ink-soft">{t('tienesUnIntentoAdicionalDisponibleSiNo', 'Tienes un intento adicional disponible. Si no apruebas, habrá una nueva espera.')}</p>
         )}
         {waitNotice}
         {submitError && <p role="alert" className="text-meta text-danger-light">{submitError}</p>}
         {submitted && (
           <p className="text-meta text-ink-soft">
-            Último resultado: <span className="font-semibold text-ink tabular-nums">{scorePercentage}%</span>.
+            {t('ultimoResultado', 'Último resultado:')} <span className="font-semibold text-ink tabular-nums">{scorePercentage}%</span>.
           </p>
         )}
 
@@ -402,7 +408,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             className="btn-brand-primary flex items-center gap-2 px-6 py-2.5 text-meta font-semibold disabled:opacity-50"
           >
             <Award aria-hidden className="h-4 w-4" />
-            {intentosAgotados ? retryLabel : attemptsUsed > 0 ? 'Reintentar examen' : 'Comenzar examen'}
+            {intentosAgotados ? retryLabel : attemptsUsed > 0 ? t('reintentarExamen', 'Reintentar examen') : t('comenzarExamen', 'Comenzar examen')}
           </button>
         </div>
       </div>
@@ -418,9 +424,9 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             <CheckSquare aria-hidden className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-section font-semibold text-ink">Examen de validación: {module.title}</h2>
+            <h2 className="text-section font-semibold text-ink">{t('examenDeValidacionTitle', 'Examen de validación: {{title}}', { title: module.title })}</h2>
             <p className="text-micro text-ink-muted">
-              Aprobación: {passingScore}% • Intentos: {attemptLabel}
+              {t('aprobacionPassingScoreIntentosAttempt', 'Aprobación: {{passingScore}}% • Intentos: {{attemptLabel}}', { passingScore, attemptLabel })}
             </p>
           </div>
         </div>
@@ -455,7 +461,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
               ) : (
                 <AlertCircle aria-hidden className="h-4 w-4" />
               )}
-              {isPassed ? `¡Aprobado! (${scorePercentage}%)` : `Reprobado (${scorePercentage}%)`}
+              {isPassed ? t('aprobadoScorePercentage', '¡Aprobado! ({{scorePercentage}}%)', { scorePercentage }) : t('reprobadoScorePercentage', 'Reprobado ({{scorePercentage}}%)', { scorePercentage })}
             </span>
           )}
         </div>
@@ -481,7 +487,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                     : 'border-line bg-raised'
               }`}
             >
-              <legend className="sr-only">Pregunta {idx + 1}</legend>
+              <legend className="sr-only">{t('pregunta', 'Pregunta')} {idx + 1}</legend>
               <div className="mb-3 flex items-start gap-2">
                 <span className="rounded-md border border-brand-cyan/20 bg-brand-cyan/10 px-2 py-0.5 font-mono text-micro font-semibold text-brand-cyan">
                   {idx + 1}
@@ -526,7 +532,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
 
               {canReview && q.explanation && (
                 <p className="mt-3 border-l-2 border-brand-violet pl-6 text-micro italic text-ink-muted">
-                  Explicación: {q.explanation}
+                  {t('explicacionExplanation', 'Explicación: {{explanation}}', { explanation: q.explanation })}
                 </p>
               )}
             </fieldset>
@@ -560,7 +566,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
               className="btn-brand-primary flex items-center gap-2 px-6 py-2.5 text-meta font-semibold disabled:opacity-50"
             >
               <Award aria-hidden className="h-4 w-4" />
-              Enviar y calificar examen
+              {t('enviarYCalificarExamen', 'Enviar y calificar examen')}
             </button>
           )}
         </div>

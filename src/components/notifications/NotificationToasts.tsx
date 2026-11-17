@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import type { AppNotification } from '../../lib/api';
 import { notificationIcon } from './NotificationBell';
+import { useTranslation } from 'react-i18next'
 
 interface NotificationToastsProps {
   toasts: AppNotification[];
@@ -14,11 +15,12 @@ interface NotificationToastsProps {
  * visor de lecciones para que el aviso se vea aunque el alumno esté en un video.
  */
 export const NotificationToasts: React.FC<NotificationToastsProps> = ({ toasts, onOpen, onDismiss }) => {
+  const { t } = useTranslation()
   if (toasts.length === 0) return null;
   return (
     <div
       role="region"
-      aria-label="Avisos nuevos"
+      aria-label={t('avisosNuevos', 'Avisos nuevos')}
       aria-live="polite"
       className="pointer-events-none fixed right-3 top-20 z-[1000] flex w-[min(360px,calc(100vw-24px))] flex-col gap-2"
     >
@@ -44,7 +46,7 @@ export const NotificationToasts: React.FC<NotificationToastsProps> = ({ toasts, 
             <button
               type="button"
               onClick={() => onDismiss(n.id)}
-              aria-label="Cerrar aviso"
+              aria-label={t('cerrarAviso', 'Cerrar aviso')}
               className="-m-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-white/40 dark:hover:bg-white/[0.08] dark:hover:text-white cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />

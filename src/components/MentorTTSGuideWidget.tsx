@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Volume2, VolumeX, Play, Pause, Sparkles, Shield, Award, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { TTSGuide } from '../types';
 import { ttsService } from '../lib/ttsService';
+import { useTranslation } from 'react-i18next'
 
 interface MentorTTSGuideWidgetProps {
   guide: TTSGuide;
@@ -9,6 +10,7 @@ interface MentorTTSGuideWidgetProps {
 }
 
 export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guide, onRewardEarned }) => {
+  const { t } = useTranslation()
   const [isPlaying, setIsPlaying] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
   const [claimedReward, setClaimedReward] = useState(false);
@@ -85,7 +87,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
               <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-cyan rounded-full border-2 border-[#141420] flex items-center justify-center animate-ping" />
             )}
             <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-cyan rounded-full border-2 border-[#141420] flex items-center justify-center text-[8px] font-bold text-black">
-              AI
+              {t('ai', 'AI')}
             </span>
           </div>
 
@@ -93,11 +95,11 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-white">{guide.title}</span>
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-gradient text-on-brand uppercase tracking-wider shadow-sm flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#eab308]" /> Guía TTS
+                <Sparkles className="w-3 h-3 text-[#eab308]" /> {t('guiaTts', 'Guía TTS')}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-              <Shield className="w-3 h-3 text-brand-cyan" /> Mentor: <strong className="text-slate-200">{guide.mentorName}</strong>
+              <Shield className="w-3 h-3 text-brand-cyan" /> {t('mentor2', 'Mentor:')} <strong className="text-slate-200">{guide.mentorName}</strong>
             </p>
           </div>
         </div>
@@ -115,12 +117,12 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             {isPlaying ? (
               <>
                 <Pause className="w-4 h-4" />
-                <span>Pausar Voz</span>
+                <span>{t('pausarVoz', 'Pausar Voz')}</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4 fill-current" />
-                <span>Escuchar Guía</span>
+                <span>{t('escucharGuia', 'Escuchar Guía')}</span>
               </>
             )}
           </button>
@@ -179,16 +181,16 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
           <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-raised border border-line text-xs">
             <div className="flex min-w-0 items-center gap-2">
               <Award className="w-4 h-4 text-[#eab308]" />
-              <span className="text-slate-300">Recompensa Gamificada de Lección:</span>
-              <strong className="text-brand-cyan">+{guide.xpReward || 50} XP</strong>
+              <span className="text-slate-300">{t('recompensaGamificadaDeLeccion', 'Recompensa Gamificada de Lección:')}</span>
+              <strong className="text-brand-cyan">+{guide.xpReward || 50} {t('xp', 'XP')}</strong>
             </div>
 
             {claimedReward ? (
               <span className="text-[11px] font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> ¡+50 XP Reclamados!
+                <CheckCircle2 className="w-3.5 h-3.5" /> {t('50XpReclamados', '¡+50 XP Reclamados!')}
               </span>
             ) : (
-              <span className="text-[10px] text-slate-400">Escucha la guía completa para ganar XP</span>
+              <span className="text-[10px] text-slate-400">{t('escuchaLaGuiaCompletaParaGanarXp', 'Escucha la guía completa para ganar XP')}</span>
             )}
           </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, ChevronLeft, ChevronRight, PlaySquare, Lock, Unlock } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 
 interface LessonMetaBarProps {
   lessonTitle: string;
@@ -48,30 +49,32 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   meetingType,
   meetingUrl,
   highlightComplete = false,
-}) => (
+}) => {
+  const { t } = useTranslation()
+  return (
   <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 lg:px-0">
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm leading-relaxed text-ink-soft">
-          {/^m[óo]dulo\s/i.test(moduleTitle) ? moduleTitle : `Módulo ${moduleIndex + 1} · ${moduleTitle}`}
+          {/^m[óo]dulo\s/i.test(moduleTitle) ? moduleTitle : t('moduloModuleIndexModuleTitle', 'Módulo {{moduleIndex}} · {{moduleTitle}}', { moduleIndex: moduleIndex + 1, moduleTitle })}
         </p>
         {isLive && (meetingType === 'meet' || meetingType === 'jitsi') && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2 py-0.5 text-micro font-medium uppercase text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand-cyan)] animate-ping" />
-            ¡CLASE EN VIVO!
+            {t('claseEnVivo', '¡CLASE EN VIVO!')}
           </span>
         )}
         {meetingType === 'async_record' && (
           <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-micro font-medium text-success-light border border-success/30">
             <PlaySquare className="h-2.5 w-2.5" />
-            Grabación Asincrónica
+            {t('grabacionAsincronica', 'Grabación Asincrónica')}
           </span>
         )}
       </div>
       <h1 className="academy-lesson-heading mt-2 text-2xl font-semibold leading-snug text-ink">{lessonTitle}</h1>
       <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-relaxed text-ink-soft">
         <span className="tabular-nums">
-          Lección {lessonNumber} de {totalLessons}
+          {t('leccionLessonNumberDeTotalLessons', 'Lección {{lessonNumber}} de {{totalLessons}}', { lessonNumber, totalLessons })}
         </span>
         <span aria-hidden>·</span>
         <span>{providerLabel}</span>
@@ -89,13 +92,13 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
           title={
             !isCompleted && !canComplete
               ? lockedReason === 'quiz'
-                ? 'Debes aprobar el examen del módulo para poder completar esta misión'
-                : 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión'
+                ? t('debesAprobarElExamenDelModuloParaPoder', 'Debes aprobar el examen del módulo para poder completar esta misión')
+                : t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
               : isCompleted
                 ? !canUncomplete
-                  ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.'
-                  : 'Desmarcar misión completada'
-                : 'Marcar misión como completada'
+                  ? t('noPuedesDesmarcarEstaMisionPorqueTienes2', 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.')
+                  : t('desmarcarMisionCompletada', 'Desmarcar misión completada')
+                : t('marcarMisionComoCompletada', 'Marcar misión como completada')
           }
           className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium transition-all ${
             isCompleted
@@ -113,20 +116,21 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
             <Check aria-hidden className="h-4 w-4 shrink-0 text-cyan-400" strokeWidth={isCompleted ? 3 : 2} />
           )}
           {isCompleted
-            ? 'Misión completada'
+            ? t('misionCompletada', 'Misión completada')
             : !canComplete
               ? lockedReason === 'quiz'
-                ? 'Aprobar examen para completar'
-                : 'Ver video para completar'
-              : 'Marcar como completado'}
+                ? t('aprobarExamenParaCompletar', 'Aprobar examen para completar')
+                : t('verVideoParaCompletar', 'Ver video para completar')
+              : t('marcarComoCompletado', 'Marcar como completado')}
         </button>
         {highlightComplete && canComplete && !isCompleted && (
-          <span role="status" className="sr-only">Ya puedes marcar esta lección como completada.</span>
+          <span role="status" className="sr-only">{t('yaPuedesMarcarEstaLeccionComoCompletada', 'Ya puedes marcar esta lección como completada.')}</span>
         )}
       </div>
     </div>
   </div>
-);
+)
+};
 
 interface MobileLessonBarProps {
   lessonNumber: number;
@@ -163,7 +167,9 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
   onNext,
   onToggleComplete,
   highlightComplete = false,
-}) => (
+}) => {
+  const { t } = useTranslation()
+  return (
   <div className="flex border-b border-line bg-surface lg:hidden px-1.5 py-1.5 items-center justify-between gap-0.5">
     <button
       type="button"
@@ -172,7 +178,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       className="flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro text-ink-soft transition-colors disabled:text-ink-faint"
     >
       <ChevronLeft aria-hidden className="h-4 w-4 shrink-0" />
-      <span className="truncate">Anterior</span>
+      <span className="truncate">{t('anterior', 'Anterior')}</span>
     </button>
 
     <span className="shrink-0 text-micro text-ink-muted tabular-nums">
@@ -185,7 +191,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       disabled={!hasNext}
       className="flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro text-ink-soft transition-colors disabled:text-ink-faint"
     >
-      <span className="truncate">Siguiente</span>
+      <span className="truncate">{t('siguiente', 'Siguiente')}</span>
       <ChevronRight aria-hidden className="h-4 w-4 shrink-0" />
     </button>
 
@@ -196,9 +202,9 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       aria-pressed={isCompleted}
       title={
         isCompleted && !canUncomplete
-          ? 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas'
+          ? t('noPuedesDesmarcarEstaMisionPorqueTienes3', 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas')
           : !isCompleted && !canComplete && lockedReason !== 'quiz'
-            ? 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión'
+            ? t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
             : undefined
       }
       className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold transition-colors ${
@@ -218,13 +224,14 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       )}
       <span className="truncate">
         {isCompleted
-          ? 'Hecha'
+          ? t('hecha', 'Hecha')
           : !canComplete
             ? lockedReason === 'quiz'
-              ? 'Examen'
-              : 'Ver video'
-            : 'Completar'}
+              ? t('examen', 'Examen')
+              : t('verVideo', 'Ver video')
+            : t('completar', 'Completar')}
       </span>
     </button>
   </div>
-);
+)
+};

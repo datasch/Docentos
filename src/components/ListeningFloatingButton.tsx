@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { HeartHandshake, X } from 'lucide-react';
 import { clampFloatingPoint, floatingAnchor, parseFloatingAnchor, pointFromAnchor, type FloatingPoint, type FloatingViewport } from '../lib/floatingPosition';
+import { useTranslation } from 'react-i18next'
 
 interface ListeningFloatingButtonProps {
   unreadCount?: number;
@@ -39,6 +40,7 @@ function flyToFooter(element: HTMLElement): Animation | null {
 }
 
 export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = ({ unreadCount = 0, onClick, onDismiss }) => {
+  const { t } = useTranslation()
   const button = useRef<HTMLButtonElement>(null);
   const dock = useRef<HTMLDivElement>(null);
   const instructionsId = useId();
@@ -154,7 +156,7 @@ export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = (
         data-dragging={dragging || undefined}
         data-tooltip-edge={position && position.x > (typeof window !== 'undefined' ? window.innerWidth / 2 - 100 : Infinity) ? 'right' : 'left'}
         data-tooltip-below={position && position.y < 80 || undefined}
-        aria-label={hasUnread ? `Abrir Buzón de escucha, tienes ${unreadCount} respuesta${unreadCount > 1 ? 's' : ''} pendiente${unreadCount > 1 ? 's' : ''}` : 'Abrir Buzón de escucha'}
+        aria-label={hasUnread ? t('abrirBuzonRespuestasPendientes', { count: unreadCount, defaultValue_one: 'Abrir Buzón de escucha, tienes {{count}} respuesta pendiente', defaultValue_other: 'Abrir Buzón de escucha, tienes {{count}} respuestas pendientes' }) : t('abrirBuzonDeEscucha', 'Abrir Buzón de escucha')}
         aria-describedby={instructionsId}
         onPointerDown={event => {
           if (!event.isPrimary || event.button !== 0) return;
@@ -207,24 +209,24 @@ export const ListeningFloatingButton: React.FC<ListeningFloatingButtonProps> = (
         }}
       >
         <HeartHandshake aria-hidden className="lp-listening-icon" />
-        <span className="lp-listening-text">Buzón de escucha</span>
+        <span className="lp-listening-text">{t('buzonDeEscucha', 'Buzón de escucha')}</span>
         {hasUnread && <span className="lp-listening-floating-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
         <span className="lp-listening-floating-tooltip" aria-hidden="true">
-          {hasUnread ? 'Tienes respuestas nuevas · Pulsa para leerlas' : 'Pulsa para abrir · Arrastra para mover'}
+          {hasUnread ? t('tienesRespuestasNuevasPulsaParaLeerlas', 'Tienes respuestas nuevas · Pulsa para leerlas') : t('pulsaParaAbrirArrastraParaMover', 'Pulsa para abrir · Arrastra para mover')}
         </span>
       </button>
       {onDismiss && (
         <button
           type="button"
           className="lp-listening-close"
-          aria-label="Cerrar el botón flotante del Buzón de escucha. Seguirá disponible en el pie de página."
-          title="Cerrar"
+          aria-label={t('cerrarElBotonFlotanteDelBuzonDeEscucha', 'Cerrar el botón flotante del Buzón de escucha. Seguirá disponible en el pie de página.')}
+          title={t('cerrar', 'Cerrar')}
           onClick={dismiss}
         >
           <X aria-hidden />
         </button>
       )}
-      <span id={instructionsId} className="sr-only">Puedes mover este botón arrastrándolo o con las flechas del teclado. La tecla Inicio restablece su posición.</span>
+      <span id={instructionsId} className="sr-only">{t('puedesMoverEsteBotonArrastrandoloOConLas', 'Puedes mover este botón arrastrándolo o con las flechas del teclado. La tecla Inicio restablece su posición.')}</span>
     </div>
   );
 };

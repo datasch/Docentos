@@ -1627,26 +1627,32 @@ export const api = {
   },
 
   contracts: {
-    async getPublic(): Promise<{
+    async getPublic(language?: string): Promise<{
       version: string;
       title: string;
       content: string;
+      /** Sello SHA-256 del texto original en español, aunque se muestre una traducción. */
       contractHash: string;
+      language: string;
+      /** `true` si el texto mostrado es una traducción de cortesía del original en español. */
+      translated: boolean;
       retentionPeriodMonths: number;
       accessPeriodMonths: number;
     }> {
-      const res = await fetch('/api/contracts/public');
+      const res = await fetch(`/api/contracts/public${language ? `?lang=${encodeURIComponent(language)}` : ''}`);
       if (!res.ok) throw new Error('Error al obtener términos y condiciones de la plataforma');
       return res.json();
     },
 
-    async getPending(): Promise<{
+    async getPending(language?: string): Promise<{
       requiresSignature: boolean;
       contract?: {
         version: string;
         title: string;
         content: string;
         contractHash: string;
+        language?: string;
+        translated?: boolean;
         calculatedDates: {
           startDate: string;
           endDate: string;
@@ -1656,7 +1662,7 @@ export const api = {
       };
       signature?: any;
     }> {
-      const res = await fetch('/api/contracts/pending');
+      const res = await fetch(`/api/contracts/pending${language ? `?lang=${encodeURIComponent(language)}` : ''}`);
       if (!res.ok) throw new Error('Error al verificar estado de contratos');
       return res.json();
     },

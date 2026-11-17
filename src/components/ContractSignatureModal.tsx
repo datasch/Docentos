@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileCheck, Shield, Calendar, Clock, AlertCircle, ChevronRight, Lock } from 'lucide-react';
+import { FileCheck, Shield, Calendar, Clock, AlertCircle, ChevronRight, Lock, Languages } from 'lucide-react';
 import { api } from '../lib/api';
+import { normalizeLanguage } from '../i18n/languages';
+import { ContractDocument } from './legal/ContractDocument';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { useTranslation, Trans } from 'react-i18next'
 
@@ -22,8 +24,27 @@ interface ContractModalProps {
 }
 
 export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractData, onSuccess }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   useBodyScrollLock(true);
+  const language = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
+  // El texto sigue el idioma de la interfaz. La versión, el sello y las fechas no cambian: son los del original.
+  const [localized, setLocalized] = useState<{ content: string; translated: boolean } | null>(null);
+  useEffect(() => {
+    let active = true;
+    api.contracts
+      .getPending(language)
+      .then((response) => {
+        if (active && response.requiresSignature && response.contract) {
+          setLocalized({ content: response.contract.content, translated: Boolean(response.contract.translated) });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [language]);
+  const contractText = localized?.content ?? contractData.content;
+  const isTranslation = localized?.translated ?? false;
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [acceptedDataPolicy, setAcceptedDataPolicy] = useState(false);
@@ -33,7 +54,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
 
   const formatDate = (isoStr: string) => {
     try {
-      return new Date(isoStr).toLocaleDateString('es-ES', {
+      return new Date(isoStr).toLocaleDateString(language, {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -127,62 +148,15 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
           </div>
         </div>
 
-        {/* Visor de Contrato: más alto, estilizado y cómodo de leer */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 max-h-[40dvh] text-sm text-ink-soft leading-relaxed bg-canvas/60 border-b border-line scrollbar-thin scrollbar-thumb-white/10">
-          <div className="space-y-4 font-sans max-w-none">
-            {contractData.content.split('\n\n').map((paragraph, idx) => {
-              const trimmed = paragraph.trim();
-              if (trimmed.startsWith('# ')) {
-                return (
-                  <h3 key={idx} className="text-base font-bold text-ink border-b border-line pb-1.5 pt-1">
-                    {trimmed.replace('# ', '')}
-                  </h3>
-                );
-              }
-              if (trimmed.startsWith('### ')) {
-                return (
-                  <h4 key={idx} className="text-sm font-bold text-brand-cyan pt-2 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                    <span>{trimmed.replace('### ', '')}</span>
-                  </h4>
-                );
-              }
-              return (
-                <div key={idx} className="text-ink-soft leading-relaxed text-xs sm:text-[13px]">
-                  {trimmed.split('\n').map((line, lIdx) => {
-                    const lineTrimmed = line.trim();
-                    if (!lineTrimmed) return null;
-
-                    // Formato para viñetas
-                    if (lineTrimmed.startsWith('- ')) {
-                      const cleanLine = lineTrimmed.replace('- ', '');
-                      const parts = cleanLine.split('**');
-                      return (
-                        <div key={lIdx} className="flex items-start gap-2 pl-2 mb-1.5">
-                          <span className="text-brand-cyan font-bold">•</span>
-                          <span>
-                            {parts.map((p, pIdx) =>
-                              pIdx % 2 === 1 ? <strong key={pIdx} className="text-ink font-semibold">{p}</strong> : p
-                            )}
-                          </span>
-                        </div>
-                      );
-                    }
-
-                    // Formato para líneas normales con negritas **texto**
-                    const parts = lineTrimmed.split('**');
-                    return (
-                      <p key={lIdx} className="mb-1.5">
-                        {parts.map((p, pIdx) =>
-                          pIdx % 2 === 1 ? <strong key={pIdx} className="text-ink font-semibold">{p}</strong> : p
-                        )}
-                      </p>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+        {/* Visor de Contrato: cláusulas numeradas y fáciles de recorrer */}
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 max-h-[40dvh] bg-canvas/60 border-b border-line scrollbar-thin scrollbar-thumb-white/10">
+          {isTranslation && (
+            <p className="mb-4 flex items-start gap-2.5 rounded-xl border border-brand-cyan/25 bg-brand-cyan/5 p-3 text-xs leading-relaxed text-ink-soft">
+              <Languages aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-cyan" />
+              <span>{t('legal.translationNotice', 'Traducción de cortesía. Si hay alguna diferencia, prevalece el texto original en español, que es el que se firma.')}</span>
+            </p>
+          )}
+          <ContractDocument content={contractText} idPrefix="sign" />
         </div>
 
         {/* Formulario y Aceptaciones */}

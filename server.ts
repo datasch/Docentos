@@ -149,6 +149,12 @@ import {
 import { requestTracingMiddleware, logger, getMetricsSnapshot } from './server/logger.js';
 import { isMailConfigured, sendPasswordResetMail, verifyMailTransport } from './server/mailer.js';
 import {
+  CANONICAL_CONTRACT_HASH,
+  CANONICAL_CONTRACT_LANGUAGE,
+  getContractTexts,
+  resolveContractLanguage,
+} from './server/contractTexts.js';
+import {
   enrollFromIntegration,
   integrationEnrollmentSchema,
   IntegrationError,
@@ -6248,34 +6254,22 @@ app.post(
 const CURRENT_CONTRACT_VERSION = 'v1.0.2026';
 // Fecha de corte: usuarios registrados previamente a este instante quedan exentos del onboarding obligatorio
 const CONTRACT_MANDATORY_FROM = new Date(process.env.DOCENTOS_CONTRACT_MANDATORY_FROM || '2026-10-26T21:30:00.000Z');
-const CONTRACT_TEXT = `# Contrato de Servicios Educativos y Tratamiento de Datos
-
-**Plataforma DocentOS**
-
-### 1. Objeto y Acceso a la Plataforma
-El presente contrato regula el acceso y uso de los contenidos formativos, lecciones multimedia, mentorías y herramientas tecnológicas provistas por la plataforma.
-
-### 2. Vigencia y Periodo de Acceso
-- Fecha de Inicio: A partir del momento exacto del registro y firma electrónica de este acuerdo.
-- Fecha de Fin de Vigencia: El acceso estándar a los materiales se otorga por un período renovable de 12 meses calendario.
-
-### 3. Tratamiento y Periodo Prolongado de Retención de Datos
-- Custodia de Datos y Progreso: En cumplimiento de las normativas de protección de datos personales y con la finalidad de acreditar certificaciones académicas emitidas, la plataforma conservará de forma segura su historial de usuario, calificaciones y progreso por un periodo prolongado de 24 meses tras la finalización del servicio.
-- Derechos ARCO: El usuario podrá solicitar en cualquier momento la rectificación o supresión anticipada de sus datos de contacto conforme a los canales oficiales.
-
-### 4. Propiedad Intelectual y Normas de Conducta
-Los contenidos multimedia, guiones y recursos descargables son de uso personal e intransferible. Queda prohibida la redistribución o comercialización no autorizada.`;
+// El texto del contrato (original en español y traducciones) vive en server/contractTexts.ts.
 
 app.get(
   '/api/contracts/public',
-  asyncRoute(async (_req, res) => {
-    const crypto = await import('crypto');
-    const contractHash = crypto.createHash('sha256').update(CONTRACT_TEXT).digest('hex');
+  asyncRoute(async (req, res) => {
+    const language = resolveContractLanguage(req.query.lang);
+    const texts = getContractTexts(language);
     res.json({
       version: CURRENT_CONTRACT_VERSION,
-      title: 'Términos y Condiciones de la Plataforma & Política de Custodia',
-      content: CONTRACT_TEXT,
-      contractHash,
+      title: texts.publicTitle,
+      content: texts.content,
+      // El sello es siempre el del texto original en español, que es el que se firma.
+      contractHash: CANONICAL_CONTRACT_HASH,
+      language,
+      translated: language !== CANONICAL_CONTRACT_LANGUAGE,
+      canonicalLanguage: CANONICAL_CONTRACT_LANGUAGE,
       retentionPeriodMonths: 24,
       accessPeriodMonths: 12,
     });
@@ -6333,16 +6327,20 @@ app.get(
     const retentionDate = new Date(now);
     retentionDate.setFullYear(retentionDate.getFullYear() + 2);
 
-    const crypto = await import('crypto');
-    const contractHash = crypto.createHash('sha256').update(CONTRACT_TEXT).digest('hex');
+    const language = resolveContractLanguage(req.query.lang);
+    const texts = getContractTexts(language);
 
     res.json({
       requiresSignature: true,
       contract: {
         version: CURRENT_CONTRACT_VERSION,
-        title: 'Contrato de Servicios Educativos y Política de Retención de Datos',
-        content: CONTRACT_TEXT,
-        contractHash,
+        title: texts.signTitle,
+        content: texts.content,
+        // El sello es siempre el del texto original en español, que es el que se firma.
+        contractHash: CANONICAL_CONTRACT_HASH,
+        language,
+        translated: language !== CANONICAL_CONTRACT_LANGUAGE,
+        canonicalLanguage: CANONICAL_CONTRACT_LANGUAGE,
         calculatedDates: {
           startDate: now.toISOString(),
           endDate: endDate.toISOString(),

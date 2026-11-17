@@ -2,6 +2,7 @@ import React from 'react';
 import { Send, ShieldCheck, ThumbsUp } from 'lucide-react';
 import { DEFAULT_AVATAR } from '../../lib/avatar.js';
 import { MentorshipComment, User } from '../../types';
+import { useTranslation } from 'react-i18next'
 
 interface MentorshipPanelProps {
   comments: MentorshipComment[];
@@ -39,11 +40,12 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
   onPostReply,
   onLike,
 }) => {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-2.5">
         <span className="text-meta text-ink-muted tabular-nums">
-          {comments.length === 1 ? '1 consulta' : `${comments.length} consultas`}
+          {t('countConsultas', { defaultValue_one: '1 consulta', defaultValue_other: '{{count}} consultas', count: comments.length })}
         </span>
         <button
           type="button"
@@ -53,7 +55,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
             filterMentorOnly ? 'bg-raised text-brand-purple' : 'text-ink-muted hover:text-ink'
           }`}
         >
-          Solo respondidas
+          {t('soloRespondidas', 'Solo respondidas')}
         </button>
       </div>
 
@@ -61,8 +63,8 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
         {comments.length === 0 ? (
           <p className="px-1 py-4 text-meta leading-relaxed text-ink-muted">
             {filterMentorOnly
-              ? 'Ninguna consulta de esta clase tiene respuesta del mentor todavía.'
-              : 'Nadie ha preguntado sobre esta clase. Abre la primera consulta.'}
+              ? t('ningunaConsultaDeEstaClaseTieneRespuesta', 'Ninguna consulta de esta clase tiene respuesta del mentor todavía.')
+              : t('nadieHaPreguntadoSobreEstaClaseAbreLa', 'Nadie ha preguntado sobre esta clase. Abre la primera consulta.')}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -78,7 +80,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                     {comment.userName}
                   </span>
                   {comment.userRole === 'ADMIN' && (
-                    <ShieldCheck aria-label="Mentor" className="h-3.5 w-3.5 shrink-0 text-brand-purple" />
+                    <ShieldCheck aria-label={t('mentorEtiqueta', 'Mentor')} className="h-3.5 w-3.5 shrink-0 text-brand-purple" />
                   )}
                   <button
                     type="button"
@@ -87,7 +89,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                   >
                     <ThumbsUp aria-hidden className="h-3 w-3" />
                     <span className="tabular-nums">{comment.likes}</span>
-                    <span className="sr-only">votos a favor</span>
+                    <span className="sr-only">{t('votosAFavor', 'votos a favor')}</span>
                   </button>
                 </div>
 
@@ -111,8 +113,8 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                         <textarea
                           rows={2}
                           autoFocus
-                          placeholder="Responder como mentor"
-                          aria-label={`Responder a ${comment.userName}`}
+                          placeholder={t('responderComoMentor', 'Responder como mentor')}
+                          aria-label={t('responderAUserName', 'Responder a {{userName}}', { userName: comment.userName })}
                           value={replyTextMap[comment.id] || ''}
                           onChange={(event) => onReplyTextChange(comment.id, event.target.value)}
                           className="w-full resize-none rounded-lg border border-line bg-canvas p-2.5 text-meta text-ink placeholder-ink-faint focus:border-brand-purple focus:outline-none"
@@ -123,14 +125,14 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                             onClick={() => onStartReply(null)}
                             className="rounded-lg px-2.5 py-1 text-micro text-ink-muted transition-colors hover:text-ink"
                           >
-                            Cancelar
+                            {t('cancelar', 'Cancelar')}
                           </button>
                           <button
                             type="button"
                             onClick={() => onPostReply(comment.id)}
                             className="rounded-lg bg-brand-purple px-2.5 py-1 text-micro font-semibold text-ink transition-opacity hover:opacity-90"
                           >
-                            Responder
+                            {t('responder', 'Responder')}
                           </button>
                         </div>
                       </div>
@@ -140,7 +142,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                         onClick={() => onStartReply(comment.id)}
                         className="text-micro font-medium text-brand-purple transition-opacity hover:opacity-80"
                       >
-                        Responder como mentor
+                        {t('responderComoMentor', 'Responder como mentor')}
                       </button>
                     )}
                   </div>
@@ -156,8 +158,8 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
           <div className="flex items-end gap-2">
             <textarea
               rows={1}
-              placeholder="Pregunta sobre esta clase"
-              aria-label="Tu pregunta sobre esta clase"
+              placeholder={t('preguntaSobreEstaClase', 'Pregunta sobre esta clase')}
+              aria-label={t('tuPreguntaSobreEstaClase', 'Tu pregunta sobre esta clase')}
               value={question}
               onChange={(event) => onQuestionChange(event.target.value)}
               className="min-h-[2.5rem] min-w-0 flex-1 resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-meta leading-relaxed text-ink placeholder-ink-faint focus:border-brand-cyan focus:outline-none"
@@ -168,13 +170,13 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
               className="shrink-0 rounded-lg bg-raised p-2.5 text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-raised"
             >
               <Send aria-hidden className="h-4 w-4" />
-              <span className="sr-only">Publicar consulta</span>
+              <span className="sr-only">{t('publicarConsulta', 'Publicar consulta')}</span>
             </button>
           </div>
         </form>
       ) : (
         <p className="shrink-0 border-t border-line px-4 py-3 text-meta leading-relaxed text-ink-muted">
-          Preguntar a los mentores requiere acceso al curso.
+          {t('preguntarALosMentoresRequiereAccesoAl', 'Preguntar a los mentores requiere acceso al curso.')}
         </p>
       )}
     </div>

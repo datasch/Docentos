@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, CheckCheck, MessageCircleQuestion, MessageSquareReply } from 'lucide-react';
 import type { AppNotification } from '../../lib/api';
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 
 interface NotificationBellProps {
   notifications: AppNotification[];
@@ -17,13 +19,13 @@ export function notificationIcon(type: AppNotification['type']) {
 
 export function relativeTime(iso: string, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
-  if (seconds < 60) return 'ahora';
+  if (seconds < 60) return i18next.t('ahora', 'ahora');
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 60) return i18next.t('haceMinutesMin', 'hace {{minutes}} min', { minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
+  if (hours < 24) return i18next.t('haceHoursH', 'hace {{hours}} h', { hours });
   const days = Math.round(hours / 24);
-  return days === 1 ? 'ayer' : `hace ${days} días`;
+  return i18next.t('haceCountDias', { defaultValue_one: 'ayer', defaultValue_other: 'hace {{count}} días', count: days });
 }
 
 /**
@@ -37,6 +39,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   onMarkAllRead,
   onOpenChange,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,8 +74,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         onClick={() => setOpenState(!open)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={unreadCount > 0 ? `Notificaciones: ${unreadCount} sin leer` : 'Notificaciones'}
-        title="Notificaciones"
+        aria-label={unreadCount > 0 ? t('notificacionesUnreadCountSinLeer', 'Notificaciones: {{unreadCount}} sin leer', { unreadCount }) : t('notificaciones', 'Notificaciones')}
+        title={t('notificaciones', 'Notificaciones')}
         className="relative inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
       >
         <Bell className="w-4 h-4" />
@@ -87,9 +90,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       </button>
 
       {open && (
-        <div className="lp-menu w-[min(360px,calc(100vw-24px))]" role="menu" aria-label="Notificaciones">
+        <div className="lp-menu w-[min(360px,calc(100vw-24px))]" role="menu" aria-label={t('notificaciones', 'Notificaciones')}>
           <div className="flex items-center justify-between gap-2 px-2.5 pt-1.5 pb-2 border-b border-slate-200 dark:border-white/[0.06] mb-1">
-            <span className="text-sm font-semibold text-slate-900 dark:text-white">Notificaciones</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white">{t('notificaciones', 'Notificaciones')}</span>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -97,13 +100,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                 className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-slate-500 hover:text-slate-900 dark:text-white/50 dark:hover:text-white cursor-pointer"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                Marcar todas como leídas
+                {t('marcarTodasComoLeidas', 'Marcar todas como leídas')}
               </button>
             )}
           </div>
 
           {notifications.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-white/50">No tienes notificaciones.</p>
+            <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-white/50">{t('noTienesNotificaciones', 'No tienes notificaciones.')}</p>
           ) : (
             <ul className="flex flex-col gap-0.5">
               {notifications.map((n) => {
@@ -137,7 +140,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                           </span>
                         )}
                       </span>
-                      {unread && <span aria-label="Sin leer" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#06b6d4]" />}
+                      {unread && <span aria-label={t('sinLeer', 'Sin leer')} className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#06b6d4]" />}
                     </button>
                   </li>
                 );
