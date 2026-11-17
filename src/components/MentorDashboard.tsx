@@ -43,6 +43,7 @@ import { COURSE_CATEGORIES } from './CourseManagerView';
 import { MENTORSHIP_CATEGORIES, TECHNICAL_CATEGORIES } from '../lib/courseCategories';
 import { Sparkles, CheckSquare, Layers } from 'lucide-react';
 import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
+import i18next from 'i18next'
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -65,7 +66,7 @@ function formatDate(value: string): string {
 /** De qué clase salió la consulta, dicho en una línea. */
 function questionOrigin(comment: MentorshipComment): string {
   const parts = [comment.courseTitle, comment.moduleTitle, comment.videoTitle].filter(Boolean);
-  return parts.length > 0 ? parts.join(' · ') : 'Clase no identificada';
+  return parts.length > 0 ? parts.join(' · ') : i18next.t('claseNoIdentificada', 'Clase no identificada');
 }
 
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
@@ -73,7 +74,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   courses,
   onRefreshCourses,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'courses' | 'mentees' | 'qna' | 'meetings' | 'quizzes' | 'youtube-builder'>(() => {
     // Al abrir un aviso de pregunta nueva se entra directo a las consultas.
     try {
@@ -182,7 +183,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         onRefreshCourses();
       }
     } catch (err: any) {
-      alert(`Error al publicar curso: ${err.message}`);
+      alert(t('errorAlPublicarCursoMessage', 'Error al publicar curso: {{message}}', { message: err.message }));
     } finally {
       setPublishingCourseId(null);
     }
@@ -256,11 +257,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     try {
       setProcessingRequestId(requestId);
       const res = await api.approveCourseAccessRequest(requestId);
-      announce(res.message || 'Acceso aprobado exitosamente');
+      announce(res.message || t('accesoAprobadoExitosamente', 'Acceso aprobado exitosamente'));
       await Promise.all([loadAccessRequests(), loadMenteesData()]);
       onRefreshCourses();
     } catch (error: any) {
-      announce(error?.message || 'Error al aprobar solicitud');
+      announce(error?.message || t('errorAlAprobarSolicitud', 'Error al aprobar solicitud'));
     } finally {
       setProcessingRequestId(null);
     }
@@ -273,7 +274,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       announce(res.message || 'Solicitud rechazada');
       await loadAccessRequests();
     } catch (error: any) {
-      announce(error?.message || 'Error al rechazar solicitud');
+      announce(error?.message || t('errorAlRechazarSolicitud', 'Error al rechazar solicitud'));
     } finally {
       setProcessingRequestId(null);
     }
@@ -296,11 +297,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       onRefreshCourses();
       announce(
         abrir
-          ? `«${course.title}» queda abierto a todas las cuentas registradas.`
-          : `«${course.title}» vuelve a entrar solo por asignación.`,
+          ? t('titleQuedaAbiertoATodasLasCuentas', '«{{title}}» queda abierto a todas las cuentas registradas.', { title: course.title })
+          : t('titleVuelveAEntrarSoloPorAsignacion', '«{{title}}» vuelve a entrar solo por asignación.', { title: course.title }),
       );
     } catch (error: any) {
-      setOpenError(error?.message || 'No se pudo cambiar la apertura del curso.');
+      setOpenError(error?.message || t('noSePudoCambiarLaAperturaDelCurso', 'No se pudo cambiar la apertura del curso.'));
     } finally {
       setOpeningCourseId(null);
     }
@@ -335,7 +336,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       setQnaComments(res.comments || []);
     } catch (error: any) {
       console.error('Error al cargar preguntas:', error);
-      setQnaError(error?.message || 'No se pudieron cargar las consultas.');
+      setQnaError(error?.message || t('noSePudieronCargarLasConsultas', 'No se pudieron cargar las consultas.'));
     } finally {
       setLoadingQna(false);
     }
@@ -356,7 +357,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       const res = await api.getMenteeCandidates();
       setCandidates(res.candidates || []);
     } catch (error: any) {
-      setRosterError(error?.message || 'No se pudo cargar la lista de mentees.');
+      setRosterError(error?.message || t('noSePudoCargarLaListaDeMentees', 'No se pudo cargar la lista de mentees.'));
     }
   };
 
@@ -401,27 +402,27 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       const partes = [];
       // «asignación» pierde la tilde en plural: asignaciones, no asignaciónes.
       if (res.added > 0) {
-        partes.push(res.added === 1 ? '1 asignación nueva' : `${res.added} asignaciones nuevas`);
+        partes.push(t('countAsignacionesNuevas', { defaultValue_one: '1 asignación nueva', defaultValue_other: '{{count}} asignaciones nuevas', count: res.added }));
       }
       if (res.reactivated > 0) {
-        partes.push(res.reactivated === 1 ? '1 acceso reactivado' : `${res.reactivated} accesos reactivados`);
+        partes.push(t('countAccesosReactivados', { defaultValue_one: '1 acceso reactivado', defaultValue_other: '{{count}} accesos reactivados', count: res.reactivated }));
       }
       if (res.removed > 0) {
-        partes.push(res.removed === 1 ? '1 retirada' : `${res.removed} retiradas`);
+        partes.push(t('countRetiradas', { defaultValue_one: '1 retirada', defaultValue_other: '{{count}} retiradas', count: res.removed }));
       }
-      let aviso = partes.length > 0 ? partes.join(' y ') + '.' : 'No había cambios que guardar.';
+      let aviso = partes.length > 0 ? new Intl.ListFormat(i18n.language, { style: 'long', type: 'conjunction' }).format(partes) + '.' : t('noHabiaCambiosQueGuardar', 'No había cambios que guardar.');
       // El servidor descarta lo que no cumple la regla; decirlo evita que
       // alguien crea que asignó a una persona que en realidad quedó fuera.
-      if (res.ignored > 0) aviso += ` ${res.ignored} no se pudo aplicar.`;
+      if (res.ignored > 0) aviso += ' ' + t('ignoredNoSePudoAplicar', '{{ignored}} no se pudo aplicar.', { ignored: res.ignored });
       // Retirar la mentoría no quita una matrícula pagada ni una dada de alta a
       // mano: si alguien sigue entrando al curso por esa vía, se dice.
       if (res.stillHaveAccess.length > 0) {
-        aviso += ` Ojo: ${res.stillHaveAccess.join(', ')} conserva el acceso por matrícula o pago.`;
+        aviso += ' ' + t('ojoStillHaveAccessConservaElAccesoPor', 'Ojo: {{stillHaveAccess}} conserva el acceso por matrícula o pago.', { stillHaveAccess: res.stillHaveAccess.join(', ') });
       }
       announce(aviso);
       closeRoster();
     } catch (error: any) {
-      setRosterError(error?.message || 'No se pudo guardar el reparto.');
+      setRosterError(error?.message || t('noSePudoGuardarElReparto', 'No se pudo guardar el reparto.'));
     } finally {
       setSavingRoster(false);
     }
@@ -448,10 +449,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       const nombre = res.mentee?.name || newMenteeName.trim();
       announce(
         res.reactivated
-          ? `${nombre}: acceso reactivado, conservando su progreso.`
+          ? t('nombreAccesoReactivadoConservandoSu', '{{nombre}}: acceso reactivado, conservando su progreso.', { nombre })
           : res.existed
-          ? `${nombre} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.`
-          : `${nombre} queda asignado a tu mentoría.`,
+          ? t('nombreYaTeniaCuentaQuedaAsignadoATu', '{{nombre}} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.', { nombre })
+          : t('nombreQuedaAsignadoATuMentoria', '{{nombre}} queda asignado a tu mentoría.', { nombre }),
       );
       // Si el alta se hizo desde el selector del curso, este se queda abierto
       // detras. Hay que refrescar la lista y dejar marcada a la persona: lo
@@ -473,7 +474,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       // El servidor rechaza con un motivo concreto (cuenta administrativa,
       // cuenta desactivada, permisos). Tragárselo dejaba el formulario
       // aparentemente muerto: se pulsaba «Asignar» y no ocurría nada.
-      setAssignError(error?.message || 'No se pudo asignar el mentee.');
+      setAssignError(error?.message || t('noSePudoAsignarElMentee', 'No se pudo asignar el mentee.'));
     } finally {
       setAssigningMentee(false);
     }
@@ -507,10 +508,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       setNewCoursePublished(false);
       setShowCreateCourseModal(false);
       setActiveTab('courses');
-      announce('Programa creado. Añádele módulos y clases desde Administración › Cursos.');
+      announce(t('programaCreadoAnadeleModulosYClasesDesde', 'Programa creado. Añádele módulos y clases desde Administración › Cursos.'));
       onRefreshCourses();
     } catch (error: any) {
-      setCreateCourseError(error?.message || 'No se pudo crear el programa.');
+      setCreateCourseError(error?.message || t('noSePudoCrearElPrograma', 'No se pudo crear el programa.'));
     } finally {
       setCreatingCourse(false);
     }
@@ -529,7 +530,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     } catch (error: any) {
       setReplyErrorMap((prev) => ({
         ...prev,
-        [commentId]: error?.message || 'No se pudo enviar la respuesta.',
+        [commentId]: error?.message || t('noSePudoEnviarLaRespuesta', 'No se pudo enviar la respuesta.'),
       }));
     } finally {
       setReplyingId(null);
@@ -566,16 +567,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           </div>
         </div>
         <div className="mentor-priority-card bg-raised border border-line rounded-xl p-4">
-          <span className="text-xs font-medium text-ink-muted">Atención prioritaria</span>
+          <span className="text-xs font-medium text-ink-muted">{t('atencionPrioritaria', 'Atención prioritaria')}</span>
           <strong className="mt-1 block text-lg font-semibold text-ink tabular-nums">
-            {pendingQuestions.length} {pendingQuestions.length === 1 ? 'consulta pendiente' : 'consultas pendientes'}
+            {pendingQuestions.length} {t('consultasPendientes', { defaultValue_one: 'consulta pendiente', defaultValue_other: 'consultas pendientes', count: pendingQuestions.length })}
           </strong>
           <button
             type="button"
             onClick={() => setActiveTab('qna')}
             className="mt-3 text-xs font-semibold text-brand-cyan hover:text-ink transition-colors"
           >
-            Revisar consultas
+            {t('revisarConsultas', 'Revisar consultas')}
           </button>
         </div>
       </section>
@@ -632,7 +633,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <nav aria-label="Módulos de mentoría" className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
+      <nav aria-label={t('modulosDeMentoria', 'Módulos de mentoría')} className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
         <button
           aria-current={activeTab === 'courses' ? 'page' : undefined}
           onClick={() => setActiveTab('courses')}
@@ -722,11 +723,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         <div className="mentor-courses-panel space-y-6">
           <div className="mentor-section-heading">
             <div>
-              <span className="mentor-section-kicker">Programas</span>
-              <h2>Gestiona tus cursos</h2>
-              <p>Revisa el estado de publicación, asigna mentees y controla el acceso de cada programa.</p>
+              <span className="mentor-section-kicker">{t('programas', 'Programas')}</span>
+              <h2>{t('gestionaTusCursos', 'Gestiona tus cursos')}</h2>
+              <p>{t('revisaElEstadoDePublicacionAsignaMentees', 'Revisa el estado de publicación, asigna mentees y controla el acceso de cada programa.')}</p>
             </div>
-            <span className="mentor-section-count">{displayCourses.length} programas</span>
+            <span className="mentor-section-count">{t('lengthProgramas', '{{length}} programas', { length: displayCourses.length })}</span>
           </div>
           <div className="mentor-promo flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-raised border border-line">
             <div className="flex items-center gap-3">
@@ -779,7 +780,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           onClick={() => handlePublishMentorCourse(course.id)}
                           disabled={publishingCourseId === course.id}
                           className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[11px] font-bold transition flex items-center gap-1 disabled:opacity-50"
-                          title="Publicar curso de inmediato en el catálogo de DocentOS"
+                          title={t('publicarCursoDeInmediatoEnElCatalogoDe', 'Publicar curso de inmediato en el catálogo de DocentOS')}
                         >
                           {publishingCourseId === course.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -802,7 +803,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
                   <div className="mentor-course-card__meta pt-3 border-t border-line flex items-center justify-between text-xs font-mono text-ink-muted">
                     <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue_one: '{{count}} Módulo', defaultValue_other: '{{count}} Módulos' })}</span>
-                    <span>${course.price} USD</span>
+                    <span>{t('priceUsdPlano', '${{price}} USD', { price: course.price })}</span>
                   </div>
 
                   {/* Reparto de plazas: se elige el curso y se marcan las
@@ -889,7 +890,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           <span className="text-[10px] text-ink-muted">({req.menteeEmail})</span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-xs">
-                          <span className="text-ink-muted">Solicita acceso a:</span>
+                          <span className="text-ink-muted">{t('solicitaAccesoA', 'Solicita acceso a:')}</span>
                           <span className="font-semibold text-purple-400 flex items-center gap-1">
                             <GraduationCap className="w-3.5 h-3.5 shrink-0" />
                             {req.courseTitle}
@@ -935,19 +936,19 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               {/* El alta y el reparto viven ahora en «Gestión de Cursos»: se
                   asigna desde el curso, que es donde se sabe a que se asigna. */}
               <div>
-                <h3 className="font-bold text-sm text-white">Seguimiento de Mentees</h3>
-                <p className="text-xs text-ink-muted">Progreso individual y estado de estudio de alumnos asignados</p>
+                <h3 className="font-bold text-sm text-white">{t('seguimientoDeMentees', 'Seguimiento de Mentees')}</h3>
+                <p className="text-xs text-ink-muted">{t('progresoIndividualYEstadoDeEstudioDe', 'Progreso individual y estado de estudio de alumnos asignados')}</p>
               </div>
             </div>
 
             <div className="divide-y divide-[#262626]">
               {loadingMentees && (
-                <p className="p-6 text-center text-xs text-ink-muted">Cargando mentees...</p>
+                <p className="p-6 text-center text-xs text-ink-muted">{t('cargandoMentees', 'Cargando mentees...')}</p>
               )}
 
               {!loadingMentees && mentees.length === 0 && (
                 <p className="p-6 text-center text-xs text-ink-muted">
-                  Aún no tienes mentees asignados.
+                  {t('aunNoTienesMenteesAsignados', 'Aún no tienes mentees asignados.')}
                 </p>
               )}
 
@@ -973,7 +974,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   {/* Progress Bar Column */}
                   <div className="w-full sm:w-64 space-y-1">
                     <div className="flex items-center justify-between text-[10px] font-mono">
-                      <span className="text-ink-muted">Progreso en Curso</span>
+                      <span className="text-ink-muted">{t('progresoEnCurso', 'Progreso en Curso')}</span>
                       <span className="font-bold text-[#06b6d4]">{m.courseProgress}%</span>
                     </div>
                     <div className="w-full bg-canvas rounded-full h-2 border border-line overflow-hidden">
@@ -983,7 +984,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       />
                     </div>
                     <div className="text-[9px] text-ink-muted font-mono text-right">
-                      {m.completedVideosCount} de {m.totalVideosCount} lecciones • Activo {m.lastActiveDate}
+                      {t('completedVideosCountDeTotalVideosCount', '{{completedVideosCount}} de {{totalVideosCount}} lecciones • Activo {{lastActiveDate}}', { completedVideosCount: m.completedVideosCount, totalVideosCount: m.totalVideosCount, lastActiveDate: m.lastActiveDate })}
                     </div>
                   </div>
 
@@ -992,12 +993,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <div className="w-full sm:w-auto sm:max-w-xs space-y-2">
                     <div className="flex flex-wrap gap-1.5">
                       {m.courses.length === 0 ? (
-                        <span className="text-[10px] text-ink-muted italic">Sin cursos asignados</span>
+                        <span className="text-[10px] text-ink-muted italic">{t('sinCursosAsignados', 'Sin cursos asignados')}</span>
                       ) : (
                         m.courses.map((c) => (
                           <span
                             key={c.assignmentId}
-                            title={`${c.courseProgress}% · ${c.completedVideosCount} de ${c.totalVideosCount} lecciones`}
+                            title={t('courseProgressCompletedVideosCountDe', '{{courseProgress}}% · {{completedVideosCount}} de {{totalVideosCount}} lecciones', { courseProgress: c.courseProgress, completedVideosCount: c.completedVideosCount, totalVideosCount: c.totalVideosCount })}
                             className="inline-flex items-center gap-1 text-[10px] font-bold text-[#a855f7] bg-[#a855f7]/10 border border-[#a855f7]/30 px-2 py-0.5 rounded-lg max-w-[180px]"
                           >
                             <GraduationCap className="w-3.5 h-3.5 shrink-0" />
@@ -1012,7 +1013,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       onClick={() => openMenteeRoster(m)}
                       className="w-full sm:w-auto px-3 py-1.5 bg-raised hover:bg-elevated border border-line hover:border-[#a855f7] text-white text-[11px] font-bold rounded-xl transition-all"
                     >
-                      Editar cursos
+                      {t('editarCursos', 'Editar cursos')}
                     </button>
                   </div>
                 </div>
@@ -1056,7 +1057,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onClick={loadQnaData}
                   disabled={loadingQna}
                   className="p-2 bg-raised border border-line rounded-xl text-ink-muted hover:text-white transition-colors disabled:opacity-50"
-                  title="Actualizar consultas"
+                  title={t('actualizarConsultas', 'Actualizar consultas')}
                 >
                   <RefreshCw className={`w-4 h-4 ${loadingQna ? 'animate-spin' : ''}`} />
                 </button>
@@ -1071,7 +1072,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <div className="space-y-4">
               {loadingQna && qnaComments.length === 0 && (
-                <p className="py-8 text-center text-xs text-ink-muted">Cargando consultas...</p>
+                <p className="py-8 text-center text-xs text-ink-muted">{t('cargandoConsultas', 'Cargando consultas...')}</p>
               )}
 
               {!loadingQna && visibleQuestions.length === 0 && (
@@ -1079,8 +1080,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <Inbox className="w-8 h-8 text-slate-600 mx-auto" />
                   <p className="text-xs text-ink-muted">
                     {qnaFilter === 'pending'
-                      ? 'No hay consultas pendientes. Todo respondido.'
-                      : 'Todavía no hay consultas publicadas por el alumnado.'}
+                      ? t('noHayConsultasPendientesTodoRespondido', 'No hay consultas pendientes. Todo respondido.')
+                      : t('todaviaNoHayConsultasPublicadasPorEl', 'Todavía no hay consultas publicadas por el alumnado.')}
                   </p>
                 </div>
               )}
@@ -1108,7 +1109,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded shrink-0 ${
                       comment.isResolved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                     }`}>
-                      {comment.isResolved ? 'Resuelta por Mentor' : 'Pendiente'}
+                      {comment.isResolved ? t('resueltaPorMentor', 'Resuelta por Mentor') : t('pendienteCapital', 'Pendiente')}
                     </span>
                   </div>
 
@@ -1142,7 +1143,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   >
                     <input
                       type="text"
-                      placeholder="Escribe tu respuesta como Mentor..."
+                      placeholder={t('escribeTuRespuestaComoMentor', 'Escribe tu respuesta como Mentor...')}
                       value={replyTextMap[comment.id] || ''}
                       onChange={(e) =>
                         setReplyTextMap({ ...replyTextMap, [comment.id]: e.target.value })
@@ -1159,7 +1160,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       ) : (
                         <Send className="w-3.5 h-3.5" />
                       )}
-                      Responder
+                      {t('responder', 'Responder')}
                     </button>
                   </form>
                 </div>
@@ -1191,10 +1192,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                    Evaluaciones y exámenes
+                    {t('evaluacionesYExamenes', 'Evaluaciones y exámenes')}
                   </h3>
                   <p className="text-xs text-ink-muted">
-                    Crea cuestionarios por módulo o genera una propuesta a partir del temario
+                    {t('creaCuestionariosPorModuloOGeneraUna', 'Crea cuestionarios por módulo o genera una propuesta a partir del temario')}
                   </p>
                 </div>
               </div>
@@ -1202,7 +1203,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             {displayCourses.length === 0 ? (
               <div className="py-12 text-center text-ink-muted text-xs">
-                No hay cursos disponibles para gestionar evaluaciones.
+                {t('noHayCursosDisponiblesParaGestionar', 'No hay cursos disponibles para gestionar evaluaciones.')}
               </div>
             ) : (
               <div className="mt-6 space-y-4">
@@ -1226,17 +1227,17 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                           <div className="min-w-0">
                             <h4 className="text-sm font-bold text-white truncate">{course.title}</h4>
                             <p className="text-[11px] text-ink-muted">
-                              {course.category} • {modules.length} módulo(s) de aprendizaje
+                              {t('categoryLengthModulosDeAprendizaje', '{{category}} • {{length}} módulo(s) de aprendizaje', { category: course.category, length: modules.length })}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold px-3 py-1 bg-surface border border-line rounded-xl text-ink-soft">
-                            {modules.filter((m) => getModuleQuestions(m.id).length > 0).length} de {modules.length} con examen
+                            {t('lengthDeLength2ConExamen', '{{length}} de {{length2}} con examen', { length: modules.filter((m) => getModuleQuestions(m.id).length > 0).length, length2: modules.length })}
                           </span>
                           <span className="text-xs font-bold text-purple-400">
-                            {isExpanded ? 'Ocultar ▲' : 'Ver Módulos ▼'}
+                            {isExpanded ? t('ocultar', 'Ocultar ▲') : t('verModulos', 'Ver Módulos ▼')}
                           </span>
                         </div>
                       </div>
@@ -1245,7 +1246,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         <div className="p-4 border-t border-line bg-surface/60 space-y-3">
                           {modules.length === 0 ? (
                             <p className="text-xs text-ink-muted py-3 text-center">
-                              Este curso aún no tiene módulos configurados.
+                              {t('esteCursoAunNoTieneModulosConfigurados', 'Este curso aún no tiene módulos configurados.')}
                             </p>
                           ) : (
                             modules.map((module) => {
@@ -1260,7 +1261,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="font-mono text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                                        Módulo {module.order}
+                                        {t('moduloOrder', 'Módulo {{order}}', { order: module.order })}
                                       </span>
                                       <p className="text-xs font-bold text-white truncate">{module.title}</p>
                                     </div>
@@ -1272,11 +1273,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                                       {hasQuiz ? (
                                         <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
                                           <CheckCircle2 className="w-3 h-3" />
-                                          {questions.length} preguntas configuradas
+                                          {t('lengthPreguntasConfiguradas', '{{length}} preguntas configuradas', { length: questions.length })}
                                         </span>
                                       ) : (
                                         <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
-                                          Sin examen asignado
+                                          {t('sinExamenAsignado', 'Sin examen asignado')}
                                         </span>
                                       )}
                                     </div>
@@ -1288,7 +1289,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                                     className="btn-brand-primary px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors shrink-0"
                                   >
                                     <Sparkles className="w-3.5 h-3.5" />
-                                    <span>{hasQuiz ? 'Editar Examen' : 'Generar con IA'}</span>
+                                    <span>{hasQuiz ? t('editarExamen', 'Editar Examen') : t('generarConIa', 'Generar con IA')}</span>
                                   </button>
                                 </div>
                               );
@@ -1312,7 +1313,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             currentUser={currentUser}
             onCourseCreated={(_courseId) => {
               onRefreshCourses();
-              announce('¡Curso generado y guardado exitosamente desde YouTube!');
+              announce(t('cursoGeneradoYGuardadoExitosamenteDesde', '¡Curso generado y guardado exitosamente desde YouTube!'));
               setActiveTab('courses');
             }}
             onCancel={() => setActiveTab('courses')}
@@ -1343,7 +1344,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             <div className="p-5 border-b border-line flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="font-extrabold text-base text-white">
-                  {rosterMode === 'course' ? 'Asignar mentees al curso' : 'Cursos de este mentee'}
+                  {rosterMode === 'course' ? t('asignarMenteesAlCurso', 'Asignar mentees al curso') : t('cursosDeEsteMentee', 'Cursos de este mentee')}
                 </h3>
                 <p className="text-xs text-ink-muted truncate">
                   {rosterMode === 'course' ? rosterCourse?.title : rosterMentee?.name}
@@ -1360,13 +1361,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     }}
                     className="px-2.5 py-1.5 bg-raised border border-line hover:border-brand-cyan text-brand-cyan font-bold text-micro rounded-xl flex items-center gap-1.5 transition-colors"
                   >
-                    <Plus aria-hidden className="w-3.5 h-3.5" /> Dar de alta
+                    <Plus aria-hidden className="w-3.5 h-3.5" /> {t('darDeAlta', 'Dar de alta')}
                   </button>
                 )}
                 <button
                   onClick={closeRoster}
                   className="p-1.5 text-ink-muted hover:text-white rounded-lg hover:bg-raised"
-                  aria-label="Cerrar"
+                  aria-label={t('cerrar', 'Cerrar')}
                 >
                   <X aria-hidden className="w-4 h-4" />
                 </button>
@@ -1386,7 +1387,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   type="search"
                   value={rosterQuery}
                   onChange={(e) => setRosterQuery(e.target.value)}
-                  placeholder={rosterMode === 'course' ? 'Buscar mentee por nombre o correo…' : 'Buscar curso…'}
+                  placeholder={rosterMode === 'course' ? t('buscarMenteePorNombreOCorreo', 'Buscar mentee por nombre o correo…') : t('buscarCurso', 'Buscar curso…')}
                   className="w-full py-2 pl-9 pr-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 />
               </div>
@@ -1402,9 +1403,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     if (filtrados.length === 0) {
                       return (
                         <p className="py-8 text-center text-xs text-ink-muted">
-                          {candidates.length === 0
-                            ? 'No hay cuentas mentee todavía. Crea una con «Dar de alta», aquí arriba.'
-                            : 'Ningún mentee coincide con la búsqueda.'}
+                          {t('ningunMenteeCoincideConLaBusqueda', { defaultValue_zero: 'No hay cuentas mentee todavía. Crea una con «Dar de alta», aquí arriba.', defaultValue_other: 'Ningún mentee coincide con la búsqueda.', count: candidates.length })}
                         </p>
                       );
                     }
@@ -1437,7 +1436,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       return !q || course.title.toLowerCase().includes(q);
                     });
                     if (filtrados.length === 0) {
-                      return <p className="py-8 text-center text-xs text-ink-muted">Ningún curso coincide.</p>;
+                      return <p className="py-8 text-center text-xs text-ink-muted">{t('ningunCursoCoincide', 'Ningún curso coincide.')}</p>;
                     }
                     return filtrados.map((course) => (
                       <label
@@ -1453,11 +1452,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-white truncate">{course.title}</p>
                           <p className="text-[10px] text-ink-muted">
-                            {course.category} · {course.modules?.length || 0} módulos
+                            {course.category} · {course.modules?.length || 0} {t('modulosMinuscula', 'módulos')}
                           </p>
                         </div>
                         {!course.published && (
-                          <span className="text-[9px] font-bold text-amber-400 shrink-0">Borrador</span>
+                          <span className="text-[9px] font-bold text-amber-400 shrink-0">{t('borrador', 'Borrador')}</span>
                         )}
                       </label>
                     ));
@@ -1466,14 +1465,14 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <div className="p-5 border-t border-line flex items-center justify-between gap-3">
               <span className="text-[11px] text-ink-muted">
-                {rosterSelection.length} seleccionado{rosterSelection.length === 1 ? '' : 's'}
+                {t('countSeleccionados', { defaultValue_one: '{{count}} seleccionado', defaultValue_other: '{{count}} seleccionados', count: rosterSelection.length })}
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={closeRoster}
                   className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   onClick={handleSaveRoster}
@@ -1481,7 +1480,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {savingRoster && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Guardar cambios
+                  {t('guardarCambios', 'Guardar cambios')}
                 </button>
               </div>
             </div>
@@ -1492,8 +1491,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {showAssignMenteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-md space-y-4">
-            <h3 className="font-extrabold text-base text-white">Asignar Nuevo Mentee</h3>
-            <p className="text-xs text-ink-muted">Ingresa los datos del estudiante para asignarle mentoría prioritaria.</p>
+            <h3 className="font-extrabold text-base text-white">{t('asignarNuevoMentee', 'Asignar Nuevo Mentee')}</h3>
+            <p className="text-xs text-ink-muted">{t('ingresaLosDatosDelEstudiantePara', 'Ingresa los datos del estudiante para asignarle mentoría prioritaria.')}</p>
 
             {assignError && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
@@ -1503,19 +1502,19 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <form onSubmit={handleAssignMenteeSubmit} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Nombre</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('nombre', 'Nombre')}</label>
                 <input
                   type="text"
                   value={newMenteeName}
                   onChange={(e) => setNewMenteeName(e.target.value)}
-                  placeholder="Ej. Roberto Gómez"
+                  placeholder={t('ejRobertoGomez', 'Ej. Roberto Gómez')}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Correo Electrónico</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('correoElectronico', 'Correo Electrónico')}</label>
                 <input
                   type="email"
                   value={newMenteeEmail}
@@ -1529,13 +1528,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               {/* Antes entraban siempre al primer curso publicado, fuera el
                   que fuera. Ahora se elige, y se pueden añadir más después. */}
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Curso inicial</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('cursoInicial', 'Curso inicial')}</label>
                 <select
                   value={newMenteeCourseId}
                   onChange={(e) => setNewMenteeCourseId(e.target.value)}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 >
-                  <option value="">Primer curso publicado</option>
+                  <option value="">{t('primerCursoPublicado', 'Primer curso publicado')}</option>
                   {displayCourses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.title}
@@ -1550,7 +1549,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onClick={() => setShowAssignMenteeModal(false)}
                   className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -1558,7 +1557,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {assigningMentee && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Asignar Mentee
+                  {t('asignarMentee', 'Asignar Mentee')}
                 </button>
               </div>
             </form>
@@ -1570,10 +1569,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {showCreateCourseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-lg space-y-4">
-            <h3 className="font-extrabold text-base text-white">Crear Nuevo Programa</h3>
+            <h3 className="font-extrabold text-base text-white">{t('crearNuevoPrograma', 'Crear Nuevo Programa')}</h3>
             <p className="text-xs text-ink-muted">
-              Se crea la ficha del programa. Los módulos y las clases se añaden después desde
-              Administración › Cursos o importando una carpeta de Google Drive.
+              {t('seCreaLaFichaDelProgramaLosModulosYLas', 'Se crea la ficha del programa. Los módulos y las clases se añaden después desde Administración › Cursos o importando una carpeta de Google Drive.')}
             </p>
 
             {createCourseError && (
@@ -1584,44 +1582,44 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <form onSubmit={handleCreateCourseSubmit} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Título del Programa</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('tituloDelPrograma', 'Título del Programa')}</label>
                 <input
                   type="text"
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
-                  placeholder="Ej. Mentoría Elite: Arquitectura Cloud"
+                  placeholder={t('ejMentoriaEliteArquitecturaCloud', 'Ej. Mentoría Elite: Arquitectura Cloud')}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Descripción</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('descripcion', 'Descripción')}</label>
                 <textarea
                   rows={3}
                   value={newCourseDescription}
                   onChange={(e) => setNewCourseDescription(e.target.value)}
-                  placeholder="Qué aprende el alumno y para quién es este programa."
+                  placeholder={t('queAprendeElAlumnoYParaQuienEsEste', 'Qué aprende el alumno y para quién es este programa.')}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Categoría</label>
+                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('categoriaEtiqueta', 'Categoría')}</label>
                   <select
                     value={newCourseCategory}
                     onChange={(e) => setNewCourseCategory(e.target.value)}
                     className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
                   >
-                    <optgroup label="Modalidades de Mentoría">
+                    <optgroup label={t('modalidadesDeMentoria', 'Modalidades de Mentoría')}>
                       {MENTORSHIP_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Áreas Temáticas Técnicas">
+                    <optgroup label={t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas')}>
                       {TECHNICAL_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
@@ -1632,7 +1630,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Precio (USD)</label>
+                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('precioUsd', 'Precio (USD)')}</label>
                   <input
                     type="number"
                     min={0}
@@ -1650,7 +1648,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onChange={(e) => setNewCoursePublished(e.target.checked)}
                   className="accent-[#06b6d4]"
                 />
-                Publicar de inmediato (visible en el catálogo, aún sin clases)
+                {t('publicarDeInmediatoVisibleEnElCatalogo', 'Publicar de inmediato (visible en el catálogo, aún sin clases)')}
               </label>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -1659,7 +1657,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onClick={() => setShowCreateCourseModal(false)}
                   className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -1667,7 +1665,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {creatingCourse ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  Crear Programa
+                  {t('crearPrograma', 'Crear Programa')}
                 </button>
               </div>
             </form>

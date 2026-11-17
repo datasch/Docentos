@@ -43,6 +43,7 @@ import {
   normalizeMeetingUrl,
 } from '../plugins/LiveMeetingsPlugin';
 import { pluginManager } from '../plugins/PluginManager';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface MeetingManagerProps {
   currentUser: User;
@@ -55,6 +56,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   courses,
   onRefreshCourses,
 }) => {
+  const { t } = useTranslation()
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filterType, setFilterType] = useState<'ALL' | 'LIVE' | 'SYNC' | 'ASYNC'>('ALL');
@@ -155,17 +157,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   const handleGenerateJitsiUrl = () => {
     const newUrl = generateJitsiMeetingUrl();
     setFormUrl(newUrl);
-    flashNotice('Sala Jitsi generada automáticamente');
+    flashNotice(t('salaJitsiGeneradaAutomaticamente', 'Sala Jitsi generada automáticamente'));
   };
 
   const handleSaveMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) {
-      setModalError('El título de la clase es obligatorio');
+      setModalError(t('elTituloDeLaClaseEsObligatorio', 'El título de la clase es obligatorio'));
       return;
     }
     if (!formUrl.trim()) {
-      setModalError('La URL de la reunión o clase es obligatoria');
+      setModalError(t('laUrlDeLaReunionOClaseEsObligatoria', 'La URL de la reunión o clase es obligatoria'));
       return;
     }
 
@@ -188,7 +190,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         });
         if (res.meeting) {
           setMeetings((prev) => prev.map((m) => (m.id === res.meeting.id ? res.meeting : m)));
-          flashNotice('Clase actualizada correctamente');
+          flashNotice(t('claseActualizadaCorrectamente', 'Clase actualizada correctamente'));
           setIsModalOpen(false);
         }
       } else {
@@ -205,12 +207,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         });
         if (res.meeting) {
           setMeetings((prev) => [res.meeting, ...prev]);
-          flashNotice('Nueva clase programada con éxito');
+          flashNotice(t('nuevaClaseProgramadaConExito', 'Nueva clase programada con éxito'));
           setIsModalOpen(false);
         }
       }
     } catch (err: any) {
-      setModalError(err.message || 'Error al guardar la reunión');
+      setModalError(err.message || t('errorAlGuardarLaReunion', 'Error al guardar la reunión'));
     } finally {
       setSaving(false);
     }
@@ -223,23 +225,23 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         setMeetings((prev) => prev.map((m) => (m.id === res.meeting.id ? res.meeting : m)));
         flashNotice(
           res.meeting.isLive
-            ? `🔴 Transmisión EN VIVO iniciada: "${meeting.title}"`
-            : `Transmisión finalizada: "${meeting.title}"`
+            ? t('transmisionEnVivoIniciadaTitle', '🔴 Transmisión EN VIVO iniciada: "{{title}}"', { title: meeting.title })
+            : t('transmisionFinalizadaTitle', 'Transmisión finalizada: "{{title}}"', { title: meeting.title })
         );
       }
     } catch (err: any) {
-      flashNotice(err.message || 'Error al cambiar estado de la transmisión');
+      flashNotice(err.message || t('errorAlCambiarEstadoDeLaTransmision', 'Error al cambiar estado de la transmisión'));
     }
   };
 
   const handleDeleteMeeting = async (meeting: Meeting) => {
-    if (!window.confirm(`¿Seguro que deseas eliminar la clase "${meeting.title}"?`)) return;
+    if (!window.confirm(t('seguroQueDeseasEliminarLaClaseTitle', '¿Seguro que deseas eliminar la clase "{{title}}"?', { title: meeting.title }))) return;
     try {
       await api.deleteMeeting(meeting.id);
       setMeetings((prev) => prev.filter((m) => m.id !== meeting.id));
-      flashNotice('Clase eliminada del catálogo');
+      flashNotice(t('claseEliminadaDelCatalogo', 'Clase eliminada del catálogo'));
     } catch (err: any) {
-      flashNotice(err.message || 'Error al eliminar la clase');
+      flashNotice(err.message || t('errorAlEliminarLaClase', 'Error al eliminar la clase'));
     }
   };
 
@@ -247,10 +249,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
     try {
       await navigator.clipboard.writeText(meeting.meetingUrl);
       setCopiedId(meeting.id);
-      flashNotice('Enlace copiado al portapapeles');
+      flashNotice(t('enlaceCopiadoAlPortapapeles', 'Enlace copiado al portapapeles'));
       setTimeout(() => setCopiedId(null), 2500);
     } catch {
-      flashNotice('No se pudo copiar automáticamente el enlace');
+      flashNotice(t('noSePudoCopiarAutomaticamenteElEnlace', 'No se pudo copiar automáticamente el enlace'));
     }
   };
 
@@ -301,19 +303,19 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold">
             <Radio className="w-3.5 h-3.5 animate-pulse text-brand-cyan" />
-            <span>LiveMeetings Engine · Google Meet, Jitsi & Grabaciones</span>
+            <span>{t('livemeetingsEngineGoogleMeetJitsi', 'LiveMeetings Engine · Google Meet, Jitsi & Grabaciones')}</span>
           </div>
           <h2 className="text-2xl font-bold text-ink tracking-tight flex items-center gap-3">
-            Gestor de Clases Sincrónicas & En Vivo
+            {t('gestorDeClasesSincronicasEnVivo', 'Gestor de Clases Sincrónicas & En Vivo')}
             {liveCount > 0 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/40 animate-pulse-slow">
                 <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
-                {liveCount} EN VIVO
+                {t('liveCountEnVivo', '{{liveCount}} EN VIVO', { liveCount })}
               </span>
             )}
           </h2>
           <p className="text-xs text-ink-muted max-w-2xl leading-relaxed">
-            Programa sesiones sincrónicas con generación de salas instantáneas en Jitsi Meet, integra tus enlaces corporativos de Google Meet o publica grabaciones asincrónicas con streaming optimizado.
+            {t('programaSesionesSincronicasConGeneracion', 'Programa sesiones sincrónicas con generación de salas instantáneas en Jitsi Meet, integra tus enlaces corporativos de Google Meet o publica grabaciones asincrónicas con streaming optimizado.')}
           </p>
         </div>
 
@@ -322,17 +324,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             onClick={loadMeetings}
             disabled={loading}
             className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-lg transition-all flex items-center gap-2"
-            title="Recargar reuniones"
+            title={t('recargarReuniones', 'Recargar reuniones')}
           >
             <RefreshCw className={`w-3.5 h-3.5 text-brand-cyan ${loading ? 'animate-spin' : ''}`} />
-            <span>Sincronizar</span>
+            <span>{t('sincronizar', 'Sincronizar')}</span>
           </button>
           <button
             onClick={openCreateModal}
             className="btn-brand-primary px-4 py-2.5 text-xs font-bold rounded-lg flex items-center gap-2 shadow-lg shadow-brand-cyan/20"
           >
             <Plus className="w-4 h-4" />
-            <span>Programar Clase</span>
+            <span>{t('programarClase', 'Programar Clase')}</span>
           </button>
         </div>
       </div>
@@ -341,7 +343,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-ink-muted">Total Clases</p>
+            <p className="text-micro font-bold uppercase tracking-wider text-ink-muted">{t('totalClases', 'Total Clases')}</p>
             <h3 className="text-xl font-bold text-ink mt-0.5">{meetings.length}</h3>
           </div>
           <div className="w-9 h-9 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan">
@@ -351,7 +353,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
         <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-danger-light">En Vivo Ahora</p>
+            <p className="text-micro font-bold uppercase tracking-wider text-danger-light">{t('enVivoAhora', 'En Vivo Ahora')}</p>
             <h3 className="text-xl font-bold text-danger-light mt-0.5">{liveCount}</h3>
           </div>
           <div className="w-9 h-9 rounded-lg bg-danger/10 border border-danger/30 flex items-center justify-center text-danger-light">
@@ -361,7 +363,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
         <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-brand-purple">Sincrónicas</p>
+            <p className="text-micro font-bold uppercase tracking-wider text-brand-purple">{t('sincronicas', 'Sincrónicas')}</p>
             <h3 className="text-xl font-bold text-brand-purple mt-0.5">{syncCount}</h3>
           </div>
           <div className="w-9 h-9 rounded-lg bg-brand-purple/10 border border-brand-purple/30 flex items-center justify-center text-brand-purple">
@@ -371,7 +373,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
         <div className="bg-raised border border-line rounded-xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-micro font-bold uppercase tracking-wider text-success-light">Asincrónicas</p>
+            <p className="text-micro font-bold uppercase tracking-wider text-success-light">{t('asincronicas', 'Asincrónicas')}</p>
             <h3 className="text-xl font-bold text-success-light mt-0.5">{asyncCount}</h3>
           </div>
           <div className="w-9 h-9 rounded-lg bg-success/10 border border-success/30 flex items-center justify-center text-success-light">
@@ -391,7 +393,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
           >
-            Todas ({meetings.length})
+            {t('todasLength', 'Todas ({{length}})', { length: meetings.length })}
           </button>
           <button
             onClick={() => setFilterType('LIVE')}
@@ -401,7 +403,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               }`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-danger-light" />
-            En Vivo ({liveCount})
+            {t('enVivoLiveCount', 'En Vivo ({{liveCount}})', { liveCount })}
           </button>
           <button
             onClick={() => setFilterType('SYNC')}
@@ -410,7 +412,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
           >
-            Sincrónicas ({syncCount})
+            {t('sincronicasSyncCount', 'Sincrónicas ({{syncCount}})', { syncCount })}
           </button>
           <button
             onClick={() => setFilterType('ASYNC')}
@@ -419,7 +421,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 : 'bg-raised text-ink-muted hover:text-ink border border-line'
               }`}
           >
-            Grabaciones ({asyncCount})
+            {t('grabacionesAsyncCount', 'Grabaciones ({{asyncCount}})', { asyncCount })}
           </button>
         </div>
 
@@ -430,7 +432,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             onChange={(e) => setSelectedCourseId(e.target.value)}
             className="w-full sm:w-48 md:w-56 truncate bg-raised border border-line text-ink-soft text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-cyan shrink-0"
           >
-            <option value="ALL">Todos los Cursos</option>
+            <option value="ALL">{t('todosLosCursos', 'Todos los Cursos')}</option>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title}
@@ -442,7 +444,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar clase..."
+              placeholder={t('buscarClase', 'Buscar clase...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-raised border border-line rounded-lg pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink-faint focus:outline-none focus:border-brand-cyan"
@@ -455,23 +457,23 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       {loading && meetings.length === 0 ? (
         <div className="py-20 text-center space-y-3 bg-raised/50 border border-line rounded-2xl">
           <RefreshCw className="w-8 h-8 mx-auto text-brand-cyan animate-spin" />
-          <p className="text-xs font-bold text-ink-muted">Cargando catálogo de clases sincrónicas...</p>
+          <p className="text-xs font-bold text-ink-muted">{t('cargandoCatalogoDeClasesSincronicas', 'Cargando catálogo de clases sincrónicas...')}</p>
         </div>
       ) : filteredMeetings.length === 0 ? (
         <div className="py-16 text-center space-y-3 bg-raised/50 border border-line rounded-2xl p-6">
           <Video className="w-10 h-10 mx-auto text-ink-faint" />
-          <h3 className="text-sm font-bold text-ink">No se encontraron clases</h3>
+          <h3 className="text-sm font-bold text-ink">{t('noSeEncontraronClases', 'No se encontraron clases')}</h3>
           <p className="text-xs text-ink-muted max-w-sm mx-auto">
             {searchQuery || filterType !== 'ALL' || selectedCourseId !== 'ALL'
-              ? 'No hay reuniones que coincidan con los filtros seleccionados.'
-              : 'Programa tu primera clase sincrónica con Google Meet o Jitsi Meet.'}
+              ? t('noHayReunionesQueCoincidanConLosFiltros', 'No hay reuniones que coincidan con los filtros seleccionados.')
+              : t('programaTuPrimeraClaseSincronicaCon', 'Programa tu primera clase sincrónica con Google Meet o Jitsi Meet.')}
           </p>
           <button
             onClick={openCreateModal}
             className="btn-brand-primary px-4 py-2 text-xs font-bold rounded-lg inline-flex items-center gap-2 mt-2"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Crear Clase Ahora</span>
+            <span>{t('crearClaseAhora', 'Crear Clase Ahora')}</span>
           </button>
         </div>
       ) : (
@@ -495,27 +497,27 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       {isLive ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/50 animate-pulse-slow">
                           <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
-                          🔴 ¡EN VIVO AHORA!
+                          {t('enVivoAhora2', '🔴 ¡EN VIVO AHORA!')}
                         </span>
                       ) : meeting.meetingType === 'async_record' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro font-bold bg-success/10 text-success-light border border-success/30">
                           <PlaySquare className="w-3 h-3" />
-                          Grabación Asincrónica
+                          {t('grabacionAsincronica', 'Grabación Asincrónica')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-micro font-bold bg-brand-purple/10 text-brand-purple border border-brand-purple/30">
                           <Calendar className="w-3 h-3" />
-                          Sincrónica Programada
+                          {t('sincronicaProgramada', 'Sincrónica Programada')}
                         </span>
                       )}
 
                       {/* Provider Badge */}
                       <span className="px-2 py-0.5 rounded-md bg-elevated border border-line text-micro font-bold text-ink-soft uppercase">
                         {meeting.meetingType === 'jitsi'
-                          ? 'Jitsi Meet'
+                          ? t('jitsiMeet', 'Jitsi Meet')
                           : meeting.meetingType === 'meet'
-                            ? 'Google Meet'
-                            : 'Grabación'}
+                            ? t('googleMeet', 'Google Meet')
+                            : t('grabacion', 'Grabación')}
                       </span>
                     </div>
 
@@ -524,14 +526,14 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       <button
                         onClick={() => openEditModal(meeting)}
                         className="p-1.5 rounded-lg bg-elevated hover:bg-elevated border border-line text-ink-soft hover:text-ink transition-colors"
-                        title="Editar clase"
+                        title={t('editarClase', 'Editar clase')}
                       >
                         <Pencil className="w-3.5 h-3.5 text-brand-cyan" />
                       </button>
                       <button
                         onClick={() => handleDeleteMeeting(meeting)}
                         className="p-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger-light transition-colors"
-                        title="Eliminar clase"
+                        title={t('eliminarClase', 'Eliminar clase')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -595,24 +597,24 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                         }`}
                     >
                       <Video className="w-3.5 h-3.5" />
-                      <span>{isLive ? 'Unirse a la Clase en Vivo' : 'Abrir Sala / Enlace'}</span>
+                      <span>{isLive ? t('unirseALaClaseEnVivoBoton', 'Unirse a la Clase en Vivo') : t('abrirSalaEnlace', 'Abrir Sala / Enlace')}</span>
                       <ExternalLink className="w-3 h-3 opacity-70" />
                     </a>
 
                     <button
                       onClick={() => handleCopyLink(meeting)}
                       className="px-3 py-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold transition-colors flex items-center gap-1.5"
-                      title="Copiar enlace de la clase"
+                      title={t('copiarEnlaceDeLaClase', 'Copiar enlace de la clase')}
                     >
                       {copiedId === meeting.id ? (
                         <>
                           <Check className="w-3.5 h-3.5 text-success-light" />
-                          <span className="text-success-light">¡Copiado!</span>
+                          <span className="text-success-light">{t('copiado', '¡Copiado!')}</span>
                         </>
                       ) : (
                         <>
                           <Copy className="w-3.5 h-3.5 text-ink-muted" />
-                          <span>Copiar</span>
+                          <span>{t('copiar', 'Copiar')}</span>
                         </>
                       )}
                     </button>
@@ -624,10 +626,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                             ? 'bg-danger/10 hover:bg-danger/20 border-danger/40 text-danger-light'
                             : 'bg-success/10 hover:bg-success/20 border-success/40 text-success-light'
                           }`}
-                        title={isLive ? 'Finalizar sesión en vivo' : 'Iniciar sesión en vivo ahora'}
+                        title={isLive ? t('finalizarSesionEnVivo', 'Finalizar sesión en vivo') : t('iniciarSesionEnVivoAhora', 'Iniciar sesión en vivo ahora')}
                       >
                         <Radio className="w-3.5 h-3.5" />
-                        <span>{isLive ? 'Finalizar' : 'Iniciar En Vivo'}</span>
+                        <span>{isLive ? t('finalizar', 'Finalizar') : t('iniciarEnVivo', 'Iniciar En Vivo')}</span>
                       </button>
                     )}
                   </div>
@@ -652,13 +654,13 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             <div className="space-y-1 pr-10">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-micro font-bold">
                 <Video className="w-3 h-3" />
-                <span>LiveMeetings · Programador de Sesiones</span>
+                <span>{t('livemeetingsProgramadorDeSesiones', 'LiveMeetings · Programador de Sesiones')}</span>
               </div>
               <h3 className="text-lg font-bold text-ink">
-                {editingMeeting ? 'Editar Clase' : 'Programar Nueva Clase'}
+                {editingMeeting ? t('editarClase2', 'Editar Clase') : t('programarNuevaClase', 'Programar Nueva Clase')}
               </h3>
               <p className="text-xs text-ink-muted">
-                Configura el tipo de sesión, enlace de transmisión y fecha programada.
+                {t('configuraElTipoDeSesionEnlaceDe', 'Configura el tipo de sesión, enlace de transmisión y fecha programada.')}
               </p>
             </div>
 
@@ -673,11 +675,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               {/* Título de la clase */}
               <div>
                 <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                  Título de la Clase / Sesión <span className="text-danger-light">*</span>
+                  <Trans i18nKey="tituloDeLaClaseSesion">Título de la Clase / Sesión <span className="text-danger-light">*</span></Trans>
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: Masterclass Sincrónica: Arquitectura Limpia y Despliegue"
+                  placeholder={t('ejMasterclassSincronicaArquitectura', 'Ej: Masterclass Sincrónica: Arquitectura Limpia y Despliegue')}
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   required
@@ -688,7 +690,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               {/* Selector de Tipo de Clase (Segmented Control) */}
               <div>
                 <label className="block text-xs font-bold text-ink-soft mb-2">
-                  Tipo de Clase & Proveedor
+                  {t('tipoDeClaseProveedor', 'Tipo de Clase & Proveedor')}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -706,8 +708,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   >
                     <Globe className="w-4 h-4 mb-1" />
                     <div>
-                      <p className="text-xs font-bold text-ink">Jitsi Meet</p>
-                      <p className="text-micro text-ink-faint">Sala Dinámica 1-Clic</p>
+                      <p className="text-xs font-bold text-ink">{t('jitsiMeet', 'Jitsi Meet')}</p>
+                      <p className="text-micro text-ink-faint">{t('salaDinamica1clic', 'Sala Dinámica 1-Clic')}</p>
                     </div>
                   </button>
 
@@ -724,8 +726,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   >
                     <Video className="w-4 h-4 mb-1" />
                     <div>
-                      <p className="text-xs font-bold text-ink">Google Meet</p>
-                      <p className="text-micro text-ink-faint">Enlace Corporativo</p>
+                      <p className="text-xs font-bold text-ink">{t('googleMeet', 'Google Meet')}</p>
+                      <p className="text-micro text-ink-faint">{t('enlaceCorporativo', 'Enlace Corporativo')}</p>
                     </div>
                   </button>
 
@@ -743,8 +745,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   >
                     <PlaySquare className="w-4 h-4 mb-1" />
                     <div>
-                      <p className="text-xs font-bold text-ink">Asincrónica</p>
-                      <p className="text-micro text-ink-faint">Video Grabado</p>
+                      <p className="text-xs font-bold text-ink">{t('asincronica', 'Asincrónica')}</p>
+                      <p className="text-micro text-ink-faint">{t('videoGrabado', 'Video Grabado')}</p>
                     </div>
                   </button>
                 </div>
@@ -755,10 +757,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-ink-soft">
                     {formType === 'jitsi'
-                      ? 'Enlace de Sala Jitsi Meet'
+                      ? t('enlaceDeSalaJitsiMeet', 'Enlace de Sala Jitsi Meet')
                       : formType === 'meet'
-                        ? 'Enlace de Google Meet'
-                        : 'Enlace de la Grabación (YouTube / Vimeo / Drive)'}
+                        ? t('enlaceDeGoogleMeet', 'Enlace de Google Meet')
+                        : t('enlaceDeLaGrabacionYoutubeVimeoDrive', 'Enlace de la Grabación (YouTube / Vimeo / Drive)')}
                     <span className="text-danger-light"> *</span>
                   </label>
                   {formType === 'jitsi' && (
@@ -768,7 +770,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                       className="text-micro text-brand-cyan font-bold hover:underline flex items-center gap-1"
                     >
                       <Sparkles className="w-3 h-3" />
-                      Generar Sala Nueva
+                      {t('generarSalaNueva', 'Generar Sala Nueva')}
                     </button>
                   )}
                 </div>
@@ -792,10 +794,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 </div>
                 <p className="text-micro text-ink-faint mt-1">
                   {formType === 'jitsi'
-                    ? 'Los estudiantes podrán ingresar sin instalar aplicaciones adicionales directamente desde el navegador.'
+                    ? t('losEstudiantesPodranIngresarSinInstalar', 'Los estudiantes podrán ingresar sin instalar aplicaciones adicionales directamente desde el navegador.')
                     : formType === 'meet'
-                      ? 'Pega el enlace creado desde tu cuenta de Google Workspace o Meet.'
-                      : 'Permite a los estudiantes ver la grabación de una clase previa directamente en su reproductor.'}
+                      ? t('pegaElEnlaceCreadoDesdeTuCuentaDeGoogle', 'Pega el enlace creado desde tu cuenta de Google Workspace o Meet.')
+                      : t('permiteALosEstudiantesVerLaGrabacionDe', 'Permite a los estudiantes ver la grabación de una clase previa directamente en su reproductor.')}
                 </p>
               </div>
 
@@ -803,7 +805,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                    Fecha y Hora Programada
+                    {t('fechaYHoraProgramada', 'Fecha y Hora Programada')}
                   </label>
                   <input
                     type="datetime-local"
@@ -817,17 +819,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   {formType === 'async_record' ? (
                     <div>
                       <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                        Modalidad
+                        {t('modalidad', 'Modalidad')}
                       </label>
                       <div className="w-full py-2 px-3 rounded-xl border border-success/30 bg-success/10 text-success-light text-xs font-semibold flex items-center justify-center gap-2">
                         <PlaySquare className="w-3.5 h-3.5 text-success-light" />
-                        <span>Grabación Bajo Demanda</span>
+                        <span>{t('grabacionBajoDemanda', 'Grabación Bajo Demanda')}</span>
                       </div>
                     </div>
                   ) : (
                     <div>
                       <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                        Estado de Transmisión
+                        {t('estadoDeTransmision', 'Estado de Transmisión')}
                       </label>
                       <button
                         type="button"
@@ -838,7 +840,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                           }`}
                       >
                         <Radio className={`w-3.5 h-3.5 ${formIsLive ? 'animate-pulse text-danger-light' : ''}`} />
-                        <span>{formIsLive ? '🔴 EN VIVO AHORA' : 'Programada (Offline)'}</span>
+                        <span>{formIsLive ? t('enVivoAhora3', '🔴 EN VIVO AHORA') : t('programadaOffline', 'Programada (Offline)')}</span>
                       </button>
                     </div>
                   )}
@@ -849,7 +851,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                    Curso Asociado
+                    {t('cursoAsociado', 'Curso Asociado')}
                   </label>
                   <select
                     value={formCourseId}
@@ -859,7 +861,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     }}
                     className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan"
                   >
-                    <option value="">Sin curso asignado</option>
+                    <option value="">{t('sinCursoAsignado', 'Sin curso asignado')}</option>
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.title}
@@ -870,7 +872,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                    Módulo Específico (Opcional)
+                    {t('moduloEspecificoOpcional', 'Módulo Específico (Opcional)')}
                   </label>
                   <select
                     value={formModuleId}
@@ -878,7 +880,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     disabled={!selectedCourse || selectedCourse.modules.length === 0}
                     className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand-cyan disabled:opacity-40"
                   >
-                    <option value="">Todo el curso</option>
+                    <option value="">{t('todoElCurso', 'Todo el curso')}</option>
                     {selectedCourse?.modules.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.title}
@@ -891,11 +893,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               {/* Descripción opcional */}
               <div>
                 <label className="block text-xs font-bold text-ink-soft mb-1.5">
-                  Descripción o Temas a Tratar (Opcional)
+                  {t('descripcionOTemasATratarOpcional', 'Descripción o Temas a Tratar (Opcional)')}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Detalles sobre los puntos que se abordarán durante la sesión..."
+                  placeholder={t('detallesSobreLosPuntosQueSeAbordaran', 'Detalles sobre los puntos que se abordarán durante la sesión...')}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink placeholder-slate-600 focus:outline-none focus:border-brand-cyan resize-none"
@@ -909,7 +911,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 rounded-lg bg-elevated hover:bg-elevated border border-line text-xs font-bold text-ink-soft transition-colors"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -919,12 +921,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   {saving ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Guardando...</span>
+                      <span>{t('guardando', 'Guardando...')}</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-3.5 h-3.5" />
-                      <span>{editingMeeting ? 'Guardar Cambios' : 'Crear Clase'}</span>
+                      <span>{editingMeeting ? t('guardarCambios2', 'Guardar Cambios') : t('crearClase', 'Crear Clase')}</span>
                     </>
                   )}
                 </button>

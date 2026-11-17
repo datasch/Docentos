@@ -29,6 +29,7 @@ import { Module, QuizQuestion } from '../types';
 import { api } from '../lib/api';
 import { setModuleQuiz, getModuleQuestions } from '../plugins/QuizzesPlugin';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+import { Trans, useTranslation } from 'react-i18next'
 
 function normalizeText(str: string): string {
   return (str || '')
@@ -110,6 +111,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const { t } = useTranslation()
   useBodyScrollLock(isOpen);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -133,7 +135,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       }
     }
     setQuestions(updated);
-    setSuccessMessage(`✨ Se corrigieron automáticamente ${count} ${count === 1 ? 'respuesta' : 'respuestas'} para que coincidan con su justificación pedagógica.`);
+    setSuccessMessage(t('seCorrigieronAutomaticamenteCount', { defaultValue_one: '✨ Se corrigieron automáticamente {{count}} respuesta para que coincidan con su justificación pedagógica.', defaultValue_other: '✨ Se corrigieron automáticamente {{count}} respuestas para que coincidan con su justificación pedagógica.', count: count }));
   };
 
   useEffect(() => {
@@ -221,10 +223,10 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       const res = await api.generateModuleQuiz(module.id, 4);
       if (res.success && res.questions) {
         setQuestions(res.questions);
-        setSuccessMessage('✨ ¡Examen generado automáticamente con IA! Revisa las preguntas y guarda los cambios.');
+        setSuccessMessage(t('examenGeneradoAutomaticamenteConIaRevisa', '✨ ¡Examen generado automáticamente con IA! Revisa las preguntas y guarda los cambios.'));
       }
     } catch (err: any) {
-      setError(err.message || 'No se pudo generar el examen con IA.');
+      setError(err.message || t('noSePudoGenerarElExamenConIa', 'No se pudo generar el examen con IA.'));
     } finally {
       setGeneratingAi(false);
     }
@@ -236,7 +238,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       const q = validQuestions[i];
       const filledOptions = q.options.filter((o) => o.trim().length > 0);
       if (filledOptions.length < 2) {
-        setError(`La pregunta #${i + 1} debe tener al menos 2 opciones de respuesta rellenas.`);
+        setError(t('laPreguntaIDebeTenerAlMenos2OpcionesDe', 'La pregunta #{{i}} debe tener al menos 2 opciones de respuesta rellenas.', { i: i + 1 }));
         return;
       }
     }
@@ -247,7 +249,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       setSuccessMessage(null);
       const res = await api.saveModuleQuiz(module.id, validQuestions);
       setModuleQuiz(module.id, res.questions || validQuestions);
-      setSuccessMessage('✅ ¡Evaluación guardada exitosamente!');
+      setSuccessMessage(t('evaluacionGuardadaExitosamente', '✅ ¡Evaluación guardada exitosamente!'));
       if (onSaved) {
         onSaved(res.questions || validQuestions);
       }
@@ -255,23 +257,23 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Error al guardar la evaluación.');
+      setError(err.message || t('errorAlGuardarLaEvaluacion', 'Error al guardar la evaluación.'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteAll = async () => {
-    if (!window.confirm('¿Estás seguro de eliminar todas las preguntas de este examen?')) return;
+    if (!window.confirm(t('estasSeguroDeEliminarTodasLasPreguntasDe', '¿Estás seguro de eliminar todas las preguntas de este examen?'))) return;
     try {
       setSaving(true);
       await api.deleteModuleQuiz(module.id);
       setModuleQuiz(module.id, []);
       setQuestions([]);
-      setSuccessMessage('Evaluación eliminada del módulo.');
+      setSuccessMessage(t('evaluacionEliminadaDelModulo', 'Evaluación eliminada del módulo.'));
       if (onSaved) onSaved([]);
     } catch (err: any) {
-      setError(err.message || 'Error al eliminar');
+      setError(err.message || t('errorAlEliminar', 'Error al eliminar'));
     } finally {
       setSaving(false);
     }
@@ -297,10 +299,10 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                Gestión de Examen: {module.title}
+                {t('gestionDeExamenTitle', 'Gestión de Examen: {{title}}', { title: module.title })}
               </h2>
               <p className="text-xs text-slate-400">
-                Configura preguntas interactivas y retroalimentación para la evaluación del módulo
+                {t('configuraPreguntasInteractivasY', 'Configura preguntas interactivas y retroalimentación para la evaluación del módulo')}
               </p>
             </div>
           </div>
@@ -322,7 +324,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20 disabled:opacity-50 transition-all cursor-pointer"
             >
               {generatingAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
-              <span>{generatingAi ? 'Generando con IA...' : '✨ Generar Examen con IA'}</span>
+              <span>{generatingAi ? t('generandoConIa', 'Generando con IA...') : t('generarExamenConIa', '✨ Generar Examen con IA')}</span>
             </button>
 
             <button
@@ -332,7 +334,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               className="px-3.5 py-2 bg-[#232338] hover:bg-line border border-[#3b3b5c] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4 text-brand-cyan" />
-              <span>Añadir Pregunta</span>
+              <span>{t('anadirPregunta', 'Añadir Pregunta')}</span>
             </button>
 
             {mismatches.length > 0 && (
@@ -341,17 +343,17 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                 onClick={handleReconcileAllMismatches}
                 disabled={generatingAi || saving}
                 className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm animate-pulse"
-                title="Alinear las respuestas marcadas con su justificación pedagógica"
+                title={t('alinearLasRespuestasMarcadasConSu', 'Alinear las respuestas marcadas con su justificación pedagógica')}
               >
                 <Wand2 className="w-4 h-4 text-amber-400" />
-                <span>Auto-conciliar ({mismatches.length})</span>
+                <span>{t('autoconciliarLength', 'Auto-conciliar ({{length}})', { length: mismatches.length })}</span>
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-slate-400 bg-[#0f0f18] px-3 py-1.5 rounded-lg border border-line">
-              {questions.length} {questions.length === 1 ? 'pregunta configurada' : 'preguntas configuradas'}
+              {questions.length} {t('preguntasConfiguradas', { defaultValue_one: 'pregunta configurada', defaultValue_other: 'preguntas configuradas', count: questions.length })}
             </span>
           </div>
         </div>
@@ -376,14 +378,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-brand-cyan" />
-              <p className="text-xs">Cargando datos de evaluación...</p>
+              <p className="text-xs">{t('cargandoDatosDeEvaluacion', 'Cargando datos de evaluación...')}</p>
             </div>
           ) : questions.length === 0 ? (
             <div className="text-center py-12 px-4 border-2 border-dashed border-line rounded-2xl space-y-3">
               <BookOpen className="w-10 h-10 text-slate-500 mx-auto" />
-              <h3 className="text-sm font-bold text-white">Este módulo aún no tiene examen configurado</h3>
+              <h3 className="text-sm font-bold text-white">{t('esteModuloAunNoTieneExamenConfigurado', 'Este módulo aún no tiene examen configurado')}</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Puedes generar un examen completo con Inteligencia Artificial en segundos o crear preguntas personalizadas manualmente.
+                {t('puedesGenerarUnExamenCompletoCon', 'Puedes generar un examen completo con Inteligencia Artificial en segundos o crear preguntas personalizadas manualmente.')}
               </p>
               <div className="flex justify-center gap-3 pt-2">
                 <button
@@ -393,7 +395,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                   className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Generar con IA</span>
+                  <span>{t('generarConIa', 'Generar con IA')}</span>
                 </button>
                 <button
                   type="button"
@@ -401,7 +403,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                   className="px-4 py-2 bg-raised border border-line text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-line"
                 >
                   <Plus className="w-4 h-4 text-brand-cyan" />
-                  <span>Crear Manualmente</span>
+                  <span>{t('crearManualmente', 'Crear Manualmente')}</span>
                 </button>
               </div>
             </div>
@@ -415,10 +417,10 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                 <div className="flex items-center justify-between gap-2 border-b border-[#232338] pb-3">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded-md">
-                      Pregunta #{qIdx + 1}
+                      {t('preguntaNumero', 'Pregunta #')}{qIdx + 1}
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      Selecciona la opción correcta con el botón circular
+                      {t('seleccionaLaOpcionCorrectaConElBoton', 'Selecciona la opción correcta con el botón circular')}
                     </span>
                   </div>
 
@@ -428,7 +430,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                       onClick={() => handleMoveQuestion(qIdx, -1)}
                       disabled={qIdx === 0}
                       className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-raised"
-                      title="Mover arriba"
+                      title={t('moverArriba', 'Mover arriba')}
                     >
                       <ChevronUp className="w-4 h-4" />
                     </button>
@@ -437,7 +439,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                       onClick={() => handleMoveQuestion(qIdx, 1)}
                       disabled={qIdx === questions.length - 1}
                       className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-raised"
-                      title="Mover abajo"
+                      title={t('moverAbajo', 'Mover abajo')}
                     >
                       <ChevronDown className="w-4 h-4" />
                     </button>
@@ -445,7 +447,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                       type="button"
                       onClick={() => handleDeleteQuestion(qIdx)}
                       className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded ml-2"
-                      title="Eliminar pregunta"
+                      title={t('eliminarPregunta', 'Eliminar pregunta')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -454,19 +456,19 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
 
                 {/* Enunciado */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-300">Enunciado de la Pregunta</label>
+                  <label className="text-xs font-bold text-slate-300">{t('enunciadoDeLaPregunta', 'Enunciado de la Pregunta')}</label>
                   <input
                     type="text"
                     value={q.text}
                     onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
-                    placeholder="Ej: ¿Cuál es el concepto central de esta lección?"
+                    placeholder={t('ejCualEsElConceptoCentralDeEstaLeccion', 'Ej: ¿Cuál es el concepto central de esta lección?')}
                     className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan"
                   />
                 </div>
 
                 {/* 4 Opciones */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-300">Opciones de Respuesta</label>
+                  <label className="text-xs font-bold text-slate-300">{t('opcionesDeRespuesta', 'Opciones de Respuesta')}</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {q.options.map((opt, optIdx) => {
                       const isCorrect = q.correctIndex === optIdx;
@@ -494,12 +496,12 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                             value={opt}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => handleUpdateOption(qIdx, optIdx, e.target.value)}
-                            placeholder={`Opción ${String.fromCharCode(65 + optIdx)}`}
+                            placeholder={t('opcionVal', 'Opción {{val}}', { val: String.fromCharCode(65 + optIdx) })}
                             className="flex-1 bg-transparent border-none text-xs text-white placeholder-slate-600 focus:outline-none"
                           />
                           {isCorrect && (
                             <span className="text-[10px] uppercase font-black bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
-                              Correcta
+                              {t('correcta', 'Correcta')}
                             </span>
                           )}
                         </div>
@@ -517,9 +519,16 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                       <div className="flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
                         <span>
-                          La justificación pedagógica parece describir la{' '}
-                          <strong className="underline underline-offset-2">Opción {String.fromCharCode(65 + mismatchIdx)}</strong>{' '}
-                          (<em>&ldquo;{q.options[mismatchIdx]?.slice(0, 45)}...&rdquo;</em>) en lugar de la {String.fromCharCode(65 + q.correctIndex)}.
+                          <Trans
+                            i18nKey="justificacionDescribeOtraOpcion"
+                            defaults="La justificación pedagógica parece describir la <1>Opción {{mismatch}}</1> (<3>“{{text}}...”</3>) en lugar de la {{correct}}."
+                            values={{
+                              mismatch: String.fromCharCode(65 + mismatchIdx),
+                              text: q.options[mismatchIdx]?.slice(0, 45) ?? '',
+                              correct: String.fromCharCode(65 + q.correctIndex),
+                            }}
+                            components={{ 1: <strong className="underline underline-offset-2" />, 3: <em /> }}
+                          />
                         </span>
                       </div>
                       <button
@@ -527,7 +536,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                         onClick={() => handleSetCorrectIndex(qIdx, mismatchIdx)}
                         className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0"
                       >
-                        Marcar Opción {String.fromCharCode(65 + mismatchIdx)} como correcta
+                        {t('marcarOpcionComoCorrecta', 'Marcar Opción {{letter}} como correcta', { letter: String.fromCharCode(65 + mismatchIdx) })}
                       </button>
                     </div>
                   );
@@ -537,13 +546,13 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                 <div className="space-y-1 pt-1">
                   <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                     <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Explicación / Justificación pedagógica (mostrada al calificar)</span>
+                    <span>{t('explicacionJustificacionPedagogica', 'Explicación / Justificación pedagógica (mostrada al calificar)')}</span>
                   </label>
                   <textarea
                     rows={2}
                     value={q.explanation}
                     onChange={(e) => handleUpdateExplanation(qIdx, e.target.value)}
-                    placeholder="Explica por qué la respuesta seleccionada es la correcta..."
+                    placeholder={t('explicaPorQueLaRespuestaSeleccionadaEsLa', 'Explica por qué la respuesta seleccionada es la correcta...')}
                     className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 resize-none"
                   />
                 </div>
@@ -562,7 +571,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                 disabled={saving}
                 className="text-xs text-red-400 hover:text-red-300 font-semibold px-2 py-1 hover:bg-red-500/10 rounded-lg transition-colors"
               >
-                Eliminar todo
+                {t('eliminarTodo', 'Eliminar todo')}
               </button>
             )}
           </div>
@@ -574,7 +583,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               disabled={saving}
               className="px-4 py-2 bg-raised hover:bg-line text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all"
             >
-              Cancelar
+              {t('cancelar', 'Cancelar')}
             </button>
             <button
               type="button"
@@ -583,7 +592,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
               className="btn-brand-primary px-5 py-2 text-xs font-extrabold flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/10"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>{saving ? 'Guardando...' : 'Guardar Evaluación'}</span>
+              <span>{saving ? t('guardando', 'Guardando...') : t('guardarEvaluacion', 'Guardar Evaluación')}</span>
             </button>
           </div>
         </div>

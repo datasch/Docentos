@@ -7,6 +7,7 @@
  */
 
 import { AcademiaPlugin, Meeting, MeetingType } from '../types';
+import i18next from 'i18next'
 
 export const liveMeetingsPlugin: AcademiaPlugin = {
   id: 'live-meetings',
@@ -109,22 +110,22 @@ export function formatMeetingScheduledAt(dateString: string): {
 
   let relativeLabel = '';
   if (Math.abs(diffMs) < 15 * 60 * 1000) {
-    relativeLabel = 'Comienza pronto o en curso';
+    relativeLabel = i18next.t('comienzaProntoOEnCurso', 'Comienza pronto o en curso');
   } else if (isUpcoming) {
     const hours = Math.round(diffMs / (1000 * 60 * 60));
     if (hours < 24) {
-      relativeLabel = `En ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+      relativeLabel = i18next.t('enCountHoras', { defaultValue_one: 'En {{count}} hora', defaultValue_other: 'En {{count}} horas', count: hours });
     } else {
       const days = Math.round(hours / 24);
-      relativeLabel = `En ${days} ${days === 1 ? 'día' : 'días'}`;
+      relativeLabel = i18next.t('enCountDias', { defaultValue_one: 'En {{count}} día', defaultValue_other: 'En {{count}} días', count: days });
     }
   } else {
     const hours = Math.round(Math.abs(diffMs) / (1000 * 60 * 60));
     if (hours < 24) {
-      relativeLabel = `Hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+      relativeLabel = i18next.t('haceCountHoras', { defaultValue_one: 'Hace {{count}} hora', defaultValue_other: 'Hace {{count}} horas', count: hours });
     } else {
       const days = Math.round(hours / 24);
-      relativeLabel = `Hace ${days} ${days === 1 ? 'día' : 'días'}`;
+      relativeLabel = i18next.t('haceCountDias', { defaultValue_one: 'Hace {{count}} día', defaultValue_other: 'Hace {{count}} días', count: days });
     }
   }
 

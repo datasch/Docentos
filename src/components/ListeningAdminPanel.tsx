@@ -26,6 +26,8 @@ import type {
   ListeningAdminResponse,
   StaffListeningEntry,
 } from '../lib/listeningTypes';
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 
 const PERIODS = [
   { days: 30, label: '30 días' },
@@ -43,11 +45,11 @@ function moodFace(avg: number | null) {
 }
 
 function npsVerdict(score: number | null): { label: string; tone: string } {
-  if (score === null) return { label: 'Sin respuestas todavía', tone: 'text-ink-muted' };
-  if (score >= 50) return { label: 'Excelente', tone: 'text-success-light' };
-  if (score >= 30) return { label: 'Bueno', tone: 'text-success-light' };
-  if (score >= 0) return { label: 'Por mejorar', tone: 'text-warning-light' };
-  return { label: 'Crítico', tone: 'text-danger-light' };
+  if (score === null) return { label: i18next.t('sinRespuestasTodavia', 'Sin respuestas todavía'), tone: 'text-ink-muted' };
+  if (score >= 50) return { label: i18next.t('excelente', 'Excelente'), tone: 'text-success-light' };
+  if (score >= 30) return { label: i18next.t('bueno', 'Bueno'), tone: 'text-success-light' };
+  if (score >= 0) return { label: i18next.t('porMejorar', 'Por mejorar'), tone: 'text-warning-light' };
+  return { label: i18next.t('critico', 'Crítico'), tone: 'text-danger-light' };
 }
 
 function moodTone(avg: number | null): string {
@@ -66,9 +68,9 @@ const STATUS_TONE: Record<ListeningStatus, string> = {
 
 function formatHours(hours: number | null): string {
   if (hours === null) return '—';
-  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  if (hours < 1) return i18next.t('valMin', '{{val}} min', { val: Math.round(hours * 60) });
   if (hours < 48) return `${hours.toFixed(1)} h`;
-  return `${(hours / 24).toFixed(1)} días`;
+  return i18next.t('valDias', '{{val}} días', { val: (hours / 24).toFixed(1) });
 }
 
 const Card: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({
@@ -110,6 +112,7 @@ const BarRow: React.FC<{ label: string; count: number; max: number; avgMood: num
 );
 
 export const ListeningAdminPanel: React.FC = () => {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState<ListeningAdminFilter>({ days: 90, status: '', type: '', topic: '', courseId: '', mood: '' });
   const [data, setData] = useState<ListeningAdminResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,11 +126,11 @@ export const ListeningAdminPanel: React.FC = () => {
     try {
       setData(await api.getListeningAdmin(filter));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el buzón');
+      setError(loadError instanceof Error ? loadError.message : t('noSePudoCargarElBuzon', 'No se pudo cargar el buzón'));
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, t]);
 
   useEffect(() => {
     void load();
@@ -150,7 +153,7 @@ export const ListeningAdminPanel: React.FC = () => {
       // El estado cambió, y con él los pendientes del resumen.
       void load();
     } catch (replyError) {
-      setError(replyError instanceof Error ? replyError.message : 'No se pudo responder');
+      setError(replyError instanceof Error ? replyError.message : t('noSePudoResponder', 'No se pudo responder'));
     } finally {
       setBusyId(null);
     }
@@ -163,7 +166,7 @@ export const ListeningAdminPanel: React.FC = () => {
       replaceEntry((await api.updateListening(entry.id, { status })).entry);
       void load();
     } catch (statusError) {
-      setError(statusError instanceof Error ? statusError.message : 'No se pudo cambiar el estado');
+      setError(statusError instanceof Error ? statusError.message : t('noSePudoCambiarElEstado', 'No se pudo cambiar el estado'));
     } finally {
       setBusyId(null);
     }
@@ -183,11 +186,10 @@ export const ListeningAdminPanel: React.FC = () => {
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
             <HeartHandshake aria-hidden className="h-5 w-5 text-brand-cyan" />
-            Buzón de Escucha
+            {t('buzonDeEscuchaTitulo', 'Buzón de Escucha')}
           </h2>
           <p className="mt-0.5 text-xs text-ink-muted">
-            Lo que sienten y piden tus estudiantes, en cifras. El NPS cuenta a cada persona una vez: su nota más reciente
-            del periodo.
+            {t('loQueSientenYPidenTusEstudiantesEnCifras', 'Lo que sienten y piden tus estudiantes, en cifras. El NPS cuenta a cada persona una vez: su nota más reciente del periodo.')}
           </p>
         </div>
         <button
@@ -196,12 +198,12 @@ export const ListeningAdminPanel: React.FC = () => {
           className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-xs font-bold text-ink-soft hover:border-brand-cyan hover:text-brand-cyan"
         >
           <Download aria-hidden className="h-4 w-4" />
-          Exportar CSV
+          {t('exportarCsv', 'Exportar CSV')}
         </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Periodo">
+        <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label={t('periodo', 'Periodo')}>
           {PERIODS.map((period) => (
             <button
               key={period.days}
@@ -218,12 +220,12 @@ export const ListeningAdminPanel: React.FC = () => {
         </div>
 
         <select
-          aria-label="Filtrar por curso"
+          aria-label={t('filtrarPorCurso', 'Filtrar por curso')}
           className={selectClass}
           value={filter.courseId || ''}
           onChange={(event) => setFilter((current) => ({ ...current, courseId: event.target.value }))}
         >
-          <option value="">Todos los cursos</option>
+          <option value="">{t('todosLosCursos2', 'Todos los cursos')}</option>
           {data?.courses.map((course) => (
             <option key={course.id} value={course.id}>
               {course.title}
@@ -231,12 +233,12 @@ export const ListeningAdminPanel: React.FC = () => {
           ))}
         </select>
         <select
-          aria-label="Filtrar por tipo"
+          aria-label={t('filtrarPorTipo', 'Filtrar por tipo')}
           className={selectClass}
           value={filter.type || ''}
           onChange={(event) => setFilter((current) => ({ ...current, type: event.target.value as ListeningAdminFilter['type'] }))}
         >
-          <option value="">Todos los tipos</option>
+          <option value="">{t('todosLosTipos', 'Todos los tipos')}</option>
           {LISTENING_TYPES.map((value) => (
             <option key={value} value={value}>
               {LISTENING_TYPE_LABELS[value]}
@@ -244,12 +246,12 @@ export const ListeningAdminPanel: React.FC = () => {
           ))}
         </select>
         <select
-          aria-label="Filtrar por tema"
+          aria-label={t('filtrarPorTema', 'Filtrar por tema')}
           className={selectClass}
           value={filter.topic || ''}
           onChange={(event) => setFilter((current) => ({ ...current, topic: event.target.value as ListeningAdminFilter['topic'] }))}
         >
-          <option value="">Todos los temas</option>
+          <option value="">{t('todosLosTemas', 'Todos los temas')}</option>
           {LISTENING_TOPICS.map((value) => (
             <option key={value} value={value}>
               {LISTENING_TOPIC_LABELS[value]}
@@ -257,12 +259,12 @@ export const ListeningAdminPanel: React.FC = () => {
           ))}
         </select>
         <select
-          aria-label="Filtrar por estado"
+          aria-label={t('filtrarPorEstado', 'Filtrar por estado')}
           className={selectClass}
           value={filter.status || ''}
           onChange={(event) => setFilter((current) => ({ ...current, status: event.target.value as ListeningAdminFilter['status'] }))}
         >
-          <option value="">Todos los estados</option>
+          <option value="">{t('todosLosEstados', 'Todos los estados')}</option>
           {LISTENING_STATUSES.map((value) => (
             <option key={value} value={value}>
               {LISTENING_STATUS_LABELS[value]}
@@ -270,14 +272,14 @@ export const ListeningAdminPanel: React.FC = () => {
           ))}
         </select>
         <select
-          aria-label="Filtrar por carita"
+          aria-label={t('filtrarPorCarita', 'Filtrar por carita')}
           className={selectClass}
           value={filter.mood || ''}
           onChange={(event) =>
             setFilter((current) => ({ ...current, mood: event.target.value ? Number(event.target.value) : '' }))
           }
         >
-          <option value="">Cualquier carita</option>
+          <option value="">{t('cualquierCarita', 'Cualquier carita')}</option>
           {MOODS.map((mood) => (
             <option key={mood.value} value={mood.value}>
               {mood.emoji} {mood.value} · {mood.label}
@@ -292,12 +294,12 @@ export const ListeningAdminPanel: React.FC = () => {
         </div>
       )}
 
-      {loading && !data && <p className="text-sm text-ink-muted">Cargando el buzón...</p>}
+      {loading && !data && <p className="text-sm text-ink-muted">{t('cargandoElBuzon', 'Cargando el buzón...')}</p>}
 
       {summary && (
         <>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <Card title="NPS">
+            <Card title={t('nps', 'NPS')}>
               <p className="flex items-baseline gap-2">
                 <span className={`text-4xl font-bold tabular-nums ${verdict.tone}`}>
                   {summary.nps.score === null ? '—' : summary.nps.score}
@@ -310,15 +312,15 @@ export const ListeningAdminPanel: React.FC = () => {
                 <div className="bg-danger" style={{ width: `${pct(summary.nps.detractors, npsTotal)}%` }} />
               </div>
               <p className="mt-2 text-[11px] text-ink-muted">
-                <span className="text-success-light">{summary.nps.promoters} promotores</span> ·{' '}
-                <span className="text-warning-light">{summary.nps.passives} pasivos</span> ·{' '}
-                <span className="text-danger-light">{summary.nps.detractors} detractores</span>
+                <span className="text-success-light">{t('promotersPromotores', '{{promoters}} promotores', { promoters: summary.nps.promoters })}</span> ·{' '}
+                <span className="text-warning-light">{t('passivesPasivos', '{{passives}} pasivos', { passives: summary.nps.passives })}</span> ·{' '}
+                <span className="text-danger-light">{t('detractorsDetractores', '{{detractors}} detractores', { detractors: summary.nps.detractors })}</span>
                 <br />
-                {npsTotal} {npsTotal === 1 ? 'persona respondió' : 'personas respondieron'} (escala de −100 a 100)
+                {t('countPersonasRespondieronEscalaDe100A100', { defaultValue_one: '{{count}} persona respondió (escala de −100 a 100)', defaultValue_other: '{{count}} personas respondieron (escala de −100 a 100)', count: npsTotal })}
               </p>
             </Card>
 
-            <Card title="Ánimo medio (1-5)">
+            <Card title={t('animoMedio15', 'Ánimo medio (1-5)')}>
               <p className="flex items-center gap-3">
                 <span aria-hidden className="text-4xl leading-none">
                   {avgFace?.emoji ?? '—'}
@@ -333,27 +335,27 @@ export const ListeningAdminPanel: React.FC = () => {
                 <div className="bg-danger" style={{ width: `${pct(summary.sentiment.negative, summary.total)}%` }} />
               </div>
               <p className="mt-2 text-[11px] text-ink-muted">
-                {summary.sentiment.positive} positivos · {summary.sentiment.neutral} neutros · {summary.sentiment.negative} negativos
+                {t('positivePositivosNeutralNeutrosNegative', '{{positive}} positivos · {{neutral}} neutros · {{negative}} negativos', { positive: summary.sentiment.positive, neutral: summary.sentiment.neutral, negative: summary.sentiment.negative })}
               </p>
             </Card>
 
-            <Card title="Mensajes">
+            <Card title={t('mensajes', 'Mensajes')}>
               <p className="text-4xl font-bold tabular-nums text-ink">{summary.total}</p>
               <p className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-muted">
                 <Inbox aria-hidden className="h-3.5 w-3.5" />
-                <span className={summary.pending > 0 ? 'font-bold text-warning-light' : ''}>{summary.pending} por responder</span>
-                · {summary.answered} atendidos
+                <span className={summary.pending > 0 ? 'font-bold text-warning-light' : ''}>{t('pendingPorResponder', '{{pending}} por responder', { pending: summary.pending })}</span>
+                {t('answeredAtendidos', '· {{answered}} atendidos', { answered: summary.answered })}
               </p>
             </Card>
 
-            <Card title="Tiempo medio de respuesta">
+            <Card title={t('tiempoMedioDeRespuesta', 'Tiempo medio de respuesta')}>
               <p className="text-4xl font-bold tabular-nums text-ink">{formatHours(summary.avgResponseHours)}</p>
-              <p className="mt-3 text-[11px] text-ink-muted">Desde que llega el mensaje hasta la primera respuesta del equipo.</p>
+              <p className="mt-3 text-[11px] text-ink-muted">{t('desdeQueLlegaElMensajeHastaLaPrimera', 'Desde que llega el mensaje hasta la primera respuesta del equipo.')}</p>
             </Card>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-3">
-            <Card title="Cómo se sienten">
+            <Card title={t('comoSeSienten', 'Cómo se sienten')}>
               <ul className="space-y-2">
                 {[...MOODS].reverse().map((mood) => {
                   const count = summary.moodDistribution[String(mood.value) as '1'];
@@ -378,9 +380,9 @@ export const ListeningAdminPanel: React.FC = () => {
               </ul>
             </Card>
 
-            <Card title="Por tema">
+            <Card title={t('porTema', 'Por tema')}>
               {summary.byTopic.length === 0 ? (
-                <p className="text-xs text-ink-muted">Sin datos.</p>
+                <p className="text-xs text-ink-muted">{t('sinDatos', 'Sin datos.')}</p>
               ) : (
                 <ul className="space-y-2.5">
                   {summary.byTopic.map((item) => (
@@ -390,9 +392,9 @@ export const ListeningAdminPanel: React.FC = () => {
               )}
             </Card>
 
-            <Card title="Por tipo de mensaje">
+            <Card title={t('porTipoDeMensaje', 'Por tipo de mensaje')}>
               {summary.byType.length === 0 ? (
-                <p className="text-xs text-ink-muted">Sin datos.</p>
+                <p className="text-xs text-ink-muted">{t('sinDatos', 'Sin datos.')}</p>
               ) : (
                 <ul className="space-y-2.5">
                   {summary.byType.map((item) => (
@@ -404,9 +406,9 @@ export const ListeningAdminPanel: React.FC = () => {
           </div>
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <Card title="Por curso">
+            <Card title={t('porCurso', 'Por curso')}>
               {summary.byCourse.length === 0 ? (
-                <p className="text-xs text-ink-muted">Todavía nadie ha relacionado un mensaje con un curso.</p>
+                <p className="text-xs text-ink-muted">{t('todaviaNadieHaRelacionadoUnMensajeConUn', 'Todavía nadie ha relacionado un mensaje con un curso.')}</p>
               ) : (
                 <ul className="space-y-2.5">
                   {summary.byCourse.slice(0, 8).map((item) => (
@@ -416,23 +418,23 @@ export const ListeningAdminPanel: React.FC = () => {
                       count={item.count}
                       max={summary.byCourse[0].count}
                       avgMood={item.avgMood}
-                      extra={item.nps === null ? '' : ` · NPS ${item.nps}`}
+                      extra={item.nps === null ? '' : t('npsNps', '· NPS {{nps}}', { nps: item.nps })}
                     />
                   ))}
                 </ul>
               )}
             </Card>
 
-            <Card title="Tendencia semanal">
+            <Card title={t('tendenciaSemanal', 'Tendencia semanal')}>
               {summary.weekly.length === 0 ? (
-                <p className="text-xs text-ink-muted">Sin datos.</p>
+                <p className="text-xs text-ink-muted">{t('sinDatos', 'Sin datos.')}</p>
               ) : (
-                <div className="flex h-32 items-end gap-1.5" role="img" aria-label="Mensajes por semana, coloreados por ánimo medio">
+                <div className="flex h-32 items-end gap-1.5" role="img" aria-label={t('mensajesPorSemanaColoreadosPorAnimoMedio', 'Mensajes por semana, coloreados por ánimo medio')}>
                   {summary.weekly.slice(-16).map((week) => (
                     <div
                       key={week.weekStart}
                       className="group relative flex flex-1 flex-col justify-end"
-                      title={`Semana del ${week.weekStart}: ${week.count} mensajes · ánimo ${week.avgMood ?? '—'} · NPS ${week.nps ?? '—'}`}
+                      title={t('semanaDelWeekStartCountMensajesAnimoAvg', 'Semana del {{weekStart}}: {{count}} mensajes · ánimo {{avgMood}} · NPS {{nps}}', { weekStart: week.weekStart, count: week.count, avgMood: week.avgMood ?? '—', nps: week.nps ?? '—' })}
                     >
                       <div
                         className={`w-full rounded-t ${
@@ -444,18 +446,18 @@ export const ListeningAdminPanel: React.FC = () => {
                   ))}
                 </div>
               )}
-              <p className="mt-2 text-micro text-ink-faint">Altura: mensajes. Color: ánimo medio de la semana.</p>
+              <p className="mt-2 text-micro text-ink-faint">{t('alturaMensajesColorAnimoMedioDeLaSemana', 'Altura: mensajes. Color: ánimo medio de la semana.')}</p>
             </Card>
           </div>
         </>
       )}
 
-      <section aria-label="Mensajes recibidos" className="space-y-3">
-        <h3 className="text-sm font-bold text-ink">Mensajes ({data?.entries.length ?? 0})</h3>
+      <section aria-label={t('mensajesRecibidos', 'Mensajes recibidos')} className="space-y-3">
+        <h3 className="text-sm font-bold text-ink">{t('mensajesCount', 'Mensajes ({{count}})', { count: data?.entries.length ?? 0 })}</h3>
 
         {data && data.entries.length === 0 && (
           <p className="rounded-2xl border border-dashed border-line p-6 text-center text-xs text-ink-muted">
-            No hay mensajes con estos filtros.
+            {t('noHayMensajesConEstosFiltros', 'No hay mensajes con estos filtros.')}
           </p>
         )}
 
@@ -481,7 +483,7 @@ export const ListeningAdminPanel: React.FC = () => {
                           : 'border-danger/40 text-danger-light'
                     }`}
                   >
-                    NPS {entry.npsScore}
+                    {t('npsNpsScore', 'NPS {{npsScore}}', { npsScore: entry.npsScore })}
                   </span>
                 )}
                 <span className={`ml-auto rounded-full border px-2 py-0.5 font-bold ${STATUS_TONE[entry.status]}`}>
@@ -494,7 +496,7 @@ export const ListeningAdminPanel: React.FC = () => {
               <p className="mt-2 flex items-center gap-1.5 text-micro text-ink-faint">
                 {entry.anonymous ? (
                   <>
-                    <UserX aria-hidden className="h-3 w-3" /> Anónimo
+                    <UserX aria-hidden className="h-3 w-3" /> {t('anonimo', 'Anónimo')}
                   </>
                 ) : (
                   entry.author && `${entry.author.name} · ${entry.author.email}`
@@ -505,7 +507,7 @@ export const ListeningAdminPanel: React.FC = () => {
               {entry.reply && (
                 <div className="mt-3 rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3">
                   <p className="text-[11px] font-bold text-brand-cyan">
-                    Respondido{entry.repliedBy ? ` por ${entry.repliedBy}` : ''}
+                    {t('respondido', 'Respondido')}{entry.repliedBy ? t('porRepliedBy', 'por {{repliedBy}}', { repliedBy: entry.repliedBy }) : ''}
                     {entry.repliedAt && ` · ${new Date(entry.repliedAt).toLocaleString('es')}`}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{entry.reply}</p>
@@ -514,12 +516,12 @@ export const ListeningAdminPanel: React.FC = () => {
 
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
                 <textarea
-                  aria-label={`Respuesta a: ${entry.subject}`}
+                  aria-label={t('respuestaASubject', 'Respuesta a: {{subject}}', { subject: entry.subject })}
                   rows={2}
                   maxLength={2000}
                   value={drafts[entry.id] || ''}
                   onChange={(event) => setDrafts((current) => ({ ...current, [entry.id]: event.target.value }))}
-                  placeholder={entry.reply ? 'Escribe una nueva respuesta...' : 'Responde a esta persona...'}
+                  placeholder={entry.reply ? t('escribeUnaNuevaRespuesta', 'Escribe una nueva respuesta...') : t('respondeAEstaPersona', 'Responde a esta persona...')}
                   className="w-full flex-1 rounded-xl border border-line bg-canvas/50 px-3 py-2 text-xs text-ink outline-none placeholder:text-ink-faint focus:border-brand-cyan"
                 />
                 <div className="flex shrink-0 gap-2">
@@ -530,10 +532,10 @@ export const ListeningAdminPanel: React.FC = () => {
                     className="btn-brand-primary flex items-center gap-1.5 px-3 py-2 text-xs font-bold disabled:opacity-50"
                   >
                     <Send aria-hidden className="h-3.5 w-3.5" />
-                    Responder
+                    {t('responder', 'Responder')}
                   </button>
                   <select
-                    aria-label="Cambiar estado"
+                    aria-label={t('cambiarEstado', 'Cambiar estado')}
                     className={selectClass}
                     value={entry.status}
                     disabled={busyId === entry.id}

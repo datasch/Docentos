@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import type { ImportContentKind, ImportPlan, PlannedModule } from '../types';
+import { useTranslation, Trans } from 'react-i18next'
+import i18next from 'i18next'
 
 interface DriveCourseImportProps {
   /** Se llama tras crear el curso, para que el catálogo se refresque. */
@@ -71,14 +73,9 @@ const KIND_LABEL: Record<ImportContentKind, string> = {
 function formatSize(bytes: number): string {
   if (!bytes || bytes <= 0) return '';
   const mb = bytes / (1024 * 1024);
-  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-  if (mb >= 1) return `${mb.toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
-
-/** "1 lección" y no "1 lecciones": el recuento se lee en cada módulo. */
-function plural(count: number, singular: string, many: string): string {
-  return `${count} ${count === 1 ? singular : many}`;
+  if (mb >= 1024) return i18next.t('valGb', '{{val}} GB', { val: (mb / 1024).toFixed(1) });
+  if (mb >= 1) return i18next.t('mbMb', '{{mb}} MB', { mb: mb.toFixed(1) });
+  return i18next.t('valKb', '{{val}} KB', { val: Math.max(1, Math.round(bytes / 1024)) });
 }
 
 /** Lo que quedaría seleccionado ahora mismo; refleja `planTotals` del servidor. */
@@ -128,7 +125,9 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
   onToggleLesson = noop,
   onRenameLesson = noop,
   onToggleResource = noop,
-}) => (
+}) => {
+  const { t } = useTranslation()
+  return (
   <div className="border border-[#2d2d44] rounded-xl divide-y divide-[#2d2d44] max-h-[26rem] overflow-y-auto">
     {modules.map((moduleEntry) => {
       const isOpen = expanded.has(moduleEntry.key);
@@ -143,7 +142,7 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
               checked={moduleEntry.include}
               onChange={() => onPatchModule(moduleEntry.key, { include: !moduleEntry.include })}
               className="accent-[#06b6d4] w-4 h-4 shrink-0"
-              aria-label={`Incluir el módulo ${moduleEntry.title}`}
+              aria-label={t('incluirElModuloTitle', 'Incluir el módulo {{title}}', { title: moduleEntry.title })}
             />
             <button
               type="button"
@@ -160,7 +159,7 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
               className="flex-1 bg-transparent text-xs font-bold text-white focus:outline-none focus:bg-[#0a0a0f] rounded px-1 py-0.5"
             />
             <span className="text-[11px] text-slate-500 whitespace-nowrap">
-              {plural(lessonsIn, 'lección', 'lecciones')} · {plural(resourcesIn, 'recurso', 'recursos')}
+              {t('driveLessonsCount', { count: lessonsIn, defaultValue_one: '{{count}} lección', defaultValue_other: '{{count}} lecciones' })} · {t('driveResourcesCount', { count: resourcesIn, defaultValue_one: '{{count}} recurso', defaultValue_other: '{{count}} recursos' })}
             </span>
           </div>
 
@@ -175,7 +174,7 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
                       checked={lesson.include}
                       onChange={() => onToggleLesson(moduleEntry.key, lesson.key)}
                       className="accent-[#06b6d4] w-3.5 h-3.5 shrink-0"
-                      aria-label={`Incluir la lección ${lesson.title}`}
+                      aria-label={t('incluirLaLeccionTitle', 'Incluir la lección {{title}}', { title: lesson.title })}
                     />
                     <Icon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <input
@@ -197,7 +196,7 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
 
               {moduleEntry.resources.length > 0 && (
                 <div className="pt-2 mt-1 border-t border-[#2d2d44]/60">
-                  <p className="text-[11px] font-bold text-slate-500 mb-1">Recursos del módulo</p>
+                  <p className="text-[11px] font-bold text-slate-500 mb-1">{t('recursosDelModulo', 'Recursos del módulo')}</p>
                   {moduleEntry.resources.map((resource) => {
                     const Icon = KIND_ICON[resource.contentKind] ?? FileText;
                     const size = formatSize(resource.sizeBytes);
@@ -208,7 +207,7 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
                           checked={resource.include}
                           onChange={() => onToggleResource(moduleEntry.key, resource.key)}
                           className="accent-[#06b6d4] w-3.5 h-3.5 shrink-0"
-                          aria-label={`Incluir el recurso ${resource.title}`}
+                          aria-label={t('incluirElRecursoTitle', 'Incluir el recurso {{title}}', { title: resource.title })}
                         />
                         <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span
@@ -234,9 +233,11 @@ export const PlanTree: React.FC<PlanTreeProps> = ({
       );
     })}
   </div>
-);
+)
+};
 
 export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported }) => {
+  const { t } = useTranslation()
   const [url, setUrl] = useState('');
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -286,7 +287,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
       setExpanded(new Set(res.plan.modules.slice(0, 1).map((moduleEntry) => moduleEntry.key)));
     } catch (err: any) {
       resetAll();
-      setError(err.message || 'No se pudo leer la carpeta.');
+      setError(err.message || t('noSePudoLeerLaCarpeta', 'No se pudo leer la carpeta.'));
     } finally {
       setAnalyzing(false);
     }
@@ -302,11 +303,11 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
       setPlan(res.plan);
       setNotice(
         res.organized
-          ? `Títulos y estructura pulidos con ${res.provider ?? 'IA'}${res.model ? ` (${res.model})` : ''}.`
-          : `La propuesta de la IA se descartó y el plan sigue intacto. Motivo: ${res.reason ?? 'desconocido'}`,
+          ? t('titulosYEstructuraPulidosConProviderVal', 'Títulos y estructura pulidos con {{provider}}{{val}}.', { provider: res.provider ?? 'IA', val: res.model ? ` (${res.model})` : '' })
+          : t('laPropuestaDeLaIaSeDescartoYElPlanSigue', 'La propuesta de la IA se descartó y el plan sigue intacto. Motivo: {{reason}}', { reason: res.reason ?? 'desconocido' }),
       );
     } catch (err: any) {
-      setError(err.message || 'No se pudo organizar el curso con IA.');
+      setError(err.message || t('noSePudoOrganizarElCursoConIa', 'No se pudo organizar el curso con IA.'));
     } finally {
       setOrganizing(false);
     }
@@ -327,13 +328,13 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
         onDuplicate,
       });
       const partes = [
-        `${res.created.modules} módulos`,
-        `${res.created.lessons} lecciones`,
-        `${res.created.resources} recursos`,
+        t('driveModulesCount', { count: res.created.modules, defaultValue_one: '{{count}} módulo', defaultValue_other: '{{count}} módulos' }),
+        t('driveLessonsCount', { count: res.created.lessons, defaultValue_one: '{{count}} lección', defaultValue_other: '{{count}} lecciones' }),
+        t('driveResourcesCount', { count: res.created.resources, defaultValue_one: '{{count}} recurso', defaultValue_other: '{{count}} recursos' }),
       ].join(' · ');
       const omitido =
         res.skipped.lessons + res.skipped.resources > 0
-          ? ` Se omitieron ${res.skipped.lessons} lecciones y ${res.skipped.resources} recursos que ya estaban.`
+          ? t('seOmitieronLessonsLeccionesYResources', 'Se omitieron {{lessons}} lecciones y {{resources}} recursos que ya estaban.', { lessons: res.skipped.lessons, resources: res.skipped.resources })
           : '';
       setNotice(
         `${res.mode === 'append' ? 'Contenido añadido' : 'Curso creado'}: ${partes}.${omitido}`,
@@ -345,7 +346,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
       if (err.code === 'duplicate' && err.course) {
         setDuplicate(err.course);
       } else {
-        setError(err.message || 'No se pudo crear el curso.');
+        setError(err.message || t('noSePudoCrearElCurso', 'No se pudo crear el curso.'));
       }
     } finally {
       setApplying(false);
@@ -425,12 +426,10 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
       <div className="border-b border-[#2d2d44] pb-3">
         <h3 className="font-extrabold text-base text-white flex items-center gap-2">
           <HardDrive className="w-5 h-5 text-cyan-400" />
-          Importar desde Google Drive
+          {t('importarDesdeGoogleDrive', 'Importar desde Google Drive')}
         </h3>
         <p className="text-xs text-slate-400 mt-1">
-          Pega el enlace de la carpeta del curso: se leen sus subcarpetas como módulos, los vídeos
-          como lecciones y los ZIP, PDF o subtítulos como recursos del módulo. Nada se guarda hasta
-          que lo confirmes.
+          {t('pegaElEnlaceDeLaCarpetaDelCursoSeLeenSus', 'Pega el enlace de la carpeta del curso: se leen sus subcarpetas como módulos, los vídeos como lecciones y los ZIP, PDF o subtítulos como recursos del módulo. Nada se guarda hasta que lo confirmes.')}
         </p>
       </div>
 
@@ -448,7 +447,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
           className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 whitespace-nowrap"
         >
           {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          {analyzing ? 'Leyendo carpeta…' : 'Analizar'}
+          {analyzing ? t('leyendoCarpeta', 'Leyendo carpeta…') : t('analizar', 'Analizar')}
         </button>
       </form>
 
@@ -469,26 +468,26 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
           {/* Resumen de la lectura */}
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
             <span className="px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-              {plural(totals.modules, 'módulo', 'módulos')}
+              {t('driveModulesCount', { count: totals.modules, defaultValue_one: '{{count}} módulo', defaultValue_other: '{{count}} módulos' })}
             </span>
             <span className="px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-              {plural(totals.lessons, 'lección', 'lecciones')}
+              {t('driveLessonsCount', { count: totals.lessons, defaultValue_one: '{{count}} lección', defaultValue_other: '{{count}} lecciones' })}
             </span>
             <span className="px-2 py-1 rounded-lg bg-slate-500/10 text-slate-300 border border-slate-500/30">
-              {plural(totals.resources, 'recurso', 'recursos')}
+              {t('driveResourcesCount', { count: totals.resources, defaultValue_one: '{{count}} recurso', defaultValue_other: '{{count}} recursos' })}
             </span>
             <span className="px-2 py-1 rounded-lg bg-slate-500/10 text-slate-300 border border-slate-500/30">
-              ~{totals.minutes} min
+              {t('minutesMin', '~{{minutes}} min', { minutes: totals.minutes })}
             </span>
             <span className="px-2 py-1 rounded-lg bg-slate-500/10 text-slate-400 border border-slate-500/30">
-              {plan.stats.filesFound} archivos leídos
+              {t('filesFoundArchivosLeidos', '{{filesFound}} archivos leídos', { filesFound: plan.stats.filesFound })}
             </span>
             {plan.strategy === 'public' && (
               <span
                 className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30"
-                title="Sin GOOGLE_DRIVE_API_KEY, Drive no publica la duración real y se estima por el tamaño del archivo."
+                title={t('sinGoogleDriveApiKeyDriveNoPublicaLa', 'Sin GOOGLE_DRIVE_API_KEY, Drive no publica la duración real y se estima por el tamaño del archivo.')}
               >
-                duraciones estimadas
+                {t('duracionesEstimadas', 'duraciones estimadas')}
               </span>
             )}
           </div>
@@ -496,23 +495,22 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
           {plan.incomplete && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-bold flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              La carpeta es más grande que los topes de lectura, así que esto es solo una parte.
-              Importa por subcarpetas o sube los límites de <code>DRIVE_IMPORT_*</code>.
+              <Trans i18nKey="laCarpetaEsMasGrandeQueLosTopesDeLectura">La carpeta es más grande que los topes de lectura, así que esto es solo una parte.
+              Importa por subcarpetas o sube los límites de <code>DRIVE_IMPORT_*</code>.</Trans>
             </div>
           )}
 
           {existingCourse && !duplicate && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-bold flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              Esta carpeta ya se importó como «{existingCourse.title}». Si sigues, se te preguntará
-              si añadir solo lo que falte.
+              {t('estaCarpetaYaSeImportoComoTitleSiSigues', 'Esta carpeta ya se importó como «{{title}}». Si sigues, se te preguntará si añadir solo lo que falte.', { title: existingCourse.title })}
             </div>
           )}
 
           {/* Datos del curso */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Título del Curso</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('tituloDelCurso', 'Título del Curso')}</label>
               <input
                 type="text"
                 value={plan.title}
@@ -521,7 +519,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Categoría</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('categoriaEtiqueta', 'Categoría')}</label>
               <input
                 type="text"
                 value={plan.category}
@@ -532,7 +530,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
           </div>
 
           <div>
-            <label className="text-[11px] font-bold text-slate-400 block mb-1">Descripción</label>
+            <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('descripcion', 'Descripción')}</label>
             <textarea
               rows={2}
               value={plan.description}
@@ -543,7 +541,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Precio</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('precio', 'Precio')}</label>
               <input
                 type="number"
                 min={0}
@@ -554,23 +552,23 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
               />
             </div>
             <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Moneda</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('moneda', 'Moneda')}</label>
               <select value={currency} onChange={(event) => setCurrency(event.target.value)} className={inputClass}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="MXN">MXN</option>
-                <option value="COP">COP</option>
-                <option value="ARS">ARS</option>
-                <option value="PEN">PEN</option>
+                <option value="USD">{t('usd', 'USD')}</option>
+                <option value="EUR">{t('eur', 'EUR')}</option>
+                <option value="MXN">{t('mxn', 'MXN')}</option>
+                <option value="COP">{t('cop', 'COP')}</option>
+                <option value="ARS">{t('ars', 'ARS')}</option>
+                <option value="PEN">{t('pen', 'PEN')}</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">Imagen de Portada (URL)</label>
+              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('imagenDePortadaUrl', 'Imagen de Portada (URL)')}</label>
               <input
                 type="url"
                 value={coverImage}
                 onChange={(event) => setCoverImage(event.target.value)}
-                placeholder="Opcional; se usa una por defecto"
+                placeholder={t('opcionalSeUsaUnaPorDefecto', 'Opcional; se usa una por defecto')}
                 className={inputClass}
               />
             </div>
@@ -592,7 +590,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
             <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
               <p className="text-xs font-bold text-amber-300 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                Esta carpeta ya se importó como «{duplicate.title}». ¿Qué prefieres?
+                {t('estaCarpetaYaSeImportoComoTitleQue', 'Esta carpeta ya se importó como «{{title}}». ¿Qué prefieres?', { title: duplicate.title })}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -601,7 +599,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
                   disabled={applying}
                   className="btn-brand-primary py-1.5 px-3 text-xs font-bold disabled:opacity-50"
                 >
-                  Añadir solo lo que falte
+                  {t('anadirSoloLoQueFalte', 'Añadir solo lo que falte')}
                 </button>
                 <button
                   type="button"
@@ -609,14 +607,14 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
                   disabled={applying}
                   className="py-1.5 px-3 text-xs font-bold text-slate-300 border border-[#2d2d44] rounded-xl hover:text-white disabled:opacity-50"
                 >
-                  Crear un curso aparte
+                  {t('crearUnCursoAparte', 'Crear un curso aparte')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDuplicate(null)}
                   className="py-1.5 px-3 text-xs font-bold text-slate-400 hover:text-white"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
               </div>
             </div>
@@ -632,14 +630,14 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
                   onChange={(event) => setPublished(event.target.checked)}
                   className="accent-[#06b6d4] w-4 h-4"
                 />
-                Publicar inmediatamente
+                {t('publicarInmediatamente', 'Publicar inmediatamente')}
               </label>
               <button
                 type="button"
                 onClick={resetAll}
                 className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
               >
-                <X className="w-4 h-4" /> Descartar
+                <X className="w-4 h-4" /> {t('descartar', 'Descartar')}
               </button>
             </div>
 
@@ -650,13 +648,13 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
                 disabled={organizing || applying || !aiAvailable}
                 title={
                   aiAvailable
-                    ? `Renombra y reordena con ${aiProvider}. Si su propuesta pierde alguna lección, se descarta entera.`
-                    : 'Configura OPENAI_API_KEY o DEEPSEEK_API_KEY para habilitarlo. La importación funciona igual sin IA.'
+                    ? t('renombraYReordenaConAiProviderSiSu', 'Renombra y reordena con {{aiProvider}}. Si su propuesta pierde alguna lección, se descarta entera.', { aiProvider })
+                    : t('configuraOpenaiApiKeyODeepseekApiKeyPara', 'Configura OPENAI_API_KEY o DEEPSEEK_API_KEY para habilitarlo. La importación funciona igual sin IA.')
                 }
                 className="py-2 px-4 text-xs font-bold text-cyan-300 border border-cyan-500/40 rounded-xl hover:bg-cyan-500/10 flex items-center gap-1.5 disabled:opacity-40"
               >
                 {organizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {organizing ? 'Organizando…' : 'Mejorar con IA'}
+                {organizing ? t('organizando', 'Organizando…') : t('mejorarConIa', 'Mejorar con IA')}
               </button>
 
               <button
@@ -666,7 +664,7 @@ export const DriveCourseImport: React.FC<DriveCourseImportProps> = ({ onImported
                 className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
               >
                 {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Crear curso
+                {t('crearCurso', 'Crear curso')}
               </button>
             </div>
           </div>
