@@ -12,6 +12,47 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [1.1.3] - 2026-11-17
+
+**Esta versión no migra el esquema de la base de datos.** No hace falta cambiar variables en Coolify: basta con actualizar las imágenes y reiniciar.
+
+### Added
+
+- **Toda la interfaz está disponible en cinco idiomas.** Español, inglés,
+  portugués, francés e italiano, también en el panel de mentor, el de
+  administración y los plugins. El idioma se elige en el selector de la barra;
+  se recuerda en el navegador y, si la persona no ha elegido, se usa el de la
+  instancia. Los correos no cambian y siguen saliendo como hasta ahora.
+- **Términos y privacidad en cinco idiomas, con un diseño nuevo.** Cada texto
+  tiene resumen, índice, barra de avance y el sello del documento. Las
+  traducciones son de cortesía y avisan de ello, con un botón para leer el
+  original en español. Las firmas ya registradas siguen siendo válidas porque
+  siempre se firma el texto original. Conviene que alguien con criterio legal
+  revise las traducciones.
+- **Se puede quitar un strike puesto por error.** En Admin → Personas →
+  Directorio hay un botón «−1 Strike» junto a «+1 Strike»; queda desactivado si
+  la persona no tiene strikes.
+- **Los mensajes de error del servidor salen en el idioma de la aplicación.**
+  Unos 200 avisos (acceso denegado, validaciones, fallos al guardar…) se
+  traducen según el idioma elegido, no según el del navegador.
+
+### Changed
+
+- **Las notificaciones se muestran en el idioma activo**, incluidas las que ya
+  estaban guardadas («Nueva pregunta de…», «Tu consulta fue respondida»).
+- **Las fechas y horas siguen el idioma elegido** y no el del navegador.
+- **Pasar un strike o suspender a una persona ya no devuelve al panel a
+  «Inicio».** Se queda en el directorio donde estaba trabajando.
+- **El servidor rechaza cantidades de strikes no válidas.** Antes aceptaba
+  cualquier número, incluso negativos; ahora solo admite enteros de 0 a 100.
+- **La integración continua valida los idiomas:** comprueba que ningún idioma
+  tenga claves de menos y que no queden textos sueltos sin traducir.
+
+### Fixed
+
+- **La etiqueta «MENTOR» de la lista de usuarios del panel de administración
+  se veía rota** («key 'mentor (es)' returned an object instead of string»).
+
 ## [1.1.2] - 2026-11-16
 
 **Esta versión no migra el esquema de la base de datos.**
