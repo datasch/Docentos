@@ -2370,5 +2370,9 @@
   "apiRateLimitMsg": "Veuillez patienter un moment avant de réessayer.",
   "apiServiceBusyMsg": "Le service est temporairement occupé. Veuillez réessayer dans quelques instants.",
   "platformTitle": "Plateforme Éducative",
-  "apiRateLimitMsgSeconds": "Veuillez patienter avant de réessayer. Vous pourrez réessayer dans {{seconds}} secondes."
+  "apiRateLimitMsgSeconds": "Veuillez patienter avant de réessayer. Vous pourrez réessayer dans {{seconds}} secondes.",
+  "notifFallbackStudent": "Un étudiant",
+  "notifFallbackMentor": "Votre mentor",
+  "notifQuestionTitle": "Nouvelle question de {{name}}",
+  "notifAnsweredTitle": "Votre question a reçu une réponse"
 }

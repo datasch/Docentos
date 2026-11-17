@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, CheckCheck, MessageCircleQuestion, MessageSquareReply } from 'lucide-react';
 import type { AppNotification } from '../../lib/api';
+import { notificationBody, notificationTitle } from '../../lib/notificationText';
 import { useTranslation } from 'react-i18next'
 import i18next from 'i18next'
 
@@ -127,12 +128,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline justify-between gap-2">
                           <span className={`truncate text-sm ${unread ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-white/75'}`}>
-                            {n.title}
+                            {notificationTitle(t, n)}
                           </span>
                           <span className="shrink-0 text-[11px] text-slate-400 dark:text-white/40">{relativeTime(n.createdAt)}</span>
                         </span>
                         {n.body && (
-                          <span className="mt-0.5 block text-xs leading-snug text-slate-600 dark:text-white/60 line-clamp-2 break-words">{n.body}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-slate-600 dark:text-white/60 line-clamp-2 break-words">{notificationBody(t, n)}</span>
                         )}
                         {(n.data.videoTitle || n.data.courseTitle) && (
                           <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-white/40">

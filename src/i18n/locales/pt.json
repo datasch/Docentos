@@ -2370,5 +2370,9 @@
   "apiRateLimitMsg": "Aguarde um momento antes de tentar novamente.",
   "apiServiceBusyMsg": "O serviço está temporariamente ocupado. Tente novamente em instantes.",
   "platformTitle": "Plataforma Educacional",
-  "apiRateLimitMsgSeconds": "Aguarde um momento antes de tentar novamente. Você poderá tentar em {{seconds}} segundos."
+  "apiRateLimitMsgSeconds": "Aguarde um momento antes de tentar novamente. Você poderá tentar em {{seconds}} segundos.",
+  "notifFallbackStudent": "Um aluno",
+  "notifFallbackMentor": "Seu mentor",
+  "notifQuestionTitle": "Nova pergunta de {{name}}",
+  "notifAnsweredTitle": "Sua dúvida foi respondida"
 }

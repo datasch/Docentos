@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import type { AppNotification } from '../../lib/api';
+import { notificationBody, notificationTitle } from '../../lib/notificationText';
 import { notificationIcon } from './NotificationBell';
 import { useTranslation } from 'react-i18next'
 
@@ -40,8 +41,8 @@ export const NotificationToasts: React.FC<NotificationToastsProps> = ({ toasts, 
               }}
               className="min-w-0 flex-1 text-left cursor-pointer"
             >
-              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{n.title}</span>
-              {n.body && <span className="mt-0.5 block text-xs leading-snug text-slate-600 dark:text-white/65 line-clamp-2 break-words">{n.body}</span>}
+              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{notificationTitle(t, n)}</span>
+              {n.body && <span className="mt-0.5 block text-xs leading-snug text-slate-600 dark:text-white/65 line-clamp-2 break-words">{notificationBody(t, n)}</span>}
             </button>
             <button
               type="button"

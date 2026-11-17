@@ -2370,5 +2370,9 @@
   "apiRateLimitMsg": "Attendi un momento prima di riprovare.",
   "apiServiceBusyMsg": "Il servizio è temporaneamente occupato. Riprova tra qualche istante.",
   "platformTitle": "Piattaforma Educativa",
-  "apiRateLimitMsgSeconds": "Attendi un momento prima di riprovare. Potrai riprovare tra {{seconds}} secondi."
+  "apiRateLimitMsgSeconds": "Attendi un momento prima di riprovare. Potrai riprovare tra {{seconds}} secondi.",
+  "notifFallbackStudent": "Uno studente",
+  "notifFallbackMentor": "Il tuo mentor",
+  "notifQuestionTitle": "Nuova domanda da {{name}}",
+  "notifAnsweredTitle": "La tua domanda ha ricevuto una risposta"
 }

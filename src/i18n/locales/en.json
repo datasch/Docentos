@@ -2336,5 +2336,9 @@
   "apiRateLimitMsg": "Please wait a moment before retrying.",
   "apiServiceBusyMsg": "The service is temporarily busy. Please try again in a moment.",
   "platformTitle": "Educational Platform",
-  "apiRateLimitMsgSeconds": "Please wait a moment before retrying. You can try again in {{seconds}} seconds."
+  "apiRateLimitMsgSeconds": "Please wait a moment before retrying. You can try again in {{seconds}} seconds.",
+  "notifFallbackStudent": "A student",
+  "notifFallbackMentor": "Your mentor",
+  "notifQuestionTitle": "New question from {{name}}",
+  "notifAnsweredTitle": "Your question was answered"
 }

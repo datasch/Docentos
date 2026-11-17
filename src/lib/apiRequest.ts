@@ -14,7 +14,10 @@ export function retryDelayMs(error: unknown, failures: number, baseMs = 5000): n
 
 // No se repiten operaciones de escritura: un reintento podría duplicarlas.
 export const apiRequest: typeof globalThis.fetch = async (input, init) => {
-  const response = await globalThis.fetch(input, { ...init, credentials: 'include' });
+  // El servidor responde en el idioma elegido en la app, no en el del navegador.
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Accept-Language') && i18n.language) headers.set('Accept-Language', i18n.language);
+  const response = await globalThis.fetch(input, { ...init, headers, credentials: 'include' });
   if (response.status === 429 || response.status === 503) {
     const body = await response.clone().json().catch(() => ({}));
     if (body.code === 'RATE_LIMITED' || body.code === 'RATE_LIMIT_UNAVAILABLE') {
