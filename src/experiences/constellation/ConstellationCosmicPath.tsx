@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Check, 
@@ -33,7 +33,6 @@ import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { ModuleSideDecorations } from './ConstellationPathAmbientDecorations';
 import { LogoIA } from './LogoIA';
 import './caminoIslas.css';
-import { caminoSpacing } from './caminoLayout';
 
 interface ConstellationCosmicPathProps {
   course: Course;
@@ -115,19 +114,47 @@ export const HalloweenCandyIcon: React.FC<{ className?: string; size?: number }>
 );
 
 /**
- * Genera el trazado en zigzag serpentino fluido y continuo con derivadas verticales suaves.
- * `longestTitle` es la longitud del titulo mas largo del modulo: la separacion entre
- * islas crece lo justo para que un titulo largo no choque con la isla siguiente.
+ * Rótulo de una isla. Todos miden lo mismo; un título que no cabe en dos líneas se
+ * recorta y avisa con `onOverflowChange` para que la isla muestre «Ver más».
+ */
+const IslaRotulo: React.FC<{
+  id: string;
+  title: string;
+  onOverflowChange: (id: string, overflowing: boolean) => void;
+}> = ({ id, title, onOverflowChange }) => {
+  const textRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const element = textRef.current;
+    if (!element) return;
+    const measure = () => onOverflowChange(id, element.scrollHeight - element.clientHeight > 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    // El ancho del rótulo es fijo, pero la fuente puede cargar tarde o cambiar con el tema.
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [id, title, onOverflowChange]);
+  return (
+    <span className="rotulo" aria-hidden="true">
+      <span ref={textRef} className="rotulo-texto">
+        {title}
+      </span>
+    </span>
+  );
+};
+
+/**
+ * Genera el trazado en zigzag serpentino fluido y continuo con derivadas verticales suaves
  */
 function getCaminoData(
   n: number,
   startGlobalIndex: number = 0,
   hasPrevModule: boolean = false,
-  hasNextModule: boolean = true,
-  longestTitle: number = 0
+  hasNextModule: boolean = true
 ) {
-  const { stepY, bottomOffset } = caminoSpacing(longestTitle);
+  const stepY = 165;
   const topOffset = 105;
+  const bottomOffset = 95;
 
   const height = n <= 1 ? 280 : topOffset + (n - 1) * stepY + bottomOffset;
   const vh = height;
@@ -245,15 +272,21 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   const baseRef = useRef<SVGPathElement>(null);
   const estelaRef = useRef<SVGPathElement>(null);
   const tramosRef = useRef<number[] | null>(null);
+  // Islas cuyo título no cabe en el rótulo de tamaño fijo y necesitan «Ver más».
+  const [longTitles, setLongTitles] = useState<Record<string, boolean>>({});
+  const reportOverflow = useCallback(
+    (id: string, overflowing: boolean) =>
+      setLongTitles((prev) => (prev[id] === overflowing ? prev : { ...prev, [id]: overflowing })),
+    [],
+  );
 
   const n = missions.length;
   const startGlobalIndex = missions[0]?.globalIndex ?? 0;
   const hasPrevModule = modIdx > 0;
   const hasNextModule = true; // Siempre continúa hacia el siguiente módulo o hacia el certificado
-  const longestTitle = missions.reduce((max, mission) => Math.max(max, mission.video.title?.length ?? 0), 0);
   const caminoConfig = useMemo(
-    () => getCaminoData(n, startGlobalIndex, hasPrevModule, hasNextModule, longestTitle),
-    [n, startGlobalIndex, hasPrevModule, hasNextModule, longestTitle]
+    () => getCaminoData(n, startGlobalIndex, hasPrevModule, hasNextModule),
+    [n, startGlobalIndex, hasPrevModule, hasNextModule]
   );
   const { pos, ruta, viewBox, vh, height } = caminoConfig;
 
@@ -522,6 +555,17 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
           // Si la isla está muy abajo en el contenedor (> 72%), posicionamos el popover arriba para no cortarlo
           const isNearBottom = coordinates[1] > 72;
 
+          const toggleMission = () =>
+            setSelectedNode((prev) =>
+              prev?.video.id === mission.video.id
+                ? null
+                : {
+                    video: mission.video,
+                    module: mission.module,
+                    index: mission.missionNumber,
+                  }
+            );
+
           return (
             <React.Fragment key={mission.video.id}>
               <button
@@ -534,17 +578,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                   zIndex: isSelected ? 20 : 15,
                 }}
                 aria-label={`Misión ${mission.missionNumber} de ${totalMissions}: ${mission.video.title}, estado: ${estado}`}
-                onClick={() => {
-                  setSelectedNode((prev) =>
-                    prev?.video.id === mission.video.id
-                      ? null
-                      : {
-                          video: mission.video,
-                          module: mission.module,
-                          index: mission.missionNumber,
-                        }
-                  );
-                }}
+                onClick={toggleMission}
               >
                 <span className="isla-roca" aria-hidden="true">
                   {completed ? (
@@ -566,10 +600,22 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                   )}
                 </span>
                 
-                <span className="rotulo" aria-hidden="true">
-                  {mission.video.title}
-                </span>
+                <IslaRotulo id={mission.video.id} title={mission.video.title} onOverflowChange={reportOverflow} />
               </button>
+
+              {/* El título no cabe en el rótulo: «Ver más» abre la ficha de la misión, que lo muestra completo. */}
+              {longTitles[mission.video.id] && (
+                <button
+                  type="button"
+                  className="isla-vermas"
+                  style={{ left: `${coordinates[0]}%`, top: `${coordinates[1]}%`, zIndex: isSelected ? 21 : 16 }}
+                  aria-expanded={isSelected}
+                  aria-label={`${t('catalog.seeMore', 'Ver más')}: ${mission.video.title}`}
+                  onClick={toggleMission}
+                >
+                  {t('catalog.seeMore', 'Ver más')}
+                </button>
+              )}
 
               {/* Popover / Ficha de Misión desplegada al hacer clic, con separación limpia sin solapar */}
               {isSelected && (
@@ -579,7 +625,8 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                     left: '50%',
                     ...(isNearBottom 
                       ? { bottom: `calc(${100 - coordinates[1]}% + 52px)` } 
-                      : { top: `calc(${coordinates[1]}% + 82px)` }),
+                      // Bajo el rótulo (que acaba a 95px del centro) y, si lo hay, bajo «Ver más» (acaba a 122px).
+                      : { top: `calc(${coordinates[1]}% + ${longTitles[mission.video.id] ? 130 : 103}px)` }),
                   }}
                 >
                   {isNearBottom ? (
@@ -804,7 +851,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      if (target.closest('.mision-popover') || target.closest('.isla')) {
+      if (target.closest('.mision-popover') || target.closest('.isla') || target.closest('.isla-vermas')) {
         return;
       }
       setSelectedNode(null);
