@@ -1,10 +1,11 @@
 // Barrido de idiomas: recorre pantallas en cada idioma y lista el texto visible que sigue en español.
-// Uso: node sweep.mjs [idiomas separados por coma] [escenas separadas por coma]
+// Uso: node sweep.mjs [idiomas] [escenas] [correo:contraseña para escenas con sesión]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 const BASE = 'http://localhost:3000';
 const langs = (process.argv[2] || 'en,pt,fr,it').split(',');
 const only = (process.argv[3] || '').split(',').filter(Boolean);
+const [AUTH_EMAIL, AUTH_PASS] = (process.argv[4] || '').split(':');
 const es = JSON.parse(fs.readFileSync('I:/Docentos/src/i18n/locales/es.json', 'utf8'));
 const flatEntries = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? flatEntries(v, p + k + '.') : [[p + k, String(v)]]));
 const LOC = Object.fromEntries(['es', 'en', 'pt', 'fr', 'it'].map((l) => [l, Object.fromEntries(flatEntries(JSON.parse(fs.readFileSync(`I:/Docentos/src/i18n/locales/${l}.json`, 'utf8'))))]));
@@ -77,6 +78,21 @@ async function courseTexts(ctx) {
   } catch { return new Set(); }
 }
 
+const goto = (path, wait = 3000) => async (page) => { await page.goto(BASE + path, { waitUntil: 'load' }); await page.waitForTimeout(wait); };
+const clickTabs = (path) => async (page) => {
+  // Recorre las pestañas del panel para que se pinten todas sus vistas.
+  await page.goto(BASE + path, { waitUntil: 'load' }); await page.waitForTimeout(2500);
+  const tabs = page.locator('main [role="tab"], main nav button');
+  const n = Math.min(await tabs.count(), 14);
+  for (let i = 0; i < n; i++) { await tabs.nth(i).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(700); }
+};
+const authScenes = {
+  aprendizaje: goto('/learning'),
+  cursos: goto('/courses'),
+  mentor: clickTabs('/mentor'),
+  admin: clickTabs('/admin'),
+  plugins: goto('/admin/plugins'),
+};
 const scenes = {
   async inicio(page) { await page.goto(BASE, { waitUntil: 'load' }); await page.waitForTimeout(2500); },
   async 'inicio-movil'(page) { await page.setViewportSize({ width: 390, height: 844 }); await page.goto(BASE, { waitUntil: 'load' }); await page.waitForTimeout(2500); },
@@ -98,8 +114,13 @@ const report = [];
 for (const lang of langs) {
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, colorScheme: 'dark' });
   await ctx.addInitScript((l) => { try { localStorage.setItem('giantucchi_lang', l); } catch {} }, lang);
+  if (AUTH_EMAIL) {
+    const r = await ctx.request.post(`${BASE}/api/auth/login`, { headers: { Origin: BASE }, data: { email: AUTH_EMAIL, password: AUTH_PASS } });
+    console.log(`[${lang}] login ${AUTH_EMAIL}: ${r.status()}`);
+  }
   const authored = await courseTexts(ctx);
-  for (const [name, run] of Object.entries(scenes)) {
+  const allScenes = AUTH_EMAIL ? authScenes : scenes;
+  for (const [name, run] of Object.entries(allScenes)) {
     if (only.length && !only.includes(name)) continue;
     const page = await ctx.newPage();
     try { await run(page); } catch (e) { console.log(`[${lang}/${name}] error de escena: ${String(e).slice(0, 100)}`); }

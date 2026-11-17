@@ -88,6 +88,11 @@ const FIELD_LABELS: Record<string, string> = {
   customCampusName: 'Título del Campus / Panel de Administración',
 };
 
+/** Nombre o descripción del plugin en el idioma activo; el texto del catálogo (español) queda como respaldo. */
+function pluginText(t: (key: string, fallback: string) => string, plugin: { id: string; name: string; description: string }, field: 'name' | 'desc'): string {
+  return t(`plugin_${plugin.id.replace(/-/g, '_')}_${field}`, field === 'name' ? plugin.name : plugin.description);
+}
+
 export const PluginManagerView: React.FC = () => {
   const { t } = useTranslation();
   const [plugins, setPlugins] = useState<AcademiaPlugin[]>(pluginManager.getPlugins());
@@ -344,7 +349,7 @@ export const PluginManagerView: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-ink flex items-center gap-2">
-                        {plugin.name}
+                        {pluginText(t, plugin, 'name')}
                         <span className="text-micro font-mono text-ink-faint font-normal">
                           v{plugin.version}
                         </span>
@@ -369,7 +374,7 @@ export const PluginManagerView: React.FC = () => {
                 </div>
 
                 <p className="text-xs text-ink-muted leading-relaxed">
-                  {plugin.description}
+                  {pluginText(t, plugin, 'desc')}
                 </p>
               </div>
 
@@ -424,7 +429,7 @@ export const PluginManagerView: React.FC = () => {
               <div>
                 <h3 className="font-bold text-sm text-ink flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-brand-cyan" />
-                  <span>{t('configurarName', 'Configurar {{name}}', { name: configModalPlugin.name })}</span>
+                  <span>{t('configurarName', 'Configurar {{name}}', { name: pluginText(t, configModalPlugin, 'name') })}</span>
                 </h3>
                 <p className="text-micro text-ink-muted mt-0.5">
                   {configModalPlugin.id === 'docentos-customizer'

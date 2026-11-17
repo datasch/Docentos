@@ -14,9 +14,9 @@ Documento para que otro agente continúe la migración i18n. Leerlo entero antes
 
 Toda la interfaz en 5 idiomas (es, en, pt, fr, it), incluidos los paneles de mentor y admin, y los textos legales (ya hecho). Herramientas acordadas: i18next + react-i18next, **i18next-cli** (extract/status/lint/instrument), eslint-plugin-i18next, i18next-browser-languagedetector, i18next-resources-to-backend.
 
-## Estado actual (≈95 %)
+## Estado actual (≈97 %)
 
-- Rama: `feat/i18n-completo`. Último commit: `ada30f6`. Todo está commiteado (salvo `docker-compose.override.yml`, que no es de esta tarea).
+- Rama: `feat/i18n-completo`. Último commit de código: ver `git log` (lote 5 real en `55a9517`). Todo está commiteado (salvo `docker-compose.override.yml`, que no es de esta tarea).
 - `npx tsc --noEmit` limpio (excluyendo el aviso preexistente de `LogoIA`). Tests: 32/32 en verde.
 - `npx i18next-cli lint`: 0 issues nuevos (10 en la línea base).
 - `npm run i18n:parity`: 100 % de paridad de claves en los 5 idiomas. `drift.cjs`: 0 desfases.
@@ -33,7 +33,9 @@ Commits de esta migración:
 | `36b2438` | Lote 4 parcial: `src/i18n/format.ts` (`dateLocale()`), etiquetas del buzón (`src/lib/listeningLabels.ts`) y navegación del admin con getters, textos sueltos del lint |
 | `99ffe56` | Lote 4b: constantes fuera de componentes (`seasonalTheme`, `appRoutes`, `apiRequest`, `logoConfig`) |
 | `eb9d320` | Lote 4c: línea base del lint (`i18next-lint-baseline.json` con 10 issues válidos) |
-| `ada30f6` | Lote 5 (servidor) y Fase 6 (candados): módulo `serverI18n.ts`, test de paridad, lint en CI y tipado TypeScript |
+| `ada30f6` | Fase 6 (candados): test de paridad, lint en CI y tipado TypeScript; arranque de `serverI18n.ts` (solo ~30 mensajes con código) |
+| `55a9517` | **Lote 5 real**: `server/responseTranslations.ts` (~200 mensajes + patrones) y middleware `localizeJsonResponses`; test que falla si hay un mensaje en español sin traducir |
+| (siguiente) | Nombres y descripciones de los 9 plugins traducidos por id (`plugin_<id>_name/_desc`, `pluginText()` en `PluginManagerView`) |
 
 ## Arquitectura
 
@@ -81,6 +83,13 @@ Tests: `npx tsx --test tests/*.test.tsx tests/floating-position.test.ts tests/da
 
 ## Pendiente, en orden
 
-1. **Verificación final en Docker:** reconstruir Docker (usar `--env-file I:/Docentos/.env`), verificar endpoints y correr `npm run verify` y `npm test` en el contenedor Linux.
-2. **Fase 5, contenido de cursos en BD:** decisión confirmada por recomendación: **opción (a)** (el contenido editorial en BD permanece en español canónico; la interfaz que lo rodea está 100% traducida).
-3. Informar al usuario y ofrecer actualización del reporte Word del día. No publicar versión ni tag sin confirmación expresa del usuario.
+1. **Barrido con sesión** (Docker ya reconstruido): `scripts/i18n-handoff/sweep.mjs en,pt,fr,it "" correo:clave`. Hay que ejecutarlo desde una carpeta con `playwright-core` instalado y con Edge disponible. Cuentas del seed local (`prisma/seed.ts`): admin `giantucchi@academia.com`, mentor `sofia.mentor@giantucchi.com`, alumno `roberto@empresa.com`. Último resultado: públicas 0/0 en los 4 idiomas; admin en inglés dio 9 textos en español (descripciones de plugins), ya corregidos; faltan mentor y alumno en pt/fr/it y admin en pt/fr/it.
+2. **Corrida completa en el contenedor Linux:** `npm run verify` y `npm test` (los tests de BD solo corren allí). En Windows pasan 755, 3 omitidos, 0 fallos.
+3. **Fase 5, contenido de cursos en BD: DECISIÓN PENDIENTE DEL USUARIO.** No la ha tomado. Hoy títulos, descripciones y lecciones se ven en el idioma en que se escribieron (la interfaz que los rodea sí está traducida). Preguntarle antes de implementar nada.
+4. Informar al usuario y ofrecer actualizar el reporte Word del día. **No publicar versión, tag ni push sin confirmación expresa.**
+
+## Limitaciones conocidas
+
+- El PNG del certificado (`CertificateGenerator.ts`, `CertificatePreviewModal.tsx`) sigue en español a propósito: el documento está redactado en español.
+- `courseCategories.ts` son valores guardados en BD; no se traducen en origen.
+- Los textos legales traducidos son de cortesía y conviene que los revise alguien con criterio legal; el hash firmado es siempre el del original en español.
