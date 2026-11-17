@@ -1037,7 +1037,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
         <div className="space-y-4">
           {modulesWithMissions.length === 0 ? (
             <div className="py-16 px-6 text-center bg-surface/70 border border-slate-200/80 dark:border-purple-500/20 rounded-3xl  shadow-sm">
-              <div className="text-4xl mb-3">🌌</div>
+              <div className="text-4xl mb-3">{'🌌'}</div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
                 {t('path.emptyTitle', 'Constelación en estructuración')}
               </h3>

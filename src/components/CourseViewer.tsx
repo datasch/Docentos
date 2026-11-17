@@ -7,6 +7,7 @@
  * vacia en escritorio y enterraba el video bajo el temario en movil.
  */
 
+import { dateLocale } from '../i18n/format';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { createPortal } from 'react-dom';
@@ -1539,7 +1540,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       {t('proximaClaseSincronicaTitle', 'Próxima clase sincrónica: {{title}}', { title: upcomingMeeting.title })}
                     </span>
                     <span className="text-micro text-ink-muted">
-                      {t('programadaParaVal', 'Programada para {{val}}', { val: new Date(upcomingMeeting.scheduledAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) })}
+                      {t('programadaParaVal', 'Programada para {{val}}', { val: new Date(upcomingMeeting.scheduledAt).toLocaleString(dateLocale(), { dateStyle: 'short', timeStyle: 'short' }) })}
                     </span>
                   </div>
                 </div>
@@ -1849,7 +1850,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           {t('viewer.asyncRecording', 'Grabación Asincrónica')}
                         </span>
                         <span className="text-micro text-ink-muted font-medium">
-                          {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                          {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(dateLocale(), { dateStyle: 'medium' })}
                         </span>
                       </div>
                       <h3 className="mt-1 font-bold text-sm text-ink truncate">
@@ -2120,7 +2121,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                             </div>
 
                                             <span className="text-micro text-ink-muted">
-                                              {new Date(m.scheduledAt).toLocaleDateString(undefined, {
+                                              {new Date(m.scheduledAt).toLocaleDateString(dateLocale(), {
                                                 month: 'short',
                                                 day: 'numeric',
                                                 hour: '2-digit',

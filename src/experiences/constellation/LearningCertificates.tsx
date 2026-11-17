@@ -1,3 +1,4 @@
+import { dateLocale } from '../../i18n/format';
 import React, { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Award, Download, Eye, Loader2 } from 'lucide-react';
@@ -44,7 +45,7 @@ export function LearningCertificates({ certificates, studentName, onVerify }: {
       {valid.map(certificate => <li key={certificate.id}>
         <Award size={24} aria-hidden="true" />
         <div className="academy-learning-certificate__info"><h3>{certificate.courseTitle}</h3>
-          <p>{t('certificates.issuedOn', { date: new Date(certificate.issuedAt).toLocaleDateString(), defaultValue: `Emitido el ${new Date(certificate.issuedAt).toLocaleDateString()}` })}</p></div>
+          <p>{t('certificates.issuedOn', { date: new Date(certificate.issuedAt).toLocaleDateString(dateLocale()), defaultValue: `Emitido el ${new Date(certificate.issuedAt).toLocaleDateString()}` })}</p></div>
         <div className="academy-learning-certificate__actions">
           <button type="button" className="academy-text-button" onClick={() => setSelected(certificate)} aria-label={`${t('certificates.view', 'Ver certificado')} - ${certificate.courseTitle}`}><Eye size={17} aria-hidden="true" />{t('certificates.view', 'Ver certificado')}</button>
           <button type="button" className="academy-text-button" disabled={Boolean(downloading)} onClick={() => download(certificate)} aria-label={`${t('certificates.download', 'Descargar')} - ${certificate.courseTitle}`}>

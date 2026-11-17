@@ -8,6 +8,7 @@
  * 3. Responder Preguntas de Mentoría en la bandeja de entrada
  */
 
+import { dateLocale } from '../i18n/format';
 import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard } from 'lucide-react';
@@ -1527,7 +1528,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <option value="">{t('seleccionaUsuario', 'Selecciona usuario...')}</option>
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} ({u.email}) [{u.role}]
+                        {`${u.name} (${u.email}) [${u.role}]`}
                       </option>
                     ))}
                   </select>
@@ -1940,7 +1941,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           </td>
                           <td className="py-3 px-4 font-mono text-[10px] text-ink-muted">{enr.source}</td>
                           <td className="py-3 px-4 text-ink-muted">
-                            {new Date(enr.createdAt).toLocaleDateString('es-ES')}
+                            {new Date(enr.createdAt).toLocaleDateString(dateLocale())}
                           </td>
                           <td className="py-3 px-4 text-right space-x-1">
                             {enr.status !== 'ACTIVE' && (
@@ -2725,7 +2726,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     </td>
                     <td className="py-3 px-4 text-ink-soft">{cert.courseTitle}</td>
                     <td className="py-3 px-4 text-ink-muted">
-                      {new Date(cert.issuedAt).toLocaleDateString('es-ES')}
+                      {new Date(cert.issuedAt).toLocaleDateString(dateLocale())}
                     </td>
                     <td className="py-3 px-4">
                       {cert.revokedAt ? (
@@ -2872,7 +2873,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           </div>
                         </td>
                         <td className="p-3 font-mono text-ink-muted text-[11px]">
-                          {new Date(sig.signedAt).toLocaleDateString('es-ES', {
+                          {new Date(sig.signedAt).toLocaleDateString(dateLocale(), {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric',
@@ -2880,15 +2881,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         </td>
                         <td className="p-3 text-[11px]">
                           <span className="text-ink-soft">
-                            {new Date(sig.startDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                            {new Date(sig.startDate).toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })}
                           </span>
                           {' → '}
                           <span className="text-ink-muted font-medium">
-                            {new Date(sig.endDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                            {new Date(sig.endDate).toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })}
                           </span>
                         </td>
                         <td className="p-3 text-[11px] text-brand-violet-light">
-                          {new Date(sig.dataRetentionUntil).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                          {new Date(sig.dataRetentionUntil).toLocaleDateString(dateLocale(), { month: 'short', year: 'numeric' })}
                         </td>
                         <td className="p-3 font-mono text-[11px] text-ink-muted">
                           {sig.ipAddress}

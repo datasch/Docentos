@@ -8,19 +8,17 @@
  * exporta a CSV con los mismos filtros.
  */
 
+import { dateLocale } from '../i18n/format';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Download, HeartHandshake, Inbox, Send, UserX } from 'lucide-react';
 import { api } from '../lib/api';
 import {
   LISTENING_STATUSES,
-  LISTENING_STATUS_LABELS,
   LISTENING_TOPICS,
-  LISTENING_TOPIC_LABELS,
   LISTENING_TYPES,
-  LISTENING_TYPE_LABELS,
-  MOODS,
   type ListeningStatus,
 } from '../lib/listening';
+import { LISTENING_STATUS_LABELS, LISTENING_TOPIC_LABELS, LISTENING_TYPE_LABELS, MOODS } from '../lib/listeningLabels';
 import type {
   ListeningAdminFilter,
   ListeningAdminResponse,
@@ -501,14 +499,14 @@ export const ListeningAdminPanel: React.FC = () => {
                 ) : (
                   entry.author && `${entry.author.name} · ${entry.author.email}`
                 )}{' '}
-                · {new Date(entry.createdAt).toLocaleString('es')}
+                · {new Date(entry.createdAt).toLocaleString(dateLocale())}
               </p>
 
               {entry.reply && (
                 <div className="mt-3 rounded-xl border border-brand-cyan/30 bg-brand-cyan/10 p-3">
                   <p className="text-[11px] font-bold text-brand-cyan">
                     {t('respondido', 'Respondido')}{entry.repliedBy ? t('porRepliedBy', 'por {{repliedBy}}', { repliedBy: entry.repliedBy }) : ''}
-                    {entry.repliedAt && ` · ${new Date(entry.repliedAt).toLocaleString('es')}`}
+                    {entry.repliedAt && ` · ${new Date(entry.repliedAt).toLocaleString(dateLocale())}`}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{entry.reply}</p>
                 </div>

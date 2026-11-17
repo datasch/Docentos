@@ -851,7 +851,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             ) : (
               <>
                 <RotateCcw className="h-4 w-4 animate-spin-once" />
-                <span>-10s</span>
+                <span>{'-10s'}</span>
               </>
             )}
           </div>

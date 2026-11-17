@@ -209,12 +209,12 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             {/* Adorno Festivo sobre el Logo */}
             {seasonalTheme === 'halloween' && (
               <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-bounce" title={t('felizHalloween', '¡Feliz Halloween!')}>
-                🎃
+                {'🎃'}
               </span>
             )}
             {seasonalTheme === 'christmas' && (
               <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(239,68,68,0.8)] animate-pulse" title={t('felizNavidad', '¡Feliz Navidad!')}>
-                🎅
+                {'🎅'}
               </span>
             )}
           </div>

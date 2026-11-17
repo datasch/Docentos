@@ -6,6 +6,7 @@
  * y vinculación de grabaciones asincrónicas (YouTube/Vimeo/Drive).
  */
 
+import { dateLocale } from '../i18n/format';
 import { AcademiaPlugin, Meeting, MeetingType } from '../types';
 import i18next from 'i18next'
 
@@ -94,7 +95,7 @@ export function formatMeetingScheduledAt(dateString: string): {
 
   const dateFormatted = Number.isNaN(date.getTime())
     ? dateString
-    : date.toLocaleDateString(undefined, {
+    : date.toLocaleDateString(dateLocale(), {
         weekday: 'short',
         year: 'numeric',
         month: 'short',
@@ -103,7 +104,7 @@ export function formatMeetingScheduledAt(dateString: string): {
 
   const timeFormatted = Number.isNaN(date.getTime())
     ? ''
-    : date.toLocaleTimeString(undefined, {
+    : date.toLocaleTimeString(dateLocale(), {
         hour: '2-digit',
         minute: '2-digit',
       });

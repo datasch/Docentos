@@ -6,6 +6,7 @@
  * la autenticidad de un certificado emitido con su código único.
  */
 
+import { dateLocale } from '../i18n/format';
 import React, { useState, useEffect } from 'react';
 import { Award, CheckCircle2, XCircle, Search, ShieldCheck, Copy, Check, ExternalLink, X, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
@@ -150,7 +151,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
                     <div>
                       <span className="text-[10px] text-slate-500 block">{t('fechaDeEmision', 'Fecha de Emisión')}</span>
                       <span className="text-slate-300 font-medium">
-                        {new Date(searchResult.certificate.issuedAt).toLocaleDateString('es-ES', {
+                        {new Date(searchResult.certificate.issuedAt).toLocaleDateString(dateLocale(), {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',

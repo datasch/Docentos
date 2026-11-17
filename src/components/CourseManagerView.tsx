@@ -899,7 +899,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         </div>
                         <span className="text-[10px] text-slate-500">
                           {course.category} • {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : t('gratuito', 'Gratuito')} •{' '}
-                          {modules.length} {t('modulosParentesis', 'módulo(s) •')} {countVideos(course)} video(s)
+                          {t('modulosYVideosCount', '{{modules}} módulo(s) • {{videos}} video(s)', { modules: modules.length, videos: countVideos(course) })}
                         </span>
                       </div>
                     </div>
@@ -1007,7 +1007,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                         {module.order}. {module.title}
                                       </p>
                                       <span className="text-[10px] text-slate-500">
-                                        {videos.length} video(s)
+                                        {t('videosCountParentesis', '{{count}} video(s)', { count: videos.length })}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1">

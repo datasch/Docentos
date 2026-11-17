@@ -8,6 +8,7 @@
  * 3. Responder dudas e interactuar en el Centro de Preguntas Q&A
  */
 
+import { dateLocale } from '../i18n/format';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -55,7 +56,7 @@ interface MentorDashboardProps {
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(dateLocale(), {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -1267,7 +1268,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className="text-[10px] text-ink-muted">
-                                        {module.videos?.length || 0} clase(s)
+                                        {t('claseCount', { count: module.videos?.length || 0, defaultValue_one: '{{count}} clase', defaultValue_other: '{{count}} clases' })}
                                       </span>
                                       <span className="text-slate-600">•</span>
                                       {hasQuiz ? (

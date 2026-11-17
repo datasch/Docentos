@@ -689,7 +689,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <section className="lp-welcome">
             <div className="lp-welcome-text">
               <h1>
-                {t('bienvenidoDeVuelta', 'Bienvenido de vuelta,')} <span>{firstName || currentUser.name}</span> 👋
+                {t('bienvenidoDeVuelta', 'Bienvenido de vuelta,')} <span>{firstName || currentUser.name}</span> {'👋'}
               </h1>
               <p>{t('continuaAprendiendoHoyParaAlcanzarTus', 'Continúa aprendiendo hoy para alcanzar tus objetivos profesionales.')}</p>
             </div>
@@ -697,7 +697,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {studyStats && (
               <div className="lp-streak-card">
                 <div className="lp-streak-flame" aria-hidden>
-                  🔥
+                  {'🔥'}
                 </div>
                 <div className="lp-streak-info">
                   <span className="lp-streak-title">{t('tuProgreso', 'Tu progreso')}</span>

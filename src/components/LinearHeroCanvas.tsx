@@ -169,7 +169,7 @@ export const LinearHeroCanvas: React.FC = () => {
                   {/* Barra de progreso inferior y controles */}
                   <div className="relative p-3 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-cyan-400">02:22 / 18:40</span>
+                      <span className="text-[10px] font-mono text-cyan-400">{'02:22 / 18:40'}</span>
                       <div className="w-28 h-1 bg-white/20 rounded-full overflow-hidden">
                         <div className="w-2/5 h-full bg-cyan-400 rounded-full" />
                       </div>

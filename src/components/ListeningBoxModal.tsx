@@ -12,6 +12,7 @@
  * llega por primera vez entiende que debe recorrer los pasos antes de enviar.
  */
 
+import { dateLocale } from '../i18n/format';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -32,15 +33,12 @@ import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import {
   classifyNps,
   LISTENING_LIMITS,
-  LISTENING_STATUS_LABELS,
   LISTENING_TOPICS,
-  LISTENING_TOPIC_LABELS,
   LISTENING_TYPES,
-  LISTENING_TYPE_LABELS,
-  MOODS,
   type ListeningTopic,
   type ListeningType,
 } from '../lib/listening';
+import { LISTENING_STATUS_LABELS, LISTENING_TOPIC_LABELS, LISTENING_TYPE_LABELS, MOODS } from '../lib/listeningLabels';
 import type { OwnListeningEntry } from '../lib/listeningTypes';
 import type { Course } from '../types';
 import { useTranslation, Trans } from 'react-i18next'
@@ -733,7 +731,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     <h3 className="mt-2 text-sm font-bold text-ink">{entry.subject}</h3>
                     <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{entry.message}</p>
                     <p className="mt-2 text-micro text-ink-faint">
-                      {new Date(entry.createdAt).toLocaleString('es')}
+                      {new Date(entry.createdAt).toLocaleString(dateLocale())}
                       {entry.anonymous && <> · {t('anonimoParaElEquipo', 'Anónimo para el equipo')}</>}
                     </p>
 
