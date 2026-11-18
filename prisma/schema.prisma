@@ -148,6 +148,8 @@ model User {
   assignedCourses     CourseMentor[]       @relation("AssignedCourseMentors")
   videoWatches        VideoWatch[]
   notifications       Notification[]
+  moderationReceived  ModerationEvent[]   @relation("ModerationTarget")
+  moderationPerformed ModerationEvent[]   @relation("ModerationActor")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -896,4 +898,25 @@ model UserContractSignature {
 
   @@index([userId])
   @@index([contractVersion])
+}
+
+/// Registro trazable de cada acción de moderación (strike, quitar strike,
+/// suspensión, reactivación): quién la hizo, a quién y cuándo. El actor se
+/// conserva como nombre y correo aunque su cuenta se borre.
+model ModerationEvent {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation("ModerationTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actorUserId   String?
+  actor         User?    @relation("ModerationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorName     String   @default("")
+  actorEmail    String   @default("")
+  /// strike_added | strike_removed | suspended | reactivated | auto_suspended
+  action        String
+  strikesBefore Int
+  strikesAfter  Int
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([actorUserId])
 }

@@ -9,12 +9,12 @@
  */
 
 import { dateLocale } from '../i18n/format';
-import { nextStrikes } from '../lib/moderation';
+import { MAX_USER_STRIKES, nextStrikes } from '../lib/moderation';
 import React, { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
-import { api } from '../lib/api';
+import { api, type ModerationHistoryEvent } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
 import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
@@ -572,22 +572,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(ttsScript);
-
-    const voices = window.speechSynthesis.getVoices();
-    let selectedVoice = voices.find((v) => v.lang.startsWith('es'));
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
-    utterance.rate = ttsSpeed;
-
-    utterance.onstart = () => setIsPreviewingAudio(true);
-    utterance.onend = () => setIsPreviewingAudio(false);
-    utterance.onerror = () => setIsPreviewingAudio(false);
-
-    window.speechSynthesis.speak(utterance);
+    // Misma ruta que el resto de la app (voz elegida, fragmentos y reintento), no una copia aparte.
+    setIsPreviewingAudio(true);
+    ttsService.speak({
+      text: ttsScript,
+      voiceId: ttsVoice,
+      speed: ttsSpeed,
+      onEnd: () => setIsPreviewingAudio(false),
+      onError: () => setIsPreviewingAudio(false),
+    });
   };
 
   const handleCreateTTSGuide = async (e: React.FormEvent) => {
@@ -682,6 +675,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     }
   };
 
+  const [moderationNotice, setModerationNotice] = useState<{ tone: 'warn' | 'error'; text: string } | null>(null);
+  const [historyUser, setHistoryUser] = useState<User | null>(null);
+  const [historyEvents, setHistoryEvents] = useState<ModerationHistoryEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'remove_strike' | 'toggle_active' | 'reset') => {
     try {
       let newStrikes = currentStrikes;
@@ -690,12 +688,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       if (action !== 'toggle_active') newStrikes = nextStrikes(currentStrikes, action);
       if (action === 'toggle_active') newActive = !currentActive;
 
-      await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
+      setModerationNotice(null);
+      const result = await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
+      if (result.autoSuspended) {
+        setModerationNotice({
+          tone: 'warn',
+          text: t('cuentaSuspendidaPorStrikes', 'La cuenta se suspendió automáticamente al llegar a {{max}} strikes.', { max: MAX_USER_STRIKES }),
+        });
+      }
       // Solo cambia la fila del usuario: se recarga el directorio y no los datos de toda la app,
       // porque esa recarga reinicia el panel y saca al admin de la pantalla donde estaba.
       loadUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating moderation:', error);
+      setModerationNotice({
+        tone: 'error',
+        text: error?.message || t('noSePudoActualizarLaModeracion', 'No se pudo actualizar la moderación.'),
+      });
+    }
+  };
+
+  const openModerationHistory = async (target: User) => {
+    setHistoryUser(target);
+    setHistoryEvents([]);
+    setHistoryLoading(true);
+    try {
+      const res = await api.getUserModerationHistory(target.id);
+      setHistoryEvents(res.events || []);
+    } catch (error) {
+      console.error('Error loading moderation history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const moderationActionLabel = (action: ModerationHistoryEvent['action']) => {
+    switch (action) {
+      case 'strike_added': return t('historialStrikePuesto', 'Strike puesto');
+      case 'strike_removed': return t('historialStrikeQuitado', 'Strike quitado');
+      case 'suspended': return t('historialSuspendida', 'Cuenta suspendida');
+      case 'reactivated': return t('historialReactivada', 'Cuenta reactivada');
+      default: return t('historialSuspensionAutomatica', 'Suspensión automática');
     }
   };
 
@@ -1805,7 +1838,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 <div className="flex items-center gap-2">
                                   <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-ink-muted border-slate-700'
                                     }`}>
-                                    {t('strikesStrikes', '⚠️ {{strikes}} Strikes', { strikes })}
+                                    {t('strikesStrikes', '⚠️ {{strikes}} Strikes', { strikes })}{`/${MAX_USER_STRIKES}`}
                                   </span>
                                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
                                     }`}>
@@ -1817,8 +1850,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                 {/* Moderation actions */}
                                 <button
                                   onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'add_strike')}
-                                  title={t('darStrikeDeModeracion', 'Dar Strike de Moderación')}
-                                  className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
+                                  disabled={strikes >= MAX_USER_STRIKES}
+                                  title={strikes >= MAX_USER_STRIKES
+                                    ? t('maximoDeStrikes', 'Máximo de {{max}} strikes alcanzado', { max: MAX_USER_STRIKES })
+                                    : t('darStrikeDeModeracion', 'Dar Strike de Moderación')}
+                                  className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-amber-500/10"
                                 >
                                   {t('1Strike', '+1 Strike')}
                                 </button>
@@ -1832,6 +1868,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                                   className="px-2 py-1 bg-sky-500/10 border border-sky-500/30 hover:bg-sky-500/20 text-sky-300 font-bold rounded-lg text-[10px] transition-all disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-sky-500/10"
                                 >
                                   {t('menos1Strike', '−1 Strike')}
+                                </button>
+                                <button
+                                  onClick={() => openModerationHistory(u)}
+                                  title={t('verHistorialDeModeracion', 'Ver quién puso o quitó strikes')}
+                                  className="px-2 py-1 bg-raised border border-line hover:border-brand-cyan text-ink-soft font-bold rounded-lg text-[10px] transition-all"
+                                >
+                                  {t('historialDeModeracion', 'Historial')}
                                 </button>
                                 <button
                                   onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
@@ -2937,6 +2980,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {moderationNotice && (
+        <div
+          role="alert"
+          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border px-4 py-3 text-xs font-bold shadow-2xl ${
+            moderationNotice.tone === 'error'
+              ? 'bg-red-500/15 border-red-500/40 text-red-300'
+              : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+          }`}
+        >
+          <span>{moderationNotice.text}</span>
+          <button onClick={() => setModerationNotice(null)} className="opacity-70 hover:opacity-100" aria-label={t('cerrar', 'Cerrar')}>✕</button>
+        </div>
+      )}
+
+      {historyUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="moderation-history-title" className="bg-surface border border-line-strong/80 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl p-6 text-xs text-ink-soft space-y-4">
+            <div className="flex items-start justify-between border-b border-line pb-3">
+              <div>
+                <h3 id="moderation-history-title" className="text-base font-bold text-ink">{t('historialDeModeracionTitulo', 'Historial de moderación')}</h3>
+                <p className="text-ink-muted mt-0.5">{historyUser.name} · {historyUser.email}</p>
+              </div>
+              <button onClick={() => setHistoryUser(null)} className="text-ink-muted hover:text-ink" aria-label={t('cerrar', 'Cerrar')}>✕</button>
+            </div>
+            {historyLoading ? (
+              <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-brand-cyan" /></div>
+            ) : historyEvents.length === 0 ? (
+              <p className="py-6 text-center text-ink-muted">{t('sinHistorialDeModeracion', 'Todavía no hay acciones de moderación registradas.')}</p>
+            ) : (
+              <ul className="max-h-80 overflow-y-auto space-y-2 pr-1">
+                {historyEvents.map((event) => (
+                  <li key={event.id} className="rounded-xl border border-line bg-raised p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-ink">{moderationActionLabel(event.action)}</span>
+                      <span className="text-ink-muted">{new Date(event.createdAt).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                    <p className="mt-1 text-ink-muted">
+                      {t('historialPor', 'Por')} <span className="font-bold text-ink-soft">{event.actorName || event.actorEmail || t('historialDesconocido', 'una cuenta eliminada')}</span>
+                      {event.action.startsWith('strike') && ` · ${event.strikesBefore} → ${event.strikesAfter}`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
