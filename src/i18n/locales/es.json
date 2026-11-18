@@ -2396,5 +2396,19 @@
   "quitarStrikeDeModeracion": "Quitar un strike (corregir un error)",
   "sinStrikesQueQuitar": "Este usuario no tiene strikes",
   "menos1Strike": "−1 Strike",
-  "mentorMayus": "MENTOR"
+  "mentorMayus": "MENTOR",
+  "cuentaSuspendidaPorStrikes": "La cuenta se suspendió automáticamente al llegar a {{max}} strikes.",
+  "noSePudoActualizarLaModeracion": "No se pudo actualizar la moderación.",
+  "maximoDeStrikes": "Máximo de {{max}} strikes alcanzado",
+  "verHistorialDeModeracion": "Ver quién puso o quitó strikes",
+  "historialDeModeracion": "Historial",
+  "historialDeModeracionTitulo": "Historial de moderación",
+  "sinHistorialDeModeracion": "Todavía no hay acciones de moderación registradas.",
+  "historialPor": "Por",
+  "historialDesconocido": "una cuenta eliminada",
+  "historialStrikePuesto": "Strike puesto",
+  "historialStrikeQuitado": "Strike quitado",
+  "historialSuspendida": "Cuenta suspendida",
+  "historialReactivada": "Cuenta reactivada",
+  "historialSuspensionAutomatica": "Suspensión automática"
 }

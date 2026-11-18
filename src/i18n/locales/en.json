@@ -2362,5 +2362,19 @@
   "quitarStrikeDeModeracion": "Remove one strike (fix a mistake)",
   "sinStrikesQueQuitar": "This user has no strikes",
   "menos1Strike": "−1 Strike",
-  "mentorMayus": "MENTOR"
+  "mentorMayus": "MENTOR",
+  "cuentaSuspendidaPorStrikes": "The account was automatically suspended on reaching {{max}} strikes.",
+  "noSePudoActualizarLaModeracion": "The moderation could not be updated.",
+  "maximoDeStrikes": "Maximum of {{max}} strikes reached",
+  "verHistorialDeModeracion": "See who added or removed strikes",
+  "historialDeModeracion": "History",
+  "historialDeModeracionTitulo": "Moderation history",
+  "sinHistorialDeModeracion": "No moderation actions have been recorded yet.",
+  "historialPor": "By",
+  "historialDesconocido": "a deleted account",
+  "historialStrikePuesto": "Strike added",
+  "historialStrikeQuitado": "Strike removed",
+  "historialSuspendida": "Account suspended",
+  "historialReactivada": "Account reactivated",
+  "historialSuspensionAutomatica": "Automatic suspension"
 }

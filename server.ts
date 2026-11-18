@@ -131,7 +131,7 @@ import {
   getPaymentStatus,
   simulateDevPaymentSuccess,
 } from './server/paymentService.js';
-import { MAX_USER_STRIKES } from './src/lib/moderation.js';
+import { MAX_USER_STRIKES, strikesSuspendAccount } from './src/lib/moderation.js';
 import {
   sendApiError,
   resolveRequestLanguage,
@@ -2704,7 +2704,7 @@ app.put(
   asyncRoute(async (req, res) => {
     const data: { strikes?: number; isActive?: boolean } = {};
     if (typeof req.body.strikes === 'number') {
-      // Se puede quitar un strike puesto por error, pero nunca bajar de 0 ni inventar cifras absurdas.
+      // Se puede quitar un strike puesto por error, pero nunca bajar de 0 ni pasar del máximo.
       if (!Number.isInteger(req.body.strikes) || req.body.strikes < 0 || req.body.strikes > MAX_USER_STRIKES) {
         return res.status(400).json({ error: 'Número de strikes no válido' });
       }
@@ -2713,17 +2713,57 @@ app.put(
     if (typeof req.body.isActive === 'boolean') data.isActive = req.body.isActive;
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const strikes = data.strikes ?? existing.strikes;
+    let isActive = data.isActive ?? existing.isActive;
+    if (data.isActive === true && !existing.isActive && strikesSuspendAccount(strikes)) {
+      return res.status(400).json({
+        error: 'Con 5 strikes la cuenta no se puede reactivar. Quita antes un strike.',
+      });
+    }
+    // Al llegar al máximo de strikes la cuenta se suspende sola.
+    const autoSuspended = isActive && strikesSuspendAccount(strikes);
+    if (autoSuspended) isActive = false;
+
     if (
       existing.role === 'ADMIN' &&
-      data.isActive === false &&
+      existing.isActive &&
+      !isActive &&
       (await countOtherActiveAdmins(existing.id)) === 0
     ) {
       return res.status(400).json({
         error: 'No se puede suspender al último administrador activo. Nombra antes a otro.',
       });
     }
-    const user = await prisma.user.update({ where: { id: existing.id }, data });
-    if (data.isActive === false) await revokeAllUserSessions(user.id);
+
+    // Cada cambio queda registrado con quién lo hizo.
+    const actor = { actorUserId: req.user!.id, actorName: req.user!.name || '', actorEmail: req.user!.email || '' };
+    const events: { action: string; strikesBefore: number; strikesAfter: number }[] = [];
+    if (strikes !== existing.strikes) {
+      events.push({
+        action: strikes > existing.strikes ? 'strike_added' : 'strike_removed',
+        strikesBefore: existing.strikes,
+        strikesAfter: strikes,
+      });
+    }
+    if (isActive !== existing.isActive) {
+      events.push({
+        action: autoSuspended ? 'auto_suspended' : isActive ? 'reactivated' : 'suspended',
+        strikesBefore: strikes,
+        strikesAfter: strikes,
+      });
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({ where: { id: existing.id }, data: { strikes, isActive } });
+      if (events.length) {
+        await tx.moderationEvent.createMany({
+          data: events.map((event) => ({ userId: existing.id, ...actor, ...event })),
+        });
+      }
+      return updated;
+    });
+    if (!isActive && existing.isActive) await revokeAllUserSessions(user.id);
     await recordAuditEvent(req, {
       action: 'user.moderation_updated',
       targetType: 'User',
@@ -2733,9 +2773,37 @@ app.put(
         strikes: user.strikes,
         previousIsActive: existing.isActive,
         isActive: user.isActive,
+        autoSuspended,
       },
     });
-    res.json({ success: true, user: toRuntimeUser(user) });
+    res.json({ success: true, autoSuspended, user: toRuntimeUser(user) });
+  }),
+);
+
+// Historial de moderación de una persona: quién puso o quitó cada strike y cuándo.
+app.get(
+  '/api/admin/users/:userId/moderation-history',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const target = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { id: true } });
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const events = await prisma.moderationEvent.findMany({
+      where: { userId: target.id },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { actor: { select: { name: true, email: true } } },
+    });
+    res.json({
+      events: events.map((event) => ({
+        id: event.id,
+        action: event.action,
+        strikesBefore: event.strikesBefore,
+        strikesAfter: event.strikesAfter,
+        actorName: event.actor?.name || event.actorName,
+        actorEmail: event.actor?.email || event.actorEmail,
+        createdAt: event.createdAt.toISOString(),
+      })),
+    });
   }),
 );
 

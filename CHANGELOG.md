@@ -7,6 +7,32 @@ cuando alcance su primera versión estable.
 
 ## Unreleased
 
+**Incluye una migración aditiva:** crea la tabla `ModerationEvent` (historial de moderación). No toca datos existentes.
+
+### Added
+
+- **Los strikes son trazables.** Cada strike puesto o quitado, suspensión y
+  reactivación queda registrado con quién lo hizo, a quién y cuándo. En Admin →
+  Personas → Directorio hay un botón «Historial» por persona.
+- **Con 5 strikes la cuenta se suspende sola.** El máximo de strikes pasa de 100
+  a 5; «+1 Strike» queda desactivado al llegar a 5 y una cuenta con 5 strikes no
+  se puede reactivar hasta quitar uno. El panel avisa de la suspensión
+  automática y de los errores del servidor.
+
+- **La guía de voz lee en el idioma del texto.** Si el guion está en otro idioma
+  que la voz elegida (por ejemplo, texto en inglés con voz española), se usa
+  la voz de ese idioma. La detección usa `tinyld` (variante ligera, unos 69 KB,
+  limitada a es/en/pt/fr/it) y solo cambia de voz cuando el resultado es claro;
+  con textos muy cortos se respeta la voz elegida.
+
+### Fixed
+
+- **La guía de voz (TTS) podía quedarse muda.** Chrome ignoraba el audio lanzado
+  justo después de cancelar el anterior, cortaba los guiones largos y dejaba la
+  cola atascada. Ahora el guion se reproduce por fragmentos, con reintento si el
+  motor no arranca y sin dejar el botón «reproduciendo» si falla. La
+  previsualización del panel de administración usa la misma ruta que las lecciones.
+
 ### Planned
 
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
