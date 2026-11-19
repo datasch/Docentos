@@ -19,6 +19,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { LANGUAGES } from '../../i18n/languages';
+import { setLanguage } from '../../i18n';
 import { getCurrentColorMode, toggleColorMode, ColorMode } from '../../lib/themeApplicator';
 import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { avatarSrc } from '../../lib/avatar';
@@ -26,13 +28,6 @@ import { usePlatformBrand, DEFAULT_LOGO_URL } from '../../lib/logoConfig';
 
 export type ConstellationTab = 'explore' | 'learning' | 'courses' | 'viewer' | 'mentor' | 'admin';
 
-const LANGUAGES = [
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'en', label: 'English', flag: '🇺🇸' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
-];
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'ADMIN',
@@ -150,8 +145,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
   }, []);
 
   const handleLanguageSelect = (langCode: string) => {
-    i18n.changeLanguage(langCode);
-    localStorage.setItem('giantucchi_lang', langCode);
+    void setLanguage(langCode);
     setLangOpen(false);
   };
 
@@ -214,13 +208,13 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             />
             {/* Adorno Festivo sobre el Logo */}
             {seasonalTheme === 'halloween' && (
-              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-bounce" title="¡Feliz Halloween!">
-                🎃
+              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-bounce" title={t('felizHalloween', '¡Feliz Halloween!')}>
+                {'🎃'}
               </span>
             )}
             {seasonalTheme === 'christmas' && (
-              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(239,68,68,0.8)] animate-pulse" title="¡Feliz Navidad!">
-                🎅
+              <span className="absolute -top-2.5 -right-2 text-xs filter drop-shadow-[0_0_6px_rgba(239,68,68,0.8)] animate-pulse" title={t('felizNavidad', '¡Feliz Navidad!')}>
+                {'🎅'}
               </span>
             )}
           </div>
@@ -237,7 +231,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
         </button>
 
         {/* 2. Navegación Principal Fantasma (Mayúsculas 13px weight 600, tracking 0.05em estilo Dala) */}
-        <nav aria-label="Navegación principal" className="academy-navigation hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
+        <nav aria-label={t('navegacionPrincipal', 'Navegación principal')} className="academy-navigation hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
           <button
             onClick={() => {
               onSelectTab('explore');
@@ -535,7 +529,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                         {t('nav.listeningBox', 'Buzón de escucha')}
                       </span>
                       {unreadListening > 0 && (
-                        <span className="lp-badge-premium" title="Tienes respuestas nuevas">
+                        <span className="lp-badge-premium" title={t('tienesRespuestasNuevas', 'Tienes respuestas nuevas')}>
                           {unreadListening}
                         </span>
                       )}

@@ -21,7 +21,8 @@ import {
   moduleHasQuiz,
 } from '../src/plugins/QuizzesPlugin.js';
 import type { Module } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 function moduleOf(id: string, title: string): Module {
   return { id, title, order: 1, videos: [] } as unknown as Module;
 }

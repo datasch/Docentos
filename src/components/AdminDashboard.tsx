@@ -10,11 +10,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { dateLocale } from '../i18n/format';
+import { MAX_USER_STRIKES, nextStrikes } from '../lib/moderation';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard, List, LayoutGrid } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
-import { api } from '../lib/api';
+import { api, type ModerationHistoryEvent } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
-import { SUPPORTED_TTS_VOICES } from '../lib/ttsService';
+import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
 import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
@@ -384,7 +386,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       const res = await api.getAdminMentorCourses(mentor.id);
       setMentorAssignedCourseIds(res.courseIds || []);
     } catch (err: any) {
-      setMentorCoursesNotice(err?.message || 'Error al cargar cursos del mentor');
+      setMentorCoursesNotice(err?.message || t('errorAlCargarCursosDelMentor', 'Error al cargar cursos del mentor'));
     } finally {
       setLoadingMentorCourses(false);
     }
@@ -403,13 +405,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     try {
       const res = await api.setAdminMentorCourses(selectedMentorForCourses.id, mentorAssignedCourseIds);
       setMentorAssignedCourseIds(res.courseIds || []);
-      setMentorCoursesNotice('Cursos asignados correctamente al mentor');
+      setMentorCoursesNotice(t('cursosAsignadosCorrectamenteAlMentor', 'Cursos asignados correctamente al mentor'));
       setTimeout(() => {
         setSelectedMentorForCourses(null);
         setMentorCoursesNotice(null);
       }, 1000);
     } catch (err: any) {
-      setMentorCoursesNotice(err?.message || 'Error al guardar los cursos del mentor');
+      setMentorCoursesNotice(err?.message || t('errorAlGuardarLosCursosDelMentor', 'Error al guardar los cursos del mentor'));
     } finally {
       setSavingMentorCourses(false);
     }
@@ -488,13 +490,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       const enrolledUser = users.find((item) => item.id === newEnrollUserId);
       const enrolledCourse = allCourses.find((item) => item.id === newEnrollCourseId);
       setEnrollSuccessMsg(
-        `${enrolledUser?.name || 'El usuario'} queda matriculado en «${enrolledCourse?.title || 'el curso'}».`,
+        t('valQuedaMatriculadoEnVal2', '{{val}} queda matriculado en «{{val2}}».', { val: enrolledUser?.name || 'El usuario', val2: enrolledCourse?.title || 'el curso' }),
       );
       setTimeout(() => setEnrollSuccessMsg(''), 3000);
       setShowQuickEnroll(false);
       loadEnrollments();
     } catch (err: any) {
-      alert(err.message || 'Error al registrar matrícula');
+      alert(err.message || t('errorAlRegistrarMatricula', 'Error al registrar matrícula'));
     }
   };
 
@@ -503,18 +505,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.updateEnrollmentStatus(enrollmentId, status);
       loadEnrollments();
     } catch (err: any) {
-      alert(err.message || 'Error al actualizar matrícula');
+      alert(err.message || t('errorAlActualizarMatricula', 'Error al actualizar matrícula'));
     }
   };
 
   const handleRevokeCertificate = async (certId: string, reasonText: string): Promise<boolean> => {
-    const reason = reasonText.trim() || 'Revocado por administración docente';
+    const reason = reasonText.trim() || t('revocadoPorAdministracionDocente', 'Revocado por administración docente');
     try {
       await api.revokeCertificate(certId, reason);
       await loadCertificates();
       return true;
     } catch (err: any) {
-      alert(err.message || 'Error al revocar certificado');
+      alert(err.message || t('errorAlRevocarCertificado', 'Error al revocar certificado'));
       return false;
     }
   };
@@ -532,7 +534,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       });
       const target = workModules.find((m) => m.id === resModuleId);
       setResSuccessMsg(
-        `«${resTitle.trim()}» añadido a ${target ? target.title : 'General del Curso'} en «${workCourse.title}».`,
+        t('resTitleAnadidoAValEnTitle', '«{{resTitle}}» añadido a {{val}} en «{{title}}».', { resTitle: resTitle.trim(), val: target ? target.title : 'General del Curso', title: workCourse.title }),
       );
       setResTitle('');
       setResPrivateUrl('');
@@ -540,7 +542,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       setTimeout(() => setResSuccessMsg(''), 4000);
       refreshEverything();
     } catch (err: any) {
-      setResErrorMsg(err.message || 'Error al agregar recurso');
+      setResErrorMsg(err.message || t('errorAlAgregarRecurso', 'Error al agregar recurso'));
     }
   };
 
@@ -555,7 +557,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       setTimeout(() => setResSuccessMsg(''), 4000);
       refreshEverything();
     } catch (err: any) {
-      setResErrorMsg(err.message || 'Error al eliminar recurso');
+      setResErrorMsg(err.message || t('errorAlEliminarRecurso', 'Error al eliminar recurso'));
     } finally {
       setDeletingResource(false);
     }
@@ -565,7 +567,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     setIsGeneratingAiScript(true);
     try {
       // Find selected video title
-      let targetVideoTitle = 'Lección de Mentoría Técnica';
+      let targetVideoTitle = t('leccionDeMentoriaTecnica', 'Lección de Mentoría Técnica');
       for (const mod of workModules) {
         const foundVid = mod.videos.find((v) => v.id === ttsTargetVideoId);
         if (foundVid) {
@@ -584,7 +586,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
       if (res.scriptText) {
         setTtsScript(res.scriptText);
-        setTtsSuccessMsg('¡Guion generado por IA exitosamente!');
+        setTtsSuccessMsg(t('guionGeneradoPorIaExitosamente', '¡Guion generado por IA exitosamente!'));
         setTimeout(() => setTtsSuccessMsg(''), 3000);
       }
     } catch (err) {
@@ -614,31 +616,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
   const handlePreviewAudio = () => {
     if (!ttsScript.trim()) {
-      alert('Por favor escribe un script para la guía antes de previsualizar el audio.');
+      alert(t('porFavorEscribeUnScriptParaLaGuiaAntesDe', 'Por favor escribe un script para la guía antes de previsualizar el audio.'));
       return;
     }
 
     if (!('speechSynthesis' in window)) {
-      alert('Tu navegador no soporta síntesis de voz Web Speech API.');
+      alert(t('tuNavegadorNoSoportaSintesisDeVozWeb', 'Tu navegador no soporta síntesis de voz Web Speech API.'));
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(ttsScript);
-
-    const voices = window.speechSynthesis.getVoices();
-    let selectedVoice = voices.find((v) => v.lang.startsWith('es'));
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
-    utterance.rate = ttsSpeed;
-
-    utterance.onstart = () => setIsPreviewingAudio(true);
-    utterance.onend = () => setIsPreviewingAudio(false);
-    utterance.onerror = () => setIsPreviewingAudio(false);
-
-    window.speechSynthesis.speak(utterance);
+    // Misma ruta que el resto de la app (voz elegida, fragmentos y reintento), no una copia aparte.
+    setIsPreviewingAudio(true);
+    ttsService.speak({
+      text: ttsScript,
+      voiceId: ttsVoice,
+      speed: ttsSpeed,
+      onEnd: () => setIsPreviewingAudio(false),
+      onError: () => setIsPreviewingAudio(false),
+    });
   };
 
   const handleCreateTTSGuide = async (e: React.FormEvent) => {
@@ -648,7 +643,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     // Una guía sin clase destino no se le puede reproducir a nadie: el
     // servidor la aceptaba y caía en un `videoId` por defecto de otro curso.
     if (!ttsTargetVideoId) {
-      setTtsErrorMsg('Elige primero un curso con clases y la lección a la que acompaña la guía.');
+      setTtsErrorMsg(t('eligePrimeroUnCursoConClasesYLaLeccionA', 'Elige primero un curso con clases y la lección a la que acompaña la guía.'));
       return;
     }
     setTtsErrorMsg('');
@@ -662,7 +657,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         courseId: workCourse.id,
         moduleId: selectedModule?.id || workModules[0]?.id,
         videoId: ttsTargetVideoId,
-        title: ttsTitle.trim() || 'Guía de Orientación de Mentoría',
+        title: ttsTitle.trim() || t('guiaDeOrientacionDeMentoria', 'Guía de Orientación de Mentoría'),
         scriptText: ttsScript.trim(),
         voiceId: ttsVoice,
         voiceSpeed: ttsSpeed,
@@ -670,7 +665,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       });
 
       if (res.success) {
-        setTtsSuccessMsg(`Guía guardada en «${workCourse.title}».`);
+        setTtsSuccessMsg(t('guiaGuardadaEnTitle', 'Guía guardada en «{{title}}».', { title: workCourse.title }));
         setTtsScript('');
         setTtsTitle('');
         setShowTtsSheet(false);
@@ -678,7 +673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         setTimeout(() => setTtsSuccessMsg(''), 3500);
       }
     } catch (error: any) {
-      setTtsErrorMsg(error?.message || 'No se pudo guardar la guía TTS.');
+      setTtsErrorMsg(error?.message || t('noSePudoGuardarLaGuiaTts', 'No se pudo guardar la guía TTS.'));
     }
   };
 
@@ -687,7 +682,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.deleteTTSGuide(id);
       loadTTSGuides();
     } catch (error: any) {
-      setTtsErrorMsg(error?.message || 'No se pudo eliminar la guía.');
+      setTtsErrorMsg(error?.message || t('noSePudoEliminarLaGuia', 'No se pudo eliminar la guía.'));
     }
   };
 
@@ -716,7 +711,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       // cuyos identificadores no existen: enlazarlos deja el reproductor negro.
       setDriveIsDemo(Boolean(res.isDemo));
     } catch (error: any) {
-      if (requestId === driveRequestId.current) setDriveErrorMsg(error?.message || 'No se pudo consultar Google Drive.');
+      if (requestId === driveRequestId.current) setDriveErrorMsg(error?.message || t('noSePudoConsultarGoogleDrive', 'No se pudo consultar Google Drive.'));
     } finally {
       if (requestId === driveRequestId.current) setLoadingDrive(false);
     }
@@ -744,32 +739,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       // Antes esto solo llegaba a la consola del navegador: el boton parecia no
       // hacer nada y no habia forma de saber que el servidor lo habia
       // rechazado.
-      setRoleErrorMsg(error?.message || 'No se pudo cambiar el rol.');
+      setRoleErrorMsg(error?.message || t('noSePudoCambiarElRol', 'No se pudo cambiar el rol.'));
     }
   };
 
-  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'toggle_active' | 'reset'): Promise<boolean> => {
+  const [moderationNotice, setModerationNotice] = useState<{ tone: 'warn' | 'error'; text: string } | null>(null);
+  const [historyUser, setHistoryUser] = useState<User | null>(null);
+  const [historyEvents, setHistoryEvents] = useState<ModerationHistoryEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const openModerationHistory = async (target: User) => {
+    setHistoryUser(target);
+    setHistoryEvents([]);
+    setHistoryLoading(true);
+    try {
+      const res = await api.getUserModerationHistory(target.id);
+      setHistoryEvents(res.events || []);
+    } catch (error) {
+      console.error('Error loading moderation history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const moderationActionLabel = (action: ModerationHistoryEvent['action']) => {
+    switch (action) {
+      case 'strike_added': return t('historialStrikePuesto', 'Strike puesto');
+      case 'strike_removed': return t('historialStrikeQuitado', 'Strike quitado');
+      case 'suspended': return t('historialSuspendida', 'Cuenta suspendida');
+      case 'reactivated': return t('historialReactivada', 'Cuenta reactivada');
+      default: return t('historialSuspensionAutomatica', 'Suspensión automática');
+    }
+  };
+
+  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'remove_strike' | 'toggle_active' | 'reset'): Promise<boolean> => {
     try {
       let newStrikes = currentStrikes;
       let newActive = currentActive;
 
-      if (action === 'add_strike') newStrikes += 1;
-      if (action === 'reset') newStrikes = 0;
+      if (action !== 'toggle_active') newStrikes = nextStrikes(currentStrikes, action);
       if (action === 'toggle_active') newActive = !currentActive;
 
-      await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
+      setModerationNotice(null);
+      const result = await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
+      if (result.autoSuspended) {
+        setModerationNotice({
+          tone: 'warn',
+          text: t('cuentaSuspendidaPorStrikes', 'La cuenta se suspendió automáticamente al llegar a {{max}} strikes.', { max: MAX_USER_STRIKES }),
+        });
+      }
+      // Solo cambia la fila del usuario: se recarga el directorio y no los datos de toda la app,
+      // porque esa recarga reinicia el panel y saca al admin de la pantalla donde estaba.
       await loadUsers();
-      onRefreshData();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating moderation:', error);
+      setModerationNotice({
+        tone: 'error',
+        text: error?.message || t('noSePudoActualizarLaModeracion', 'No se pudo actualizar la moderación.'),
+      });
       return false;
     }
   };
 
   const handleLinkDriveVideo = async (video: DriveVideoFile) => {
     if (!selectedModuleId) {
-      setDriveErrorMsg('Elige antes el curso y el módulo de destino.');
+      setDriveErrorMsg(t('eligeAntesElCursoYElModuloDeDestino', 'Elige antes el curso y el módulo de destino.'));
       return;
     }
     setLinkingVideo(video);
@@ -778,12 +813,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.addDriveVideoToModule(selectedModuleId, video);
       const target = workModules.find((m) => m.id === selectedModuleId);
       setLinkSuccessMsg(
-        `«${video.name}» enlazado a ${target?.title || 'el módulo'} de «${workCourse.title}».`,
+        t('nameEnlazadoAValDeTitle', '«{{name}}» enlazado a {{val}} de «{{title}}».', { name: video.name, val: target?.title || 'el módulo', title: workCourse.title }),
       );
       refreshEverything();
       setTimeout(() => setLinkSuccessMsg(''), 4000);
     } catch (error: any) {
-      setDriveErrorMsg(error?.message || 'No se pudo enlazar el video.');
+      setDriveErrorMsg(error?.message || t('noSePudoEnlazarElVideo', 'No se pudo enlazar el video.'));
     } finally {
       setLinkingVideo(null);
     }
@@ -800,7 +835,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     e.preventDefault();
     if (!manualVideoUrl.trim() || !manualVideoTitle.trim()) return;
     if (!selectedModuleId) {
-      setDriveErrorMsg('Elige antes el curso y el módulo de destino.');
+      setDriveErrorMsg(t('eligeAntesElCursoYElModuloDeDestino', 'Elige antes el curso y el módulo de destino.'));
       return;
     }
 
@@ -821,7 +856,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       });
       const target = workModules.find((m) => m.id === selectedModuleId);
       setLinkSuccessMsg(
-        `«${manualVideoTitle.trim()}» añadido a ${target?.title || 'el módulo'} de «${workCourse.title}».`,
+        t('manualVideoTitleAnadidoAValDeTitle', '«{{manualVideoTitle}}» añadido a {{val}} de «{{title}}».', { manualVideoTitle: manualVideoTitle.trim(), val: target?.title || 'el módulo', title: workCourse.title }),
       );
       setManualVideoUrl('');
       setManualVideoTitle('');
@@ -830,7 +865,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       refreshEverything();
       setTimeout(() => setLinkSuccessMsg(''), 4000);
     } catch (error: any) {
-      setDriveErrorMsg(error?.message || 'No se pudo añadir el video.');
+      setDriveErrorMsg(error?.message || t('noSePudoAnadirElVideo', 'No se pudo añadir el video.'));
     } finally {
       setAddingManualVideo(false);
     }
@@ -886,7 +921,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     <div className="bg-raised border border-line rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
       <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-2 w-full xl:w-auto">
         <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider shrink-0">
-          Curso sobre el que trabajas
+          {t('cursoSobreElQueTrabajas', 'Curso sobre el que trabajas')}
         </label>
         <select
           value={workCourseId}
@@ -895,14 +930,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         >
           {allCourses.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.title}{item.published ? '' : ' — borrador'}
+              {item.title}{item.published ? '' : t('borradorGuion', ' — borrador')}
             </option>
           ))}
         </select>
       </div>
 
       <span className="text-[11px] font-mono text-ink-muted shrink-0">
-        {workModules.length} módulos · {workLessonCount} clases
+        {t('lengthModulosWorkLessonCountClases', '{{length}} módulos · {{workLessonCount}} clases', { length: workModules.length, workLessonCount })}
       </span>
     </div>
   );
@@ -919,7 +954,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           : ['landing', 'listening'].includes(activeTab)
             ? [] // Portal lleva su propio selector Portada / Escucha
             : activeTab === 'plugins'
-              ? [{ label: 'Plugins y configuración', target: 'plugins' }]
+              ? [{ label: t('pluginsYConfiguracion', 'Plugins y configuración'), target: 'plugins' }]
               : [];
 
   return (
@@ -932,7 +967,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="w-12 h-12 rounded-xl bg-black/40 border border-line flex items-center justify-center p-1.5 shrink-0 relative overflow-visible shadow-inner">
               <img
                 src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
-                alt="Logo"
+                alt={t('logo', 'Logo')}
                 className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
@@ -943,13 +978,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider">
                 <Shield className="w-3.5 h-3.5" />
-                <span>PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC</span>
+                <span>{t('panelDeMentoriaAdministracionRbac', 'PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC')}</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Control Center`}
+                {customizerConfig.customCampusName || t('customBrandNameControlCenter', '{{customBrandName}} Control Center', { customBrandName: customizerConfig.customBrandName || 'DocentOS' })}
               </h1>
               <p className="text-ink-muted text-xs mt-1 max-w-md leading-relaxed">
-                Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.
+                {t('gestionDePermisosDeUsuariosAsignacionDe', 'Gestión de permisos de usuarios, asignación de Pases VIP y enlazado de videos de Google Drive.')}
               </p>
             </div>
           </div>
@@ -959,12 +994,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {/* Fila 1 */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {[
-                { id: 'users' as SubTab, label: 'Usuarios', icon: Users, iconColor: 'text-white/70' },
-                { id: 'courses' as SubTab, label: 'Cursos', icon: BookOpen, iconColor: 'text-cyan-400' },
-                { id: 'enrollments' as SubTab, label: 'Matrículas', icon: GraduationCap, iconColor: 'text-emerald-400' },
-                { id: 'certificates' as SubTab, label: 'Certificados', icon: Award, iconColor: 'text-amber-400' },
-                { id: 'contracts' as SubTab, label: 'Contratos', icon: FileCheck, iconColor: 'text-blue-400' },
-                { id: 'resources' as SubTab, label: 'Recursos', icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'users' as SubTab, label: t('usuarios', 'Usuarios'), icon: Users, iconColor: 'text-white/70' },
+                { id: 'courses' as SubTab, label: t('cursosCapital', 'Cursos'), icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'enrollments' as SubTab, label: t('matriculas', 'Matrículas'), icon: GraduationCap, iconColor: 'text-emerald-400' },
+                { id: 'certificates' as SubTab, label: t('certificados', 'Certificados'), icon: Award, iconColor: 'text-amber-400' },
+                { id: 'contracts' as SubTab, label: t('contratos', 'Contratos'), icon: FileCheck, iconColor: 'text-blue-400' },
+                { id: 'resources' as SubTab, label: t('recursos', 'Recursos'), icon: BookOpen, iconColor: 'text-cyan-400' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -989,11 +1024,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {/* Fila 2 */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {[
-                { id: 'drive' as SubTab, label: 'Videos Drive', icon: HardDrive, iconColor: 'text-white/70' },
-                { id: 'tts' as SubTab, label: 'Guías TTS', icon: Sparkles, iconColor: 'text-amber-300' },
-                { id: 'plugins' as SubTab, label: 'Plugins', icon: Layers, iconColor: 'text-cyan-400' },
-                { id: 'landing' as SubTab, label: 'Portada', icon: Sliders, iconColor: 'text-cyan-400' },
-                { id: 'listening' as SubTab, label: 'Escucha', icon: HeartHandshake, iconColor: 'text-cyan-400' },
+                { id: 'drive' as SubTab, label: t('videosDrive', 'Videos Drive'), icon: HardDrive, iconColor: 'text-white/70' },
+                { id: 'tts' as SubTab, label: t('guiasTts', 'Guías TTS'), icon: Sparkles, iconColor: 'text-amber-300' },
+                { id: 'plugins' as SubTab, label: t('plugins', 'Plugins'), icon: Layers, iconColor: 'text-cyan-400' },
+                { id: 'landing' as SubTab, label: t('portada', 'Portada'), icon: Sliders, iconColor: 'text-cyan-400' },
+                { id: 'listening' as SubTab, label: t('escucha', 'Escucha'), icon: HeartHandshake, iconColor: 'text-cyan-400' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -1038,7 +1073,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <span>{t('admin.badge', 'Panel de Control & Administración Global RBAC')}</span>
                 </div>
                 <h2 className="text-2xl font-extrabold text-ink tracking-tight">
-                  {customizerConfig.customCampusName || `${customizerConfig.customBrandName || 'DocentOS'} Command Center`}
+                  {customizerConfig.customCampusName || t('customBrandNameCommandCenter', '{{customBrandName}} Command Center', { customBrandName: customizerConfig.customBrandName || 'DocentOS' })}
                 </h2>
                 <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
                   {t('admin.desc', 'Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.')}
@@ -1060,7 +1095,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* Navegación única de DocentOS 0.5 Moderna */}
           <nav
-            aria-label="Módulos de administración"
+            aria-label={t('modulosDeAdministracion', 'Módulos de administración')}
             className="admin-module-nav mentor-module-nav grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
           >
             {MODERN_ADMIN_MODULES.map((module) => {
@@ -1102,8 +1137,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           </nav>
 
           {modernContextActions.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-1" aria-label="Acciones del módulo actual">
-              <span className="text-xs font-medium text-ink-muted shrink-0">En este módulo</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-1" aria-label={t('accionesDelModuloActual', 'Acciones del módulo actual')}>
+              <span className="text-xs font-medium text-ink-muted shrink-0">{t('enEsteModulo', 'En este módulo')}</span>
               <div className="flex flex-wrap gap-1.5">
                 {modernContextActions.map((action) => (
                   <button
@@ -1151,12 +1186,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <BookOpen className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              {allCourses.length} cursos
+              {t('lengthCursos', '{{length}} cursos', { length: allCourses.length })}
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">{t('admin.coursesTitle', 'Cursos & Contenidos')}</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.coursesSubtitle', 'Temarios, recursos y videos')}</div>
+            <div className="text-sm font-bold text-ink">{t('admin.coursesTitle', 'Catálogo Académico')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.coursesSubtitle', 'Cursos, Módulos, Videos')}</div>
           </div>
         </button>
 
@@ -1181,12 +1216,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <Users className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              {users.length} usuarios • {enrollments.length} matrículas
+              {t('lengthUsuariosLength2Matriculas', '{{length}} usuarios • {{length2}} matrículas', { length: users.length, length2: enrollments.length })}
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">{t('admin.usersTitle', 'Usuarios & Matrículas')}</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.usersSubtitle', 'Directorio RBAC, pases y admisiones')}</div>
+            <div className="text-sm font-bold text-ink">{t('admin.usersTitle', 'Usuarios y Comunidad')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.usersSubtitle', 'Alumnos, Matrículas, Roles')}</div>
           </div>
         </button>
 
@@ -1213,12 +1248,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <Award className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              {certificates.length} diplomas
+              {t('lengthDiplomas', '{{length}} diplomas', { length: certificates.length })}
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">{t('admin.legalTitle', 'Certificación & Legal')}</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.legalSubtitle', 'Diplomas y auditoría forense')}</div>
+            <div className="text-sm font-bold text-ink">{t('admin.legalTitle', 'Legal y Certificación')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.legalSubtitle', 'Diplomas Verificables, Contratos')}</div>
           </div>
         </button>
 
@@ -1245,12 +1280,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <Sliders className="w-4 h-4" />
             </span>
             <span className="text-[10px] font-mono font-bold text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line">
-              Configuración
+              {t('configuracion', 'Configuración')}
             </span>
           </div>
           <div>
-            <div className="text-sm font-bold text-ink">{t('admin.systemTitle', 'Configuración & Portal')}</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.systemSubtitle', 'Plugins, portada y escucha')}</div>
+            <div className="text-sm font-bold text-ink">{t('admin.systemTitle', 'Sistema y Personalización')}</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">{t('admin.systemSubtitle', 'Plugins, Landing Page, Buzón')}</div>
           </div>
         </button>
       </div>
@@ -1270,7 +1305,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>{t('admin.tabCourses', 'Catálogo y Temarios')} ({allCourses.length})</span>
+                <span>{t('admin.tabCourses', 'Gestor de Cursos')} ({allCourses.length})</span>
               </button>
               <button
                 type="button"
@@ -1304,7 +1339,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>{t('admin.tabUsers', 'Directorio & Roles RBAC')} ({users.length})</span>
+                <span>{t('admin.tabUsers', 'Directorio de Alumnos')} ({users.length})</span>
               </button>
               <button
                 type="button"
@@ -1339,7 +1374,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Award className="w-3.5 h-3.5 text-amber-400" />
-                <span>{t('admin.tabCertificates', 'Certificados Oficiales')} ({certificates.length})</span>
+                <span>{t('admin.tabCertificates', 'Certificados Emitidos')} ({certificates.length})</span>
               </button>
               <button
                 type="button"
@@ -1371,7 +1406,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Layers className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>{t('admin.tabPlugins', 'Plugins y Extensiones')}</span>
+                <span>{t('admin.tabPlugins', 'Plugins del Ecosistema')}</span>
               </button>
               <button
                 type="button"
@@ -1385,7 +1420,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5 text-brand-purple" />
-                <span>{t('admin.tabLanding', 'Portal Web y Feedback Alumnos')}</span>
+                <span>{t('admin.tabLanding', 'Editor Visual de Landing')}</span>
               </button>
             </div>
           )}
@@ -1401,19 +1436,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         <section className={`space-y-6 ${animClass}`} aria-labelledby="admin-overview-title">
           <div className="flex flex-col gap-2">
             <h1 id="admin-overview-title" className="text-2xl sm:text-3xl font-semibold text-ink tracking-tight">
-              Estado general
+              {t('estadoGeneral', 'Estado general')}
             </h1>
             <p className="max-w-2xl text-sm text-ink-muted">
-              Un punto de entrada para revisar el sistema y continuar con la tarea que necesita atención.
+              {t('unPuntoDeEntradaParaRevisarElSistemaY', 'Un punto de entrada para revisar el sistema y continuar con la tarea que necesita atención.')}
             </p>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Cursos', value: allCourses.length, target: 'courses' as SubTab },
-              { label: 'Usuarios', value: users.length, target: 'users' as SubTab },
-              { label: 'Matrículas', value: enrollments.length, target: 'enrollments' as SubTab },
-              { label: 'Certificados', value: certificates.length, target: 'certificates' as SubTab },
+              { label: t('cursosCapital', 'Cursos'), value: allCourses.length, target: 'courses' as SubTab },
+              { label: t('adminUsuarios', 'Usuarios'), value: users.length, target: 'users' as SubTab },
+              { label: t('matriculas', 'Matrículas'), value: enrollments.length, target: 'enrollments' as SubTab },
+              { label: t('certificados', 'Certificados'), value: certificates.length, target: 'certificates' as SubTab },
             ].map((stat) => (
               <button
                 key={stat.label}
@@ -1423,7 +1458,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               >
                 <span className="block text-xs text-ink-muted">{stat.label}</span>
                 <span className="block mt-2 text-2xl font-semibold text-ink tabular-nums">{stat.value}</span>
-                <span className="block mt-1 text-[11px] text-brand-cyan">Abrir módulo</span>
+                <span className="block mt-1 text-[11px] text-brand-cyan">{t('abrirModulo', 'Abrir módulo')}</span>
               </button>
             ))}
           </div>
@@ -1432,8 +1467,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="bg-raised border border-line rounded-xl p-5">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="text-base font-semibold text-ink">Entradas principales</h2>
-                  <p className="mt-1 text-xs text-ink-muted">Accede directamente a las áreas de trabajo.</p>
+                  <h2 className="text-base font-semibold text-ink">{t('entradasPrincipales', 'Entradas principales')}</h2>
+                  <p className="mt-1 text-xs text-ink-muted">{t('accedeDirectamenteALasAreasDeTrabajo', 'Accede directamente a las áreas de trabajo.')}</p>
                 </div>
                 <LayoutDashboard className="w-5 h-5 text-brand-cyan" aria-hidden />
               </div>
@@ -1456,16 +1491,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
 
             <div className="bg-raised border border-line rounded-xl p-5">
-              <h2 className="text-base font-semibold text-ink">Siguiente paso</h2>
+              <h2 className="text-base font-semibold text-ink">{t('siguientePaso', 'Siguiente paso')}</h2>
               <p className="mt-1 text-xs text-ink-muted">
-                Selecciona un módulo para trabajar con su contexto y herramientas específicas.
+                {t('seleccionaUnModuloParaTrabajarConSu', 'Selecciona un módulo para trabajar con su contexto y herramientas específicas.')}
               </p>
               <button
                 type="button"
                 onClick={() => selectTab('courses')}
                 className="mt-5 w-full min-h-11 px-4 rounded-lg btn-brand-primary text-sm font-semibold"
               >
-                Abrir cursos
+                {t('abrirCursos', 'Abrir cursos')}
               </button>
             </div>
           </div>
@@ -1502,6 +1537,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             onEnrollUser={(id) => { setNewEnrollUserId(id); setEnrollFromSheet(true); setShowQuickEnroll(true); }}
             onUpdateRole={handleUpdateRole}
             onModerate={(u, action) => handleUpdateModeration(u.id, u.strikes || 0, u.isActive !== false, action)}
+            onHistory={openModerationHistory}
             onMentorCourses={handleOpenMentorCourses}
           />
 
@@ -1780,7 +1816,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-white">
-                    Cursos Asignados al Mentor
+                    {t('cursosAsignadosAlMentor', 'Cursos Asignados al Mentor')}
                   </h3>
                   <p className="text-xs text-ink-muted">
                     {selectedMentorForCourses.name} ({selectedMentorForCourses.email})
@@ -1798,7 +1834,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
 
             <p className="text-xs text-ink-soft">
-              Marca los cursos que este mentor puede gestionar. Solo podrá ver, inscribir y tutelar estudiantes en los cursos seleccionados.
+              {t('marcaLosCursosQueEsteMentorPuede', 'Marca los cursos que este mentor puede gestionar. Solo podrá ver, inscribir y tutelar estudiantes en los cursos seleccionados.')}
             </p>
 
             {mentorCoursesNotice && (
@@ -1810,12 +1846,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             {loadingMentorCourses ? (
               <div className="py-8 flex flex-col items-center justify-center text-ink-muted gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
-                <span className="text-xs">Cargando cursos asignados...</span>
+                <span className="text-xs">{t('cargandoCursosAsignados', 'Cargando cursos asignados...')}</span>
               </div>
             ) : (
               <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
                 {allCourses.length === 0 ? (
-                  <p className="text-xs text-ink-muted py-4 text-center">No hay cursos en el catálogo.</p>
+                  <p className="text-xs text-ink-muted py-4 text-center">{t('noHayCursosEnElCatalogo', 'No hay cursos en el catálogo.')}</p>
                 ) : (
                   allCourses.map((c) => {
                     const isChecked = mentorAssignedCourseIds.includes(c.id);
@@ -1842,7 +1878,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                         </div>
                         {isChecked && (
                           <span className="text-[10px] font-mono font-bold text-brand-cyan uppercase ml-2 shrink-0">
-                            Asignado
+                            {t('asignado', 'Asignado')}
                           </span>
                         )}
                       </label>
@@ -1854,7 +1890,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
             <div className="flex items-center justify-between pt-3 border-t border-line">
               <span className="text-xs text-ink-muted font-mono">
-                {mentorAssignedCourseIds.length} curso{mentorAssignedCourseIds.length === 1 ? '' : 's'} asignado{mentorAssignedCourseIds.length === 1 ? '' : 's'}
+                {t('countCursosAsignados', { defaultValue_one: '{{count}} curso asignado', defaultValue_other: '{{count}} cursos asignados', count: mentorAssignedCourseIds.length })}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1863,7 +1899,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   onClick={() => setSelectedMentorForCourses(null)}
                   className="px-3 py-1.5 rounded-xl text-xs font-bold text-ink-muted hover:text-white"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="button"
@@ -1872,7 +1908,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
                 >
                   {savingMentorCourses && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Guardar Asignaciones</span>
+                  <span>{t('guardarAsignaciones', 'Guardar Asignaciones')}</span>
                 </button>
               </div>
             </div>
@@ -1880,6 +1916,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         </div>
       )}
 
+
+      {moderationNotice && (
+        <div
+          role="alert"
+          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border px-4 py-3 text-xs font-bold shadow-2xl ${
+            moderationNotice.tone === 'error'
+              ? 'bg-red-500/15 border-red-500/40 text-red-300'
+              : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+          }`}
+        >
+          <span>{moderationNotice.text}</span>
+          <button onClick={() => setModerationNotice(null)} className="opacity-70 hover:opacity-100" aria-label={t('cerrar', 'Cerrar')}>✕</button>
+        </div>
+      )}
+
+      {historyUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="moderation-history-title" className="bg-surface border border-line-strong/80 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl p-6 text-xs text-ink-soft space-y-4">
+            <div className="flex items-start justify-between border-b border-line pb-3">
+              <div>
+                <h3 id="moderation-history-title" className="text-base font-bold text-ink">{t('historialDeModeracionTitulo', 'Historial de moderación')}</h3>
+                <p className="text-ink-muted mt-0.5">{historyUser.name} · {historyUser.email}</p>
+              </div>
+              <button onClick={() => setHistoryUser(null)} className="text-ink-muted hover:text-ink" aria-label={t('cerrar', 'Cerrar')}>✕</button>
+            </div>
+            {historyLoading ? (
+              <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-brand-cyan" /></div>
+            ) : historyEvents.length === 0 ? (
+              <p className="py-6 text-center text-ink-muted">{t('sinHistorialDeModeracion', 'Todavía no hay acciones de moderación registradas.')}</p>
+            ) : (
+              <ul className="max-h-80 overflow-y-auto space-y-2 pr-1">
+                {historyEvents.map((event) => (
+                  <li key={event.id} className="rounded-xl border border-line bg-raised p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-ink">{moderationActionLabel(event.action)}</span>
+                      <span className="text-ink-muted">{new Date(event.createdAt).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                    <p className="mt-1 text-ink-muted">
+                      {t('historialPor', 'Por')} <span className="font-bold text-ink-soft">{event.actorName || event.actorEmail || t('historialDesconocido', 'una cuenta eliminada')}</span>
+                      {event.action.startsWith('strike') && ` · ${event.strikesBefore} → ${event.strikesAfter}`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

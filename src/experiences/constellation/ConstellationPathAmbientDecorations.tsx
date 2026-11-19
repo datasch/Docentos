@@ -1,5 +1,6 @@
 import React from 'react';
 import { SeasonalTheme } from '../../lib/seasonalTheme';
+import { useTranslation } from 'react-i18next'
 
 interface ModuleSideDecorationsProps {
   seasonalTheme: SeasonalTheme;
@@ -12,6 +13,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
   modIdx,
   height,
 }) => {
+  const { t } = useTranslation()
   const variant = modIdx % 4;
   const leftY = Math.round(height * 0.28);
   const rightY = Math.round(height * 0.62);
@@ -42,7 +44,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <path d="M30 68 Q50 86 70 68 Q64 74 58 70 Q54 77 50 71 Q46 77 42 70 Q36 74 30 68 Z" fill="#fef08a" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-orange-500/30">
-                🎃 Jack-o'
+                {t('jacko', '🎃 Jack-o\'')}
               </span>
             </div>
           )}
@@ -58,7 +60,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="58" cy="22" r="3" fill="#86efac" className="animate-ping" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                🧪 Poción IA
+                {t('pocionIa', '🧪 Poción IA')}
               </span>
             </div>
           )}
@@ -77,7 +79,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <path d="M63 46 Q59 38 63 32 Q67 38 63 46 Z" fill="#ea580c" className="animate-pulse" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-                🕯 Vigilia
+                {t('vigilia', '🕯 Vigilia')}
               </span>
             </div>
           )}
@@ -95,7 +97,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <line x1="57" y1="70" x2="57" y2="82" stroke="#9333ea" strokeWidth="1.5" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-purple-500/30">
-                💀 Calavera IA
+                {t('calaveraIa', '💀 Calavera IA')}
               </span>
             </div>
           )}
@@ -119,7 +121,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="64" cy="40" r="2.5" fill="#f97316" className="animate-ping" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-purple-500/30">
-                🦇 Murciélago
+                {t('murcielago', '🦇 Murciélago')}
               </span>
             </div>
           )}
@@ -141,7 +143,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <ellipse cx="50" cy="54" rx="3.5" ry="5" fill="#312e81" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                👻 Espectro
+                {t('espectro', '👻 Espectro')}
               </span>
             </div>
           )}
@@ -155,7 +157,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="50" cy="50" r="8" fill="#e11d48" stroke="#ffffff" strokeWidth="2" className="animate-ping" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-rose-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-rose-500/30">
-                🕸 Telaraña
+                {t('telarana', '🕸 Telaraña')}
               </span>
             </div>
           )}
@@ -169,7 +171,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <line x1="42" y1="44" x2="58" y2="56" stroke="#ffffff" strokeWidth="2" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-                🍬 Dulce Lunar
+                {t('dulceLunar', '🍬 Dulce Lunar')}
               </span>
             </div>
           )}
@@ -199,7 +201,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="50" cy="66" r="3.5" fill="#ec4899" className="animate-ping" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                🎄 Árbol Polar
+                {t('arbolPolar', '🎄 Árbol Polar')}
               </span>
             </div>
           )}
@@ -215,7 +217,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <ellipse cx="60" cy="24" rx="10" ry="7" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" transform="rotate(20 60 24)" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-                🎁 Regalo Pro
+                {t('regaloPro', '🎁 Regalo Pro')}
               </span>
             </div>
           )}
@@ -233,7 +235,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="50" cy="78" r="2.5" fill="#0f172a" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-sky-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-sky-500/30">
-                ⛄ Muñeco Nieve
+                {t('munecoNieve', '⛄ Muñeco Nieve')}
               </span>
             </div>
           )}
@@ -248,7 +250,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <polygon points="50,20 60,8 56,22" fill="#ef4444" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                🌿 Corona Polar
+                {t('coronaPolar', '🌿 Corona Polar')}
               </span>
             </div>
           )}
@@ -267,7 +269,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="42" cy="50" r="6" fill="#fbbf24" stroke="#d97706" strokeWidth="2" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-red-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-red-500/30">
-                🍬 Bastón Festivo
+                {t('bastonFestivo', '🍬 Bastón Festivo')}
               </span>
             </div>
           )}
@@ -281,7 +283,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="50" cy="22" r="5" fill="#ef4444" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-yellow-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                🔔 Campanas
+                {t('campanas', '🔔 Campanas')}
               </span>
             </div>
           )}
@@ -295,7 +297,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="50" cy="12" r="5" fill="none" stroke="#fbbf24" strokeWidth="2" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                ❄ Esfera Polar
+                {t('esferaPolar', '❄ Esfera Polar')}
               </span>
             </div>
           )}
@@ -307,7 +309,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
                 <circle cx="50" cy="46" r="6" fill="#ffffff" />
               </svg>
               <span className="text-[10px] font-black uppercase tracking-wider text-yellow-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                ⭐ Estrella Belén
+                {t('estrellaBelen', '⭐ Estrella Belén')}
               </span>
             </div>
           )}
@@ -332,7 +334,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <path d="M12 60 C12 72, 108 72, 108 60" stroke="#a5f3fc" strokeWidth="5" strokeLinecap="round" fill="none" transform="rotate(-25 60 60)" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-cyan-500/30">
-              ✦ Saturno IA
+              {t('saturnoIa', '✦ Saturno IA')}
             </span>
           </div>
         )}
@@ -344,7 +346,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <circle cx="76" cy="22" r="9" fill="#ffffff" stroke="#38bdf8" strokeWidth="2.5" className="animate-pulse" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-sky-500/30">
-              ☄ Cometa
+              {t('cometa', '☄ Cometa')}
             </span>
           </div>
         )}
@@ -360,7 +362,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <circle cx="18" cy="46" r="4" fill="#facc15" stroke="#ffffff" strokeWidth="1" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-              ✦ Constelación
+              {t('constelacion', '✦ Constelación')}
             </span>
           </div>
         )}
@@ -373,7 +375,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <circle cx="50" cy="50" r="8" fill="#e879f9" className="animate-ping" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-fuchsia-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-fuchsia-500/30">
-              🌀 Vórtice IA
+              {t('vorticeIa', '🌀 Vórtice IA')}
             </span>
           </div>
         )}
@@ -394,7 +396,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <circle cx="50" cy="22" r="2.5" fill="#38bdf8" className="animate-ping" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-purple-500/30">
-              📡 Satélite IA
+              {t('sateliteIa', '📡 Satélite IA')}
             </span>
           </div>
         )}
@@ -408,7 +410,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <rect x="64" y="46" width="14" height="8" rx="2" fill="#1e1b4b" stroke="#a855f7" strokeWidth="1.5" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-pink-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-pink-500/30">
-              🛸 Estación Alfa
+              {t('estacionAlfa', '🛸 Estación Alfa')}
             </span>
           </div>
         )}
@@ -421,7 +423,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <circle cx="52" cy="50" r="4" fill="#5eead4" className="animate-ping" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-teal-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-teal-500/30">
-              💎 Geoda
+              {t('geoda', '💎 Geoda')}
             </span>
           </div>
         )}
@@ -433,7 +435,7 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
               <circle cx="50" cy="45" r="5" fill="#ffffff" className="animate-ping" />
             </svg>
             <span className="text-[10px] font-black uppercase tracking-wider text-orange-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-orange-500/30">
-              🚀 Sonda IA
+              {t('sondaIa', '🚀 Sonda IA')}
             </span>
           </div>
         )}

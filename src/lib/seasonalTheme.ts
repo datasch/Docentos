@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import i18n from '../i18n';
 
 export type SeasonalTheme = 'halloween' | 'christmas' | 'none';
 export type SeasonalOverride = 'auto' | 'halloween' | 'christmas' | 'none';
@@ -107,29 +108,38 @@ export function applySeasonalTheme(): SeasonalTheme {
   return theme;
 }
 
-export const SEASONAL_INFO = {
+export type SeasonalInfo = {
+  id: string;
+  get nombre(): string;
+  emoji: string;
+  get badge(): string;
+  get mensaje(): string;
+  colorAcento: string;
+};
+
+export const SEASONAL_INFO: Record<SeasonalTheme, SeasonalInfo> = {
   halloween: {
     id: 'halloween',
-    nombre: 'Noche de Brujas',
+    get nombre() { return i18n.t('season_halloween_nombre', 'Noche de Brujas'); },
     emoji: '🎃',
-    badge: '🎃 Especial de Halloween',
-    mensaje: '¡Feliz Noche de Brujas! Conquista tus misiones con energía sobrenatural.',
+    get badge() { return i18n.t('season_halloween_badge', '🎃 Especial de Halloween'); },
+    get mensaje() { return i18n.t('season_halloween_mensaje', '¡Feliz Noche de Brujas! Conquista tus misiones con energía sobrenatural.'); },
     colorAcento: '#f97316',
   },
   christmas: {
     id: 'christmas',
-    nombre: 'Temporada Navideña',
+    get nombre() { return i18n.t('season_christmas_nombre', 'Temporada Navideña'); },
     emoji: '🎄',
-    badge: '🎄 Especial de Navidad',
-    mensaje: '¡Felices Fiestas! Tu aprendizaje y dedicación son el mejor regalo.',
+    get badge() { return i18n.t('season_christmas_badge', '🎄 Especial de Navidad'); },
+    get mensaje() { return i18n.t('season_christmas_mensaje', '¡Felices Fiestas! Tu aprendizaje y dedicación son el mejor regalo.'); },
     colorAcento: '#ef4444',
   },
   none: {
     id: 'none',
-    nombre: 'Estándar Cósmico',
+    get nombre() { return i18n.t('season_none_nombre', 'Estándar Cósmico'); },
     emoji: '✨',
-    badge: '✨ Constelación Estándar',
-    mensaje: 'Ruta Oficial de Aprendizaje DocentOS',
+    get badge() { return i18n.t('season_none_badge', '✨ Constelación Estándar'); },
+    get mensaje() { return i18n.t('season_none_mensaje', 'Ruta Oficial de Aprendizaje DocentOS'); },
     colorAcento: '#06b6d4',
   },
-} as const;
+};

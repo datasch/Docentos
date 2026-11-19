@@ -19,13 +19,17 @@ import './styles/mentor-qna.css';
 import './styles/mentor-meetings.css';
 import './styles/mentor-quiz.css';
 import './styles/mentor-youtube.css';
-import './i18n/index.ts';
+import { i18nReady } from './i18n/index.ts';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
-  </StrictMode>,
-);
+// Se espera al idioma inicial para no pintar en español y cambiar un instante después.
+// Si la descarga falla, la app arranca igual con el español incluido en el paquete.
+const mount = () =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    </StrictMode>,
+  );
 
+i18nReady.then(mount, mount);

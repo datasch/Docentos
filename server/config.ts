@@ -74,6 +74,15 @@ const rawSchema = z.object({
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
   PASSWORD_RESET_WEBHOOK_URL: optionalString,
   PASSWORD_RESET_WEBHOOK_TOKEN: optionalString,
+  // Correo saliente (SMTP). Con SMTP_HOST, DocentOS envia el correo de
+  // recuperacion directamente; sin el, usa PASSWORD_RESET_WEBHOOK_URL.
+  SMTP_HOST: optionalString,
+  SMTP_PORT: numberWithDefault(587, 1, 65535),
+  // Vacio = TLS directo solo en el puerto 465; en 587/25 se usa STARTTLS.
+  SMTP_SECURE: optionalString,
+  SMTP_USER: optionalString,
+  SMTP_PASS: optionalString,
+  MAIL_FROM: optionalString,
   // Integracion servidor a servidor (API de pagos de la landing): da de alta al
   // alumno y su matricula cuando el pago esta confirmado. Sin token, la ruta no
   // existe. Minimo 32 caracteres: es la unica llave de esa puerta.
@@ -180,6 +189,27 @@ if (raw.SESSION_COOKIE_SECURE === 'false' && appUrl.protocol === 'https:') {
 }
 if (isDeployed && raw.PASSWORD_RESET_EXPOSE_TOKEN) {
   throw new Error('Configuracion de DocentOS invalida: PASSWORD_RESET_EXPOSE_TOKEN debe ser false fuera de development.');
+}
+if (raw.SMTP_SECURE && !['true', 'false'].includes(raw.SMTP_SECURE)) {
+  throw new Error('Configuracion de DocentOS invalida: SMTP_SECURE debe ser true, false o vacio.');
+}
+if (raw.SMTP_HOST && !(raw.MAIL_FROM || raw.SMTP_USER)) {
+  throw new Error('Configuracion de DocentOS invalida: con SMTP_HOST hace falta MAIL_FROM (remitente de los correos).');
+}
+if (raw.SMTP_HOST && Boolean(raw.SMTP_USER) !== Boolean(raw.SMTP_PASS)) {
+  throw new Error('Configuracion de DocentOS invalida: SMTP_USER y SMTP_PASS van juntos (o ambos vacios).');
+}
+// Avisos, no errores: sin correo la plataforma funciona, pero nadie recupera su
+// contrasena y la pantalla igual dice que se envio el enlace.
+if (isDeployed && !raw.SMTP_HOST && !raw.PASSWORD_RESET_WEBHOOK_URL?.startsWith('http')) {
+  console.warn(
+    'DocentOS: no hay SMTP_HOST ni PASSWORD_RESET_WEBHOOK_URL. Los correos de recuperacion de contrasena NO se envian.',
+  );
+}
+if (isDeployed && isLoopback) {
+  console.warn(
+    `DocentOS: APP_URL=${raw.APP_URL} apunta a esta maquina; los enlaces de los correos no funcionaran fuera de ella.`,
+  );
 }
 if (isDeployed && raw.SEED_DEMO_DATA) {
   throw new Error('Configuracion de DocentOS invalida: SEED_DEMO_DATA no puede activarse fuera de development.');
@@ -302,6 +332,8 @@ export const config = {
   AI_PROVIDER: aiProvider,
   AI_PROVIDER_PREFERENCE: raw.AI_PROVIDER,
   ALLOWED_ORIGINS: [...new Set(allowedOrigins)],
+  SMTP_SECURE: raw.SMTP_SECURE ? raw.SMTP_SECURE === 'true' : raw.SMTP_PORT === 465,
+  MAIL_FROM: raw.MAIL_FROM || raw.SMTP_USER || '',
   APP_NAME: raw.APP_NAME || raw.VITE_APP_NAME || 'DocentOS',
   APP_TAGLINE: raw.APP_TAGLINE || raw.VITE_APP_TAGLINE || 'Plataforma e-Learning Open Source',
   APP_LOGO_INITIAL: raw.APP_LOGO_INITIAL || raw.VITE_APP_LOGO_INITIAL || 'D',

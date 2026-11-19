@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { pluginManager } from '../plugins/PluginManager';
 import { siteConfig } from '../config/theme';
+import i18n from '../i18n';
 
 export const DEFAULT_LOGO_URL = '/logo.avif';
 export const DEFAULT_BRAND_NAME = 'DocentOS';
@@ -186,7 +187,7 @@ export function setCustomBrandName(name: string): void {
   siteConfig.appName = effectiveName;
 
   if (typeof document !== 'undefined') {
-    document.title = `${effectiveName} — Plataforma Educativa`;
+    document.title = `${effectiveName} — ${i18n.t('platformTitle', 'Plataforma Educativa')}`;
   }
 
   // Actualizar únicamente marca en docentos-customizer (sin mutar institutionName de certificados)

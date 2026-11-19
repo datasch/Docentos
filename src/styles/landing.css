@@ -3163,3 +3163,134 @@ body[data-color-mode="light"]:has(.lp-root) {
   .course-category-filter { border-radius: 9999px; }
   .course-category-filter[open] { border-radius: 1.5rem; }
 }
+
+/* ==========================================================================
+   BUZÓN FLOTANTE CERRABLE
+   El contenedor lleva la posición (fija o arrastrada) y vuela al footer al
+   cerrarse; el botón principal y la "x" son hermanos dentro de él.
+   ========================================================================== */
+.lp-listening-floating {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 45;
+  max-width: calc(100vw - 24px);
+  transform-origin: center;
+}
+
+@media (max-width: 768px) {
+  .lp-listening-floating {
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    left: calc(20px + env(safe-area-inset-left, 0px));
+  }
+}
+
+.lp-listening-floating > .lp-listening-floating-btn {
+  position: relative;
+  inset: auto;
+  z-index: 0; /* el z-index: 45 del botón suelto taparía la "x" */
+  max-width: 100%;
+}
+
+/* La "x" vive dentro de la píldora, a la derecha y siempre visible. Es un
+   botón hermano (no se anidan botones): el principal le deja hueco con padding. */
+.lp-listening-floating--closable > .lp-listening-floating-btn {
+  padding-right: 46px;
+}
+
+.lp-listening-close {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+/* Separador fino entre el contenido y la "x". */
+.lp-listening-close::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 7px;
+  bottom: 7px;
+  width: 1px;
+  background: var(--color-line-strong);
+}
+
+.lp-listening-close svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.25;
+}
+
+.lp-listening-close:hover,
+.lp-listening-close:focus-visible {
+  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+.lp-listening-close:focus-visible {
+  outline: 2px solid var(--color-brand-cyan);
+  outline-offset: 1px;
+}
+
+/* En móvil el botón deja de ser un círculo de solo icono y pasa a una píldora
+   corta (icono + "x") para que la "x" quepa dentro. */
+@media (width < 640px) {
+  .lp-listening-floating--closable > .lp-listening-floating-btn {
+    width: auto;
+    padding: 0 44px 0 16px;
+    justify-content: flex-start;
+  }
+  .lp-listening-close {
+    right: 7px;
+  }
+}
+
+.lp-listening-floating[data-dragging] .lp-listening-close,
+.lp-listening-floating[data-leaving] .lp-listening-close,
+.lp-listening-floating[data-leaving] .lp-listening-floating-tooltip {
+  visibility: hidden;
+}
+
+.lp-listening-floating[data-leaving] {
+  pointer-events: none;
+}
+
+/* Llegada al footer: aparece con un pequeño rebote y un destello cian. */
+.footer-listening-dock--landing {
+  animation: footerListeningLand 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes footerListeningLand {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.06);
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-brand-cyan) 60%, transparent));
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-listening-dock--landing {
+    animation: none;
+  }
+}

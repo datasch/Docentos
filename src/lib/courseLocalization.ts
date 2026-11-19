@@ -46,7 +46,7 @@ export function getLocalizedCourse(
     const match = course.description.match(/a partir de (\d+) clases seleccionadas de YouTube/);
     const count = match ? match[1] : '';
     description = t('courses.youtubeDescriptionTemplate', {
-      count,
+      total: count,
       defaultValue: course.description,
     });
   }

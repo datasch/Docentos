@@ -6,6 +6,8 @@
  * y ofrece pruebas instantáneas de voz por idioma.
  */
 
+import { resolveVoiceForText } from './ttsLanguage';
+
 export interface TTSVoiceOption {
   id: string;
   name: string;
@@ -198,6 +200,7 @@ class TTSService {
   }
 
   public stop(): void {
+    this.speakToken++;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       this.activeUtterance = null;
@@ -217,10 +220,37 @@ class TTSService {
   }
 
   /**
+   * Parte el guion en fragmentos cortos. Chrome corta en silencio los
+   * enunciados largos (~15 s) y deja la cola atascada.
+   */
+  private splitText(text: string, maxLength = 180): { text: string; offset: number }[] {
+    const chunks: { text: string; offset: number }[] = [];
+    const sentences = text.match(/[^.!?…]+[.!?…]*\s*|[.!?…]+\s*/g) || [text];
+    let current = '';
+    let currentOffset = 0;
+    let cursor = 0;
+    for (const sentence of sentences) {
+      if (current && current.length + sentence.length > maxLength) {
+        chunks.push({ text: current, offset: currentOffset });
+        current = '';
+        currentOffset = cursor;
+      }
+      if (!current) currentOffset = cursor;
+      current += sentence;
+      cursor += sentence.length;
+    }
+    if (current.trim()) chunks.push({ text: current, offset: currentOffset });
+    return chunks.filter((chunk) => chunk.text.trim().length > 0);
+  }
+
+  private speakToken = 0;
+
+  /**
    * Reproduce el audio usando Web Speech API o Fallback de sintetizador de audio
    */
   public async speak(options: SpeakOptions): Promise<void> {
     this.stop();
+    const token = ++this.speakToken;
 
     const hasSpeechApi = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
@@ -234,18 +264,21 @@ class TTSService {
       voices = await this.getAvailableVoices();
     }
 
-    const utterance = new SpeechSynthesisUtterance(options.text);
-    this.activeUtterance = utterance;
+    // Chrome ignora un speak() lanzado justo después de cancel(): hay que dejarle respirar.
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    if (token !== this.speakToken) return; // otra reproducción o stop() la sustituyó
 
-    const targetVoiceConfig = SUPPORTED_TTS_VOICES.find((v) => v.id === options.voiceId);
+    // Si el texto está en otro idioma que la voz elegida, se usa la voz de ese idioma.
+    const voiceId = resolveVoiceForText(options.text, options.voiceId);
+    const targetVoiceConfig = SUPPORTED_TTS_VOICES.find((v) => v.id === voiceId);
     const targetLang = targetVoiceConfig ? targetVoiceConfig.lang : 'es-MX';
 
     // 1. Coincidencia por BCP-47
     let matchedVoice = voices.find((v) => v.lang.toLowerCase() === targetLang.toLowerCase());
 
     // 2. Coincidencia por nombre (ej. Microsoft o Google Sabina/Carlos)
-    if (!matchedVoice && options.voiceId) {
-      const nameFragment = options.voiceId.split('-').pop()?.toLowerCase() || '';
+    if (!matchedVoice && voiceId) {
+      const nameFragment = voiceId.split('-').pop()?.toLowerCase() || '';
       matchedVoice = voices.find((v) => v.name.toLowerCase().includes(nameFragment));
     }
 
@@ -255,33 +288,56 @@ class TTSService {
       matchedVoice = voices.find((v) => v.lang.toLowerCase().startsWith(baseLang));
     }
 
-    if (matchedVoice) {
-      utterance.voice = matchedVoice;
-      utterance.lang = matchedVoice.lang;
-    } else {
-      utterance.lang = targetLang;
-    }
+    const chunks = this.splitText(options.text);
+    let started = false;
+    let failed = false;
+    let retried = false;
 
-    utterance.rate = options.speed || 1.0;
-    utterance.pitch = options.pitch || 1.0;
-
-    utterance.onboundary = (event) => {
-      if (options.onBoundary && event.name === 'word') {
-        options.onBoundary(event.charIndex);
-      }
+    const fail = () => {
+      if (failed) return;
+      failed = true;
+      this.activeUtterance = null;
+      // Sin voz utilizable: un aviso sonoro y que la interfaz salga del estado "reproduciendo".
+      this.playSynthAudioFallback(options);
+      if (options.onError) options.onError(new Error('speech-synthesis-unavailable'));
     };
 
-    utterance.onend = () => {
-      this.activeUtterance = null;
-      if (options.onEnd) options.onEnd();
-    };
+    const enqueue = () => {
+      chunks.forEach((chunk, index) => {
+        const utterance = new SpeechSynthesisUtterance(chunk.text);
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
+          utterance.lang = matchedVoice.lang;
+        } else {
+          utterance.lang = targetLang;
+        }
+        utterance.rate = options.speed || 1.0;
+        utterance.pitch = options.pitch || 1.0;
 
-    utterance.onerror = (err) => {
-      this.activeUtterance = null;
-      if (err.error !== 'interrupted') {
-        // En caso de fallo de hardware/API, invocar fallback
-        this.playSynthAudioFallback(options);
-      }
+        utterance.onstart = () => {
+          started = true;
+        };
+        utterance.onboundary = (event) => {
+          if (options.onBoundary && event.name === 'word') {
+            options.onBoundary(chunk.offset + event.charIndex);
+          }
+        };
+        utterance.onend = () => {
+          if (token !== this.speakToken || failed) return;
+          if (index === chunks.length - 1) {
+            this.activeUtterance = null;
+            if (options.onEnd) options.onEnd();
+          }
+        };
+        utterance.onerror = (err) => {
+          if (token !== this.speakToken || err.error === 'interrupted' || err.error === 'canceled') return;
+          fail();
+        };
+
+        // Se conserva la referencia: si el recolector libera el enunciado, Chrome deja de emitir eventos.
+        if (index === chunks.length - 1) this.activeUtterance = utterance;
+        window.speechSynthesis.speak(utterance);
+      });
     };
 
     if (window.speechSynthesis.paused) {
@@ -289,10 +345,33 @@ class TTSService {
     }
 
     try {
-      window.speechSynthesis.speak(utterance);
+      enqueue();
     } catch (e) {
-      this.playSynthAudioFallback(options);
+      fail();
+      return;
     }
+
+    // Vigilante: si el motor no arranca (cola atascada), se reinicia una vez y, si sigue mudo, se avisa.
+    setTimeout(() => {
+      if (token !== this.speakToken || started || failed) return;
+      if (!retried) {
+        retried = true;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+        setTimeout(() => {
+          if (token !== this.speakToken || failed) return;
+          try {
+            enqueue();
+          } catch {
+            fail();
+            return;
+          }
+          setTimeout(() => {
+            if (token === this.speakToken && !started && !failed) fail();
+          }, 3000);
+        }, 150);
+      }
+    }, 2500);
   }
 
   /**

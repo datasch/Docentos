@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { siteConfig } from '../config/theme';
 import { TermsModal } from './TermsModal';
+import { useTranslation } from 'react-i18next'
 
 interface FooterProps {
   appName?: string;
@@ -8,6 +9,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ appName, githubUrl }) => {
+  const { t } = useTranslation()
   const [showTerms, setShowTerms] = useState<boolean>(false);
   const currentYear = new Date().getFullYear();
   const displayAppName = appName || siteConfig.appName || 'DocentOS';
@@ -19,7 +21,7 @@ export const Footer: React.FC<FooterProps> = ({ appName, githubUrl }) => {
         <div className="mx-auto flex w-full max-w-[1800px] flex-col items-center gap-3 text-meta text-ink-muted sm:flex-row sm:justify-between">
           <div className="flex items-center gap-2 flex-wrap">
             <span>
-              © {currentYear} {displayAppName}. Todos los derechos reservados.
+              {t('currentYearDisplayAppNameTodosLos', '© {{currentYear}} {{displayAppName}}. Todos los derechos reservados.', { currentYear, displayAppName })}
             </span>
             <span className="text-ink-faint">·</span>
             <button
@@ -27,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({ appName, githubUrl }) => {
               onClick={() => setShowTerms(true)}
               className="underline hover:text-ink transition-colors cursor-pointer"
             >
-              Términos & Condiciones
+              {t('terminosCondiciones', 'Términos & Condiciones')}
             </button>
           </div>
 
@@ -37,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({ appName, githubUrl }) => {
             rel="noopener noreferrer"
             className="rounded-lg px-2 py-1 transition-colors hover:bg-surface hover:text-ink"
           >
-            Powered by DocentOS
+            {t('poweredByDocentos', 'Powered by DocentOS')}
           </a>
         </div>
       </footer>

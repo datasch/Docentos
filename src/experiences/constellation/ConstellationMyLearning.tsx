@@ -94,8 +94,8 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
           </h3>
           {stats?.percent !== null && stats?.percent !== undefined && (
             <div className="academy-learning-progress">
-              <div className="academy-learning-progress__track" role="progressbar" aria-label={`Lecciones completadas de ${course.title}`}
-                aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.percent} aria-valuetext={`${stats.done} de ${stats.total} lecciones`}>
+              <div className="academy-learning-progress__track" role="progressbar" aria-label={t('leccionesCompletadasDeTitle', 'Lecciones completadas de {{title}}', { title: course.title })}
+                aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.percent} aria-valuetext={t('doneDeTotalLecciones', '{{done}} de {{total}} lecciones', { done: stats.done, total: stats.total })}>
                 <span style={{ width: `${stats.percent}%` }} />
               </div>
               <p>
@@ -155,11 +155,11 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
               <BookOpen size={28} aria-hidden="true" />
               <h2>{t('myLearning.noCoursesTitle', 'Aún no tienes cursos disponibles')}</h2>
               <p>{t('myLearning.noCoursesDesc', 'Cuando se confirme tu acceso, encontrarás aquí tus cursos.')}</p>
-              <button type="button" className="academy-button" onClick={onBrowse}>{t('hero.exploreCourses', 'Explorar catálogo')}</button>
+              <button type="button" className="academy-button" onClick={onBrowse}>{t('hero.exploreCourses', 'Explorar cursos')}</button>
             </div>
           ) : (
             <>
-              {next && <section aria-label={t('myLearning.continueLearning', 'Continuar aprendiendo')}>{courseCard(next, true)}</section>}
+              {next && <section aria-label={t('myLearning.continueLearning', 'Continúa aprendiendo')}>{courseCard(next, true)}</section>}
               {rest.length > 0 && (
                 <section className="academy-learning-section">
                   <h2>{next ? (t('myLearning.moreCourses', 'Más cursos')) : (t('myLearning.myCourses', 'Mis cursos'))}</h2>

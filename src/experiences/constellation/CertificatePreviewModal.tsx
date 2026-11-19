@@ -5,6 +5,8 @@ import { pluginManager } from '../../plugins/PluginManager';
 import { api } from '../../lib/api';
 import { getCustomLogoUrl } from '../../lib/logoConfig';
 import { useBodyScrollLock } from '../../lib/useBodyScrollLock';
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 
 interface CertificatePreviewModalProps {
   isOpen: boolean;
@@ -37,14 +39,14 @@ export async function prepareCertificateData({ courseTitle, studentName, verific
     certificateId: verificationCode,
     dateStr: issuedAt ? new Date(issuedAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : undefined,
     institutionName: finalCfg.institutionName || 'Academia Giantucchi',
-    signatoryTitle: finalCfg.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador',
+    signatoryTitle: finalCfg.signatoryTitle || i18next.t('profGiancarloGiantucchiMentorDirector', 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador'),
     primaryColor: finalCfg.primaryColor || '#06b6d4',
-    badgeText: finalCfg.badgeText || 'Certificado de Excelencia Técnica',
+    badgeText: finalCfg.badgeText || i18next.t('certificadoDeExcelenciaTecnica', 'Certificado de Excelencia Técnica'),
     backgroundColor: finalCfg.backgroundColor || 'dark',
     institutionLogo: finalCfg.institutionLogo || getCustomLogoUrl(),
     signatureImage: finalCfg.signatureImage || finalCfg.signature,
     enableUniversitySignature: finalCfg.enableUniversitySignature ?? false,
-    universitySignatoryTitle: finalCfg.universitySignatoryTitle || 'Dirección Académica - Universidad / Instituto',
+    universitySignatoryTitle: finalCfg.universitySignatoryTitle || i18next.t('direccionAcademicaUniversidadInstituto', 'Dirección Académica - Universidad / Instituto'),
     universitySignatureImage: finalCfg.universitySignatureImage,
   };
 }
@@ -58,6 +60,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
   issuedAt,
   onOpenVerifyModal,
 }) => {
+  const { t } = useTranslation()
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   useBodyScrollLock(isOpen);
@@ -108,18 +111,18 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
       <section role="dialog" aria-modal="true" aria-labelledby="certificate-preview-title"
         className="academy-certificate-preview" onClick={event => event.stopPropagation()}>
         <header>
-          <div><h2 id="certificate-preview-title">Tu certificado</h2><p>{courseTitle}</p></div>
-          <button type="button" onClick={onClose} aria-label="Cerrar certificado"><X size={22} /></button>
+          <div><h2 id="certificate-preview-title">{t('tuCertificado', 'Tu certificado')}</h2><p>{courseTitle}</p></div>
+          <button type="button" onClick={onClose} aria-label={t('cerrarCertificado', 'Cerrar certificado')}><X size={22} /></button>
         </header>
         <div className="academy-certificate-preview__canvas">
-          {loading ? <p role="status"><Loader2 size={24} className="animate-spin" aria-hidden="true" />Preparando certificado…</p>
-            : previewUrl ? <img src={previewUrl} alt={`Certificado de ${studentName}: ${courseTitle}`} />
-            : <p role="alert">No pudimos cargar el certificado. Cierra la ventana y vuelve a intentarlo.</p>}
+          {loading ? <p role="status"><Loader2 size={24} className="animate-spin" aria-hidden="true" />{t('preparandoCertificado', 'Preparando certificado…')}</p>
+            : previewUrl ? <img src={previewUrl} alt={t('certificadoDeStudentNameCourseTitle', 'Certificado de {{studentName}}: {{courseTitle}}', { studentName, courseTitle })} />
+            : <p role="alert">{t('noPudimosCargarElCertificadoCierraLa', 'No pudimos cargar el certificado. Cierra la ventana y vuelve a intentarlo.')}</p>}
         </div>
         <footer>
-          {verificationCode && onOpenVerifyModal && <button type="button" className="academy-text-button" onClick={() => { onClose(); onOpenVerifyModal(); }}><ShieldCheck size={18} aria-hidden="true" />Verificar certificado</button>}
+          {verificationCode && onOpenVerifyModal && <button type="button" className="academy-text-button" onClick={() => { onClose(); onOpenVerifyModal(); }}><ShieldCheck size={18} aria-hidden="true" />{t('verificarCertificado', 'Verificar certificado')}</button>}
           <button type="button" className="academy-button" onClick={handleDownload} disabled={loading || !previewUrl}>
-            <Download size={18} aria-hidden="true" />Descargar PNG
+            <Download size={18} aria-hidden="true" />{t('descargarPng', 'Descargar PNG')}
           </button>
         </footer>
       </section>

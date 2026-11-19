@@ -5,7 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ConstellationCourseCatalog } from '../src/experiences/constellation/ConstellationCourseCatalog.js';
 import { ConstellationFooter } from '../src/experiences/constellation/ConstellationFooter.js';
 import type { Course } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 const courses = [
   { id: 'seguridad', title: 'Ciberseguridad defensiva', category: 'Ciberseguridad' },
   { id: 'negocios', title: 'Gestión de negocios', category: 'Negocios' },

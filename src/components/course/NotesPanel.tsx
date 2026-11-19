@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, Plus } from 'lucide-react';
 import { VideoNote } from '../../types';
+import { useTranslation } from 'react-i18next'
 
 interface NotesPanelProps {
   notes: VideoNote[];
@@ -33,10 +34,11 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
   onTimestampChange,
   onSubmit,
 }) => {
+  const { t } = useTranslation()
   if (!hasAccess) {
     return (
       <p className="px-4 py-6 text-meta leading-relaxed text-ink-muted">
-        Las notas se guardan con tu acceso al curso.
+        {t('lasNotasSeGuardanConTuAccesoAlCurso', 'Las notas se guardan con tu acceso al curso.')}
       </p>
     );
   }
@@ -46,7 +48,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {notes.length === 0 ? (
           <p className="px-1 py-4 text-meta leading-relaxed text-ink-muted">
-            Aún no hay apuntes de esta clase. Anota el minuto y lo que quieras recordar.
+            {t('aunNoHayApuntesDeEstaClaseAnotaElMinutoY', 'Aún no hay apuntes de esta clase. Anota el minuto y lo que quieras recordar.')}
           </p>
         ) : (
           <ul className="flex flex-col gap-1.5">
@@ -68,7 +70,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
         <div className="flex items-center gap-2">
           <label className="academy-inline-field flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-canvas px-2.5">
             <Clock aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
-            <span className="sr-only">Minuto de la nota</span>
+            <span className="sr-only">{t('minutoDeLaNota', 'Minuto de la nota')}</span>
             <input
               type="text"
               value={timestamp}
@@ -80,8 +82,8 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
 
           <input
             type="text"
-            placeholder="Qué quieres recordar de este minuto"
-            aria-label="Contenido de la nota"
+            placeholder={t('queQuieresRecordarDeEsteMinuto', 'Qué quieres recordar de este minuto')}
+            aria-label={t('contenidoDeLaNota', 'Contenido de la nota')}
             value={content}
             onChange={(event) => onContentChange(event.target.value)}
             className="min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-meta text-ink placeholder-ink-faint focus:border-brand-cyan focus:outline-none"
@@ -93,7 +95,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
             className="shrink-0 rounded-lg bg-raised p-2 text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-raised"
           >
             <Plus aria-hidden className="h-4 w-4" />
-            <span className="sr-only">Guardar nota</span>
+            <span className="sr-only">{t('guardarNota', 'Guardar nota')}</span>
           </button>
         </div>
       </form>

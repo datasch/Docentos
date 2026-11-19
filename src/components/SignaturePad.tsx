@@ -6,6 +6,8 @@
 
 import React, { useRef, useState } from 'react';
 import { Upload, Trash2, Check, Sparkles, PenTool } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 
 export interface SignaturePadProps {
   value?: string;
@@ -19,9 +21,10 @@ type SignatureMode = 'upload' | 'type';
 export const SignaturePad: React.FC<SignaturePadProps> = ({
   value,
   onChange,
-  signatoryTitle = 'Giantucchi - Mentor Director',
-  label = 'Firma Digitalizada Oficial',
+  signatoryTitle = i18next.t('giantucchiMentorDirector', 'Giantucchi - Mentor Director'),
+  label = i18next.t('firmaDigitalizadaOficial', 'Firma Digitalizada Oficial'),
 }) => {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<SignatureMode>('upload');
   const [calligraphyName, setCalligraphyName] = useState(signatoryTitle.split('-')[0].trim());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -33,7 +36,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
     e.target.value = '';
 
     if (!file.type.startsWith('image/')) {
-      alert('Por favor selecciona una imagen válida (PNG, JPG, SVG o WebP).');
+      alert(t('porFavorSeleccionaUnaImagenValidaPngJpg', 'Por favor selecciona una imagen válida (PNG, JPG, SVG o WebP).'));
       return;
     }
 
@@ -73,7 +76,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         </label>
         {value && (
           <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Check className="w-3 h-3" /> Firma Configurada
+            <Check className="w-3 h-3" /> {t('firmaConfigurada', 'Firma Configurada')}
           </span>
         )}
       </div>
@@ -87,7 +90,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             }`}
         >
           <Upload className="w-3 h-3" />
-          <span>Subir Imagen de Firma</span>
+          <span>{t('subirImagenDeFirma', 'Subir Imagen de Firma')}</span>
         </button>
         <button
           type="button"
@@ -96,7 +99,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             }`}
         >
           <Sparkles className="w-3 h-3" />
-          <span>Firma Caligráfica</span>
+          <span>{t('firmaCaligrafica', 'Firma Caligráfica')}</span>
         </button>
       </div>
 
@@ -117,8 +120,8 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#06b6d4]/10 border border-[#06b6d4]/30 flex items-center justify-center text-[#06b6d4] group-hover:scale-110 transition-transform">
               <Upload className="w-5 h-5" />
             </div>
-            <p className="text-xs font-bold text-white">Clic para seleccionar imagen de firma</p>
-            <p className="text-[11px] text-slate-400 mt-1">PNG con fondo transparente recomendado (JPG, SVG, WebP)</p>
+            <p className="text-xs font-bold text-white">{t('clicParaSeleccionarImagenDeFirma', 'Clic para seleccionar imagen de firma')}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{t('pngConFondoTransparenteRecomendadoJpgSvg', 'PNG con fondo transparente recomendado (JPG, SVG, WebP)')}</p>
           </div>
         </div>
       )}
@@ -130,7 +133,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             type="text"
             value={calligraphyName}
             onChange={(e) => setCalligraphyName(e.target.value)}
-            placeholder="Nombre del firmante..."
+            placeholder={t('nombreDelFirmante', 'Nombre del firmante...')}
             className="min-w-0 flex-1 py-2 px-3 bg-[#0a0a0f] border border-[#2d2d44] focus:border-[#06b6d4] rounded-xl text-xs text-white focus:outline-none"
           />
           <button
@@ -139,7 +142,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] hover:opacity-90 text-black font-extrabold text-xs rounded-lg flex items-center gap-1.5 transition-opacity whitespace-nowrap"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Generar
+            {t('generar', 'Generar')}
           </button>
         </div>
       )}
@@ -148,34 +151,34 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
       {value ? (
         <div className="p-3.5 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl space-y-2.5">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
-            <span>Previsualización de Firma:</span>
+            <span>{t('previsualizacionDeFirma', 'Previsualización de Firma:')}</span>
             <button
               type="button"
               onClick={() => onChange('')}
               className="text-rose-400 hover:text-rose-300 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-500/10 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Eliminar Firma
+              {t('eliminarFirma', 'Eliminar Firma')}
             </button>
           </div>
           <div className="flex flex-col items-center justify-center py-4 px-3 bg-[#141420] rounded-xl border border-[#2d2d44] shadow-inner">
             <div className="h-28 sm:h-32 w-full max-w-sm flex items-center justify-center p-2">
               <img
                 src={value}
-                alt="Firma Digital"
+                alt={t('firmaDigital', 'Firma Digital')}
                 className="max-h-24 sm:max-h-28 max-w-full object-contain filter drop-shadow-md"
               />
             </div>
             <div className="w-72 border-t-2 border-[#2d2d44] my-2" />
             <p className="text-xs font-bold text-slate-100 text-center">{signatoryTitle}</p>
             <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-wider mt-0.5">
-              Certificación Digital Verificada
+              {t('certificacionDigitalVerificada', 'Certificación Digital Verificada')}
             </span>
           </div>
         </div>
       ) : (
         <p className="text-[11px] text-slate-400 italic text-center py-1">
-          * Sin firma personalizada se estampará la firma oficial por defecto.
+          {t('sinFirmaPersonalizadaSeEstamparaLaFirma', '* Sin firma personalizada se estampará la firma oficial por defecto.')}
         </p>
       )}
     </div>

@@ -36,7 +36,7 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { api } from '../lib/api';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { AcademiaPlugin } from '../types';
@@ -88,6 +88,11 @@ const FIELD_LABELS: Record<string, string> = {
   customCampusName: 'Título del Campus / Panel de Administración',
 };
 
+/** Nombre o descripción del plugin en el idioma activo; el texto del catálogo (español) queda como respaldo. */
+function pluginText(t: (key: string, fallback: string) => string, plugin: { id: string; name: string; description: string }, field: 'name' | 'desc'): string {
+  return t(`plugin_${plugin.id.replace(/-/g, '_')}_${field}`, field === 'name' ? plugin.name : plugin.description);
+}
+
 export const PluginManagerView: React.FC = () => {
   const { t } = useTranslation();
   const [plugins, setPlugins] = useState<AcademiaPlugin[]>(pluginManager.getPlugins());
@@ -104,15 +109,15 @@ export const PluginManagerView: React.FC = () => {
       setDownloadingSampleCert(true);
       await downloadCertificate({
         studentName: 'Estudiante Ejemplar',
-        courseTitle: 'Programa de Certificación Profesional',
+        courseTitle: t('programaDeCertificacionProfesional', 'Programa de Certificación Profesional'),
         institutionName: configFormState.institutionName || 'Academia Giantucchi',
-        signatoryTitle: configFormState.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador',
+        signatoryTitle: configFormState.signatoryTitle || t('profGiancarloGiantucchiMentorDirector', 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador'),
         signatureImage: configFormState.signatureImage || configFormState.signature,
         enableUniversitySignature: Boolean(configFormState.enableUniversitySignature),
-        universitySignatoryTitle: configFormState.universitySignatoryTitle || 'Dirección Académica - Universidad / Instituto',
+        universitySignatoryTitle: configFormState.universitySignatoryTitle || t('direccionAcademicaUniversidadInstituto', 'Dirección Académica - Universidad / Instituto'),
         universitySignatureImage: configFormState.universitySignatureImage,
         primaryColor: configFormState.primaryColor || '#06b6d4',
-        badgeText: configFormState.badgeText || 'Certificado de Excelencia Técnica',
+        badgeText: configFormState.badgeText || t('certificadoDeExcelenciaTecnica', 'Certificado de Excelencia Técnica'),
         backgroundColor: configFormState.backgroundColor || 'dark',
         institutionLogo: configFormState.institutionLogo || '/logo.avif',
         certificateId: 'DOCENTOS-MUESTRA-2026',
@@ -162,10 +167,10 @@ export const PluginManagerView: React.FC = () => {
     const initialConfig = { ...(plugin.config || {}) };
     if (plugin.category === 'certificates' || plugin.id === 'pdf-certificates') {
       if (!initialConfig.institutionName) initialConfig.institutionName = 'Academia Giantucchi';
-      if (!initialConfig.signatoryTitle) initialConfig.signatoryTitle = 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador';
+      if (!initialConfig.signatoryTitle) initialConfig.signatoryTitle = t('profGiancarloGiantucchiMentorDirector', 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador');
       if (initialConfig.signatureImage === undefined) initialConfig.signatureImage = '';
       if (initialConfig.enableUniversitySignature === undefined) initialConfig.enableUniversitySignature = false;
-      if (!initialConfig.universitySignatoryTitle) initialConfig.universitySignatoryTitle = 'Dirección Académica - Universidad / Instituto';
+      if (!initialConfig.universitySignatoryTitle) initialConfig.universitySignatoryTitle = t('direccionAcademicaUniversidadInstituto', 'Dirección Académica - Universidad / Instituto');
       if (initialConfig.universitySignatureImage === undefined) initialConfig.universitySignatureImage = '';
       if (!initialConfig.institutionLogo) initialConfig.institutionLogo = '/logo.avif';
       if (initialConfig.backgroundColor === undefined) initialConfig.backgroundColor = 'dark';
@@ -276,13 +281,13 @@ export const PluginManagerView: React.FC = () => {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold">
             <Layers className="w-3.5 h-3.5" />
-            <span>Arquitectura Modular de Plugins & Extensiones</span>
+            <span>{t('arquitecturaModularDePluginsExtensiones', 'Arquitectura Modular de Plugins & Extensiones')}</span>
           </div>
           <h2 className="text-2xl font-bold text-ink tracking-tight">
-            Gestor de Plugins Institucionales
+            {t('gestorDePluginsInstitucionales', 'Gestor de Plugins Institucionales')}
           </h2>
           <p className="text-xs text-ink-muted max-w-2xl">
-            Amplía la capacidad de la plataforma instalando y activando módulos de certificados PDF, exámenes interactivos, integración con webhooks de Discord/Slack, personalización y analíticas.
+            {t('ampliaLaCapacidadDeLaPlataforma', 'Amplía la capacidad de la plataforma instalando y activando módulos de certificados PDF, exámenes interactivos, integración con webhooks de Discord/Slack, personalización y analíticas.')}
           </p>
         </div>
 
@@ -291,7 +296,7 @@ export const PluginManagerView: React.FC = () => {
           className="px-4 py-2 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2"
         >
           <RefreshCw className="w-3.5 h-3.5 text-brand-cyan" />
-          <span>Sincronizar Plugins</span>
+          <span>{t('sincronizarPlugins', 'Sincronizar Plugins')}</span>
         </button>
       </div>
 
@@ -306,7 +311,7 @@ export const PluginManagerView: React.FC = () => {
               : 'bg-canvas text-ink-muted hover:text-ink border border-line'
               }`}
           >
-            {cat === 'ALL' ? 'Todos los Plugins' : cat === 'custom' ? 'PERSONALIZACIÓN' : cat.toUpperCase()}
+            {cat === 'ALL' ? t('todosLosPlugins', 'Todos los Plugins') : cat === 'custom' ? t('personalizacion', 'PERSONALIZACIÓN') : cat.toUpperCase()}
           </button>
         ))}
       </div>
@@ -317,12 +322,10 @@ export const PluginManagerView: React.FC = () => {
       {filteredPlugins.length === 0 && (
         <div className="bg-raised border border-line rounded-xl p-8 text-center space-y-1">
           <p className="text-sm font-bold text-ink">
-            {plugins.length === 0 ? 'No hay plugins registrados' : 'Ningún plugin en esta categoría'}
+            {t('ningunPluginEnEstaCategoria', { defaultValue_zero: 'No hay plugins registrados', defaultValue_other: 'Ningún plugin en esta categoría', count: plugins.length })}
           </p>
           <p className="text-meta text-ink-muted">
-            {plugins.length === 0
-              ? 'El catálogo se registra solo al arrancar la aplicación. Si sigues viendo esto, revisa el registro del servidor.'
-              : 'Prueba con «Todos los Plugins».'}
+            {t('pruebaConTodosLosPlugins', { defaultValue_zero: 'El catálogo se registra solo al arrancar la aplicación. Si sigues viendo esto, revisa el registro del servidor.', defaultValue_other: 'Prueba con «Todos los Plugins».', count: plugins.length })}
           </p>
         </div>
       )}
@@ -346,13 +349,13 @@ export const PluginManagerView: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-ink flex items-center gap-2">
-                        {plugin.name}
+                        {pluginText(t, plugin, 'name')}
                         <span className="text-micro font-mono text-ink-faint font-normal">
                           v{plugin.version}
                         </span>
                       </h3>
                       <span className="text-micro font-bold text-brand-purple uppercase tracking-wider">
-                        Categoría: {plugin.category}
+                        {t('categoriaCategory', 'Categoría: {{category}}', { category: plugin.category })}
                       </span>
                     </div>
                   </div>
@@ -371,7 +374,7 @@ export const PluginManagerView: React.FC = () => {
                 </div>
 
                 <p className="text-xs text-ink-muted leading-relaxed">
-                  {plugin.description}
+                  {pluginText(t, plugin, 'desc')}
                 </p>
               </div>
 
@@ -381,12 +384,12 @@ export const PluginManagerView: React.FC = () => {
                   <span className={`text-micro font-bold flex items-center gap-1 ${plugin.enabled ? 'text-success-light' : 'text-ink-faint'
                     }`}>
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    {plugin.enabled ? 'Plugin Activo & Enlazado' : 'Desactivado'}
+                    {plugin.enabled ? t('pluginActivoEnlazado', 'Plugin Activo & Enlazado') : t('desactivado', 'Desactivado')}
                   </span>
 
                   {plugin.category === 'certificates' && (plugin.config?.signatureImage || plugin.config?.signature) && (
                     <span className="text-micro font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <PenTool className="w-2.5 h-2.5" /> Firma Lista
+                      <PenTool className="w-2.5 h-2.5" /> {t('firmaLista', 'Firma Lista')}
                     </span>
                   )}
                 </div>
@@ -396,7 +399,7 @@ export const PluginManagerView: React.FC = () => {
                   className="px-3 py-1.5 bg-elevated hover:bg-elevated border border-line hover:border-brand-cyan text-ink text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"
                 >
                   <Settings className="w-3.5 h-3.5 text-brand-cyan" />
-                  <span>Configurar</span>
+                  <span>{t('configurar', 'Configurar')}</span>
                 </button>
               </div>
             </div>
@@ -426,28 +429,28 @@ export const PluginManagerView: React.FC = () => {
               <div>
                 <h3 className="font-bold text-sm text-ink flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-brand-cyan" />
-                  <span>Configurar {configModalPlugin.name}</span>
+                  <span>{t('configurarName', 'Configurar {{name}}', { name: pluginText(t, configModalPlugin, 'name') })}</span>
                 </h3>
                 <p className="text-micro text-ink-muted mt-0.5">
                   {configModalPlugin.id === 'docentos-customizer'
-                    ? 'Previsualiza los cambios y guárdalos cuando el resultado sea correcto.'
+                    ? t('previsualizaLosCambiosYGuardalosCuandoEl', 'Previsualiza los cambios y guárdalos cuando el resultado sea correcto.')
                     : (configModalPlugin.id === 'pdf-certificates' || configModalPlugin.category === 'certificates')
-                    ? 'Personaliza el logo, fondo blanco/negro, doble firma oficial y acreditación del diploma.'
-                    : 'Ajusta los parámetros operativos del plugin institucional.'}
+                    ? t('personalizaElLogoFondoBlanconegroDoble', 'Personaliza el logo, fondo blanco/negro, doble firma oficial y acreditación del diploma.')
+                    : t('ajustaLosParametrosOperativosDelPlugin', 'Ajusta los parámetros operativos del plugin institucional.')}
                 </p>
               </div>
               {configModalPlugin.id === 'docentos-customizer' &&
                 customizerInitialState &&
                 JSON.stringify(customizerInitialState) !== JSON.stringify(normalizeCustomizerConfig(configFormState)) && (
                   <span className="text-micro text-brand-cyan border border-brand-cyan/30 bg-brand-cyan/10 px-2 py-1 rounded-md">
-                    Cambios sin guardar
+                    {t('cambiosSinGuardar', 'Cambios sin guardar')}
                   </span>
                 )}
               <button
                 type="button"
                 onClick={handleCancelConfig}
                 className="text-ink-muted hover:text-ink p-1.5 rounded-lg hover:bg-canvas transition-colors"
-                title="Cerrar modal"
+                title={t('cerrarModal', 'Cerrar modal')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -463,7 +466,7 @@ export const PluginManagerView: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
-                        Nombre de la Institución / Academia
+                        {t('nombreDeLaInstitucionAcademia', 'Nombre de la Institución / Academia')}
                       </label>
                       <input
                         type="text"
@@ -472,13 +475,13 @@ export const PluginManagerView: React.FC = () => {
                           setConfigFormState({ ...configFormState, institutionName: e.target.value })
                         }
                         className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
-                        placeholder="ej. Academia Giantucchi"
+                        placeholder={t('ejAcademiaGiantucchi', 'ej. Academia Giantucchi')}
                       />
                     </div>
 
                     <div>
                       <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
-                        Texto de Insignia / Distintivo
+                        {t('textoDeInsigniaDistintivo', 'Texto de Insignia / Distintivo')}
                       </label>
                       <input
                         type="text"
@@ -487,13 +490,13 @@ export const PluginManagerView: React.FC = () => {
                           setConfigFormState({ ...configFormState, badgeText: e.target.value })
                         }
                         className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
-                        placeholder="ej. CERTIFICADO DE EXCELENCIA TÉCNICA"
+                        placeholder={t('ejCertificadoDeExcelenciaTecnica', 'ej. CERTIFICADO DE EXCELENCIA TÉCNICA')}
                       />
                     </div>
 
                     <div className="sm:col-span-2">
                       <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
-                        Color Primario del Certificado (Acento Brand Spectrum)
+                        {t('colorPrimarioDelCertificadoAcentoBrand', 'Color Primario del Certificado (Acento Brand Spectrum)')}
                       </label>
                       <div className="flex gap-2 items-center">
                         <input
@@ -515,17 +518,17 @@ export const PluginManagerView: React.FC = () => {
                         {/* Quick Giantucchi Brand Palette Presets */}
                         <div className="flex items-center gap-1.5 pl-1">
                           {[
-                            { name: 'Cyan', hex: '#06b6d4' },
-                            { name: 'Blue', hex: '#3b82f6' },
-                            { name: 'Purple', hex: '#a855f7' },
-                            { name: 'Magenta', hex: '#ec4899' },
-                            { name: 'Orange', hex: '#f97316' },
-                            { name: 'Yellow', hex: '#eab308' },
+                            { name: t('cyan', 'Cyan'), hex: '#06b6d4' },
+                            { name: t('blue', 'Blue'), hex: '#3b82f6' },
+                            { name: t('purple', 'Purple'), hex: '#a855f7' },
+                            { name: t('magenta', 'Magenta'), hex: '#ec4899' },
+                            { name: t('orange', 'Orange'), hex: '#f97316' },
+                            { name: t('yellow', 'Yellow'), hex: '#eab308' },
                           ].map((c) => (
                             <button
                               key={c.hex}
                               type="button"
-                              title={`Color ${c.name} (${c.hex})`}
+                              title={t('colorNameHex', 'Color {{name}} ({{hex}})', { name: c.name, hex: c.hex })}
                               onClick={() => setConfigFormState({ ...configFormState, primaryColor: c.hex })}
                               style={{ backgroundColor: c.hex }}
                               className={`w-5 h-5 rounded-full border transition-transform hover:scale-110 ${configFormState.primaryColor === c.hex
@@ -542,7 +545,7 @@ export const PluginManagerView: React.FC = () => {
                   {/* Personalización de Fondo: Blanco y Negro */}
                   <div className="bg-raised border border-line rounded-xl p-3.5 space-y-2">
                     <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
-                      Fondo del Certificado (Blanco / Negro)
+                      {t('fondoDelCertificadoBlancoNegro', 'Fondo del Certificado (Blanco / Negro)')}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -554,7 +557,7 @@ export const PluginManagerView: React.FC = () => {
                           }`}
                       >
                         <span className="w-3.5 h-3.5 rounded-full bg-white border border-slate-300 inline-block" />
-                        <span>Fondo Blanco Oficial</span>
+                        <span>{t('fondoBlancoOficial', 'Fondo Blanco Oficial')}</span>
                       </button>
                       <button
                         type="button"
@@ -565,7 +568,7 @@ export const PluginManagerView: React.FC = () => {
                           }`}
                       >
                         <span className="w-3.5 h-3.5 rounded-full bg-canvas border border-slate-600 inline-block" />
-                        <span>Fondo Negro / Oscuro</span>
+                        <span>{t('fondoNegroOscuro', 'Fondo Negro / Oscuro')}</span>
                       </button>
 
                     </div>
@@ -576,15 +579,15 @@ export const PluginManagerView: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <label className="text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5 text-brand-cyan" />
-                        Logo del Certificado (Por defecto: Giantucchi)
+                        {t('logoDelCertificadoPorDefectoGiantucchi', 'Logo del Certificado (Por defecto: Giantucchi)')}
                       </label>
                       {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif' ? (
                         <span className="text-micro font-bold text-warning-light bg-warning/10 border border-warning/20 px-2 py-0.5 rounded-full">
-                          Logo Universitario Activo
+                          {t('logoUniversitarioActivo', 'Logo Universitario Activo')}
                         </span>
                       ) : (
                         <span className="text-micro font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded-full">
-                          Logo Oficial Giantucchi (Por Defecto)
+                          {t('logoOficialGiantucchiPorDefecto', 'Logo Oficial Giantucchi (Por Defecto)')}
                         </span>
                       )}
                     </div>
@@ -594,7 +597,7 @@ export const PluginManagerView: React.FC = () => {
                         <div className="w-14 h-12 rounded-lg bg-raised border border-line flex items-center justify-center p-1 overflow-visible relative">
                           <img
                             src={configFormState.institutionLogo || '/logo.avif'}
-                            alt="Logo Institucional"
+                            alt={t('logoInstitucional', 'Logo Institucional')}
                             className="max-h-full max-w-full object-contain"
                             onError={(e) => {
                               (e.target as HTMLElement).style.display = 'none';
@@ -605,13 +608,13 @@ export const PluginManagerView: React.FC = () => {
                         <div>
                           <span className="text-xs font-bold text-ink block">
                             {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif'
-                              ? 'Logo de Universidad / Instituto Cargado'
-                              : 'Logo Oficial DocentOS'}
+                              ? t('logoDeUniversidadInstitutoCargado', 'Logo de Universidad / Instituto Cargado')
+                              : t('logoOficialDocentos', 'Logo Oficial DocentOS')}
                           </span>
                           <span className="text-micro text-ink-muted">
                             {configFormState.institutionLogo && configFormState.institutionLogo !== '/logo.avif'
-                              ? 'Se mostrará en la cabecera oficial del diploma'
-                              : 'Emblema institucional por defecto'}
+                              ? t('seMostraraEnLaCabeceraOficialDelDiploma', 'Se mostrará en la cabecera oficial del diploma')
+                              : t('emblemaInstitucionalPorDefecto', 'Emblema institucional por defecto')}
                           </span>
                         </div>
                       </div>
@@ -623,7 +626,7 @@ export const PluginManagerView: React.FC = () => {
                             onClick={() => setConfigFormState({ ...configFormState, institutionLogo: '/logo.avif' })}
                             className="px-2.5 py-1.5 text-xs text-ink-soft hover:text-ink bg-elevated hover:bg-elevated border border-line rounded-lg transition-colors"
                           >
-                            Restablecer Logo
+                            {t('restablecerLogo', 'Restablecer Logo')}
                           </button>
                         )}
                         <input
@@ -634,7 +637,7 @@ export const PluginManagerView: React.FC = () => {
                             const file = e.target.files?.[0];
                             if (!file) return;
                             if (file.size > 2 * 1024 * 1024) {
-                              alert('El logo no debe superar 2 MB. Por favor elige una imagen más pequeña.');
+                              alert(t('elLogoNoDebeSuperar2MbPorFavorEligeUna', 'El logo no debe superar 2 MB. Por favor elige una imagen más pequeña.'));
                               e.target.value = '';
                               return;
                             }
@@ -655,7 +658,7 @@ export const PluginManagerView: React.FC = () => {
                           className="px-2.5 py-1.5 text-xs font-bold text-black bg-gradient-to-r from-brand-cyan to-brand-purple hover:opacity-95 rounded-lg cursor-pointer flex items-center gap-1 transition-all"
                         >
                           <Upload className="w-3.5 h-3.5" />
-                          <span>Subir Logo Universidad</span>
+                          <span>{t('subirLogoUniversidad', 'Subir Logo Universidad')}</span>
                         </label>
                       </div>
                     </div>
@@ -668,10 +671,10 @@ export const PluginManagerView: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-2">
                         <PenTool className="w-4 h-4 text-brand-magenta" />
-                        <span>Firmas y Acreditación Institucional</span>
+                        <span>{t('firmasYAcreditacionInstitucional', 'Firmas y Acreditación Institucional')}</span>
                       </h4>
                       <span className="text-micro text-ink-muted">
-                        Configuración de Firmas Oficiales
+                        {t('configuracionDeFirmasOficiales', 'Configuración de Firmas Oficiales')}
                       </span>
                     </div>
 
@@ -680,16 +683,16 @@ export const PluginManagerView: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <label className="text-micro font-bold text-brand-magenta uppercase tracking-wider flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-brand-magenta" />
-                          Firma 1 : DocentOS (Principal)
+                          {t('firma1DocentosPrincipal', 'Firma 1 : DocentOS (Principal)')}
                         </label>
                         <span className="text-micro font-bold text-brand-magenta bg-brand-magenta/10 border border-brand-magenta/20 px-2 py-0.5 rounded-full">
-                          Mentor Director & Evaluador
+                          {t('mentorDirectorEvaluador', 'Mentor Director & Evaluador')}
                         </span>
                       </div>
 
                       <div>
                         <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
-                          Nombre y Cargo del Firmante Giantucchi
+                          {t('nombreYCargoDelFirmanteGiantucchi', 'Nombre y Cargo del Firmante Giantucchi')}
                         </label>
                         <input
                           type="text"
@@ -698,7 +701,7 @@ export const PluginManagerView: React.FC = () => {
                             setConfigFormState({ ...configFormState, signatoryTitle: e.target.value })
                           }
                           className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-magenta rounded-xl text-xs text-ink focus:outline-none transition-colors"
-                          placeholder="ej. Prof. Giancarlo Giantucchi - Mentor Director & Evaluador"
+                          placeholder={t('ejProfGiancarloGiantucchiMentorDirector', 'ej. Prof. Giancarlo Giantucchi - Mentor Director & Evaluador')}
                         />
                       </div>
 
@@ -711,8 +714,8 @@ export const PluginManagerView: React.FC = () => {
                             signature: sig,
                           }))
                         }
-                        signatoryTitle={configFormState.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador'}
-                        label="Firma Oficial de Giantucchi"
+                        signatoryTitle={configFormState.signatoryTitle || t('profGiancarloGiantucchiMentorDirector', 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador')}
+                        label={t('firmaOficialDeGiantucchi', 'Firma Oficial de Giantucchi')}
                       />
                     </div>
 
@@ -722,12 +725,12 @@ export const PluginManagerView: React.FC = () => {
                         <div>
                           <label className="text-micro font-bold text-brand-cyan uppercase tracking-wider flex items-center gap-1.5">
                             <PenTool className="w-3.5 h-3.5 text-brand-cyan" />
-                            Firma 2 : Universidad o Instituto (Co-Certificación)
+                            {t('firma2UniversidadOInstituto', 'Firma 2 : Universidad o Instituto (Co-Certificación)')}
                           </label>
                           <p className="text-micro text-ink-muted mt-0.5">
                             {configFormState.enableUniversitySignature
-                              ? 'Co-certificación activa: El diploma incluirá la segunda firma institucional a la izquierda.'
-                              : 'Opcional (Desactivada): El diploma se emitirá con firma única de Giantucchi centrada.'}
+                              ? t('cocertificacionActivaElDiplomaIncluiraLa', 'Co-certificación activa: El diploma incluirá la segunda firma institucional a la izquierda.')
+                              : t('opcionalDesactivadaElDiplomaSeEmitiraCon', 'Opcional (Desactivada): El diploma se emitirá con firma única de Giantucchi centrada.')}
                           </p>
                         </div>
 
@@ -754,7 +757,7 @@ export const PluginManagerView: React.FC = () => {
                         <div className="space-y-3 pt-2 border-t border-line">
                           <div>
                             <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
-                              Nombre y Cargo del Firmante de la Universidad / Instituto
+                              {t('nombreYCargoDelFirmanteDeLaUniversidad', 'Nombre y Cargo del Firmante de la Universidad / Instituto')}
                             </label>
                             <input
                               type="text"
@@ -763,7 +766,7 @@ export const PluginManagerView: React.FC = () => {
                                 setConfigFormState({ ...configFormState, universitySignatoryTitle: e.target.value })
                               }
                               className="w-full py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors"
-                              placeholder="ej. Dirección Académica - Universidad / Instituto"
+                              placeholder={t('ejDireccionAcademicaUniversidadInstituto', 'ej. Dirección Académica - Universidad / Instituto')}
                             />
                           </div>
 
@@ -775,14 +778,14 @@ export const PluginManagerView: React.FC = () => {
                                 universitySignatureImage: sig,
                               }))
                             }
-                            signatoryTitle={configFormState.universitySignatoryTitle || 'Dirección Académica - Universidad / Instituto'}
-                            label="Firma Oficial de la Universidad / Instituto"
+                            signatoryTitle={configFormState.universitySignatoryTitle || t('direccionAcademicaUniversidadInstituto', 'Dirección Académica - Universidad / Instituto')}
+                            label={t('firmaOficialDeLaUniversidadInstituto', 'Firma Oficial de la Universidad / Instituto')}
                           />
                         </div>
                       ) : (
                         <div className="p-2.5 bg-canvas border border-line rounded-lg text-center">
                           <span className="text-micro text-ink-muted font-medium">
-                            🔒 Firma de institución inactiva. El certificado se emitirá con diseño de <strong className="text-ink">Firma Única Centrada de Giantucchi</strong>.
+                            <Trans i18nKey="firmaDeInstitucionInactivaElCertificado">🔒 Firma de institución inactiva. El certificado se emitirá con diseño de <strong className="text-ink">Firma Única Centrada de Giantucchi</strong>.</Trans>
                           </span>
                         </div>
                       )}
@@ -798,10 +801,10 @@ export const PluginManagerView: React.FC = () => {
                       className="w-full py-2.5 px-4 bg-gradient-to-r from-brand-cyan/20 via-brand-purple/20 to-brand-yellow/20 hover:from-brand-cyan/30 hover:to-brand-yellow/30 border border-brand-cyan/50 hover:border-brand-cyan text-ink rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
                     >
                       <Download className={`w-4 h-4 text-brand-cyan ${downloadingSampleCert ? 'animate-bounce' : ''}`} />
-                      <span>{downloadingSampleCert ? 'Generando diploma de alta resolución...' : 'Descargar Certificado de Muestra (PNG)'}</span>
+                      <span>{downloadingSampleCert ? t('generandoDiplomaDeAltaResolucion', 'Generando diploma de alta resolución...') : t('descargarCertificadoDeMuestraPng', 'Descargar Certificado de Muestra (PNG)')}</span>
                     </button>
                     <p className="text-micro text-ink-muted text-center mt-1">
-                      Genera y descarga un diploma en PNG con tu fondo, logo, ambas firmas oficiales y metadatos centrados.
+                      {t('generaYDescargaUnDiplomaEnPngConTuFondo', 'Genera y descarga un diploma en PNG con tu fondo, logo, ambas firmas oficiales y metadatos centrados.')}
                     </p>
                   </div>
                 </div>
@@ -815,12 +818,12 @@ export const PluginManagerView: React.FC = () => {
                     <div className="space-y-3 p-4 bg-canvas border border-line rounded-xl">
                       <div>
                         <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1.5">
-                          Proveedor por defecto
+                          {t('proveedorPorDefecto', 'Proveedor por defecto')}
                         </label>
                         <div className="grid grid-cols-2 gap-2.5">
                           {[
-                            { value: 'jitsi', label: 'Jitsi Meet', icon: '🎥', color: '#06b6d4' },
-                            { value: 'meet', label: 'Google Meet', icon: '📹', color: '#34a853' },
+                            { value: 'jitsi', label: t('jitsiMeet', 'Jitsi Meet'), icon: '🎥', color: '#06b6d4' },
+                            { value: 'meet', label: t('googleMeet', 'Google Meet'), icon: '📹', color: '#34a853' },
                           ].map((opt) => (
                             <button
                               key={opt.value}
@@ -851,7 +854,7 @@ export const PluginManagerView: React.FC = () => {
 
                       <div>
                         <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
-                          Dominio del proveedor
+                          {t('dominioDelProveedor', 'Dominio del proveedor')}
                         </label>
                         <div className="flex gap-2 items-center">
                           <input
@@ -865,18 +868,18 @@ export const PluginManagerView: React.FC = () => {
                           />
                           {configFormState.defaultProvider === 'meet' ? (
                             <span className="text-micro font-bold text-success-light bg-success/10 border border-success/30 px-2 py-1 rounded-lg whitespace-nowrap">
-                              Google Meet
+                              {t('googleMeet', 'Google Meet')}
                             </span>
                           ) : (
                             <span className="text-micro font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/30 px-2 py-1 rounded-lg whitespace-nowrap">
-                              Jitsi Meet
+                              {t('jitsiMeet', 'Jitsi Meet')}
                             </span>
                           )}
                         </div>
                         <p className="text-micro text-ink-faint mt-1">
                           {configFormState.defaultProvider === 'meet'
-                            ? 'Al programar una clase, el formulario abrirá con Google Meet pre-seleccionado.'
-                            : 'Al programar una clase, el formulario abrirá con Jitsi Meet pre-seleccionado y generará la sala automáticamente.'}
+                            ? t('alProgramarUnaClaseElFormularioAbriraCon', 'Al programar una clase, el formulario abrirá con Google Meet pre-seleccionado.')
+                            : t('alProgramarUnaClaseElFormularioAbriraCon2', 'Al programar una clase, el formulario abrirá con Jitsi Meet pre-seleccionado y generará la sala automáticamente.')}
                         </p>
                       </div>
                     </div>
@@ -889,10 +892,10 @@ export const PluginManagerView: React.FC = () => {
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
-                            Arquitectura y Versión de Navegación
+                            {t('arquitecturaYVersionDeNavegacion', 'Arquitectura y Versión de Navegación')}
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            {configFormState.interfaceVersion === 'v0.4-classic' ? 'v0.4 Clásica activa' : 'v0.5 Moderna activa'}
+                            {configFormState.interfaceVersion === 'v0.4-classic' ? t('v04ClasicaActiva', 'v0.4 Clásica activa') : t('v05ModernaActiva', 'v0.5 Moderna activa')}
                           </span>
                         </div>
 
@@ -911,12 +914,12 @@ export const PluginManagerView: React.FC = () => {
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-bold text-ink flex items-center gap-2">
-                                <Monitor className="w-4 h-4 text-brand-cyan" /> DocentOS 0.5 (Moderna)
+                                <Monitor className="w-4 h-4 text-brand-cyan" /> {t('docentos05Moderna', 'DocentOS 0.5 (Moderna)')}
                               </span>
-                              <span className="text-micro text-brand-cyan">Actual</span>
+                              <span className="text-micro text-brand-cyan">{t('actual', 'Actual')}</span>
                             </div>
                             <p className="text-xs text-ink-muted leading-relaxed">
-                              4 Macro-secciones con sub-navegación simétrica (2 botones por sección) y estudios integrados de Medios y Portal.
+                              {t('4MacroseccionesConSubnavegacionSimetrica', '4 Macro-secciones con sub-navegación simétrica (2 botones por sección) y estudios integrados de Medios y Portal.')}
                             </p>
                           </button>
 
@@ -934,12 +937,12 @@ export const PluginManagerView: React.FC = () => {
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-bold text-ink flex items-center gap-2">
-                                <Layers className="w-4 h-4 text-ink-muted" /> DocentOS 0.4 (Clásica)
+                                <Layers className="w-4 h-4 text-ink-muted" /> {t('docentos04Clasica', 'DocentOS 0.4 (Clásica)')}
                               </span>
-                              <span className="text-micro text-ink-muted">Anterior</span>
+                              <span className="text-micro text-ink-muted">{t('anterior', 'Anterior')}</span>
                             </div>
                             <p className="text-xs text-ink-muted leading-relaxed">
-                              La vista original con la barra completa de 11 pestañas directas desplegadas en horizontal tal como estaba antes.
+                              {t('laVistaOriginalConLaBarraCompletaDe11', 'La vista original con la barra completa de 11 pestañas directas desplegadas en horizontal tal como estaba antes.')}
                             </p>
                           </button>
                         </div>
@@ -949,23 +952,23 @@ export const PluginManagerView: React.FC = () => {
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
-                            Color de Acento del Campus (Cambio Global en Vivo)
+                            {t('colorDeAcentoDelCampusCambioGlobalEnVivo', 'Color de Acento del Campus (Cambio Global en Vivo)')}
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Activo: {
-                              configFormState.colorTheme === 'violet' ? 'Violeta Neón (#a855f7)' :
-                              configFormState.colorTheme === 'emerald' ? 'Esmeralda (#10b981)' :
-                              configFormState.colorTheme === 'amber' ? 'Ámbar Gold (#f59e0b)' :
-                              'Cian DocentOS (#06b6d4)'
+                            {t('activo', 'Activo:')} {
+                              configFormState.colorTheme === 'violet' ? t('violetaNeonA855f7', 'Violeta Neón (#a855f7)') :
+                              configFormState.colorTheme === 'emerald' ? t('esmeralda10b981', 'Esmeralda (#10b981)') :
+                              configFormState.colorTheme === 'amber' ? t('ambarGoldF59e0b', 'Ámbar Gold (#f59e0b)') :
+                              t('cianDocentos06b6d4', 'Cian DocentOS (#06b6d4)')
                             }
                           </span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {[
-                            { key: 'cyan', label: 'Cian DocentOS', bg: '#06b6d4' },
-                            { key: 'violet', label: 'Violeta Neón', bg: '#8b5cf6' },
-                            { key: 'emerald', label: 'Esmeralda', bg: '#10b981' },
-                            { key: 'amber', label: 'Ámbar Gold', bg: '#f59e0b' },
+                            { key: 'cyan', label: t('cianDocentos', 'Cian DocentOS'), bg: '#06b6d4' },
+                            { key: 'violet', label: t('violetaNeon', 'Violeta Neón'), bg: '#8b5cf6' },
+                            { key: 'emerald', label: t('esmeralda', 'Esmeralda'), bg: '#10b981' },
+                            { key: 'amber', label: t('ambarGold', 'Ámbar Gold'), bg: '#f59e0b' },
                           ].map((c) => {
                             const isSelected = (configFormState.colorTheme || 'cyan') === c.key;
                             return (
@@ -994,23 +997,23 @@ export const PluginManagerView: React.FC = () => {
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft">
-                            Densidad de la interfaz
+                            {t('densidadDeLaInterfaz', 'Densidad de la interfaz')}
                           </label>
                           <span className="text-micro text-ink-muted">
-                            {configFormState.density === 'compact' ? 'Compacta' : 'Cómoda'}
+                            {configFormState.density === 'compact' ? t('compacta', 'Compacta') : t('comoda', 'Cómoda')}
                           </span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {[
                             {
                               key: 'comfortable',
-                              label: 'Cómoda',
-                              description: 'Más espacio entre controles y contenido',
+                              label: t('comoda', 'Cómoda'),
+                              description: t('masEspacioEntreControlesYContenido', 'Más espacio entre controles y contenido'),
                             },
                             {
                               key: 'compact',
-                              label: 'Compacta',
-                              description: 'Más información visible en cada pantalla',
+                              label: t('compacta', 'Compacta'),
+                              description: t('masInformacionVisibleEnCadaPantalla', 'Más información visible en cada pantalla'),
                             },
                           ].map((option) => {
                             const isSelected = (configFormState.density || 'comfortable') === option.key;
@@ -1040,10 +1043,10 @@ export const PluginManagerView: React.FC = () => {
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
-                            Modo de Iluminación (Tema Claro / Oscuro)
+                            {t('modoDeIluminacionTemaClaroOscuro', 'Modo de Iluminación (Tema Claro / Oscuro)')}
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Activo: {configFormState.colorMode === 'light' ? 'Modo claro' : 'Modo oscuro'}
+                            {t('activo', 'Activo:')} {configFormState.colorMode === 'light' ? t('modoClaroMin', 'Modo claro') : t('modoOscuroMin', 'Modo oscuro')}
                           </span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1064,8 +1067,8 @@ export const PluginManagerView: React.FC = () => {
                                 <Moon className="w-5 h-5" />
                               </div>
                               <div>
-                                <div className="text-sm font-bold text-ink">Modo Oscuro</div>
-                                <div className="text-micro text-ink-muted">Contraste nocturno descansado</div>
+                                <div className="text-sm font-bold text-ink">{t('modoOscuro2', 'Modo Oscuro')}</div>
+                                <div className="text-micro text-ink-muted">{t('contrasteNocturnoDescansado', 'Contraste nocturno descansado')}</div>
                               </div>
                             </div>
                             {configFormState.colorMode !== 'light' && (
@@ -1090,8 +1093,8 @@ export const PluginManagerView: React.FC = () => {
                                 <Sun className="w-5 h-5" />
                               </div>
                               <div>
-                                <div className="text-sm font-bold text-ink">Modo Claro (Blanco)</div>
-                                <div className="text-micro text-ink-muted">Fondos claros de alta legibilidad</div>
+                                <div className="text-sm font-bold text-ink">{t('modoClaroBlanco', 'Modo Claro (Blanco)')}</div>
+                                <div className="text-micro text-ink-muted">{t('fondosClarosDeAltaLegibilidad', 'Fondos claros de alta legibilidad')}</div>
                               </div>
                             </div>
                             {configFormState.colorMode === 'light' && (
@@ -1106,14 +1109,14 @@ export const PluginManagerView: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5 text-brand-cyan" />
-                            <span>Nombre de la Plataforma / Marca</span>
+                            <span>{t('nombreDeLaPlataformaMarca', 'Nombre de la Plataforma / Marca')}</span>
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Navbar & Footer
+                            {t('navbarFooter', 'Navbar & Footer')}
                           </span>
                         </div>
                         <p className="text-[11px] text-ink-muted leading-relaxed">
-                          Define el nombre visible de la marca en la barra de navegación superior, pie de página y títulos del portal.
+                          {t('defineElNombreVisibleDeLaMarcaEnLaBarra', 'Define el nombre visible de la marca en la barra de navegación superior, pie de página y títulos del portal.')}
                         </p>
                         <input
                           type="text"
@@ -1126,10 +1129,10 @@ export const PluginManagerView: React.FC = () => {
                             }));
                           }}
                           className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
-                          placeholder="ej. Academia Giantucchi"
+                          placeholder={t('ejAcademiaGiantucchi', 'ej. Academia Giantucchi')}
                         />
                         <div className="flex items-center gap-2 pt-1 flex-wrap">
-                          <span className="text-[10px] text-ink-muted">Sugerencias:</span>
+                          <span className="text-[10px] text-ink-muted">{t('sugerencias', 'Sugerencias:')}</span>
                           {['DocentOS', 'Academia', 'Campus Virtual'].map((brand) => (
                             <button
                               key={brand}
@@ -1153,18 +1156,18 @@ export const PluginManagerView: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                             <Sliders className="w-3.5 h-3.5 text-brand-cyan" />
-                            <span>Título del Campus / Panel de Administración</span>
+                            <span>{t('tituloDelCampusPanelDeAdministracion', 'Título del Campus / Panel de Administración')}</span>
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Cabecera Admin
+                            {t('cabeceraAdmin', 'Cabecera Admin')}
                           </span>
                         </div>
                         <p className="text-[11px] text-ink-muted leading-relaxed">
-                          Define el título de la cabecera en el Panel de Control & Administración Global RBAC.
+                          {t('defineElTituloDeLaCabeceraEnElPanelDe', 'Define el título de la cabecera en el Panel de Control & Administración Global RBAC.')}
                         </p>
                         <input
                           type="text"
-                          value={configFormState.customCampusName ?? 'DocentOS Command Center'}
+                          value={configFormState.customCampusName ?? t('docentosCommandCenter', 'DocentOS Command Center')}
                           onChange={(e) => {
                             const newCampus = e.target.value;
                             setConfigFormState((prev) => ({
@@ -1173,11 +1176,11 @@ export const PluginManagerView: React.FC = () => {
                             }));
                           }}
                           className="w-full py-2.5 px-3.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-xs text-ink focus:outline-none transition-colors font-medium"
-                          placeholder="ej. DocentOS Command Center"
+                          placeholder={t('ejDocentosCommandCenter', 'ej. DocentOS Command Center')}
                         />
                         <div className="flex items-center gap-2 pt-1 flex-wrap">
-                          <span className="text-[10px] text-ink-muted">Sugerencias:</span>
-                          {['DocentOS Command Center', 'Centro de Control', 'Campus Central', 'Panel Administrativo'].map((campus) => (
+                          <span className="text-[10px] text-ink-muted">{t('sugerencias', 'Sugerencias:')}</span>
+                          {[t('docentosCommandCenter', 'DocentOS Command Center'), t('centroDeControl', 'Centro de Control'), 'Campus Central', 'Panel Administrativo'].map((campus) => (
                             <button
                               key={campus}
                               type="button"
@@ -1200,16 +1203,16 @@ export const PluginManagerView: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                             <ImageIcon className="w-3.5 h-3.5 text-brand-cyan" />
-                            <span>Logo de la Institución & Animación de Scroll</span>
+                            <span>{t('logoDeLaInstitucionAnimacionDeScroll', 'Logo de la Institución & Animación de Scroll')}</span>
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
-                            Sincroniza Canvas 3D + Navbar
+                            {t('sincronizaCanvas3dNavbar', 'Sincroniza Canvas 3D + Navbar')}
                           </span>
                         </div>
                         <p className="text-[11px] text-ink-muted leading-relaxed">
-                          Al cambiar el logo aquí, se actualiza automáticamente el Navbar, el branding del campus y el 
+                          <Trans i18nKey="alCambiarElLogoAquiSeActualiza">Al cambiar el logo aquí, se actualiza automáticamente el Navbar, el branding del campus y el 
                           <span className="text-brand-cyan font-bold"> efecto de Scroll Animation en la portada</span>, 
-                          ensamblando las partículas 3D con la silueta de tu nuevo logo.
+                          ensamblando las partículas 3D con la silueta de tu nuevo logo.</Trans>
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-raised border border-line">
@@ -1217,7 +1220,7 @@ export const PluginManagerView: React.FC = () => {
                           <div className="w-16 h-16 rounded-xl bg-black/40 border border-line flex items-center justify-center p-2 shrink-0 overflow-visible shadow-inner relative group">
                             <img
                               src={configFormState.customLogoUrl || DEFAULT_LOGO_URL}
-                              alt="Logo Institución"
+                              alt={t('logoInstitucion', 'Logo Institución')}
                               className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
@@ -1238,13 +1241,13 @@ export const PluginManagerView: React.FC = () => {
                                   setConfigFormState((prev) => ({ ...prev, customLogoUrl: newLogo }));
                                 }}
                                 className="flex-1 py-2 px-3 bg-canvas border border-line focus:border-brand-cyan rounded-lg text-xs text-ink focus:outline-none transition-colors"
-                                placeholder="URL de la imagen (ej: /logo.avif o https://...)"
+                                placeholder={t('urlDeLaImagenEjLogoavifOHttps', 'URL de la imagen (ej: /logo.avif o https://...)')}
                               />
 
                               {/* Botón para subir archivo local y convertir a Base64 */}
                               <label className="px-3 py-2 rounded-lg bg-elevated hover:bg-canvas border border-line hover:border-brand-cyan text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0">
                                 <Upload className="w-3.5 h-3.5 text-brand-cyan" />
-                                <span className="hidden md:inline">Subir</span>
+                                <span className="hidden md:inline">{t('subir', 'Subir')}</span>
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -1273,7 +1276,7 @@ export const PluginManagerView: React.FC = () => {
                                     setConfigFormState((prev) => ({ ...prev, customLogoUrl: '' }));
                                   }}
                                   className="p-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-muted hover:text-ink transition-all cursor-pointer"
-                                  title="Restablecer logo por defecto"
+                                  title={t('restablecerLogoPorDefecto', 'Restablecer logo por defecto')}
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
                                 </button>
@@ -1282,11 +1285,11 @@ export const PluginManagerView: React.FC = () => {
 
                             {/* Presets rápidos */}
                             <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                              <span className="text-[10px] text-ink-muted font-bold mr-1">Presets:</span>
+                              <span className="text-[10px] text-ink-muted font-bold mr-1">{t('presets', 'Presets:')}</span>
                               {[
-                                { label: 'Logo DocentOS', url: '/logo.avif' },
-                                { label: 'React Core', url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg' },
-                                { label: 'Web Globe', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80' },
+                                { label: t('logoDocentos', 'Logo DocentOS'), url: '/logo.avif' },
+                                { label: t('reactCore', 'React Core'), url: 'https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg' },
+                                { label: t('webGlobe', 'Web Globe'), url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80' },
                               ].map((preset) => (
                                 <button
                                   key={preset.label}
@@ -1368,7 +1371,7 @@ export const PluginManagerView: React.FC = () => {
                   onClick={handleCancelConfig}
                   className="px-4 py-2 bg-elevated hover:bg-canvas text-ink-soft hover:text-ink text-xs font-bold rounded-lg border border-line transition-colors"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -1378,10 +1381,10 @@ export const PluginManagerView: React.FC = () => {
                   {savingConfig ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Guardando...</span>
+                      <span>{t('guardando', 'Guardando...')}</span>
                     </>
                   ) : (
-                    <span>Guardar Ajustes</span>
+                    <span>{t('guardarAjustes', 'Guardar Ajustes')}</span>
                   )}
                 </button>
               </div>

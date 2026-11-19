@@ -81,7 +81,7 @@ export function CourseOverview({
       await api.requestCourseAccess(course.id);
       setHasPendingRequest(true);
     } catch (err: any) {
-      alert(err?.message || 'No se pudo enviar la solicitud de acceso.');
+      alert(err?.message || t('noSePudoEnviarLaSolicitudDeAcceso', 'No se pudo enviar la solicitud de acceso.'));
     } finally {
       setIsRequestingAccess(false);
     }
@@ -97,9 +97,9 @@ export function CourseOverview({
   if (!course || !course.published) {
     return (
       <section className="mx-auto max-w-xl px-6 py-24 text-center text-ink">
-        <h1 className="text-2xl font-semibold">{ready ? 'Este curso no está disponible' : 'Cargando curso…'}</h1>
+        <h1 className="text-2xl font-semibold">{ready ? t('esteCursoNoEstaDisponible', 'Este curso no está disponible') : t('cargandoCurso', 'Cargando curso…')}</h1>
         <button type="button" onClick={onBack} className="mt-6 btn-brand-primary px-5 py-3 cursor-pointer">
-          Explorar catálogo
+          {t('explorarCatalogo2', 'Explorar catálogo')}
         </button>
       </section>
     );
@@ -164,7 +164,7 @@ export function CourseOverview({
             ) : (
               <p className="mt-7 text-3xl font-semibold">
                 {price}
-                <span className="ml-2 text-sm font-normal text-ink-muted">{course.currency || 'USD'}</span>
+                <span className="ml-2 text-sm font-normal text-ink-muted">{course.currency || t('usd', 'USD')}</span>
               </p>
             )
           )}
@@ -199,9 +199,9 @@ export function CourseOverview({
                 )}
                 <div className="min-w-0 flex-1">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-violet-light">
-                    {effectiveMentor ? 'Mentor Asignado' : 'Coordinación Académica'}
+                    {effectiveMentor ? t('mentorAsignado', 'Mentor Asignado') : t('coordinacionAcademica', 'Coordinación Académica')}
                   </span>
-                  <h3 className="truncate text-base font-bold text-ink">{effectiveMentor?.name || 'Mentor DocentOS'}</h3>
+                  <h3 className="truncate text-base font-bold text-ink">{effectiveMentor?.name || t('mentorDocentos', 'Mentor DocentOS')}</h3>
                   <p className="truncate text-xs text-ink-muted font-mono">{effectiveMentor?.email || 'contacto@academia.com'}</p>
                 </div>
               </div>
@@ -211,9 +211,9 @@ export function CourseOverview({
                   <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-warning-light">
                     <Clock className="h-4 w-4 shrink-0 text-amber-400 mt-0.5 animate-pulse" />
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold">Solicitud enviada a tu mentor • En espera de aprobación</p>
+                      <p className="font-bold">{t('solicitudEnviadaATuMentorEnEsperaDe', 'Solicitud enviada a tu mentor • En espera de aprobación')}</p>
                       <p className="text-[11px] font-normal text-amber-200/80 mt-0.5">
-                        Tu mentor tiene la notificación en su panel para autorizar tu acceso en 1 clic.
+                        {t('tuMentorTieneLaNotificacionEnSuPanelPara', 'Tu mentor tiene la notificación en su panel para autorizar tu acceso en 1 clic.')}
                       </p>
                     </div>
                   </div>
@@ -223,7 +223,7 @@ export function CourseOverview({
                       onClick={onContinue}
                       className="inline-flex items-center gap-1.5 text-brand-violet-light hover:text-white transition-colors cursor-pointer text-xs font-semibold"
                     >
-                      <span>Ver temario en el visor</span>
+                      <span>{t('verTemarioEnElVisor', 'Ver temario en el visor')}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                     {effectiveMentor?.email && (
@@ -233,14 +233,14 @@ export function CourseOverview({
                           className="text-brand-cyan hover:underline transition-colors flex items-center gap-1"
                         >
                           <Mail className="h-3 w-3" />
-                          <span>Enviar recordatorio por correo</span>
+                          <span>{t('enviarRecordatorioPorCorreo', 'Enviar recordatorio por correo')}</span>
                         </a>
                         <button
                           type="button"
                           onClick={handleCopyEmail}
                           className="hover:text-ink transition-colors flex items-center gap-1 font-mono text-[11px] cursor-pointer"
                         >
-                          {copiedEmail ? <span className="text-emerald-400 font-bold">¡Copiado!</span> : <span>Copiar correo</span>}
+                          {copiedEmail ? <span className="text-emerald-400 font-bold">{t('copiado', '¡Copiado!')}</span> : <span>{t('copiarCorreo', 'Copiar correo')}</span>}
                         </button>
                       </div>
                     )}
@@ -258,12 +258,12 @@ export function CourseOverview({
                       {isRequestingAccess ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Enviando solicitud...</span>
+                          <span>{t('enviandoSolicitud', 'Enviando solicitud...')}</span>
                         </>
                       ) : (
                         <>
                           <Send className="h-4 w-4" />
-                          <span>Solicitar acceso a mi mentor</span>
+                          <span>{t('solicitarAccesoAMiMentor', 'Solicitar acceso a mi mentor')}</span>
                         </>
                       )}
                     </button>
@@ -272,13 +272,13 @@ export function CourseOverview({
                       onClick={onContinue}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-line-subtle bg-surface px-4 py-3 text-xs font-semibold text-ink hover:bg-canvas transition-colors cursor-pointer"
                     >
-                      <span>Explorar temario</span>
+                      <span>{t('explorarTemario', 'Explorar temario')}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                     <CourseShareButton course={course} />
                   </div>
                   <p className="text-[11px] text-ink-muted">
-                    Envía una solicitud interna en 1 clic para que tu mentor autorice este curso en tu plan.
+                    {t('enviaUnaSolicitudInternaEn1ClicParaQueTu', 'Envía una solicitud interna en 1 clic para que tu mentor autorice este curso en tu plan.')}
                   </p>
                 </div>
               )}
@@ -315,12 +315,12 @@ export function CourseOverview({
             isMentee ? (
               <p className="mt-5 flex items-start gap-2 text-xs text-ink-muted">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-violet-light" />
-                Como Mentee, tu acceso a este curso no requiere compra. Tu mentor asignado habilitará tu acceso en un solo clic desde su panel.
+                {t('comoMenteeTuAccesoAEsteCursoNoRequiere', 'Como Mentee, tu acceso a este curso no requiere compra. Tu mentor asignado habilitará tu acceso en un solo clic desde su panel.')}
               </p>
             ) : (
               <p className="mt-5 flex items-start gap-2 text-xs text-ink-muted">
                 <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
-                El acceso a las clases requiere una compra o autorización de la academia.
+                {t('elAccesoALasClasesRequiereUnaCompraO', 'El acceso a las clases requiere una compra o autorización de la academia.')}
               </p>
             )
           )}

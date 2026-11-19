@@ -12,6 +12,7 @@
 
 import { pluginManager } from './PluginManager';
 import { getCustomBrandName, getCustomLogoUrl } from '../lib/logoConfig';
+import i18next from 'i18next'
 
 export interface CertificateData {
   studentName: string;
@@ -86,7 +87,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
   const primaryColor = data.primaryColor || certPluginConfig.primaryColor || '#06b6d4';
   const rawInstitution = data.institutionName || certPluginConfig.institutionName || 'Academia Giantucchi';
   const institution = rawInstitution || 'Academia Giantucchi';
-  const giantucchiSignatory = data.signatoryTitle || certPluginConfig.signatoryTitle || 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador';
+  const giantucchiSignatory = data.signatoryTitle || certPluginConfig.signatoryTitle || i18next.t('profGiancarloGiantucchiMentorDirector', 'Prof. Giancarlo Giantucchi - Mentor Director & Evaluador');
   const giantucchiSignatureSrc = data.signatureImage || certPluginConfig.signatureImage || certPluginConfig.signature;
 
   // Determinamos si la firma de la universidad está habilitada
@@ -96,10 +97,10 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
       ? Boolean(certPluginConfig.enableUniversitySignature)
       : Boolean(data.universitySignatureImage || certPluginConfig.universitySignatureImage);
 
-  const univSignatory = data.universitySignatoryTitle || certPluginConfig.universitySignatoryTitle || 'Dirección Académica - Universidad / Instituto';
+  const univSignatory = data.universitySignatoryTitle || certPluginConfig.universitySignatoryTitle || i18next.t('direccionAcademicaUniversidadInstituto', 'Dirección Académica - Universidad / Instituto');
   const univSignatureSrc = data.universitySignatureImage || certPluginConfig.universitySignatureImage;
   const logoSrc = data.institutionLogo || certPluginConfig.institutionLogo || getCustomLogoUrl() || '/logo.avif';
-  const badge = data.badgeText || certPluginConfig.badgeText || 'CERTIFICADO DE EXCELENCIA TÉCNICA';
+  const badge = data.badgeText || certPluginConfig.badgeText || i18next.t('certificadoDeExcelenciaTecnica2', 'CERTIFICADO DE EXCELENCIA TÉCNICA');
   const bgMode = data.backgroundColor || certPluginConfig.backgroundColor || 'dark';
   const dateStr = data.dateStr || new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
   const certId = data.certificateId || `DOCENTOS-CERT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
@@ -228,7 +229,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
   // 6. Texto Principal
   ctx.font = '300 28px sans-serif';
   ctx.fillStyle = subTextColor;
-  ctx.fillText('Se otorga el presente reconocimiento oficial a:', canvas.width / 2, headerTopY + 160);
+  ctx.fillText(i18next.t('seOtorgaElPresenteReconocimientoOficialA', 'Se otorga el presente reconocimiento oficial a:'), canvas.width / 2, headerTopY + 160);
 
   // Nombre del Estudiante
   ctx.font = 'bold 64px serif';
@@ -238,7 +239,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
   // Subtexto
   ctx.font = '300 24px sans-serif';
   ctx.fillStyle = subTextColor;
-  ctx.fillText('Por haber completado satisfactoriamente el programa de formación:', canvas.width / 2, headerTopY + 325);
+  ctx.fillText(i18next.t('porHaberCompletadoSatisfactoriamenteEl', 'Por haber completado satisfactoriamente el programa de formación:'), canvas.width / 2, headerTopY + 325);
 
   // Título del Curso
   ctx.font = 'bold 40px sans-serif';
@@ -425,7 +426,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
       ctx.textAlign = 'center';
       ctx.font = 'italic 30px "Brush Script MT", "Segoe Script", cursive, serif';
       ctx.fillStyle = isWhite ? '#0284c7' : '#06b6d4';
-      ctx.fillText(univSignatory.split('-')[0].trim() || 'Firma Decanato / Rectorado', leftCenterX, lineY - 4);
+      ctx.fillText(univSignatory.split('-')[0].trim() || i18next.t('firmaDecanatoRectorado', 'Firma Decanato / Rectorado'), leftCenterX, lineY - 4);
     }
 
     // Línea de firma izquierda
@@ -443,21 +444,21 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
     ctx.fillText(univSignatory, leftCenterX, lineY + 26);
     ctx.font = '12px sans-serif';
     ctx.fillStyle = mutedColor;
-    ctx.fillText('Universidad / Instituto Acreditador', leftCenterX, lineY + 46);
+    ctx.fillText(i18next.t('universidadInstitutoAcreditador', 'Universidad / Instituto Acreditador'), leftCenterX, lineY + 46);
 
     // Metadatos Centrales
     ctx.textAlign = 'center';
     ctx.font = '15px sans-serif';
     ctx.fillStyle = mutedColor;
-    ctx.fillText(`Fecha de Emisión: ${dateStr}`, canvas.width / 2, lineY + 5);
+    ctx.fillText(i18next.t('fechaDeEmisionDateStr', 'Fecha de Emisión: {{dateStr}}', { dateStr }), canvas.width / 2, lineY + 5);
 
     ctx.font = 'bold 13px monospace';
     ctx.fillStyle = idColor;
-    ctx.fillText(`ID: ${certId}`, canvas.width / 2, lineY + 26);
+    ctx.fillText(i18next.t('idCertId', 'ID: {{certId}}', { certId }), canvas.width / 2, lineY + 26);
 
     ctx.font = '11px sans-serif';
     ctx.fillStyle = isWhite ? '#9ca3af' : '#64748b';
-    ctx.fillText('Acreditación y Certificación Conjunta Oficial', canvas.width / 2, lineY + 46);
+    ctx.fillText(i18next.t('acreditacionYCertificacionConjunta', 'Acreditación y Certificación Conjunta Oficial'), canvas.width / 2, lineY + 46);
 
     // Firma Derecha (Giantucchi)
     const rightCenterX = canvas.width - 310;
@@ -517,7 +518,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
     ctx.textAlign = 'center';
     ctx.font = 'bold 15px sans-serif';
     ctx.fillStyle = mainTextColor;
-    ctx.fillText('Fecha de Emisión', 260, lineY + 22);
+    ctx.fillText(i18next.t('fechaDeEmision', 'Fecha de Emisión'), 260, lineY + 22);
     ctx.font = '13px sans-serif';
     ctx.fillStyle = mutedColor;
     ctx.fillText(dateStr, 260, lineY + 44);
@@ -526,7 +527,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
     ctx.textAlign = 'center';
     ctx.font = 'bold 15px sans-serif';
     ctx.fillStyle = mainTextColor;
-    ctx.fillText('Código de Verificación', canvas.width - 260, lineY + 22);
+    ctx.fillText(i18next.t('codigoDeVerificacion', 'Código de Verificación'), canvas.width - 260, lineY + 22);
     ctx.font = 'bold 13px monospace';
     ctx.fillStyle = idColor;
     ctx.fillText(certId, canvas.width - 260, lineY + 44);
@@ -571,7 +572,7 @@ export async function generateCertificatePNG(data: CertificateData): Promise<str
     ctx.fillText(giantucchiSignatory, centerX, lineY + 26);
     ctx.font = '12px sans-serif';
     ctx.fillStyle = mutedColor;
-    ctx.fillText(`${institution} — Certificación Oficial`, centerX, lineY + 46);
+    ctx.fillText(i18next.t('institutionCertificacionOficial', '{{institution}} — Certificación Oficial', { institution }), centerX, lineY + 46);
   }
 
   return canvas.toDataURL('image/png');

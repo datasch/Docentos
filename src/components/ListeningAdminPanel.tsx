@@ -10,18 +10,13 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Download, Inbox, Loader2, Send, UserX } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 import { ActiveFilters, FilterMenu, Pager } from './AdminListKit';
+import { dateLocale } from '../i18n/format';
 import { api } from '../lib/api';
-import {
-  LISTENING_STATUSES,
-  LISTENING_STATUS_LABELS,
-  LISTENING_TOPICS,
-  LISTENING_TOPIC_LABELS,
-  LISTENING_TYPES,
-  LISTENING_TYPE_LABELS,
-  MOODS,
-  type ListeningStatus,
-} from '../lib/listening';
+import { LISTENING_STATUSES, LISTENING_TOPICS, LISTENING_TYPES, type ListeningStatus } from '../lib/listening';
+import { LISTENING_STATUS_LABELS, LISTENING_TOPIC_LABELS, LISTENING_TYPE_LABELS, MOODS } from '../lib/listeningLabels';
 import type {
   ListeningAdminFilter,
   ListeningAdminResponse,
@@ -34,6 +29,7 @@ const PERIODS = [
   { days: 365, label: '12 meses' },
   { days: 0, label: 'Todo' },
 ];
+const periodLabel = (days: number, fallback: string) => i18next.t(`listenPeriod_${days}`, fallback);
 
 const PAGE_SIZE = 10;
 
@@ -43,11 +39,11 @@ function moodFace(avg: number | null) {
 }
 
 function npsVerdict(score: number | null): { label: string; tone: string } {
-  if (score === null) return { label: 'Sin respuestas todavía', tone: 'text-ink-muted' };
-  if (score >= 50) return { label: 'Excelente', tone: 'text-success-light' };
-  if (score >= 30) return { label: 'Bueno', tone: 'text-success-light' };
-  if (score >= 0) return { label: 'Por mejorar', tone: 'text-warning-light' };
-  return { label: 'Crítico', tone: 'text-danger-light' };
+  if (score === null) return { label: i18next.t('sinRespuestasTodavia', 'Sin respuestas todavía'), tone: 'text-ink-muted' };
+  if (score >= 50) return { label: i18next.t('excelente', 'Excelente'), tone: 'text-success-light' };
+  if (score >= 30) return { label: i18next.t('bueno', 'Bueno'), tone: 'text-success-light' };
+  if (score >= 0) return { label: i18next.t('porMejorar', 'Por mejorar'), tone: 'text-warning-light' };
+  return { label: i18next.t('critico', 'Crítico'), tone: 'text-danger-light' };
 }
 
 function moodTone(avg: number | null): string {
@@ -59,9 +55,9 @@ function moodTone(avg: number | null): string {
 
 function formatHours(hours: number | null): string {
   if (hours === null) return '—';
-  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  if (hours < 1) return i18next.t('valMin', '{{val}} min', { val: Math.round(hours * 60) });
   if (hours < 48) return `${hours.toFixed(1)} h`;
-  return `${(hours / 24).toFixed(1)} días`;
+  return i18next.t('valDias', '{{val}} días', { val: (hours / 24).toFixed(1) });
 }
 
 const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -99,6 +95,7 @@ const BarRow: React.FC<{ label: string; count: number; max: number; avgMood: num
 );
 
 export const ListeningAdminPanel: React.FC = () => {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<ListeningAdminFilter>({ days: 90, status: '', type: '', topic: '', courseId: '', mood: '' });
   const [data, setData] = useState<ListeningAdminResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,11 +110,11 @@ export const ListeningAdminPanel: React.FC = () => {
     try {
       setData(await api.getListeningAdmin(filter));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el buzón');
+      setError(loadError instanceof Error ? loadError.message : t('noSePudoCargarElBuzon', 'No se pudo cargar el buzón'));
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, t]);
 
   useEffect(() => {
     void load();
@@ -140,7 +137,7 @@ export const ListeningAdminPanel: React.FC = () => {
       // El estado cambió, y con él los pendientes del resumen.
       void load();
     } catch (replyError) {
-      setError(replyError instanceof Error ? replyError.message : 'No se pudo responder');
+      setError(replyError instanceof Error ? replyError.message : t('noSePudoResponder', 'No se pudo responder'));
     } finally {
       setBusyId(null);
     }
@@ -153,7 +150,7 @@ export const ListeningAdminPanel: React.FC = () => {
       replaceEntry((await api.updateListening(entry.id, { status })).entry);
       void load();
     } catch (statusError) {
-      setError(statusError instanceof Error ? statusError.message : 'No se pudo cambiar el estado');
+      setError(statusError instanceof Error ? statusError.message : t('noSePudoCambiarElEstado', 'No se pudo cambiar el estado'));
     } finally {
       setBusyId(null);
     }
@@ -187,11 +184,11 @@ export const ListeningAdminPanel: React.FC = () => {
   const noBreakdown = summary && summary.byTopic.length === 0 && summary.byType.length === 0 && summary.byCourse.length === 0;
 
   return (
-    <section data-mentor-ui="modern" className="admin-courses-root admin-listening" aria-label="Buzón de escucha">
+    <section data-mentor-ui="modern" className="admin-courses-root admin-listening" aria-label={t('buzonDeEscuchaTitulo', 'Buzón de escucha')}>
       <div className="admin-listening__intro">
         <div>
-          <h3>Buzón de escucha</h3>
-          <p>Lo que sienten y piden tus estudiantes, en cifras. El NPS cuenta a cada persona una vez: su nota más reciente del periodo.</p>
+          <h3>{t('buzonDeEscuchaTitulo', 'Buzón de escucha')}</h3>
+          <p>{t('loQueSientenYPidenTusEstudiantesEnCifras', 'Lo que sienten y piden tus estudiantes, en cifras. El NPS cuenta a cada persona una vez: su nota más reciente del periodo.')}</p>
         </div>
         <button
           type="button"
@@ -199,15 +196,15 @@ export const ListeningAdminPanel: React.FC = () => {
           onClick={() => api.downloadListeningCsv(filter).catch((exportError: Error) => setError(exportError.message))}
         >
           <Download aria-hidden="true" />
-          Exportar CSV
+          {t('exportarCsv', 'Exportar CSV')}
         </button>
       </div>
 
       <div className="mentor-course-toolbar admin-listening__toolbar">
-        <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Periodo">
+        <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('periodo', 'Periodo')}>
           {PERIODS.map((period) => (
             <button key={period.days} type="button" aria-pressed={filter.days === period.days} onClick={() => change({ days: period.days })}>
-              {period.label}
+              {periodLabel(period.days, period.label)}
             </button>
           ))}
         </div>
@@ -224,12 +221,12 @@ export const ListeningAdminPanel: React.FC = () => {
       <ActiveFilters noun="mensajes" onClear={() => change({ courseId: '', type: '', topic: '', status: '', mood: '' })} chips={chips} />
 
       {error && <p role="alert" className="admin-listening__error">{error}</p>}
-      {loading && !data && <p className="admin-listening__empty" role="status"><Loader2 className="animate-spin" aria-hidden="true" />Cargando el buzón…</p>}
+      {loading && !data && <p className="admin-listening__empty" role="status"><Loader2 className="animate-spin" aria-hidden="true" />{t('cargandoElBuzon', 'Cargando el buzón…')}</p>}
 
       {summary && (
         <>
           <div className="admin-listening__stats">
-            <Card title="NPS">
+            <Card title={t('nps', 'NPS')}>
               <p className="admin-listening__figure">
                 <strong className={verdict.tone}>{summary.nps.score === null ? '—' : summary.nps.score}</strong>
                 <span className={verdict.tone}>{verdict.label}</span>
@@ -242,13 +239,13 @@ export const ListeningAdminPanel: React.FC = () => {
                 </div>
               )}
               <p className="admin-listening__note">
-                {summary.nps.promoters} promotores · {summary.nps.passives} pasivos · {summary.nps.detractors} detractores
+                {t('listenNpsSplit', '{{promoters}} promotores · {{passives}} pasivos · {{detractors}} detractores', { promoters: summary.nps.promoters, passives: summary.nps.passives, detractors: summary.nps.detractors })}
                 <br />
-                {npsTotal} {npsTotal === 1 ? 'persona respondió' : 'personas respondieron'} (escala de −100 a 100)
+                {t('countPersonasRespondieronEscalaDe100A100', { defaultValue_one: '{{count}} persona respondió (escala de −100 a 100)', defaultValue_other: '{{count}} personas respondieron (escala de −100 a 100)', count: npsTotal })}
               </p>
             </Card>
 
-            <Card title="Ánimo medio (1 a 5)">
+            <Card title={t('listenAvgMood15', 'Ánimo medio (1 a 5)')}>
               <p className="admin-listening__figure">
                 {avgFace && <span aria-hidden="true" className="admin-listening__face">{avgFace.emoji}</span>}
                 <strong className={moodTone(summary.avgMood)}>{summary.avgMood === null ? '—' : summary.avgMood.toFixed(1)}</strong>
@@ -261,26 +258,26 @@ export const ListeningAdminPanel: React.FC = () => {
                 </div>
               )}
               <p className="admin-listening__note">
-                {summary.sentiment.positive} positivos · {summary.sentiment.neutral} neutros · {summary.sentiment.negative} negativos
+                {t('positivePositivosNeutralNeutrosNegative', '{{positive}} positivos · {{neutral}} neutros · {{negative}} negativos', { positive: summary.sentiment.positive, neutral: summary.sentiment.neutral, negative: summary.sentiment.negative })}
               </p>
             </Card>
 
-            <Card title="Mensajes">
+            <Card title={t('mensajes', 'Mensajes')}>
               <p className="admin-listening__figure"><strong>{summary.total}</strong></p>
               <p className="admin-listening__note">
                 <Inbox aria-hidden="true" />
-                <span className={summary.pending > 0 ? 'text-warning-light' : ''}>{summary.pending} por responder</span> · {summary.answered} atendidos
+                <span className={summary.pending > 0 ? 'text-warning-light' : ''}>{t('pendingPorResponder', '{{pending}} por responder', { pending: summary.pending })}</span> {t('answeredAtendidos', '· {{answered}} atendidos', { answered: summary.answered })}
               </p>
             </Card>
 
-            <Card title="Tiempo medio de respuesta">
+            <Card title={t('tiempoMedioDeRespuesta', 'Tiempo medio de respuesta')}>
               <p className="admin-listening__figure"><strong>{formatHours(summary.avgResponseHours)}</strong></p>
-              <p className="admin-listening__note">Desde que llega el mensaje hasta la primera respuesta del equipo.</p>
+              <p className="admin-listening__note">{t('desdeQueLlegaElMensajeHastaLaPrimera', 'Desde que llega el mensaje hasta la primera respuesta del equipo.')}</p>
             </Card>
           </div>
 
           <div className="admin-listening__panels">
-            <Card title="Cómo se sienten">
+            <Card title={t('comoSeSienten', 'Cómo se sienten')}>
               <ul className="admin-listening__moods">
                 {[...MOODS].reverse().map((mood) => {
                   const count = summary.moodDistribution[String(mood.value) as '1'];
@@ -299,30 +296,30 @@ export const ListeningAdminPanel: React.FC = () => {
             </Card>
 
             {noBreakdown ? (
-              <Card title="Desglose">
-                <p className="admin-listening__note">Todavía no hay mensajes con tema, tipo o curso para desglosar.</p>
+              <Card title={t('listenBreakdown', 'Desglose')}>
+                <p className="admin-listening__note">{t('listenNoBreakdown', 'Todavía no hay mensajes con tema, tipo o curso para desglosar.')}</p>
               </Card>
             ) : (
               <>
-                <Card title="Por tema">
-                  {summary.byTopic.length === 0 ? <p className="admin-listening__note">Sin datos.</p> : (
+                <Card title={t('porTema', 'Por tema')}>
+                  {summary.byTopic.length === 0 ? <p className="admin-listening__note">{t('sinDatos', 'Sin datos.')}</p> : (
                     <ul className="admin-listening__bars">
                       {summary.byTopic.map((item) => <BarRow key={item.key} label={item.label} count={item.count} max={summary.byTopic[0].count} avgMood={item.avgMood} />)}
                     </ul>
                   )}
                 </Card>
-                <Card title="Por tipo de mensaje">
-                  {summary.byType.length === 0 ? <p className="admin-listening__note">Sin datos.</p> : (
+                <Card title={t('porTipoDeMensaje', 'Por tipo de mensaje')}>
+                  {summary.byType.length === 0 ? <p className="admin-listening__note">{t('sinDatos', 'Sin datos.')}</p> : (
                     <ul className="admin-listening__bars">
                       {summary.byType.map((item) => <BarRow key={item.key} label={item.label} count={item.count} max={summary.byType[0].count} avgMood={item.avgMood} />)}
                     </ul>
                   )}
                 </Card>
-                <Card title="Por curso">
-                  {summary.byCourse.length === 0 ? <p className="admin-listening__note">Todavía nadie ha relacionado un mensaje con un curso.</p> : (
+                <Card title={t('porCurso', 'Por curso')}>
+                  {summary.byCourse.length === 0 ? <p className="admin-listening__note">{t('todaviaNadieHaRelacionadoUnMensajeConUn', 'Todavía nadie ha relacionado un mensaje con un curso.')}</p> : (
                     <ul className="admin-listening__bars">
                       {summary.byCourse.slice(0, 8).map((item) => (
-                        <BarRow key={item.courseId} label={item.title} count={item.count} max={summary.byCourse[0].count} avgMood={item.avgMood} extra={item.nps === null ? '' : ` · NPS ${item.nps}`} />
+                        <BarRow key={item.courseId} label={item.title} count={item.count} max={summary.byCourse[0].count} avgMood={item.avgMood} extra={item.nps === null ? '' : t('npsNps', '· NPS {{nps}}', { nps: item.nps })} />
                       ))}
                     </ul>
                   )}
@@ -330,17 +327,17 @@ export const ListeningAdminPanel: React.FC = () => {
               </>
             )}
 
-            <Card title="Tendencia semanal">
-              {summary.weekly.length === 0 ? <p className="admin-listening__note">Sin datos.</p> : (
+            <Card title={t('tendenciaSemanal', 'Tendencia semanal')}>
+              {summary.weekly.length === 0 ? <p className="admin-listening__note">{t('sinDatos', 'Sin datos.')}</p> : (
                 <>
-                  <div className="admin-listening__weekly" role="img" aria-label="Mensajes por semana, coloreados por ánimo medio">
+                  <div className="admin-listening__weekly" role="img" aria-label={t('mensajesPorSemanaColoreadosPorAnimoMedio', 'Mensajes por semana, coloreados por ánimo medio')}>
                     {summary.weekly.slice(-16).map((week) => (
-                      <div key={week.weekStart} title={`Semana del ${week.weekStart}: ${week.count} mensajes · ánimo ${week.avgMood ?? '—'} · NPS ${week.nps ?? '—'}`}>
+                      <div key={week.weekStart} title={t('semanaDelWeekStartCountMensajesAnimoAvg', 'Semana del {{weekStart}}: {{count}} mensajes · ánimo {{avgMood}} · NPS {{nps}}', { weekStart: week.weekStart, count: week.count, avgMood: week.avgMood ?? '—', nps: week.nps ?? '—' })}>
                         <div style={{ height: `${Math.max(6, (week.count / maxWeek) * 100)}%`, background: (week.avgMood ?? 0) >= 4 ? 'var(--color-success-light)' : (week.avgMood ?? 0) >= 3 ? 'var(--color-warning-light)' : 'var(--color-danger-light)' }} />
                       </div>
                     ))}
                   </div>
-                  <p className="admin-listening__note">Altura: mensajes. Color: ánimo medio de la semana.</p>
+                  <p className="admin-listening__note">{t('alturaMensajesColorAnimoMedioDeLaSemana', 'Altura: mensajes. Color: ánimo medio de la semana.')}</p>
                 </>
               )}
             </Card>
@@ -348,11 +345,11 @@ export const ListeningAdminPanel: React.FC = () => {
         </>
       )}
 
-      <div className="admin-listening__messages" role="region" aria-label="Mensajes recibidos">
-        <h3>Mensajes <span>{entries.length}</span></h3>
+      <div className="admin-listening__messages" role="region" aria-label={t('mensajesRecibidos', 'Mensajes recibidos')}>
+        <h3>{t('mensajes', 'Mensajes')} <span>{entries.length}</span></h3>
 
         {data && entries.length === 0 && (
-          <div className="admin-listening__empty"><Inbox aria-hidden="true" /><p>{chips.length > 0 ? 'Ningún mensaje coincide con los filtros.' : 'Todavía no hay mensajes en este periodo.'}</p></div>
+          <div className="admin-listening__empty"><Inbox aria-hidden="true" /><p>{chips.length > 0 ? t('listenNoMatch', 'Ningún mensaje coincide con los filtros.') : t('listenNoneInPeriod', 'Todavía no hay mensajes en este periodo.')}</p></div>
         )}
 
         {visible.map((entry) => {
@@ -366,7 +363,7 @@ export const ListeningAdminPanel: React.FC = () => {
                 <span>{LISTENING_TOPIC_LABELS[entry.topic]}</span>
                 {entry.courseTitle && <span>· {entry.courseTitle}</span>}
                 {entry.npsScore !== null && (
-                  <span className="admin-listening__tag" data-group={entry.npsGroup}>NPS {entry.npsScore}</span>
+                  <span className="admin-listening__tag" data-group={entry.npsGroup}>{t('npsNpsScore', 'NPS {{npsScore}}', { npsScore: entry.npsScore })}</span>
                 )}
                 <span className="admin-listening__status" data-status={entry.status}>{LISTENING_STATUS_LABELS[entry.status]}</span>
               </div>
@@ -374,15 +371,15 @@ export const ListeningAdminPanel: React.FC = () => {
               <h4>{entry.subject}</h4>
               <p className="admin-listening__message">{entry.message}</p>
               <p className="admin-listening__author">
-                {entry.anonymous ? (<><UserX aria-hidden="true" /> Anónimo</>) : (entry.author && `${entry.author.name} · ${entry.author.email}`)}
-                {' '}· {new Date(entry.createdAt).toLocaleString('es')}
+                {entry.anonymous ? (<><UserX aria-hidden="true" /> {t('anonimo', 'Anónimo')}</>) : (entry.author && `${entry.author.name} · ${entry.author.email}`)}
+                {' '}· {new Date(entry.createdAt).toLocaleString(dateLocale())}
               </p>
 
               {entry.reply && (
                 <div className="admin-listening__reply">
                   <p>
-                    Respondido{entry.repliedBy ? ` por ${entry.repliedBy}` : ''}
-                    {entry.repliedAt && ` · ${new Date(entry.repliedAt).toLocaleString('es')}`}
+                    {t('respondido', 'Respondido')}{entry.repliedBy ? ` ${t('porRepliedBy', 'por {{repliedBy}}', { repliedBy: entry.repliedBy })}` : ''}
+                    {entry.repliedAt && ` · ${new Date(entry.repliedAt).toLocaleString(dateLocale())}`}
                   </p>
                   <p>{entry.reply}</p>
                 </div>
@@ -390,12 +387,12 @@ export const ListeningAdminPanel: React.FC = () => {
 
               <div className="admin-listening__compose">
                 <textarea
-                  aria-label={`Respuesta a: ${entry.subject}`}
+                  aria-label={t('respuestaASubject', 'Respuesta a: {{subject}}', { subject: entry.subject })}
                   rows={2}
                   maxLength={2000}
                   value={drafts[entry.id] || ''}
                   onChange={(event) => setDrafts((current) => ({ ...current, [entry.id]: event.target.value }))}
-                  placeholder={entry.reply ? 'Escribe una nueva respuesta…' : 'Responde a esta persona…'}
+                  placeholder={entry.reply ? t('escribeUnaNuevaRespuesta', 'Escribe una nueva respuesta...') : t('respondeAEstaPersona', 'Responde a esta persona...')}
                 />
                 <div>
                   <button
@@ -405,10 +402,10 @@ export const ListeningAdminPanel: React.FC = () => {
                     onClick={() => handleReply(entry)}
                   >
                     <Send aria-hidden="true" />
-                    Responder
+                    {t('responder', 'Responder')}
                   </button>
                   <select
-                    aria-label="Cambiar estado"
+                    aria-label={t('cambiarEstado', 'Cambiar estado')}
                     value={entry.status}
                     disabled={busyId === entry.id}
                     onChange={(event) => handleStatus(entry, event.target.value as ListeningStatus)}

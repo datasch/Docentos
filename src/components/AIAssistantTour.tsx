@@ -27,28 +27,28 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
       tab: 'courses' as const,
       title: t('tour.welcomeTitle', { name: assistantName }),
       subtitle: t('tour.welcomeSubtitle'),
-      audioText: `¡Hola! Soy ${assistantName}, tu asistente virtual de la Academia. Te acompañaré en este recorrido de 30 segundos para que conozcas los módulos clave.`,
+      audioText: t('holaSoyAssistantNameTuAsistenteVirtualDe', '¡Hola! Soy {{assistantName}}, tu asistente virtual de la Academia. Te acompañaré en este recorrido de 30 segundos para que conozcas los módulos clave.', { assistantName }),
     },
     {
       id: 'courses',
       tab: 'courses' as const,
       title: t('tour.step1Title'),
       subtitle: t('tour.step1Desc'),
-      audioText: `En la pestaña de Cursos encontrarás todo el material de estudio organizado por módulos. Podrás ver videos, escuchar guías de voz y descargar recursos.`,
+      audioText: t('enLaPestanaDeCursosEncontrarasTodoEl', 'En la pestaña de Cursos encontrarás todo el material de estudio organizado por módulos. Podrás ver videos, escuchar guías de voz y descargar recursos.'),
     },
     {
       id: 'vip',
       tab: 'vip' as const,
       title: t('tour.step3Title'),
       subtitle: t('tour.step3Desc'),
-      audioText: `En la Zona VIP y Muro de Mentoría podrás hacer preguntas técnicas directamente a los profesores e interactuar con la comunidad.`,
+      audioText: t('enLaZonaVipYMuroDeMentoriaPodrasHacer', 'En la Zona VIP y Muro de Mentoría podrás hacer preguntas técnicas directamente a los profesores e interactuar con la comunidad.'),
     },
     {
       id: 'feedback',
       tab: 'courses' as const,
       title: t('tour.step4Title'),
       subtitle: t('tour.step4Desc'),
-      audioText: `¡Excelente! Has completado el recorrido inicial. Por favor regálanos tu opinión para seguir mejorando la plataforma.`,
+      audioText: t('excelenteHasCompletadoElRecorridoInicial', '¡Excelente! Has completado el recorrido inicial. Por favor regálanos tu opinión para seguir mejorando la plataforma.'),
     },
   ];
 
@@ -139,12 +139,12 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h4 className="font-extrabold text-xs text-white uppercase tracking-wider">{assistantName} AI</h4>
+                <h4 className="font-extrabold text-xs text-white uppercase tracking-wider">{t('assistantNameAi', '{{assistantName}} AI', { assistantName })}</h4>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30">
-                  ONBOARDING
+                  {t('onboarding', 'ONBOARDING')}
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400">Asistente Virtual Interactivo</p>
+              <p className="text-[10px] text-slate-400">{t('asistenteVirtualInteractivo', 'Asistente Virtual Interactivo')}</p>
             </div>
           </div>
 
@@ -177,13 +177,13 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
             <div className="bg-canvas p-2.5 rounded-xl border border-line flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex min-w-0 items-center gap-2 text-slate-400">
                 <Volume2 className={`w-4 h-4 ${isPlayingAudio ? 'text-brand-cyan animate-bounce' : ''}`} />
-                <span className="text-[11px] font-mono">{isPlayingAudio ? 'Hablando...' : 'Audio Pausado'}</span>
+                <span className="text-[11px] font-mono">{isPlayingAudio ? t('hablando', 'Hablando...') : t('audioPausado', 'Audio Pausado')}</span>
               </div>
               <button
                 onClick={() => playStepVoice(currentStep)}
                 className="shrink-0 text-[10px] font-bold text-brand-cyan hover:underline"
               >
-                Replay Audio
+                {t('replayAudio', 'Replay Audio')}
               </button>
             </div>
 
@@ -222,7 +222,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
             {feedbackSubmitted ? (
               <div className="p-4 bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs rounded-xl flex items-center gap-2 font-bold animate-fade-in">
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <span>¡Muchas gracias! Tu opinión ha sido guardada con éxito.</span>
+                <span>{t('muchasGraciasTuOpinionHaSidoGuardadaCon', '¡Muchas gracias! Tu opinión ha sido guardada con éxito.')}</span>
               </div>
             ) : (
               <form onSubmit={handleSubmitFeedback} className="space-y-3">
@@ -232,7 +232,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                     {t('tour.feedbackTitle')}
                   </h5>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Califica tu experiencia inicial en la Academia Giantucchi.
+                    {t('calificaTuExperienciaInicialEnLaAcademia', 'Califica tu experiencia inicial en la Academia Giantucchi.')}
                   </p>
                 </div>
 

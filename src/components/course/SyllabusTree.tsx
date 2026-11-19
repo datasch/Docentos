@@ -6,6 +6,7 @@ import { pluginManager } from '../../plugins/PluginManager';
 import { Sparkles } from 'lucide-react';
 import type { ModuleLockState } from '../../lib/courseNavigation';
 import { ProgressMeter } from './ProgressMeter';
+import { useTranslation } from 'react-i18next'
 
 interface SyllabusTreeProps {
   course: Course;
@@ -59,6 +60,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   onToggleComplete,
   onOpenPaywall,
 }) => {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Record<number, boolean>>({ [activeModuleIndex]: true });
   // El foco del teclado se mueve con las flechas sobre una sola fila tabulable:
   // con cincuenta lecciones, dejarlas todas en el orden de tabulacion convierte
@@ -170,15 +172,15 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
           reves —un badge con gradiente— competia con el titulo de la leccion. */}
       <div className="border-b border-line px-4 py-3.5">
         <div className="flex items-center gap-3">
-          <ProgressMeter value={courseProgressPct} label="Progreso del curso" className="flex-1" />
+          <ProgressMeter value={courseProgressPct} label={t('progresoDelCurso', 'Progreso del curso')} className="flex-1" />
           <span className="shrink-0 text-meta text-ink tabular-nums">{courseProgressPct} %</span>
         </div>
         <p className="mt-2 text-meta text-ink-muted tabular-nums">
-          {completedCourseVideos} de {totalCourseVideos} lecciones · {course.modules.length} módulos
+          {t('completedCourseVideosDeTotalCourseVideos', '{{completedCourseVideos}} de {{totalCourseVideos}} lecciones · {{length}} módulos', { completedCourseVideos, totalCourseVideos, length: course.modules.length })}
         </p>
       </div>
 
-      <div role="tree" aria-label="Temario del curso" className="flex flex-col gap-2 p-3">
+      <div role="tree" aria-label={t('temarioDelCurso', 'Temario del curso')} className="flex flex-col gap-2 p-3">
         {course.modules.map((module, mIdx) => {
           const isUnlocked = unlocked[mIdx];
           const isOpen = Boolean(expanded[mIdx]) && isUnlocked;
@@ -226,11 +228,11 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className={`text-micro ${isUnlocked ? 'text-ink-muted' : 'text-ink-faint'}`}>
-                      Módulo {String(mIdx + 1).padStart(2, '0')}
+                      {t('path.moduleNumber', 'Módulo {{number}}', { number: String(mIdx + 1).padStart(2, '0') })}
                     </span>
                     {!isUnlocked && (
                       <span className="shrink-0 rounded border border-brand-yellow/30 bg-brand-yellow/10 px-1.5 py-0.5 text-micro font-medium text-brand-yellow">
-                        Bloqueado
+                        {t('bloqueado', 'Bloqueado')}
                       </span>
                     )}
                     {/* Sin barra propia, el avance del modulo lo lleva este
@@ -253,8 +255,8 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                   {!isUnlocked && (
                     <span className="mt-1 block text-micro leading-snug text-ink-faint">
                       {moduleLocks[mIdx]?.reason === 'quiz'
-                        ? 'Aprueba el examen del módulo anterior con 80 % para abrirlo.'
-                        : 'Termina las lecciones del módulo anterior para abrirlo.'}
+                        ? t('apruebaElExamenDelModuloAnteriorCon80', 'Aprueba el examen del módulo anterior con 80 % para abrirlo.')
+                        : t('terminaLasLeccionesDelModuloAnteriorPara', 'Termina las lecciones del módulo anterior para abrirlo.')}
                     </span>
                   )}
                 </span>
@@ -324,8 +326,8 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                               aria-pressed={isDone}
                               aria-label={
                                 isDone
-                                  ? `Marcar ${video.title} como pendiente`
-                                  : `Marcar ${video.title} como completada`
+                                  ? t('marcarTitleComoPendiente', 'Marcar {{title}} como pendiente', { title: video.title })
+                                  : t('marcarTitleComoCompletada', 'Marcar {{title}} como completada', { title: video.title })
                               }
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -386,13 +388,12 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                                 <span className="flex min-w-0 items-center gap-2">
                                   <Sparkles aria-hidden className="h-3.5 w-3.5 shrink-0 text-brand-yellow" />
                                   <span className="truncate text-row font-medium text-brand-violet-light">
-                                    Examen del módulo ({totalPreguntas}{' '}
-                                    {totalPreguntas === 1 ? 'pregunta' : 'preguntas'})
+                                    {t('examenDelModuloCountPreguntas', { defaultValue_one: 'Examen del módulo ({{count}} pregunta)', defaultValue_other: 'Examen del módulo ({{count}} preguntas)', count: totalPreguntas })}
                                   </span>
                                 </span>
                                 {examenDisponible ? (
                                   <span className="shrink-0 rounded bg-brand-violet/20 px-1.5 py-0.5 text-micro font-semibold text-brand-violet-light">
-                                    {examenAbierto ? 'En curso' : 'Rendir'}
+                                    {examenAbierto ? t('enCurso', 'En curso') : t('rendir', 'Rendir')}
                                   </span>
                                 ) : (
                                   <Lock aria-hidden className="h-3 w-3 shrink-0 text-ink-faint" />
@@ -407,7 +408,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
 
                   {hasAccess && module.resources && module.resources.length > 0 && (
                     <div className="border-t border-line px-3 py-3">
-                      <p className="mb-1.5 text-micro text-ink-muted">Recursos del módulo</p>
+                      <p className="mb-1.5 text-micro text-ink-muted">{t('recursosDelModulo', 'Recursos del módulo')}</p>
                       <div className="flex flex-col gap-1">
                         {module.resources.map((res) => (
                           <a
@@ -434,7 +435,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
 
       {hasAccess && course.resources && course.resources.length > 0 && (
         <div className="border-t border-line px-4 py-4">
-          <p className="mb-2 text-micro text-ink-muted">Recursos del programa</p>
+          <p className="mb-2 text-micro text-ink-muted">{t('recursosDelPrograma', 'Recursos del programa')}</p>
           <div className="flex flex-col gap-1">
             {course.resources.map((res) => (
               <a

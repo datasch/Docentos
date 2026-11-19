@@ -4,7 +4,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ConstellationNeuralSearch } from '../src/experiences/constellation/ConstellationNeuralSearch.js';
 import type { Course } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 const mockCourses = [
   {
     id: 'course-1',

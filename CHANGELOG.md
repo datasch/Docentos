@@ -7,11 +7,119 @@ cuando alcance su primera versión estable.
 
 ## Unreleased
 
+**Incluye una migración aditiva:** crea la tabla `ModerationEvent` (historial de moderación). No toca datos existentes.
+
+### Added
+
+- **Los strikes son trazables.** Cada strike puesto o quitado, suspensión y
+  reactivación queda registrado con quién lo hizo, a quién y cuándo. En Admin →
+  Personas → Directorio hay un botón «Historial» por persona.
+- **Con 5 strikes la cuenta se suspende sola.** El máximo de strikes pasa de 100
+  a 5; «+1 Strike» queda desactivado al llegar a 5 y una cuenta con 5 strikes no
+  se puede reactivar hasta quitar uno. El panel avisa de la suspensión
+  automática y de los errores del servidor.
+
+- **La guía de voz lee en el idioma del texto.** Si el guion está en otro idioma
+  que la voz elegida (por ejemplo, texto en inglés con voz española), se usa
+  la voz de ese idioma. La detección usa `tinyld` (variante ligera, unos 69 KB,
+  limitada a es/en/pt/fr/it) y solo cambia de voz cuando el resultado es claro;
+  con textos muy cortos se respeta la voz elegida.
+
+### Fixed
+
+- **La guía de voz (TTS) podía quedarse muda.** Chrome ignoraba el audio lanzado
+  justo después de cancelar el anterior, cortaba los guiones largos y dejaba la
+  cola atascada. Ahora el guion se reproduce por fragmentos, con reintento si el
+  motor no arranca y sin dejar el botón «reproduciendo» si falla. La
+  previsualización del panel de administración usa la misma ruta que las lecciones.
+
 ### Planned
 
-- Entrega real de correo para recuperación de contraseña.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
+
+## [1.1.3] - 2026-11-17
+
+**Esta versión no migra el esquema de la base de datos.** No hace falta cambiar variables en Coolify: basta con actualizar las imágenes y reiniciar.
+
+### Added
+
+- **Toda la interfaz está disponible en cinco idiomas.** Español, inglés,
+  portugués, francés e italiano, también en el panel de mentor, el de
+  administración y los plugins. El idioma se elige en el selector de la barra;
+  se recuerda en el navegador y, si la persona no ha elegido, se usa el de la
+  instancia. Los correos no cambian y siguen saliendo como hasta ahora.
+- **Términos y privacidad en cinco idiomas, con un diseño nuevo.** Cada texto
+  tiene resumen, índice, barra de avance y el sello del documento. Las
+  traducciones son de cortesía y avisan de ello, con un botón para leer el
+  original en español. Las firmas ya registradas siguen siendo válidas porque
+  siempre se firma el texto original. Conviene que alguien con criterio legal
+  revise las traducciones.
+- **Se puede quitar un strike puesto por error.** En Admin → Personas →
+  Directorio hay un botón «−1 Strike» junto a «+1 Strike»; queda desactivado si
+  la persona no tiene strikes.
+- **Los mensajes de error del servidor salen en el idioma de la aplicación.**
+  Unos 200 avisos (acceso denegado, validaciones, fallos al guardar…) se
+  traducen según el idioma elegido, no según el del navegador.
+
+### Changed
+
+- **Las notificaciones se muestran en el idioma activo**, incluidas las que ya
+  estaban guardadas («Nueva pregunta de…», «Tu consulta fue respondida»).
+- **Las fechas y horas siguen el idioma elegido** y no el del navegador.
+- **Pasar un strike o suspender a una persona ya no devuelve al panel a
+  «Inicio».** Se queda en el directorio donde estaba trabajando.
+- **El servidor rechaza cantidades de strikes no válidas.** Antes aceptaba
+  cualquier número, incluso negativos; ahora solo admite enteros de 0 a 100.
+- **La integración continua valida los idiomas:** comprueba que ningún idioma
+  tenga claves de menos y que no queden textos sueltos sin traducir.
+
+### Fixed
+
+- **La etiqueta «MENTOR» de la lista de usuarios del panel de administración
+  se veía rota** («key 'mentor (es)' returned an object instead of string»).
+
+## [1.1.2] - 2026-11-16
+
+**Esta versión no migra el esquema de la base de datos.**
+
+### Fixed
+
+- **El enlace del correo de recuperación no abría el formulario.** Al pulsar el
+  enlace «restablecer contraseña» se cargaba la página de inicio y había que
+  volver a abrir el acceso a mano. Ahora el enlace abre directamente el
+  formulario para elegir la nueva contraseña.
+- **Los fallos al enviar el correo de recuperación pasaban desapercibidos.**
+  DocentOS siempre decía «se enviaron las instrucciones» aunque el envío
+  fallara. La pantalla sigue diciendo lo mismo (por seguridad, no revela si la
+  cuenta existe), pero ahora cada fallo queda en los logs del servidor como
+  `password_reset.delivery_failed`, con el motivo. Si no hay ningún canal de
+  envío configurado, se registra `password_reset.not_configured` y se avisa al
+  arrancar. También se avisa si `APP_URL` apunta a `localhost`, porque los
+  enlaces de los correos no funcionarían fuera del servidor.
+
+### Added
+
+- **Envío del correo de recuperación por SMTP propio (opcional).** Con las
+  variables nuevas `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+  `SMTP_PASS` y `MAIL_FROM`, DocentOS envía el correo directamente (Gmail,
+  Outlook, el correo del dominio, Brevo, Resend…) y comprueba las credenciales
+  al arrancar. **Si `SMTP_HOST` queda vacío, todo sigue igual:** el correo se
+  entrega por el webhook configurado en `PASSWORD_RESET_WEBHOOK_URL` (n8n),
+  exactamente como hasta ahora. No hace falta cambiar nada en Coolify.
+- **El «Buzón de escucha» flotante se puede cerrar.** Tiene una «x» dentro del
+  propio botón; al cerrarlo se desliza hasta el pie de página, junto al enlace
+  de GitHub, desde donde se sigue pudiendo abrir. Al recargar la página vuelve
+  a aparecer flotando.
+
+### Changed
+
+- **El saludo de la portada usa solo el primer nombre.** «Continúa tu
+  aprendizaje, Juan» en lugar del nombre completo con apellidos; los
+  tratamientos como «Prof.» o «Dra.» y las etiquetas de rol se omiten.
+- **El pie de página ya no deja un hueco vacío debajo.**
+- **La imagen Docker se construye más rápido**: los permisos de los archivos se
+  asignan al copiarlos en lugar de recorrer después todo `node_modules`.
 
 ## [1.1.1] - 2026-11-13
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Check, 
@@ -112,6 +112,36 @@ export const HalloweenCandyIcon: React.FC<{ className?: string; size?: number }>
     <line x1="19" y1="10" x2="17" y2="22" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
+
+/**
+ * Rótulo de una isla. Todos miden lo mismo; un título que no cabe en dos líneas se
+ * recorta y avisa con `onOverflowChange` para que la isla muestre «Ver más».
+ */
+const IslaRotulo: React.FC<{
+  id: string;
+  title: string;
+  onOverflowChange: (id: string, overflowing: boolean) => void;
+}> = ({ id, title, onOverflowChange }) => {
+  const textRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const element = textRef.current;
+    if (!element) return;
+    const measure = () => onOverflowChange(id, element.scrollHeight - element.clientHeight > 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    // El ancho del rótulo es fijo, pero la fuente puede cargar tarde o cambiar con el tema.
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [id, title, onOverflowChange]);
+  return (
+    <span className="rotulo" aria-hidden="true">
+      <span ref={textRef} className="rotulo-texto">
+        {title}
+      </span>
+    </span>
+  );
+};
 
 /**
  * Genera el trazado en zigzag serpentino fluido y continuo con derivadas verticales suaves
@@ -242,6 +272,13 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   const baseRef = useRef<SVGPathElement>(null);
   const estelaRef = useRef<SVGPathElement>(null);
   const tramosRef = useRef<number[] | null>(null);
+  // Islas cuyo título no cabe en el rótulo de tamaño fijo y necesitan «Ver más».
+  const [longTitles, setLongTitles] = useState<Record<string, boolean>>({});
+  const reportOverflow = useCallback(
+    (id: string, overflowing: boolean) =>
+      setLongTitles((prev) => (prev[id] === overflowing ? prev : { ...prev, [id]: overflowing })),
+    [],
+  );
 
   const n = missions.length;
   const startGlobalIndex = missions[0]?.globalIndex ?? 0;
@@ -408,9 +445,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
               </span>
             ) : (
               <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
-                {missions.length === 1
-                  ? t('path.lessonsCount_one', '1 lección')
-                  : t('path.lessonsCount_other', { count: missions.length, defaultValue: `${missions.length} lecciones` })}
+                {t('path.lessonsCount', { count: missions.length, defaultValue_one: '{{count}} lección', defaultValue_other: '{{count}} lecciones' })}
               </span>
             )}
           </div>
@@ -518,6 +553,17 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
           // Si la isla está muy abajo en el contenedor (> 72%), posicionamos el popover arriba para no cortarlo
           const isNearBottom = coordinates[1] > 72;
 
+          const toggleMission = () =>
+            setSelectedNode((prev) =>
+              prev?.video.id === mission.video.id
+                ? null
+                : {
+                    video: mission.video,
+                    module: mission.module,
+                    index: mission.missionNumber,
+                  }
+            );
+
           return (
             <React.Fragment key={mission.video.id}>
               <button
@@ -529,18 +575,8 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                   top: `${coordinates[1]}%`,
                   zIndex: isSelected ? 20 : 15,
                 }}
-                aria-label={`Misión ${mission.missionNumber} de ${totalMissions}: ${mission.video.title}, estado: ${estado}`}
-                onClick={() => {
-                  setSelectedNode((prev) =>
-                    prev?.video.id === mission.video.id
-                      ? null
-                      : {
-                          video: mission.video,
-                          module: mission.module,
-                          index: mission.missionNumber,
-                        }
-                  );
-                }}
+                aria-label={t('misionMissionNumberDeTotalMissionsTitle', 'Misión {{missionNumber}} de {{totalMissions}}: {{title}}, estado: {{estado}}', { missionNumber: mission.missionNumber, totalMissions, title: mission.video.title, estado })}
+                onClick={toggleMission}
               >
                 <span className="isla-roca" aria-hidden="true">
                   {completed ? (
@@ -562,10 +598,22 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                   )}
                 </span>
                 
-                <span className="rotulo" aria-hidden="true">
-                  {mission.video.title}
-                </span>
+                <IslaRotulo id={mission.video.id} title={mission.video.title} onOverflowChange={reportOverflow} />
               </button>
+
+              {/* El título no cabe en el rótulo: «Ver más» abre la ficha de la misión, que lo muestra completo. */}
+              {longTitles[mission.video.id] && (
+                <button
+                  type="button"
+                  className="isla-vermas"
+                  style={{ left: `${coordinates[0]}%`, top: `${coordinates[1]}%`, zIndex: isSelected ? 21 : 16 }}
+                  aria-expanded={isSelected}
+                  aria-label={`${t('catalog.seeMore', 'Ver más')}: ${mission.video.title}`}
+                  onClick={toggleMission}
+                >
+                  {t('catalog.seeMore', 'Ver más')}
+                </button>
+              )}
 
               {/* Popover / Ficha de Misión desplegada al hacer clic, con separación limpia sin solapar */}
               {isSelected && (
@@ -575,7 +623,8 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                     left: '50%',
                     ...(isNearBottom 
                       ? { bottom: `calc(${100 - coordinates[1]}% + 52px)` } 
-                      : { top: `calc(${coordinates[1]}% + 82px)` }),
+                      // Bajo el rótulo (que acaba a 95px del centro) y, si lo hay, bajo «Ver más» (acaba a 122px).
+                      : { top: `calc(${coordinates[1]}% + ${longTitles[mission.video.id] ? 130 : 103}px)` }),
                   }}
                 >
                   {isNearBottom ? (
@@ -800,7 +849,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      if (target.closest('.mision-popover') || target.closest('.isla')) {
+      if (target.closest('.mision-popover') || target.closest('.isla') || target.closest('.isla-vermas')) {
         return;
       }
       setSelectedNode(null);
@@ -896,9 +945,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
               </h1>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-normal text-ink-soft">
-                  {safeModules.length === 1
-                    ? t('path.modulesCount_one', '1 módulo')
-                    : t('path.modulesCount_other', { count: safeModules.length, defaultValue: `${safeModules.length} módulos` })}
+                  {t('path.modulesCount', { count: safeModules.length, defaultValue_one: '{{count}} módulo', defaultValue_other: '{{count}} módulos' })}
                 </span>
                 {seasonalTheme === 'halloween' && (
                   <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-orange-500/15 text-orange-700 dark:text-orange-400 border border-orange-500/30 shrink-0 animate-pulse">
@@ -990,7 +1037,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
         <div className="space-y-4">
           {modulesWithMissions.length === 0 ? (
             <div className="py-16 px-6 text-center bg-surface/70 border border-slate-200/80 dark:border-purple-500/20 rounded-3xl  shadow-sm">
-              <div className="text-4xl mb-3">🌌</div>
+              <div className="text-4xl mb-3">{'🌌'}</div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
                 {t('path.emptyTitle', 'Constelación en estructuración')}
               </h3>
@@ -1109,7 +1156,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 type="button"
                 onClick={() => setShowPreviewModal(true)}
                 className="relative p-3.5 rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-amber-500/20 via-amber-950/40 to-black/60  hover:scale-105 active:scale-95 transition-all cursor-pointer group"
-                title="Ver vista previa del certificado"
+                title={t('verVistaPreviaDelCertificado', 'Ver vista previa del certificado')}
               >
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 flex items-center justify-center shadow-none shadow-amber-500/50 group-hover:brightness-110 transition-all">
                   <Award className="w-9 h-9 text-slate-950 stroke-[2.5]" />
@@ -1136,7 +1183,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                     </p>
                     {certificate?.verificationCode && (
                       <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-sm">
-                        <span className="opacity-75">DOC:</span>
+                        <span className="opacity-75">{t('doc', 'DOC:')}</span>
                         <span className="font-bold">{certificate.verificationCode}</span>
                       </div>
                     )}
@@ -1249,7 +1296,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                       type="button"
                       disabled
                       className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/30 text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
-                      title="Debes completar la última misión con el orbe para habilitar este botón"
+                      title={t('debesCompletarLaUltimaMisionConElOrbe', 'Debes completar la última misión con el orbe para habilitar este botón')}
                     >
                       <Lock className="w-3 h-3" />
                       <span>{t('path.viewDiploma', 'Ver Diploma')}</span>
@@ -1258,7 +1305,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                       type="button"
                       disabled
                       className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/30 text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
-                      title="Debes completar la última misión con el orbe para habilitar este botón"
+                      title={t('debesCompletarLaUltimaMisionConElOrbe', 'Debes completar la última misión con el orbe para habilitar este botón')}
                     >
                       <Lock className="w-3 h-3" />
                       <span>{t('certificates.download', 'Descargar')}</span>

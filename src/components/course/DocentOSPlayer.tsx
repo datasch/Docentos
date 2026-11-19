@@ -20,6 +20,7 @@ import {
 import type { VideoDriveLink } from '../../types';
 import { isDriveVideo, parseVideoSource } from '../../lib/videoParser';
 import { MorphingInfinity } from '../loading/MorphingInfinity';
+import { useTranslation } from 'react-i18next'
 
 declare global {
   interface Window {
@@ -78,6 +79,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
   hasNextLesson = false,
   autoPlay = false,
 }) => {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ytIframeRef = useRef<HTMLIFrameElement>(null);
@@ -434,7 +436,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
   const handleNativeError = () => {
     setIsLoading(false);
     setIsStarting(false);
-    setHasError('No se pudo reproducir este video directamente.');
+    setHasError(t('noSePudoReproducirEsteVideoDirectamente', 'No se pudo reproducir este video directamente.'));
   };
 
   // --- CONTROLES DE REPRODUCCIÓN ---
@@ -775,7 +777,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         <div
           onClick={togglePlay}
           className="absolute inset-0 z-10 cursor-pointer"
-          aria-label="Alternar reproducción"
+          aria-label={t('alternarReproduccion', 'Alternar reproducción')}
         />
       )}
 
@@ -784,7 +786,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         <div className="absolute inset-0 z-12 overflow-hidden pointer-events-none">
           <img
             src={posterUrl}
-            alt={title || 'Portada de lección'}
+            alt={title || t('portadaDeLeccion', 'Portada de lección')}
             className="h-full w-full object-cover"
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
@@ -805,7 +807,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             <Video className="h-4 w-4 text-brand-cyan" />
           </div>
           <span className="text-xs sm:text-sm font-semibold text-white truncate drop-shadow-sm">
-            {title || 'Clase en reproducción'}
+            {title || t('claseEnReproduccion', 'Clase en reproducción')}
           </span>
         </div>
       </div>
@@ -843,13 +845,13 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           <div className="flex items-center gap-2 rounded-2xl bg-black/70 backdrop-blur-md border border-white/10 px-4 py-2.5 text-xs font-semibold text-brand-cyan shadow-lg">
             {doubleTapFeedback === 'forward' ? (
               <>
-                <span>+10s</span>
+                <span>{t('10s', '+10s')}</span>
                 <RotateCw className="h-4 w-4 animate-spin-once" />
               </>
             ) : (
               <>
                 <RotateCcw className="h-4 w-4 animate-spin-once" />
-                <span>-10s</span>
+                <span>{'-10s'}</span>
               </>
             )}
           </div>
@@ -865,7 +867,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         >
           {/* Mismo centro (50%, 50%) que el botón de play, que se oculta mientras arranca. */}
           <MorphingInfinity
-            label="Cargando video"
+            label={t('cargandoVideo', 'Cargando video')}
             duration={2.4}
             className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:h-24 sm:w-24"
           />
@@ -878,7 +880,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <h3 className="text-section font-semibold text-white">No se pudo reproducir directamente</h3>
+          <h3 className="text-section font-semibold text-white">{t('noSePudoReproducirDirectamente', 'No se pudo reproducir directamente')}</h3>
           <p className="mt-1 text-meta max-w-sm text-zinc-400">{hasError}</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
             <button
@@ -902,7 +904,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               className="inline-flex items-center gap-2 rounded-xl bg-surface border border-line px-3.5 py-2 text-micro font-bold text-ink hover:border-line-strong hover:bg-raised transition-colors"
             >
               <RefreshCw className="h-3.5 w-3.5 text-brand-cyan" />
-              <span>Reintentar reproducción</span>
+              <span>{t('reintentarReproduccion', 'Reintentar reproducción')}</span>
             </button>
           </div>
         </div>
@@ -917,7 +919,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         {/* Barra de progreso (Scrubber) */}
         <div
           role="slider"
-          aria-label="Línea de tiempo del video"
+          aria-label={t('lineaDeTiempoDelVideo', 'Línea de tiempo del video')}
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={currentTime}
@@ -975,8 +977,8 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             <button
               type="button"
               onClick={() => seekRelative(-10)}
-              title="Retroceder 10s (J)"
-              aria-label="Retroceder 10 segundos"
+              title={t('retroceder10sJ', 'Retroceder 10s (J)')}
+              aria-label={t('retroceder10Segundos', 'Retroceder 10 segundos')}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <RotateCcw className="h-4 w-4" />
@@ -985,8 +987,8 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             <button
               type="button"
               onClick={() => seekRelative(10)}
-              title="Adelantar 10s (L)"
-              aria-label="Adelantar 10 segundos"
+              title={t('adelantar10sL', 'Adelantar 10s (L)')}
+              aria-label={t('adelantar10Segundos', 'Adelantar 10 segundos')}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <RotateCw className="h-4 w-4" />
@@ -997,7 +999,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               <button
                 type="button"
                 onClick={toggleMute}
-                aria-label={isMuted ? 'Activar sonido (M)' : 'Silenciar (M)'}
+                aria-label={isMuted ? t('activarSonidoM', 'Activar sonido (M)') : t('silenciarM', 'Silenciar (M)')}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
               >
                 {isMuted || volume === 0 ? (
@@ -1017,7 +1019,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
                   step="0.05"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                  aria-label="Control deslizante de volumen"
+                  aria-label={t('controlDeslizanteDeVolumen', 'Control deslizante de volumen')}
                   className="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-white/20 accent-brand-cyan"
                 />
               </div>
@@ -1038,7 +1040,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                title="Velocidad de reproducción"
+                title={t('velocidadDeReproduccion', 'Velocidad de reproducción')}
                 aria-expanded={showSpeedMenu}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-micro font-mono font-bold text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
               >
@@ -1048,7 +1050,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               {showSpeedMenu && (
                 <div className="absolute bottom-full right-0 mb-2 w-24 overflow-hidden rounded-xl bg-canvas/95 border border-line p-1 shadow-2xl backdrop-blur-xl animate-scale-up">
                   <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
-                    Velocidad
+                    {t('velocidad', 'Velocidad')}
                   </div>
                   {PLAYBACK_RATES.map((rate) => (
                     <button
@@ -1074,8 +1076,8 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               <button
                 type="button"
                 onClick={togglePiP}
-                title="Ventana flotante (P)"
-                aria-label="Picture in Picture"
+                title={t('ventanaFlotanteP', 'Ventana flotante (P)')}
+                aria-label={t('pictureInPicture', 'Picture in Picture')}
                 className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <PictureInPicture className="h-4 w-4" />
@@ -1087,8 +1089,8 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               <button
                 type="button"
                 onClick={onToggleTheater}
-                title="Modo Teatro (T)"
-                aria-label="Modo teatro"
+                title={t('modoTeatroT', 'Modo Teatro (T)')}
+                aria-label={t('modoTeatro', 'Modo teatro')}
                 className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <Tv className={`h-4 w-4 ${theaterMode ? 'text-brand-cyan' : ''}`} />
@@ -1099,8 +1101,8 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
             <button
               type="button"
               onClick={toggleFullscreen}
-              title="Pantalla Completa (F)"
-              aria-label="Alternar pantalla completa"
+              title={t('pantallaCompletaF', 'Pantalla Completa (F)')}
+              aria-label={t('alternarPantallaCompleta', 'Alternar pantalla completa')}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               {isFullscreen ? (

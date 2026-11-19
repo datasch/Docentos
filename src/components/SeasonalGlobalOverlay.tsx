@@ -8,8 +8,10 @@
 import React, { useState, useEffect } from 'react';
 import { getSeasonalTheme, SeasonalTheme, SEASONAL_INFO } from '../lib/seasonalTheme';
 import { X, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 
 export const SeasonalGlobalOverlay: React.FC = () => {
+  const { t } = useTranslation()
   const [theme, setTheme] = useState<SeasonalTheme>(getSeasonalTheme);
   const [dismissBanner, setDismissBanner] = useState(false);
 
@@ -94,7 +96,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
       {!dismissBanner && (
         <aside
           role="region"
-          aria-label="Aviso de festividad activa"
+          aria-label={t('avisoDeFestividadActiva', 'Aviso de festividad activa')}
           className="relative z-40 w-full py-1.5 px-4 text-xs font-semibold flex items-center justify-between transition-all select-none shadow-sm backdrop-blur-md"
           style={{
             backgroundColor:
@@ -127,13 +129,13 @@ export const SeasonalGlobalOverlay: React.FC = () => {
                   border: `1px solid ${info.colorAcento}40`,
                 }}
               >
-                Temporada Activa
+                {t('temporadaActiva', 'Temporada Activa')}
               </span>
               <button
                 type="button"
                 onClick={() => setDismissBanner(true)}
                 className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer text-white/70 hover:text-white"
-                title="Ocultar aviso de festividad"
+                title={t('ocultarAvisoDeFestividad', 'Ocultar aviso de festividad')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>

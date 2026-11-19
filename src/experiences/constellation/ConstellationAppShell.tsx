@@ -91,6 +91,7 @@ interface ConstellationAppShellProps {
   onOpenListening?: () => void;
   onChangePassword?: () => void;
   unreadListening?: number;
+  listeningDocked?: boolean;
 }
 
 export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
@@ -118,6 +119,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   onOpenListening,
   onChangePassword,
   unreadListening = 0,
+  listeningDocked = false,
 }) => {
   const { t, i18n } = useTranslation();
   const resolveTab = (tab: string): ConstellationTab => {
@@ -367,7 +369,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
               >
                 <ConstellationHero
                   currentUser={currentUser}
-                  showInlineBrand={!showDesktopBrand}
+                  showInlineBrand={false}
                   onExploreCourses={() => {
                     setConstellationTab('courses');
                     onNavigate('courses');
@@ -619,7 +621,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
       <ConstellationFooter
         onOpenListening={onOpenListening}
         unreadListening={unreadListening}
-
+        listeningDocked={listeningDocked}
       />
 
     </div>

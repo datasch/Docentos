@@ -40,3 +40,18 @@ export function formatDisplayName(rawName?: string | null): string {
     .trim();
 }
 
+/** Tratamientos que pueden ir delante del nombre y no forman parte de él. */
+const TRATAMIENTOS = /^(prof|profa|dr|dra|ing|lic|mtro|mtra|sr|sra|srta)\.?$/i;
+
+/**
+ * Primer nombre de la persona, para saludos ("Continúa tu aprendizaje, Juan.").
+ * "Juan Carlos Andrés Pérez López" -> "Juan"; "Prof. Ana Ruiz" -> "Ana".
+ */
+export function formatFirstName(rawName?: string | null): string {
+  const words = formatDisplayName(rawName)
+    .replace(/\b(prof|profa|dr|dra|ing|lic|mtro|mtra|sr|sra|srta)\.(?=\S)/gi, '$1. ')
+    .split(/\s+/)
+    .filter(Boolean);
+  return words.find((word) => !TRATAMIENTOS.test(word)) ?? words[0] ?? '';
+}
+

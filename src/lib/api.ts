@@ -104,6 +104,16 @@ export type TwoFactorStatus = {
   codigosDisponibles: number;
 };
 
+export interface ModerationHistoryEvent {
+  id: string;
+  action: 'strike_added' | 'strike_removed' | 'suspended' | 'reactivated' | 'auto_suspended';
+  strikesBefore: number;
+  strikesAfter: number;
+  actorName: string;
+  actorEmail: string;
+  createdAt: string;
+}
+
 export const api = {
 
   // User & Auth
@@ -1115,13 +1125,22 @@ export const api = {
   },
 
   // Moderation API
-  async updateUserModeration(userId: string, data: { strikes?: number; isActive?: boolean }): Promise<{ success: boolean; user: any }> {
+  async updateUserModeration(userId: string, data: { strikes?: number; isActive?: boolean }): Promise<{ success: boolean; autoSuspended?: boolean; user: any }> {
     const res = await fetch(`/api/admin/users/${userId}/moderation`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Error al actualizar moderación del usuario');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error || 'Error al actualizar moderación del usuario');
+    }
+    return res.json();
+  },
+
+  async getUserModerationHistory(userId: string): Promise<{ events: ModerationHistoryEvent[] }> {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/moderation-history`);
+    if (!res.ok) throw new Error('Error al cargar el historial de moderación');
     return res.json();
   },
 
@@ -1627,26 +1646,32 @@ export const api = {
   },
 
   contracts: {
-    async getPublic(): Promise<{
+    async getPublic(language?: string): Promise<{
       version: string;
       title: string;
       content: string;
+      /** Sello SHA-256 del texto original en español, aunque se muestre una traducción. */
       contractHash: string;
+      language: string;
+      /** `true` si el texto mostrado es una traducción de cortesía del original en español. */
+      translated: boolean;
       retentionPeriodMonths: number;
       accessPeriodMonths: number;
     }> {
-      const res = await fetch('/api/contracts/public');
+      const res = await fetch(`/api/contracts/public${language ? `?lang=${encodeURIComponent(language)}` : ''}`);
       if (!res.ok) throw new Error('Error al obtener términos y condiciones de la plataforma');
       return res.json();
     },
 
-    async getPending(): Promise<{
+    async getPending(language?: string): Promise<{
       requiresSignature: boolean;
       contract?: {
         version: string;
         title: string;
         content: string;
         contractHash: string;
+        language?: string;
+        translated?: boolean;
         calculatedDates: {
           startDate: string;
           endDate: string;
@@ -1656,7 +1681,7 @@ export const api = {
       };
       signature?: any;
     }> {
-      const res = await fetch('/api/contracts/pending');
+      const res = await fetch(`/api/contracts/pending${language ? `?lang=${encodeURIComponent(language)}` : ''}`);
       if (!res.ok) throw new Error('Error al verificar estado de contratos');
       return res.json();
     },

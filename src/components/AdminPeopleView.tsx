@@ -1,3 +1,4 @@
+import { MAX_USER_STRIKES, nextStrikes } from '../lib/moderation';
 import { useEffect, useRef, useState } from 'react';
 import { X, Plus, List, LayoutGrid, BookOpen, Check, SlidersHorizontal, TriangleAlert, ShieldAlert, Loader2 } from 'lucide-react';
 import type { User, UserRole, CourseEnrollmentRecord } from '../types';
@@ -36,12 +37,13 @@ interface Props {
   onNewEnrollment: () => void;
   onEnrollUser: (userId: string) => void;
   onUpdateRole: (userId: string, role: UserRole) => void;
-  onModerate: (u: User, action: 'add_strike' | 'toggle_active') => Promise<boolean>;
+  onModerate: (u: User, action: 'add_strike' | 'remove_strike' | 'toggle_active') => Promise<boolean>;
+  onHistory: (u: User) => void;
   onMentorCourses: (u: User) => void;
 }
 
 /** Directorio de personas: tarjetas como en Mentoría; rol y moderación en una hoja lateral. */
-export function AdminPeopleView({ users, enrollments, loading, roleError, section, onSection, onEnrollmentStatus, onNewEnrollment, onEnrollUser, onUpdateRole, onModerate, onMentorCourses }: Props) {
+export function AdminPeopleView({ users, enrollments, loading, roleError, section, onSection, onEnrollmentStatus, onNewEnrollment, onEnrollUser, onUpdateRole, onModerate, onHistory, onMentorCourses }: Props) {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('ALL');
   const [page, setPage] = useState(1);
@@ -61,7 +63,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
   const [sheetId, setSheetId] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDialogElement>(null);
   // Acciones críticas: primero se pide confirmación dentro de la misma hoja, sin cerrarla.
-  const [confirm, setConfirm] = useState<null | 'strike' | 'suspend'>(null);
+  const [confirm, setConfirm] = useState<null | 'strike' | 'unstrike' | 'suspend'>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState('');
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
@@ -96,12 +98,13 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
     const kind = confirm;
     if (!kind) return;
     setBusy(true);
-    const ok = await onModerate(u, kind === 'strike' ? 'add_strike' : 'toggle_active');
+    const ok = await onModerate(u, kind === 'strike' ? 'add_strike' : kind === 'unstrike' ? 'remove_strike' : 'toggle_active');
     setBusy(false);
     setConfirm(null);
-    const n = (u.strikes || 0) + 1;
+    const n = kind === 'unstrike' ? nextStrikes(u.strikes || 0, 'remove_strike') : nextStrikes(u.strikes || 0, 'add_strike');
     setDone(!ok ? 'No se pudo aplicar el cambio. Inténtalo de nuevo.'
       : kind === 'strike' ? `Strike agregado: ahora tiene ${n}.`
+      : kind === 'unstrike' ? `Strike quitado: ahora tiene ${n}.`
       : u.isActive === false ? 'Cuenta reactivada.' : 'Cuenta suspendida.');
   };
 
@@ -402,22 +405,26 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                     <div className="admin-critical__confirm" role="group" aria-label="Confirmar acción">
                       <p>
                         {confirm === 'strike'
-                          ? `¿Dar un strike a ${sheetUser.name}? Pasará de ${sheetUser.strikes || 0} a ${(sheetUser.strikes || 0) + 1}.`
+                          ? `¿Dar un strike a ${sheetUser.name}? Pasará de ${sheetUser.strikes || 0} a ${nextStrikes(sheetUser.strikes || 0, 'add_strike')}.${nextStrikes(sheetUser.strikes || 0, 'add_strike') >= MAX_USER_STRIKES ? ` Con ${MAX_USER_STRIKES} strikes la cuenta se suspende sola.` : ''}`
+                          : confirm === 'unstrike'
+                            ? `¿Quitar un strike a ${sheetUser.name}? Pasará de ${sheetUser.strikes || 0} a ${nextStrikes(sheetUser.strikes || 0, 'remove_strike')}.`
                           : sheetUser.isActive === false
                             ? `¿Reactivar la cuenta de ${sheetUser.name}? Recuperará el acceso.`
                             : `¿Suspender la cuenta de ${sheetUser.name}? Perderá el acceso hasta que la reactives.`}
                       </p>
                       <div className="admin-people-card__actions">
                         <button type="button" className="mentor-course-control" onClick={() => setConfirm(null)} disabled={busy}>Cancelar</button>
-                        <button type="button" className="mentor-course-control admin-critical__go" data-tone={confirm === 'strike' ? 'warn' : sheetUser.isActive === false ? 'ok' : 'danger'} onClick={() => runCritical(sheetUser)} disabled={busy} aria-busy={busy}>
+                        <button type="button" className="mentor-course-control admin-critical__go" data-tone={confirm === 'strike' ? 'warn' : confirm === 'unstrike' ? 'ok' : sheetUser.isActive === false ? 'ok' : 'danger'} onClick={() => runCritical(sheetUser)} disabled={busy} aria-busy={busy}>
                           {busy && <Loader2 aria-hidden="true" className="animate-spin" />}
-                          {confirm === 'strike' ? 'Confirmar strike' : sheetUser.isActive === false ? 'Confirmar reactivación' : 'Confirmar suspensión'}
+                          {confirm === 'strike' ? 'Confirmar strike' : confirm === 'unstrike' ? 'Confirmar quitar strike' : sheetUser.isActive === false ? 'Confirmar reactivación' : 'Confirmar suspensión'}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="admin-people-card__actions">
-                      <button type="button" className="mentor-course-control" data-tone="warn" onClick={() => { setDone(''); setConfirm('strike'); }}>Dar un strike</button>
+                      <button type="button" className="mentor-course-control" data-tone="warn" onClick={() => { setDone(''); setConfirm('strike'); }} disabled={(sheetUser.strikes || 0) >= MAX_USER_STRIKES} title={(sheetUser.strikes || 0) >= MAX_USER_STRIKES ? `Ya tiene el máximo de ${MAX_USER_STRIKES} strikes` : undefined}>Dar un strike</button>
+                      <button type="button" className="mentor-course-control" onClick={() => { setDone(''); setConfirm('unstrike'); }} disabled={(sheetUser.strikes || 0) <= 0}>Quitar un strike</button>
+                      <button type="button" className="mentor-course-control" onClick={() => onHistory(sheetUser)}>Ver historial</button>
                       <button type="button" className="mentor-course-control" data-tone={sheetUser.isActive === false ? 'ok' : 'danger'} onClick={() => { setDone(''); setConfirm('suspend'); }}>
                         {sheetUser.isActive === false ? 'Reactivar cuenta' : 'Suspender cuenta'}
                       </button>

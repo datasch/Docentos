@@ -11,6 +11,7 @@ import { HardDrive, Search, Play, Plus, CheckCircle2, Film, ExternalLink, Refres
 import { api } from '../lib/api';
 import { DriveVideoFile, Module, UserRole } from '../types';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface DriveExplorerModalProps {
   userRole: UserRole;
@@ -23,6 +24,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
   modules,
   onVideoLinked,
 }) => {
+  const { t } = useTranslation()
   useBodyScrollLock(true);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,11 +79,11 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
       <div className="bg-surface border border-line rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider mb-1">
-            <HardDrive className="w-4 h-4 text-brand-cyan" /> Integración con Google Drive API v3
+            <HardDrive className="w-4 h-4 text-brand-cyan" /> {t('integracionConGoogleDriveApiV3', 'Integración con Google Drive API v3')}
           </div>
-          <h2 className="text-2xl font-bold text-white">Buscador y Biblioteca de Videos Drive</h2>
+          <h2 className="text-2xl font-bold text-white">{t('buscadorYBibliotecaDeVideosDrive', 'Buscador y Biblioteca de Videos Drive')}</h2>
           <p className="text-slate-400 text-sm mt-1">
-            Explora videos almacenados en Google Drive organizados para la Academia Giantucchi.
+            {t('exploraVideosAlmacenadosEnGoogleDrive', 'Explora videos almacenados en Google Drive organizados para la Academia Giantucchi.')}
           </p>
         </div>
 
@@ -90,7 +92,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar en Google Drive..."
+              placeholder={t('buscarEnGoogleDrive', 'Buscar en Google Drive...')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-canvas border border-line rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-brand-cyan"
@@ -100,19 +102,19 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
             type="submit"
             className="btn-brand-primary px-4 py-2 text-sm shrink-0"
           >
-            Buscar
+            {t('buscar', 'Buscar')}
           </button>
         </form>
       </div>
 
       {isDemo && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-300 text-sm">
-          <strong className="font-bold">Modo demostración.</strong> No hay credenciales de Google
+          <Trans i18nKey="modoDemostracionNoHayCredencialesDe"><strong className="font-bold">Modo demostración.</strong> No hay credenciales de Google
           Drive configuradas, así que este catálogo es de ejemplo: sus identificadores no
           corresponden a archivos reales y los vídeos que enlaces desde aquí no se reproducirán.
           Para usar tus vídeos, pega el enlace de Drive directamente al crear el vídeo en el módulo,
           o configura <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
-          <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code>.
+          <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code>.</Trans>
         </div>
       )}
 
@@ -122,7 +124,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
         {/* Left Column: Video List */}
         <div className="lg:col-span-2 space-y-3">
           <h3 className="text-sm font-semibold text-slate-400 flex items-center justify-between">
-            <span>Resultados de Google Drive ({driveVideos.length})</span>
+            <span>{t('resultadosDeGoogleDriveLength', 'Resultados de Google Drive ({{length}})', { length: driveVideos.length })}</span>
             {loading && <RefreshCw className="w-4 h-4 animate-spin text-brand-cyan" />}
           </h3>
 
@@ -165,10 +167,10 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
 
                   <div className="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs text-slate-400">
                     <span className="flex items-center gap-1 font-mono text-[11px] text-slate-400">
-                      <Film className="w-3.5 h-3.5 text-brand-cyan" /> {video.size || 'Google Drive'}
+                      <Film className="w-3.5 h-3.5 text-brand-cyan" /> {video.size || t('googleDrive', 'Google Drive')}
                     </span>
                     <span className="text-brand-cyan font-semibold text-[11px] hover:underline flex items-center gap-1">
-                      Previsualizar <ExternalLink className="w-3 h-3" />
+                      {t('previsualizar', 'Previsualizar')} <ExternalLink className="w-3 h-3" />
                     </span>
                   </div>
                 </div>
@@ -182,7 +184,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
           <div className="sticky top-20 bg-surface border border-line rounded-xl p-5 shadow-xl space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Film className="w-5 h-5 text-brand-cyan" />
-              Previsualización de Google Drive
+              {t('previsualizacionDeGoogleDrive', 'Previsualización de Google Drive')}
             </h3>
 
             {selectedVideo ? (
@@ -199,18 +201,18 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
 
                 <div>
                   <h4 className="font-bold text-sm text-white">{selectedVideo.name}</h4>
-                  <p className="text-xs text-slate-400 mt-1">ID de Archivo: <code className="text-brand-cyan font-mono">{selectedVideo.id}</code></p>
+                  <p className="text-xs text-slate-400 mt-1">{t('idDeArchivo', 'ID de Archivo:')} <code className="text-brand-cyan font-mono">{selectedVideo.id}</code></p>
                 </div>
 
                 {/* Admin Linking Control */}
                 {userRole === 'ADMIN' && (
                   <div className="bg-raised border border-line rounded-xl p-4 space-y-3 mt-4">
                     <div className="flex items-center gap-1.5 text-brand-purple font-bold text-xs">
-                      <Layers className="w-4 h-4" /> Enlazar a Módulo de Curso (Admin)
+                      <Layers className="w-4 h-4" /> {t('enlazarAModuloDeCursoAdmin', 'Enlazar a Módulo de Curso (Admin)')}
                     </div>
 
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Módulo Destino:</label>
+                      <label className="text-xs text-slate-400 block mb-1">{t('moduloDestino', 'Módulo Destino:')}</label>
                       <select
                         value={selectedModuleId}
                         onChange={(e) => setSelectedModuleId(e.target.value)}
@@ -234,14 +236,14 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          Enlazar Video a Módulo
+                          {t('enlazarVideoAModulo', 'Enlazar Video a Módulo')}
                         </>
                       )}
                     </button>
 
                     {linkedSuccess && (
                       <div className="p-2 bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan rounded-lg text-xs flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" /> ¡Video enlazado con éxito!
+                        <CheckCircle2 className="w-4 h-4" /> {t('videoEnlazadoConExito', '¡Video enlazado con éxito!')}
                       </div>
                     )}
                   </div>
@@ -251,7 +253,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
             ) : (
               <div className="p-8 text-center border-2 border-dashed border-line rounded-xl text-slate-500 space-y-2">
                 <HardDrive className="w-10 h-10 mx-auto opacity-40 text-slate-400" />
-                <p className="text-xs">Selecciona un video de la lista para ver la previsualización directa en iframe de Google Drive.</p>
+                <p className="text-xs">{t('seleccionaUnVideoDeLaListaParaVerLa', 'Selecciona un video de la lista para ver la previsualización directa en iframe de Google Drive.')}</p>
               </div>
             )}
           </div>

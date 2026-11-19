@@ -131,6 +131,13 @@ import {
   getPaymentStatus,
   simulateDevPaymentSuccess,
 } from './server/paymentService.js';
+import { MAX_USER_STRIKES, strikesSuspendAccount } from './src/lib/moderation.js';
+import {
+  sendApiError,
+  resolveRequestLanguage,
+  getLocalizedMessage,
+  localizeJsonResponses,
+} from './server/serverI18n.js';
 import {
   getQuizByModuleId,
   saveQuizForModule,
@@ -147,6 +154,13 @@ import {
   DOCENTOS_VERSION,
 } from './src/version.js';
 import { requestTracingMiddleware, logger, getMetricsSnapshot } from './server/logger.js';
+import { isMailConfigured, sendPasswordResetMail, verifyMailTransport } from './server/mailer.js';
+import {
+  CANONICAL_CONTRACT_HASH,
+  CANONICAL_CONTRACT_LANGUAGE,
+  getContractTexts,
+  resolveContractLanguage,
+} from './server/contractTexts.js';
 import {
   enrollFromIntegration,
   integrationEnrollmentSchema,
@@ -520,7 +534,20 @@ async function deliverPasswordReset(
   const resetUrl = `${passwordResetBaseUrl(req)}/?resetToken=${encodeURIComponent(token)}`;
   const webhookUrl = config.PASSWORD_RESET_WEBHOOK_URL;
 
-  if (webhookUrl?.startsWith('http')) {
+  if (isMailConfigured()) {
+    // SMTP propio. En segundo plano por la misma razon que el webhook.
+    void sendPasswordResetMail({ to: user.email, name: user.name, resetUrl, expiresAt })
+      .then(() => logger.info('password_reset.mail_sent', { channel: 'smtp' }))
+      .catch((error: any) => {
+        logger.error('password_reset.delivery_failed', {
+          channel: 'smtp',
+          reason: String(error?.code ?? error?.message ?? error),
+          response: error?.response ? String(error.response).slice(0, 200) : undefined,
+        });
+      });
+  } else if (webhookUrl?.startsWith('http')) {
+    // Igual que siempre ha funcionado con n8n: se espera la respuesta, sin corte
+    // por tiempo, y con el nombre tal cual esta guardado.
     try {
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -537,10 +564,18 @@ async function deliverPasswordReset(
           expiresAt: expiresAt.toISOString(),
         }),
       });
-      if (!response.ok) console.warn(`Webhook de recuperación respondió HTTP ${response.status}.`);
-    } catch (error) {
-      console.warn('No se pudo entregar el enlace de recuperación:', error);
+      if (!response.ok) {
+        logger.error('password_reset.delivery_failed', { reason: `HTTP ${response.status}` });
+      }
+    } catch (error: any) {
+      logger.error('password_reset.delivery_failed', {
+        reason: String(error?.cause?.code ?? error?.message ?? error),
+      });
     }
+  } else {
+    logger.error('password_reset.not_configured', {
+      reason: 'Sin SMTP_HOST ni PASSWORD_RESET_WEBHOOK_URL: el enlace de recuperacion no se envia a nadie.',
+    });
   }
 
   const exposeLocalToken = config.PASSWORD_RESET_EXPOSE_TOKEN;
@@ -585,6 +620,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(requestTracingMiddleware);
+// Traduce error/message de las respuestas JSON al idioma de la petición.
+app.use(localizeJsonResponses);
 app.use(
   compression({
     threshold: 1024,
@@ -994,7 +1031,7 @@ app.get(
         },
       },
     });
-    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+    if (!course) return sendApiError(res, req, 404, 'COURSE_NOT_FOUND', 'Curso no encontrado');
 
     const viewerRole: UserRole = req.user?.role || 'PUBLIC_USER';
     const decision = await getCourseAccessDecision(req.user, course.id);
@@ -1183,7 +1220,7 @@ app.post(
   asyncRoute(async (req, res) => {
     const courseId = req.body?.courseId as string;
     if (!courseId) {
-      return res.status(400).json({ error: 'courseId es requerido' });
+      return sendApiError(res, req, 400, 'COURSE_ID_REQUIRED', 'courseId es requerido');
     }
 
     const course = await prisma.course.findUnique({
@@ -1195,7 +1232,7 @@ app.post(
       },
     });
     if (!course) {
-      return res.status(404).json({ error: 'Curso no encontrado' });
+      return sendApiError(res, req, 404, 'COURSE_NOT_FOUND', 'Curso no encontrado');
     }
 
     const decision = await getCourseAccessDecision(req.user, courseId);
@@ -1284,10 +1321,10 @@ app.get(
 
     const targetUrl = video.embedUrl || video.previewUrl;
     if (!targetUrl) {
-      return res.status(404).json({ error: 'URL del video no disponible.' });
+      return sendApiError(res, req, 404, 'VIDEO_NOT_FOUND', 'URL del video no disponible.');
     }
     const safeUrl = safeExternalUrl(targetUrl, config.DOCENTOS_ENV === 'development');
-    if (!safeUrl) return res.status(400).json({ error: 'URL del video no segura.' });
+    if (!safeUrl) return sendApiError(res, req, 400, 'UNSAFE_VIDEO_URL', 'URL del video no segura.');
 
     let finalUrl = safeUrl;
     if (finalUrl.includes('youtube.com') || finalUrl.includes('youtube-nocookie.com') || finalUrl.includes('youtu.be')) {
@@ -1328,7 +1365,7 @@ app.all(
   asyncRoute(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
-      return res.status(405).json({ error: 'Método no permitido.' });
+      return sendApiError(res, req, 405, 'METHOD_NOT_ALLOWED', 'Método no permitido.');
     }
 
     const { status, error, video } = await getVideoForAccess(req.user, req.params.videoId);
@@ -1345,7 +1382,7 @@ app.all(
 
     if (!fileId) {
       const targetUrl = video.embedUrl || video.previewUrl;
-      if (!targetUrl) return res.status(404).json({ error: 'URL del video no disponible.' });
+      if (!targetUrl) return sendApiError(res, req, 404, 'VIDEO_NOT_FOUND', 'URL del video no disponible.');
       return res.redirect(targetUrl);
     }
 
@@ -1389,7 +1426,7 @@ app.all(
         return;
       }
       logger.warn('drive_stream.upstream_fetch_failed', { videoId: video.id, error: err?.message });
-      return res.status(502).json({ error: 'No se pudo conectar con el origen de video.' });
+      return sendApiError(res, req, 502, 'VIDEO_ORIGIN_ERROR', 'No se pudo conectar con el origen de video.');
     }
 
     const contentType = upstreamRes.headers.get('content-type') || '';
@@ -1465,15 +1502,15 @@ app.get(
     const resource = await prisma.courseResource.findUnique({
       where: { id: req.params.resourceId },
     });
-    if (!resource) return res.status(404).json({ error: 'Recurso no encontrado.' });
+    if (!resource) return sendApiError(res, req, 404, 'RESOURCE_NOT_FOUND', 'Recurso no encontrado.');
 
     const hasAccess = await userHasResourceAccess(req.user, resource.id);
     if (!hasAccess) {
-      return res.status(403).json({ error: 'No tienes autorización para acceder a este recurso.' });
+      return sendApiError(res, req, 403, 'RESOURCE_ACCESS_DENIED', 'No tienes autorización para acceder a este recurso.');
     }
 
     const safeUrl = safeExternalUrl(resource.privateUrl, config.DOCENTOS_ENV === 'development');
-    if (!safeUrl) return res.status(400).json({ error: 'URL privada del recurso no segura.' });
+    if (!safeUrl) return sendApiError(res, req, 400, 'UNSAFE_RESOURCE_URL', 'URL privada del recurso no segura.');
 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({
@@ -2191,10 +2228,10 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     if (!(await userHasVideoAccess(req.user, req.params.videoId))) {
-      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      return sendApiError(res, req, 403, 'CONTENT_ACCESS_DENIED', 'No tienes acceso a este contenido.');
     }
     const content = String(req.body.content || '').trim();
-    if (!content) return res.status(400).json({ error: 'El contenido del comentario es obligatorio' });
+    if (!content) return sendApiError(res, req, 400, 'FIELD_REQUIRED', 'El contenido del comentario es obligatorio');
 
     const comment = await prisma.mentorshipComment.create({
       data: {
@@ -2223,12 +2260,12 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     const content = String(req.body.content || '').trim();
-    if (!content) return res.status(400).json({ error: 'El contenido de la respuesta es obligatorio' });
+    if (!content) return sendApiError(res, req, 400, 'FIELD_REQUIRED', 'El contenido de la respuesta es obligatorio');
 
     const parent = await prisma.mentorshipComment.findUnique({ where: { id: req.params.commentId } });
-    if (!parent) return res.status(404).json({ error: 'Comentario original no encontrado' });
+    if (!parent) return sendApiError(res, req, 404, 'PARENT_COMMENT_NOT_FOUND', 'Comentario original no encontrado');
     if (!(await userHasVideoAccess(req.user, parent.videoId))) {
-      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      return sendApiError(res, req, 403, 'CONTENT_ACCESS_DENIED', 'No tienes acceso a este contenido.');
     }
 
     const isMentor = ['ADMIN', 'MENTOR'].includes(req.user!.role);
@@ -2264,9 +2301,9 @@ app.post(
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     const existing = await prisma.mentorshipComment.findUnique({ where: { id: req.params.commentId } });
-    if (!existing) return res.status(404).json({ error: 'Comentario no encontrado' });
+    if (!existing) return sendApiError(res, req, 404, 'COMMENT_NOT_FOUND', 'Comentario no encontrado');
     if (!(await userHasVideoAccess(req.user, existing.videoId))) {
-      return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
+      return sendApiError(res, req, 403, 'CONTENT_ACCESS_DENIED', 'No tienes acceso a este contenido.');
     }
     const comment = await prisma.mentorshipComment.update({
       where: { id: existing.id },
@@ -2384,7 +2421,7 @@ app.get(
   asyncRoute(async (req, res) => {
     const userId = req.user!.id;
     if (!notificationHub.canAccept(userId)) {
-      return res.status(429).json({ error: 'Tienes demasiadas pestañas abiertas con avisos en vivo.' });
+      return sendApiError(res, req, 429, 'LIVE_ALERTS_RATE_LIMITED', 'Tienes demasiadas pestañas abiertas con avisos en vivo.');
     }
     const { unreadCount } = await listNotifications(userId);
 
@@ -2514,7 +2551,7 @@ app.get(
       },
     });
     if (!certificate) {
-      return res.status(404).json({ error: 'Aún no se ha emitido un certificado para este curso.' });
+      return sendApiError(res, req, 404, 'CERTIFICATE_NOT_ISSUED', 'Aún no se ha emitido un certificado para este curso.');
     }
     res.json({
       certificate: {
@@ -2568,7 +2605,7 @@ app.put(
     const certificate = await prisma.certificate.findUnique({
       where: { id: req.params.id },
     });
-    if (!certificate) return res.status(404).json({ error: 'Certificado no encontrado.' });
+    if (!certificate) return sendApiError(res, req, 404, 'CERTIFICATE_NOT_FOUND', 'Certificado no encontrado.');
 
     const updated = await prisma.certificate.update({
       where: { id: certificate.id },
@@ -2666,21 +2703,67 @@ app.put(
   requireRole(['ADMIN']),
   asyncRoute(async (req, res) => {
     const data: { strikes?: number; isActive?: boolean } = {};
-    if (typeof req.body.strikes === 'number') data.strikes = req.body.strikes;
+    if (typeof req.body.strikes === 'number') {
+      // Se puede quitar un strike puesto por error, pero nunca bajar de 0 ni pasar del máximo.
+      if (!Number.isInteger(req.body.strikes) || req.body.strikes < 0 || req.body.strikes > MAX_USER_STRIKES) {
+        return res.status(400).json({ error: 'Número de strikes no válido' });
+      }
+      data.strikes = req.body.strikes;
+    }
     if (typeof req.body.isActive === 'boolean') data.isActive = req.body.isActive;
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const strikes = data.strikes ?? existing.strikes;
+    let isActive = data.isActive ?? existing.isActive;
+    if (data.isActive === true && !existing.isActive && strikesSuspendAccount(strikes)) {
+      return res.status(400).json({
+        error: 'Con 5 strikes la cuenta no se puede reactivar. Quita antes un strike.',
+      });
+    }
+    // Al llegar al máximo de strikes la cuenta se suspende sola.
+    const autoSuspended = isActive && strikesSuspendAccount(strikes);
+    if (autoSuspended) isActive = false;
+
     if (
       existing.role === 'ADMIN' &&
-      data.isActive === false &&
+      existing.isActive &&
+      !isActive &&
       (await countOtherActiveAdmins(existing.id)) === 0
     ) {
       return res.status(400).json({
         error: 'No se puede suspender al último administrador activo. Nombra antes a otro.',
       });
     }
-    const user = await prisma.user.update({ where: { id: existing.id }, data });
-    if (data.isActive === false) await revokeAllUserSessions(user.id);
+
+    // Cada cambio queda registrado con quién lo hizo.
+    const actor = { actorUserId: req.user!.id, actorName: req.user!.name || '', actorEmail: req.user!.email || '' };
+    const events: { action: string; strikesBefore: number; strikesAfter: number }[] = [];
+    if (strikes !== existing.strikes) {
+      events.push({
+        action: strikes > existing.strikes ? 'strike_added' : 'strike_removed',
+        strikesBefore: existing.strikes,
+        strikesAfter: strikes,
+      });
+    }
+    if (isActive !== existing.isActive) {
+      events.push({
+        action: autoSuspended ? 'auto_suspended' : isActive ? 'reactivated' : 'suspended',
+        strikesBefore: strikes,
+        strikesAfter: strikes,
+      });
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({ where: { id: existing.id }, data: { strikes, isActive } });
+      if (events.length) {
+        await tx.moderationEvent.createMany({
+          data: events.map((event) => ({ userId: existing.id, ...actor, ...event })),
+        });
+      }
+      return updated;
+    });
+    if (!isActive && existing.isActive) await revokeAllUserSessions(user.id);
     await recordAuditEvent(req, {
       action: 'user.moderation_updated',
       targetType: 'User',
@@ -2690,9 +2773,37 @@ app.put(
         strikes: user.strikes,
         previousIsActive: existing.isActive,
         isActive: user.isActive,
+        autoSuspended,
       },
     });
-    res.json({ success: true, user: toRuntimeUser(user) });
+    res.json({ success: true, autoSuspended, user: toRuntimeUser(user) });
+  }),
+);
+
+// Historial de moderación de una persona: quién puso o quitó cada strike y cuándo.
+app.get(
+  '/api/admin/users/:userId/moderation-history',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const target = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { id: true } });
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const events = await prisma.moderationEvent.findMany({
+      where: { userId: target.id },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { actor: { select: { name: true, email: true } } },
+    });
+    res.json({
+      events: events.map((event) => ({
+        id: event.id,
+        action: event.action,
+        strikesBefore: event.strikesBefore,
+        strikesAfter: event.strikesAfter,
+        actorName: event.actor?.name || event.actorName,
+        actorEmail: event.actor?.email || event.actorEmail,
+        createdAt: event.createdAt.toISOString(),
+      })),
+    });
   }),
 );
 
@@ -6226,34 +6337,22 @@ app.post(
 const CURRENT_CONTRACT_VERSION = 'v1.0.2026';
 // Fecha de corte: usuarios registrados previamente a este instante quedan exentos del onboarding obligatorio
 const CONTRACT_MANDATORY_FROM = new Date(process.env.DOCENTOS_CONTRACT_MANDATORY_FROM || '2026-10-26T21:30:00.000Z');
-const CONTRACT_TEXT = `# Contrato de Servicios Educativos y Tratamiento de Datos
-
-**Plataforma DocentOS**
-
-### 1. Objeto y Acceso a la Plataforma
-El presente contrato regula el acceso y uso de los contenidos formativos, lecciones multimedia, mentorías y herramientas tecnológicas provistas por la plataforma.
-
-### 2. Vigencia y Periodo de Acceso
-- Fecha de Inicio: A partir del momento exacto del registro y firma electrónica de este acuerdo.
-- Fecha de Fin de Vigencia: El acceso estándar a los materiales se otorga por un período renovable de 12 meses calendario.
-
-### 3. Tratamiento y Periodo Prolongado de Retención de Datos
-- Custodia de Datos y Progreso: En cumplimiento de las normativas de protección de datos personales y con la finalidad de acreditar certificaciones académicas emitidas, la plataforma conservará de forma segura su historial de usuario, calificaciones y progreso por un periodo prolongado de 24 meses tras la finalización del servicio.
-- Derechos ARCO: El usuario podrá solicitar en cualquier momento la rectificación o supresión anticipada de sus datos de contacto conforme a los canales oficiales.
-
-### 4. Propiedad Intelectual y Normas de Conducta
-Los contenidos multimedia, guiones y recursos descargables son de uso personal e intransferible. Queda prohibida la redistribución o comercialización no autorizada.`;
+// El texto del contrato (original en español y traducciones) vive en server/contractTexts.ts.
 
 app.get(
   '/api/contracts/public',
-  asyncRoute(async (_req, res) => {
-    const crypto = await import('crypto');
-    const contractHash = crypto.createHash('sha256').update(CONTRACT_TEXT).digest('hex');
+  asyncRoute(async (req, res) => {
+    const language = resolveContractLanguage(req.query.lang);
+    const texts = getContractTexts(language);
     res.json({
       version: CURRENT_CONTRACT_VERSION,
-      title: 'Términos y Condiciones de la Plataforma & Política de Custodia',
-      content: CONTRACT_TEXT,
-      contractHash,
+      title: texts.publicTitle,
+      content: texts.content,
+      // El sello es siempre el del texto original en español, que es el que se firma.
+      contractHash: CANONICAL_CONTRACT_HASH,
+      language,
+      translated: language !== CANONICAL_CONTRACT_LANGUAGE,
+      canonicalLanguage: CANONICAL_CONTRACT_LANGUAGE,
       retentionPeriodMonths: 24,
       accessPeriodMonths: 12,
     });
@@ -6311,16 +6410,20 @@ app.get(
     const retentionDate = new Date(now);
     retentionDate.setFullYear(retentionDate.getFullYear() + 2);
 
-    const crypto = await import('crypto');
-    const contractHash = crypto.createHash('sha256').update(CONTRACT_TEXT).digest('hex');
+    const language = resolveContractLanguage(req.query.lang);
+    const texts = getContractTexts(language);
 
     res.json({
       requiresSignature: true,
       contract: {
         version: CURRENT_CONTRACT_VERSION,
-        title: 'Contrato de Servicios Educativos y Política de Retención de Datos',
-        content: CONTRACT_TEXT,
-        contractHash,
+        title: texts.signTitle,
+        content: texts.content,
+        // El sello es siempre el del texto original en español, que es el que se firma.
+        contractHash: CANONICAL_CONTRACT_HASH,
+        language,
+        translated: language !== CANONICAL_CONTRACT_LANGUAGE,
+        canonicalLanguage: CANONICAL_CONTRACT_LANGUAGE,
         calculatedDates: {
           startDate: now.toISOString(),
           endDate: endDate.toISOString(),
@@ -6696,6 +6799,18 @@ async function startServer() {
     console.log(`🚀 DocentOS v${DOCENTOS_VERSION} activo en http://localhost:${PORT}`);
     console.log('🗄️ PostgreSQL conectado mediante Prisma');
   });
+
+  // Credenciales SMTP malas se descubren al arrancar, no cuando alguien pide
+  // recuperar su contrasena. No bloquea el arranque.
+  if (isMailConfigured()) {
+    verifyMailTransport()
+      .then(() => logger.info('mail.smtp_ready', { host: config.SMTP_HOST, port: config.SMTP_PORT }))
+      .catch((error: any) => logger.error('mail.smtp_unavailable', {
+        host: config.SMTP_HOST,
+        port: config.SMTP_PORT,
+        reason: String(error?.code ?? error?.message ?? error),
+      }));
+  }
 
   const shutdown = async () => {
     httpServer.close(async () => {

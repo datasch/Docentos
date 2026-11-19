@@ -29,6 +29,7 @@
  */
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 
 const circleA =
   'M 12 8 C 14.21 8 16 9.79 16 12 C 16 14.21 14.21 16 12 16 C 9.79 16 8 14.21 8 12 C 8 9.79 9.79 8 12 8 Z';
@@ -45,7 +46,9 @@ interface MorphingInfinityProps extends React.ComponentProps<'svg'> {
   duration?: number;
 }
 
-function MorphingInfinity({ label = 'Cargando', duration = 5, ...props }: MorphingInfinityProps) {
+function MorphingInfinity({ label, duration = 5, ...props }: MorphingInfinityProps) {
+  const { t } = useTranslation();
+  const accessibleLabel = label ?? t('cargando', 'Cargando');
   const reduceMotion = useReducedMotion();
   return (
     <svg
@@ -56,7 +59,7 @@ function MorphingInfinity({ label = 'Cargando', duration = 5, ...props }: Morphi
       strokeLinecap="round"
       strokeLinejoin="round"
       role="status"
-      aria-label={label}
+      aria-label={accessibleLabel}
       {...props}
     >
       {reduceMotion ? (

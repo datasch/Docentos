@@ -4,7 +4,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CourseOverview } from '../src/components/CourseOverview.js';
 import type { Course, User } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 const mockCourse: Course = {
   id: 'course-test-1',
   title: 'Quiero crear un curso práctico y estructurado',

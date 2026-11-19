@@ -27,7 +27,8 @@ import {
 import { DEFAULT_AVATAR, avatarSrc } from '../src/lib/avatar.js';
 import { certificateForCourse, switchableCourses, canCloseOnBackdropClick } from '../src/components/CourseViewer.js';
 import type { CertificateRecord, Course } from '../src/types.js';
-
+
+import './helpers/initI18n.js';
 /** Curso de tres módulos: 2 + 1 + 2 lecciones. */
 function sampleCourse(): Course {
   const video = (id: string, title: string) => ({ id, title, order: 1 }) as any;

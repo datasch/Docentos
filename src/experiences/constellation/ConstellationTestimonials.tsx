@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Star, MessageSquare, Plus, Edit3, Clock, CheckCircle2, AlertCircle, X, Sparkles, Loader2 } from 'lucide-react';
 import { User, LandingTestimonial, ModeratedTestimonial } from '../../types';
 import { api } from '../../lib/api';
@@ -144,11 +144,11 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
     e.preventDefault();
     const comment = draftComment.trim();
     if (!comment) {
-      setError('Por favor escribe tu testimonio u opinión.');
+      setError(t('porFavorEscribeTuTestimonioUOpinion', 'Por favor escribe tu testimonio u opinión.'));
       return;
     }
     if (comment.length > TESTIMONIAL_MAX_CHARS) {
-      setError(`El testimonio no puede superar los ${TESTIMONIAL_MAX_CHARS} caracteres.`);
+      setError(t('elTestimonioNoPuedeSuperarLosTestimonial', 'El testimonio no puede superar los {{TESTIMONIAL_MAX_CHARS}} caracteres.', { TESTIMONIAL_MAX_CHARS }));
       return;
     }
 
@@ -159,11 +159,11 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
       const res = await api.submitTestimonial({ rating: draftRating, comment });
       setMyTestimonial(res.testimonial);
       setIsModalOpen(false);
-      setStatusNotice('¡Tu testimonio fue enviado! Se publicará en cuanto sea revisado.');
+      setStatusNotice(t('tuTestimonioFueEnviadoSePublicaraEn', '¡Tu testimonio fue enviado! Se publicará en cuanto sea revisado.'));
       setTimeout(() => setStatusNotice(null), 6000);
       await loadTestimonials();
     } catch (err: any) {
-      setError(err?.message || 'Error al enviar tu testimonio. Inténtalo de nuevo.');
+      setError(err?.message || t('errorAlEnviarTuTestimonioIntentaloDe', 'Error al enviar tu testimonio. Inténtalo de nuevo.'));
     } finally {
       setSaving(false);
     }
@@ -258,13 +258,13 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
-                    <span>{t('testimonials.leaveReview', 'Compartir mi experiencia')}</span>
+                    <span>{t('testimonials.leaveReview', 'Dejar mi opinión')}</span>
                   </>
                 )
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>{t('testimonials.leaveReview', 'Dejar mi testimonio')}</span>
+                  <span>{t('testimonials.leaveReview', 'Dejar mi opinión')}</span>
                 </>
               )}
             </button>
@@ -275,14 +275,14 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
         {isDevMode && testimonials.length === 0 && (
           <div className="mb-6 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex flex-wrap items-center justify-between gap-2 text-xs text-purple-700 dark:text-purple-300">
             <span>
-              <strong>[Modo Dev]</strong> La base de datos local aún no tiene testimonios aprobados.
+              <Trans i18nKey="modoDevLaBaseDeDatosLocalAunNoTiene"><strong>[Modo Dev]</strong> La base de datos local aún no tiene testimonios aprobados.</Trans>
             </span>
             <button
               type="button"
               onClick={() => setShowDevMocks((prev) => !prev)}
               className="px-2.5 py-1 rounded-lg bg-purple-600 text-white hover:bg-purple-500 font-mono text-[11px]"
             >
-              {showDevMocks ? 'Ocultar mocks locales' : 'Ver mocks locales de prueba'}
+              {showDevMocks ? t('ocultarMocksLocales', 'Ocultar mocks locales') : t('verMocksLocalesDePrueba', 'Ver mocks locales de prueba')}
             </button>
           </div>
         )}
@@ -290,9 +290,9 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
         {/* Grilla de Testimonios Reales */}
         {activeTestimonials.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {activeTestimonials.map((t) => (
+            {activeTestimonials.map((testimonial) => (
               <article
-                key={t.id}
+                key={testimonial.id}
                 className="academy-testimonial-card flex flex-col justify-between p-6 rounded-[24px] bg-white/80 dark:bg-[#0c0a1a]/80 hover:bg-slate-50 dark:hover:bg-[#141026] hover:-translate-y-1 border border-slate-200 dark:border-white/[0.08] hover:border-[#a855f7]/40 transition-all duration-200 group shadow-md dark:shadow-lg [content-visibility:auto]"
               >
                 <div>
@@ -300,8 +300,8 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <img
-                        src={avatarSrc(t.avatarUrl)}
-                        alt={t.name}
+                        src={avatarSrc(testimonial.avatarUrl)}
+                        alt={testimonial.name}
                         width={40}
                         height={40}
                         decoding="async"
@@ -310,17 +310,17 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                       />
                       <div>
                         <h3 className="font-constellation-display text-base text-slate-900 dark:text-white font-medium">
-                          {t.name}
+                          {testimonial.name}
                         </h3>
                         <span className="font-constellation-label text-[11px] text-[#06b6d4] tracking-wider uppercase block">
-                          {t.role || 'Estudiante'}
+                          {testimonial.role || t('estudiante', 'Estudiante')}
                         </span>
                       </div>
                     </div>
 
                     {/* Estrellas */}
-                    <div className="flex items-center gap-0.5 text-[#eab308]" aria-label={`${t.rating} de 5 estrellas`}>
-                      {Array.from({ length: t.rating || 5 }).map((_, i) => (
+                    <div className="flex items-center gap-0.5 text-[#eab308]" aria-label={t('ratingDe5Estrellas', '{{rating}} de 5 estrellas', { rating: testimonial.rating })}>
+                      {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
                         <Star key={i} className="w-3.5 h-3.5 fill-[#eab308]" />
                       ))}
                     </div>
@@ -328,13 +328,13 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
 
                   {/* Comentario */}
                   <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-extralight italic">
-                    “{t.comment}”
+                    “{testimonial.comment}”
                   </p>
                 </div>
 
                 <div className="mt-6 pt-3 border-t border-slate-100 dark:border-white/[0.04] text-[10px] font-mono text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                  <span>ESTUDIANTE VERIFICADO</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Auténtico</span>
+                  <span>{t('estudianteVerificado', 'ESTUDIANTE VERIFICADO')}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{t('100Autentico', '100% Auténtico')}</span>
                 </div>
               </article>
             ))}
@@ -346,10 +346,10 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
               <MessageSquare className="w-6 h-6" />
             </div>
             <h3 className="font-constellation-display text-lg text-slate-900 dark:text-white font-medium mb-1">
-              Sé el primero en compartir tu experiencia
+              {t('seElPrimeroEnCompartirTuExperiencia', 'Sé el primero en compartir tu experiencia')}
             </h3>
             <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-white/60 mb-5 max-w-sm">
-              Todavía no hay opiniones públicas publicadas. Tu testimonio ayudará a futuros mentees a conocer los proyectos y mentorías.
+              {t('todaviaNoHayOpinionesPublicasPublicadas', 'Todavía no hay opiniones públicas publicadas. Tu testimonio ayudará a futuros mentees a conocer los proyectos y mentorías.')}
             </p>
             <button
               type="button"
@@ -357,7 +357,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Escribir mi opinión</span>
+              <span>{t('escribirMiOpinion', 'Escribir mi opinión')}</span>
             </button>
           </div>
         )}
@@ -388,7 +388,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                 setError(null);
               }}
               className="absolute top-2 right-2 flex h-11 w-11 items-center justify-center text-ink-soft hover:text-ink rounded-lg transition-colors"
-              aria-label="Cerrar modal"
+              aria-label={t('cerrarModal', 'Cerrar modal')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -400,10 +400,10 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
               </div>
               <div>
                 <h3 id="testimonial-modal-title" className="font-constellation-display text-lg font-bold text-slate-900 dark:text-white">
-                  {myTestimonial ? 'Editar mi testimonio' : 'Compartir mi experiencia'}
+                  {myTestimonial ? t('editarMiTestimonio', 'Editar mi testimonio') : t('compartirMiExperiencia', 'Compartir mi experiencia')}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-white/60">
-                  Cuéntanos qué tal ha sido tu experiencia aprendiendo en DocentOS.
+                  {t('cuentanosQueTalHaSidoTuExperiencia', 'Cuéntanos qué tal ha sido tu experiencia aprendiendo en DocentOS.')}
                 </p>
               </div>
             </div>
@@ -413,13 +413,13 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
               {/* Selector de calificación (Estrellas) */}
               <div>
                 <label className="block text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-white/70 mb-2">
-                  Tu Calificación
+                  {t('tuCalificacion', 'Tu Calificación')}
                 </label>
                 <div className="flex flex-wrap items-center gap-2">
                   <div
                     className="flex items-center"
                     role="radiogroup"
-                    aria-label="Calificación de 1 a 5 estrellas"
+                    aria-label={t('calificacionDe1A5Estrellas', 'Calificación de 1 a 5 estrellas')}
                   >
                     {[1, 2, 3, 4, 5].map((val) => {
                       const isActive = (hoverRating ?? draftRating) >= val;
@@ -429,7 +429,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                           type="button"
                           role="radio"
                           aria-checked={draftRating === val}
-                          aria-label={`${val} de 5 estrellas`}
+                          aria-label={t('valDe5Estrellas', '{{val}} de 5 estrellas', { val })}
                           disabled={saving}
                           onMouseEnter={() => setHoverRating(val)}
                           onMouseLeave={() => setHoverRating(null)}
@@ -448,7 +448,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                     })}
                   </div>
                   <span className="text-xs font-mono font-medium text-[#eab308] ml-2">
-                    {hoverRating ?? draftRating} de 5 estrellas
+                    {hoverRating ?? draftRating} {t('de5Estrellas', 'de 5 estrellas')}
                   </span>
                 </div>
               </div>
@@ -457,7 +457,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label htmlFor="testimonial-comment" className="text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-white/70">
-                    Tu Opinión
+                    {t('tuOpinion2', 'Tu Opinión')}
                   </label>
                   <span className={`text-[11px] font-mono ${
                     draftComment.length > TESTIMONIAL_MAX_CHARS ? 'text-rose-500' : 'text-slate-400 dark:text-white/40'
@@ -472,11 +472,11 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                   disabled={saving}
                   maxLength={TESTIMONIAL_MAX_CHARS}
                   onChange={(e) => setDraftComment(e.target.value)}
-                  placeholder="Explica qué impacto tuvo en tus conocimientos, el trato de los mentores o los proyectos construidos..."
+                  placeholder={t('explicaQueImpactoTuvoEnTusConocimientos', 'Explica qué impacto tuvo en tus conocimientos, el trato de los mentores o los proyectos construidos...')}
                   className="w-full px-3.5 py-2.5 rounded-xl text-base sm:text-sm bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all resize-none"
                 />
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50 leading-relaxed">
-                  Se publicará con tu nombre y foto de perfil una vez aprobado por moderación.
+                  {t('sePublicaraConTuNombreYFotoDePerfilUna', 'Se publicará con tu nombre y foto de perfil una vez aprobado por moderación.')}
                 </p>
               </div>
 
@@ -499,7 +499,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                   }}
                   className="min-h-11 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -509,10 +509,10 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                   {saving ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Enviando...</span>
+                      <span>{t('enviando2', 'Enviando...')}</span>
                     </>
                   ) : (
-                    <span>{myTestimonial ? 'Actualizar opinión' : 'Publicar testimonio'}</span>
+                    <span>{myTestimonial ? t('actualizarOpinion', 'Actualizar opinión') : t('publicarTestimonio', 'Publicar testimonio')}</span>
                   )}
                 </button>
               </div>

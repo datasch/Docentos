@@ -4,7 +4,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ListeningFloatingButton } from '../src/components/ListeningFloatingButton.js';
 import { clampFloatingPoint, floatingAnchor, pointFromAnchor, parseFloatingAnchor } from '../src/lib/floatingPosition.js';
-
+
+import './helpers/initI18n.js';
 test('Buzón: los movimientos quedan dentro del área visible y sus márgenes', () => {
   const phone = { width: 390, height: 844, buttonWidth: 52, buttonHeight: 52 };
   assert.deepEqual(clampFloatingPoint({ x: -100, y: -100 }, phone), { x: 12, y: 12 });
