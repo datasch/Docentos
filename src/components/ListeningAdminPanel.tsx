@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Download, Inbox, Loader2, Send, UserX } from 'lucide-react';
+import { Download, Inbox, Loader2, Send, UserCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import { ActiveFilters, FilterMenu, Pager } from './AdminListKit';
@@ -371,8 +371,15 @@ export const ListeningAdminPanel: React.FC = () => {
               <h4>{entry.subject}</h4>
               <p className="admin-listening__message">{entry.message}</p>
               <p className="admin-listening__author">
-                {entry.anonymous ? (<><UserX aria-hidden="true" /> {t('anonimo', 'Anónimo')}</>) : (entry.author && `${entry.author.name} · ${entry.author.email}`)}
-                {' '}· {new Date(entry.createdAt).toLocaleString(dateLocale())}
+                <UserCheck aria-hidden className="h-3 w-3 text-brand-cyan" />
+                {entry.anonymous ? (
+                  t('anonimo', 'Anónimo')
+                ) : entry.author ? (
+                  <span>{entry.author.name} · {entry.author.email}</span>
+                ) : (
+                  t('usuarioSinDatos', 'Usuario sin datos')
+                )}{' '}
+                · {new Date(entry.createdAt).toLocaleString(dateLocale())}
               </p>
 
               {entry.reply && (

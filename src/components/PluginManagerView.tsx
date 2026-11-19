@@ -50,9 +50,10 @@ import {
   normalizeCustomizerConfig,
   type CustomizerConfig,
 } from '../lib/customizerConfig';
-import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL } from '../lib/logoConfig';
+import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL, getCustomLogoUrl } from '../lib/logoConfig';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
+import { getAutomaticSeasonalTheme, SEASONAL_INFO, type SeasonalMode, type SeasonalTheme } from '../lib/seasonalTheme';
 
 const FIELD_LABELS: Record<string, string> = {
   institutionName: 'Nombre de la Institución',
@@ -86,6 +87,10 @@ const FIELD_LABELS: Record<string, string> = {
   showQuickVersionSwitcher: 'Mostrar selector rápido de versiones en cabecera',
   customBrandName: 'Nombre de la Plataforma / Marca',
   customCampusName: 'Título del Campus / Panel de Administración',
+  mode: 'Modo de Festividad',
+  showBanner: 'Mostrar banner superior conmemorativo',
+  showParticles: 'Mostrar efectos ambientales (nieve / murciélagos)',
+  showFestiveHats: 'Mostrar gorro festivo en logos y constelación 3D',
 };
 
 /** Nombre o descripción del plugin en el idioma activo; el texto del catálogo (español) queda como respaldo. */
@@ -180,6 +185,12 @@ export const PluginManagerView: React.FC = () => {
       if (!initialConfig.defaultProvider) initialConfig.defaultProvider = 'jitsi';
       if (!initialConfig.jitsiDomain) initialConfig.jitsiDomain = 'meet.jit.si';
     }
+    if (plugin.id === 'seasonal-festivities') {
+      if (!initialConfig.mode) initialConfig.mode = 'auto';
+      if (initialConfig.showBanner === undefined) initialConfig.showBanner = true;
+      if (initialConfig.showParticles === undefined) initialConfig.showParticles = true;
+      if (initialConfig.showFestiveHats === undefined) initialConfig.showFestiveHats = true;
+    }
     if (plugin.id === 'docentos-customizer') {
       const normalizedConfig = normalizeCustomizerConfig({
         ...initialConfig,
@@ -266,6 +277,7 @@ export const PluginManagerView: React.FC = () => {
       case 'Youtube': return Youtube;
       case 'HardDrive': return HardDrive;
       case 'Palette': return Palette;
+      case 'Sparkles': return Sparkles;
       default: return Layers;
     }
   };
@@ -1309,11 +1321,152 @@ export const PluginManagerView: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Special: seasonal-festivities suite */}
+                  {configModalPlugin.id === 'seasonal-festivities' && (() => {
+                    const autoTheme = getAutomaticSeasonalTheme();
+                    const selectedMode = (configFormState.mode || 'auto') as SeasonalMode;
+                    const effectivePreviewTheme: SeasonalTheme =
+                      selectedMode === 'auto' ? autoTheme : selectedMode;
+                    const previewInfo = SEASONAL_INFO[effectivePreviewTheme];
+
+                    return (
+                      <div className="space-y-4 p-4 bg-canvas border border-line rounded-2xl">
+                        {!configModalPlugin.enabled && (
+                          <div className="rounded-xl border border-warning-light/40 bg-warning-light/10 px-3.5 py-2.5 text-xs text-warning-light">
+                            {t('pluginFestividadesDesactivadoAviso', 'Este plugin está desactivado en el interruptor principal. Actívalo para que la ambientación festiva se aplique en DocentOS.')}
+                          </div>
+                        )}
+
+                        <div className="rounded-xl border border-line bg-raised p-3.5 flex items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-brand-cyan">
+                              {t('automatizacionNativaDocentos', 'Automatización nativa de DocentOS')}
+                            </p>
+                            <p className="text-xs text-ink-soft">
+                              {t('calendarioDetectadoHoy', 'Calendario detectado hoy:')}{' '}
+                              <strong className="text-ink">
+                                {SEASONAL_INFO[autoTheme].emoji} {SEASONAL_INFO[autoTheme].nombre}
+                              </strong>
+                            </p>
+                            <p className="text-[11px] text-ink-muted">
+                              {t('rangoFechasFestividades', 'Halloween: 1 Oct – 2 Nov · Navidad: 20 Nov – 6 Ene')}
+                            </p>
+                          </div>
+
+                          <div className="w-12 h-12 rounded-xl bg-black/40 border border-line flex items-center justify-center p-1.5 relative overflow-visible shrink-0">
+                            <img
+                              src={getCustomLogoUrl()}
+                              alt={t('vistaPreviaFestiva', 'Vista previa festiva')}
+                              className="w-full h-full object-contain"
+                            />
+                            {configFormState.showFestiveHats !== false && (
+                              <FestiveHatOverlay size="md" forcedTheme={effectivePreviewTheme} />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                            {t('modoOperacionFestividades', 'Modo de operación (Complemento + Respaldo)')}
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {[
+                              {
+                                value: 'auto' as SeasonalMode,
+                                title: t('festividadModoAutoTitulo', 'Automático (Calendario)'),
+                                desc: t('festividadModoAutoDesc', 'Usa las fechas integradas en DocentOS.'),
+                                emoji: '🗓️',
+                              },
+                              {
+                                value: 'christmas' as SeasonalMode,
+                                title: t('festividadModoNavidadTitulo', 'Forzar Navidad'),
+                                desc: t('festividadModoNavidadDesc', 'Activa nieve, gorro navideño y paleta festiva.'),
+                                emoji: '🎄',
+                              },
+                              {
+                                value: 'halloween' as SeasonalMode,
+                                title: t('festividadModoHalloweenTitulo', 'Forzar Halloween'),
+                                desc: t('festividadModoHalloweenDesc', 'Activa murciélagos, sombrero y paleta nocturna.'),
+                                emoji: '🎃',
+                              },
+                              {
+                                value: 'none' as SeasonalMode,
+                                title: t('festividadModoNingunoTitulo', 'Apagar Festividades'),
+                                desc: t('festividadModoNingunoDesc', 'Mantiene la interfaz cósmica estándar.'),
+                                emoji: '✨',
+                              },
+                            ].map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setConfigFormState({ ...configFormState, mode: opt.value })}
+                                className={`text-left p-3 rounded-xl border transition-all ${
+                                  selectedMode === opt.value
+                                    ? 'border-brand-cyan bg-brand-cyan/10 ring-1 ring-brand-cyan/30'
+                                    : 'border-line bg-raised hover:border-line-strong'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 text-xs font-bold text-ink">
+                                  <span>{opt.emoji}</span>
+                                  <span>{opt.title}</span>
+                                </div>
+                                <p className="mt-1 text-[11px] text-ink-muted leading-snug">{opt.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-line bg-raised px-3.5 py-2.5 text-xs text-ink-soft flex items-center justify-between">
+                          <span>{t('resultadoEfectivoFestividades', 'Resultado efectivo con esta configuración:')}</span>
+                          <span className="font-bold" style={{ color: previewInfo.colorAcento }}>
+                            {previewInfo.emoji} {previewInfo.nombre}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 pt-1">
+                          {[
+                            {
+                              key: 'showBanner',
+                              label: t('festividadMostrarBanner', 'Mostrar banner superior conmemorativo'),
+                            },
+                            {
+                              key: 'showParticles',
+                              label: t('festividadMostrarParticulas', 'Mostrar efectos ambientales (nieve / murciélagos y brumas)'),
+                            },
+                            {
+                              key: 'showFestiveHats',
+                              label: t('festividadMostrarGorros', 'Mostrar gorro festivo en logos y constelación 3D'),
+                            },
+                          ].map((toggle) => (
+                            <label
+                              key={toggle.key}
+                              className="flex items-center justify-between p-3 bg-raised border border-line rounded-xl cursor-pointer"
+                            >
+                              <span className="text-xs font-bold text-ink-soft">{toggle.label}</span>
+                              <input
+                                type="checkbox"
+                                checked={configFormState[toggle.key] !== false}
+                                onChange={(e) =>
+                                  setConfigFormState({
+                                    ...configFormState,
+                                    [toggle.key]: e.target.checked,
+                                  })
+                                }
+                                className="w-4 h-4 rounded text-brand-cyan focus:ring-0 cursor-pointer"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {Object.keys(configModalPlugin.config || {})
                     .filter((k) => {
                       if (k === 'signatureImage' || k === 'signature' || k === 'institutionLogo' || k === 'backgroundColor') return false;
                       if (configModalPlugin.id === 'live-meetings' && (k === 'defaultProvider' || k === 'jitsiDomain')) return false;
                       if (configModalPlugin.id === 'docentos-customizer') return false;
+                      if (configModalPlugin.id === 'seasonal-festivities') return false;
                       return true;
                     })
                     .map((key) => {

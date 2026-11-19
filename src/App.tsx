@@ -19,7 +19,7 @@ import { User, Course } from './types';
 import { patchCourseCard } from './lib/courseCardUpdate';
 import { RefreshCw } from 'lucide-react';
 import { initSavedTheme } from './lib/themeApplicator';
-import { applySeasonalTheme } from './lib/seasonalTheme';
+import { applySeasonalTheme, syncSeasonalPluginState } from './lib/seasonalTheme';
 import { pluginManager } from './plugins/PluginManager';
 import { setCustomBrandName, setCustomCampusName, setCustomLogoUrl } from './lib/logoConfig';
 
@@ -51,6 +51,24 @@ function readLastCourseId(): string | null {
 const CACHED_COURSES_KEY = 'docentos_cached_courses_v1';
 const CACHED_USER_KEY = 'docentos_cached_user_v1';
 type PrivateRouteStatus = 'idle' | 'pending' | 'authorized' | 'unauthorized' | 'unavailable';
+
+const LOAD_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms = LOAD_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Tiempo de espera agotado')), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 function readCachedUser(): User | null {
   if (typeof window === 'undefined') return null;
@@ -164,7 +182,7 @@ export default function App() {
 
   const checkSetupStatus = async () => {
     try {
-      const res = await fetch('/api/setup/status');
+      const res = await withTimeout(fetch('/api/setup/status'));
       if (res.ok) {
         const data = await res.json();
         const setupRequired = Boolean(data.isSetupRequired);
@@ -181,16 +199,20 @@ export default function App() {
     try {
       if (!silent) setLoading(true);
       // Una recarga silenciosa no debe desmontar la vista privada (perdería la pestaña activa).
-      if (!silent) setAccessVerified(false);
       const currentPath = window.location.pathname;
       const privatePath = isPrivatePath(currentPath);
-      if (privatePath && !silent) setPrivateRouteStatus('pending');
+      if (!silent) {
+        setAccessVerified(false);
+        if (privatePath && privateRouteStatus !== 'authorized') {
+          setPrivateRouteStatus('pending');
+        }
+      }
 
-      const [setupResult, authResult, coursesResult] = await Promise.allSettled([
-        checkSetupStatus(),
-        api.getCurrentUser(),
-        api.getCourses(),
-      ]);
+      const setupPromise = checkSetupStatus();
+      const authPromise = withTimeout(api.getCurrentUser());
+      const coursesPromise = withTimeout(api.getCourses());
+
+      const [setupResult, authResult] = await Promise.allSettled([setupPromise, authPromise]);
 
       const setupNeeded = setupResult.status === 'fulfilled' && Boolean(setupResult.value);
       if (setupNeeded) {
@@ -200,55 +222,59 @@ export default function App() {
       }
 
       let authUser: User | null = null;
-      setConnectionNotice(authResult.status === 'rejected' || coursesResult.status === 'rejected'
-        ? t('noPudimosActualizarTusDatosIntentaloDe', 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.') : null);
+      const activePath = window.location.pathname;
+      const activePrivatePath = isPrivatePath(activePath);
+      const secondaryPromises: Promise<unknown>[] = [];
       if (authResult.status === 'fulfilled' && authResult.value?.authenticated) {
         authUser = authResult.value?.user ?? null;
         setCurrentUser(authUser);
         writeCachedUser(authUser);
-        if (privatePath) {
-          setPrivateRouteStatus(privateRouteRoleAllowed(currentPath, authUser?.role) ? 'authorized' : 'unauthorized');
+        if (activePrivatePath) {
+          setPrivateRouteStatus(privateRouteRoleAllowed(activePath, authUser?.role) ? 'authorized' : 'unauthorized');
         }
         if (authUser) {
-          try {
-            const [pendingRes, pluginsRes] = await Promise.allSettled([
-              api.contracts.getPending(),
-              api.getPlugins(),
-            ]);
-            if (pendingRes.status === 'fulfilled' && pendingRes.value.requiresSignature && pendingRes.value.contract) {
-              setPendingContract(pendingRes.value.contract);
-            }
-            if (pluginsRes.status === 'fulfilled' && pluginsRes.value?.plugins) {
-              pluginManager.setPlugins(pluginsRes.value.plugins);
-            }
-          } catch {
-            // Silencioso
-          }
+          secondaryPromises.push(
+            Promise.allSettled([api.contracts.getPending(), api.getPlugins()])
+              .then(([pendingRes, pluginsRes]) => {
+                if (pendingRes.status === 'fulfilled' && pendingRes.value.requiresSignature && pendingRes.value.contract) {
+                  setPendingContract(pendingRes.value.contract);
+                }
+                if (pluginsRes.status === 'fulfilled' && pluginsRes.value?.plugins) {
+                  pluginManager.setPlugins(pluginsRes.value.plugins);
+                }
+              })
+              .catch(() => {}),
+          );
         }
       } else if (authResult.status === 'fulfilled') {
         setCurrentUser(null);
         writeCachedUser(null);
         setPendingContract(null);
-        if (privatePath) setPrivateRouteStatus('unauthorized');
-        try {
-          const brandRes = await api.getPublicBrand();
-          if (brandRes?.brandName) {
-            setCustomBrandName(brandRes.brandName);
-          }
-          if (brandRes?.campusName) {
-            setCustomCampusName(brandRes.campusName);
-          }
-          if (brandRes?.logoUrl !== undefined) {
-            setCustomLogoUrl(brandRes.logoUrl);
-          }
-        } catch {
-          // Silencioso
-        }
-      } else if (privatePath) {
+        if (activePrivatePath) setPrivateRouteStatus('unauthorized');
+        secondaryPromises.push(
+          api
+            .getPublicBrand()
+            .then((brandRes) => {
+              if (brandRes?.brandName) setCustomBrandName(brandRes.brandName);
+              if (brandRes?.campusName) setCustomCampusName(brandRes.campusName);
+              if (brandRes?.logoUrl !== undefined) setCustomLogoUrl(brandRes.logoUrl);
+              if (brandRes?.festivities) syncSeasonalPluginState(brandRes.festivities);
+            })
+            .catch(() => {}),
+        );
+      } else if (activePrivatePath && (!silent || privateRouteStatus !== 'authorized')) {
         setCurrentUser(null);
         writeCachedUser(null);
         setPrivateRouteStatus('unavailable');
       }
+
+      const [coursesResult] = await Promise.allSettled([coursesPromise, ...secondaryPromises]);
+
+      setConnectionNotice(
+        authResult.status === 'rejected' || coursesResult.status === 'rejected'
+          ? t('noPudimosActualizarTusDatosIntentaloDe', 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.')
+          : null,
+      );
 
       if (coursesResult.status === 'fulfilled') {
         const coursesRes = coursesResult.value;
@@ -277,7 +303,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error al inicializar datos:", err);
-      if (isPrivatePath(window.location.pathname)) {
+      if (isPrivatePath(window.location.pathname) && (!silent || privateRouteStatus !== 'authorized')) {
         setCurrentUser(null);
         writeCachedUser(null);
         setPrivateRouteStatus('unavailable');
