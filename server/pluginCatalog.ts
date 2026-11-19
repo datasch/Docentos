@@ -158,6 +158,20 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
       customLogoUrl: '',
     },
   },
+  {
+    id: 'seasonal-festivities',
+    name: 'Plugin de Festividades y Ambientación Estacional',
+    description: 'Activa, desactiva o fuerza las festividades de DocentOS (Halloween y Navidad) como complemento y respaldo de la automatización automática por calendario.',
+    version: '1.0.0',
+    category: 'custom',
+    icon: 'Sparkles',
+    config: {
+      mode: 'auto',
+      showBanner: true,
+      showParticles: true,
+      showFestiveHats: true,
+    },
+  },
 ];
 
 /**

@@ -9,6 +9,7 @@ import { AcademiaPlugin, User, Course, VideoDriveLink, Module } from '../types';
 import { googleDrivePlugin } from './googleDrivePlugin';
 import { quizzesPlugin, quizzesPluginEngine } from './QuizzesPlugin';
 import { liveMeetingsPlugin } from './LiveMeetingsPlugin';
+import { syncSeasonalPluginState, type SeasonalMode } from '../lib/seasonalTheme';
 
 export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
   googleDrivePlugin,
@@ -95,6 +96,21 @@ export const DEFAULT_PLUGINS: AcademiaPlugin[] = [
       customLogoUrl: '',
     },
   },
+  {
+    id: 'seasonal-festivities',
+    name: 'Plugin de Festividades y Ambientación Estacional',
+    description: 'Activa, desactiva o fuerza las festividades de DocentOS (Halloween y Navidad) como complemento y respaldo de la automatización automática por calendario.',
+    version: '1.0.0',
+    enabled: true,
+    category: 'custom',
+    icon: 'Sparkles',
+    config: {
+      mode: 'auto',
+      showBanner: true,
+      showParticles: true,
+      showFestiveHats: true,
+    },
+  },
 ];
 
 export interface AnalyticsEvent {
@@ -136,6 +152,9 @@ class PluginManagerEngine {
       }
       return p;
     });
+    if (id === 'seasonal-festivities') {
+      this.syncSeasonalState();
+    }
     return this.plugins;
   }
 
@@ -148,6 +167,9 @@ class PluginManagerEngine {
     });
     if (typeof window !== 'undefined' && id === 'docentos-customizer') {
       window.dispatchEvent(new CustomEvent('docentos-customizer-change', { detail: newConfig }));
+    }
+    if (id === 'seasonal-festivities') {
+      this.syncSeasonalState();
     }
     return this.plugins;
   }
@@ -179,7 +201,21 @@ class PluginManagerEngine {
           window.dispatchEvent(new CustomEvent('docentos-customizer-change', { detail: cfg }));
         }
       }
+      this.syncSeasonalState();
     }
+  }
+
+  private syncSeasonalState(): void {
+    const seasonal = this.getPlugin('seasonal-festivities');
+    if (!seasonal) return;
+    const cfg = seasonal.config || {};
+    syncSeasonalPluginState({
+      enabled: seasonal.enabled,
+      mode: cfg.mode as SeasonalMode,
+      showBanner: cfg.showBanner !== false,
+      showParticles: cfg.showParticles !== false,
+      showFestiveHats: cfg.showFestiveHats !== false,
+    });
   }
 
   // ==================== LIFECYCLE HOOKS ====================

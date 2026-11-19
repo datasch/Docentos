@@ -10,7 +10,7 @@
 
 import { dateLocale } from '../i18n/format';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Download, HeartHandshake, Inbox, Send, UserX } from 'lucide-react';
+import { Download, HeartHandshake, Inbox, Send, UserCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import {
   LISTENING_STATUSES,
@@ -492,12 +492,13 @@ export const ListeningAdminPanel: React.FC = () => {
               <h4 className="mt-2 text-sm font-bold text-ink">{entry.subject}</h4>
               <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{entry.message}</p>
               <p className="mt-2 flex items-center gap-1.5 text-micro text-ink-faint">
-                {entry.anonymous ? (
-                  <>
-                    <UserX aria-hidden className="h-3 w-3" /> {t('anonimo', 'Anónimo')}
-                  </>
+                <UserCheck aria-hidden className="h-3 w-3 text-brand-cyan" />
+                {entry.author ? (
+                  <span className="font-semibold text-ink-soft">
+                    {entry.author.name} · {entry.author.email}
+                  </span>
                 ) : (
-                  entry.author && `${entry.author.name} · ${entry.author.email}`
+                  t('usuarioSinDatos', 'Usuario sin datos')
                 )}{' '}
                 · {new Date(entry.createdAt).toLocaleString(dateLocale())}
               </p>

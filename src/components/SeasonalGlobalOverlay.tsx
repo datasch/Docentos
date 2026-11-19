@@ -5,24 +5,15 @@
  * - Tira conmemorativa de temporada
  */
 
-import React, { useState, useEffect } from 'react';
-import { getSeasonalTheme, SeasonalTheme, SEASONAL_INFO } from '../lib/seasonalTheme';
-import { X, Sparkles } from 'lucide-react';
-import { useTranslation } from 'react-i18next'
+import React, { useState } from 'react';
+import { useSeasonalDisplay, SEASONAL_INFO } from '../lib/seasonalTheme';
+import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const SeasonalGlobalOverlay: React.FC = () => {
-  const { t } = useTranslation()
-  const [theme, setTheme] = useState<SeasonalTheme>(getSeasonalTheme);
+  const { t } = useTranslation();
+  const { theme, showBanner, showParticles } = useSeasonalDisplay();
   const [dismissBanner, setDismissBanner] = useState(false);
-
-  useEffect(() => {
-    const handleSeasonalChange = (e: any) => {
-      if (e.detail?.theme) setTheme(e.detail.theme);
-      else setTheme(getSeasonalTheme());
-    };
-    window.addEventListener('docentos-seasonal-change', handleSeasonalChange);
-    return () => window.removeEventListener('docentos-seasonal-change', handleSeasonalChange);
-  }, []);
 
   if (theme === 'none') return null;
 
@@ -31,7 +22,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
   return (
     <>
       {/* 1. Efecto Ambiental de Fondo en TODO DocentOS (Adaptativo y optimizado para móviles) */}
-      {theme === 'christmas' && (
+      {showParticles && theme === 'christmas' && (
         <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
           {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24 }).map((_, i) => (
             <div
@@ -50,7 +41,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
         </div>
       )}
 
-      {theme === 'halloween' && (
+      {showParticles && theme === 'halloween' && (
         <div className="halloween-ambient-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
           {/* Murciélagos flotantes (solo 2 en móviles) */}
           {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 6 }).map((_, i) => (
@@ -93,7 +84,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
       )}
 
       {/* 2. Banner Festivo Superior de Temporada (Discreto y Elegante) */}
-      {!dismissBanner && (
+      {showBanner && !dismissBanner && (
         <aside
           role="region"
           aria-label={t('avisoDeFestividadActiva', 'Aviso de festividad activa')}
