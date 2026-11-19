@@ -17,7 +17,6 @@ import {
   Trash2,
   CheckCircle2,
   Eye,
-  Search,
   Star,
   Globe,
   Layers,
@@ -37,6 +36,7 @@ import {
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { LandingConfig, LandingBenefit, ModeratedTestimonial, TestimonialStatus, Course } from '../types';
+import { AdminSearchField } from './AdminListKit';
 
 interface LandingPageEditorProps {
   onSaved?: () => void;
@@ -559,16 +559,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               </p>
             </div>
 
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-              <input
-                type="text"
-                placeholder="Buscar cursos..."
-                value={courseSearch}
-                onChange={(e) => setCourseSearch(e.target.value)}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              />
-            </div>
+            <AdminSearchField className="landing-featured-search w-full sm:w-64" value={courseSearch} onChange={setCourseSearch} placeholder="Buscar cursos..." label="Buscar cursos destacados" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -550,7 +550,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                 className="w-full"
               >
                 {currentUser?.role === 'ADMIN' ? (
-                  <div className="w-full max-w-[1600px] mx-auto overflow-x-hidden">
+                  <div className="w-full max-w-[1600px] mx-auto overflow-x-clip">
                     <AdminDashboard
                       currentUser={currentUser}
                       course={currentCourse}

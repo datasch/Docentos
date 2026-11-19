@@ -8,16 +8,25 @@
  * 3. Responder Preguntas de Mentoría en la bandeja de entrada
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, Search, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard } from 'lucide-react';
+import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard, List, LayoutGrid } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
-import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
+import { SUPPORTED_TTS_VOICES } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
 import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
+import { AdminPeopleView } from './AdminPeopleView';
+import { AdminEnrollSheet } from './AdminEnrollSheet';
+import { AdminResourceSheet } from './AdminResourceSheet';
+import { AdminDriveVideoSheet } from './AdminDriveVideoSheet';
+import { AdminCoursePicker } from './AdminCoursePicker';
+import { AdminSearchField, FilterMenu, ActiveFilters, Pager, useListView } from './AdminListKit';
+import { AdminCertificationView } from './AdminCertificationView';
+import { AdminSignatureSheet } from './AdminSignatureSheet';
+import { AdminTTSView } from './AdminTTSView';
 import { ListeningAdminPanel } from './ListeningAdminPanel';
 import { pluginManager } from '../plugins/PluginManager';
 import { DEFAULT_LOGO_URL } from '../lib/logoConfig';
@@ -82,10 +91,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   // Estado interno para la vista unificada de Usuarios y Matrículas
   const [userSectionView, setUserSectionView] = useState<'directory' | 'enrollments'>(initialTab === 'enrollments' ? 'enrollments' : 'directory');
   const [showQuickEnroll, setShowQuickEnroll] = useState(false);
-  const [userSearchText, setUserSearchText] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<string>('ALL');
-  const [enrollmentSearchText, setEnrollmentSearchText] = useState('');
-  const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState<string>('ALL');
+  const [enrollFromSheet, setEnrollFromSheet] = useState(false);
 
   // Estado unificado de Medios y Recursos (Descargables, Drive, TTS)
   const [mediaView, setMediaView] = useState<'resources' | 'drive' | 'tts'>(initialTab === 'drive' || initialTab === 'tts' ? initialTab : 'resources');
@@ -258,6 +264,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const [revokeReason, setRevokeReason] = useState('');
 
   // Resources State
+  const [resourceQuery, setResourceQuery] = useState('');
+  const [resourceKindFilter, setResourceKindFilter] = useState('ALL');
+  const [resourcePage, setResourcePage] = useState(1);
+  const { isMobile: resourceIsMobile, view: resourceView, change: changeResourceView } = useListView('admin-resources-view');
+  const [showResourceSheet, setShowResourceSheet] = useState(false);
+  const [resourceToDelete, setResourceToDelete] = useState<CourseResource | null>(null);
+  const [deletingResource, setDeletingResource] = useState(false);
+  const resourceConfirmRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = resourceConfirmRef.current;
+    if (!dialog) return;
+    if (resourceToDelete && !dialog.open) dialog.showModal();
+    if (!resourceToDelete && dialog.open) dialog.close();
+  }, [resourceToDelete]);
   const [resTitle, setResTitle] = useState('');
   const [resPrivateUrl, setResPrivateUrl] = useState('');
   const [resKind, setResKind] = useState<'FILE' | 'LINK'>('FILE');
@@ -268,7 +288,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   // Drive Linker State
   const [searchQuery, setSearchQuery] = useState('');
   const [driveVideos, setDriveVideos] = useState<DriveVideoFile[]>([]);
+  const { isMobile: driveIsMobile, view: driveView, change: changeDriveView } = useListView('admin-drive-view');
+  const [driveLinkFilter, setDriveLinkFilter] = useState('ALL');
+  const [drivePage, setDrivePage] = useState(1);
+  const [showDriveSheet, setShowDriveSheet] = useState(false);
   const [loadingDrive, setLoadingDrive] = useState(false);
+  const driveRequestId = useRef(0);
+  const driveSearchReady = useRef(false);
   const [driveIsDemo, setDriveIsDemo] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState(course?.modules[0]?.id || '');
   const [linkingVideo, setLinkingVideo] = useState<DriveVideoFile | null>(null);
@@ -284,6 +310,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
   // TTS Gamified Guides Management State
   const [ttsGuides, setTtsGuides] = useState<TTSGuide[]>([]);
+  const [showTtsSheet, setShowTtsSheet] = useState(false);
   const [loadingTtsGuides, setLoadingTtsGuides] = useState(false);
   const [ttsTitle, setTtsTitle] = useState('');
   const [ttsScript, setTtsScript] = useState('');
@@ -464,6 +491,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         `${enrolledUser?.name || 'El usuario'} queda matriculado en «${enrolledCourse?.title || 'el curso'}».`,
       );
       setTimeout(() => setEnrollSuccessMsg(''), 3000);
+      setShowQuickEnroll(false);
       loadEnrollments();
     } catch (err: any) {
       alert(err.message || 'Error al registrar matrícula');
@@ -479,15 +507,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     }
   };
 
-  const handleRevokeCertificate = async (certId: string) => {
-    const reason = revokeReason.trim() || 'Revocado por administración docente';
+  const handleRevokeCertificate = async (certId: string, reasonText: string): Promise<boolean> => {
+    const reason = reasonText.trim() || 'Revocado por administración docente';
     try {
       await api.revokeCertificate(certId, reason);
-      setRevokingCertId(null);
-      setRevokeReason('');
-      loadCertificates();
+      await loadCertificates();
+      return true;
     } catch (err: any) {
       alert(err.message || 'Error al revocar certificado');
+      return false;
     }
   };
 
@@ -508,6 +536,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       );
       setResTitle('');
       setResPrivateUrl('');
+      setShowResourceSheet(false);
       setTimeout(() => setResSuccessMsg(''), 4000);
       refreshEverything();
     } catch (err: any) {
@@ -516,12 +545,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   };
 
   const handleDeleteResource = async (resourceId: string) => {
-    if (!confirm('¿Deseas eliminar este recurso?')) return;
+    setDeletingResource(true);
+    setResErrorMsg('');
     try {
       await api.deleteCourseResource(resourceId);
+      const deletedTitle = resourceToDelete?.title;
+      setResourceToDelete(null);
+      setResSuccessMsg(deletedTitle ? `«${deletedTitle}» eliminado.` : 'Recurso eliminado.');
+      setTimeout(() => setResSuccessMsg(''), 4000);
       refreshEverything();
     } catch (err: any) {
       setResErrorMsg(err.message || 'Error al eliminar recurso');
+    } finally {
+      setDeletingResource(false);
     }
   };
 
@@ -637,6 +673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         setTtsSuccessMsg(`Guía guardada en «${workCourse.title}».`);
         setTtsScript('');
         setTtsTitle('');
+        setShowTtsSheet(false);
         loadTTSGuides();
         setTimeout(() => setTtsSuccessMsg(''), 3500);
       }
@@ -668,20 +705,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   };
 
   const loadDriveVideos = async (q?: string) => {
+    const requestId = ++driveRequestId.current;
     setLoadingDrive(true);
     setDriveErrorMsg('');
     try {
       const res = await api.searchDriveVideos(q);
+      if (requestId !== driveRequestId.current) return;
       setDriveVideos(res.videos || []);
       // Sin credenciales el servidor responde con un catálogo de demostración
       // cuyos identificadores no existen: enlazarlos deja el reproductor negro.
       setDriveIsDemo(Boolean(res.isDemo));
     } catch (error: any) {
-      setDriveErrorMsg(error?.message || 'No se pudo consultar Google Drive.');
+      if (requestId === driveRequestId.current) setDriveErrorMsg(error?.message || 'No se pudo consultar Google Drive.');
     } finally {
-      setLoadingDrive(false);
+      if (requestId === driveRequestId.current) setLoadingDrive(false);
     }
   };
+
+  useEffect(() => {
+    if (!driveSearchReady.current) {
+      driveSearchReady.current = true;
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      setDrivePage(1);
+      loadDriveVideos(searchQuery.trim() || undefined);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
 
   const handleUpdateRole = async (userId: string, newRole: UserRole) => {
     setRoleErrorMsg('');
@@ -697,7 +748,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     }
   };
 
-  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'toggle_active' | 'reset') => {
+  const handleUpdateModeration = async (userId: string, currentStrikes: number = 0, currentActive: boolean = true, action: 'add_strike' | 'toggle_active' | 'reset'): Promise<boolean> => {
     try {
       let newStrikes = currentStrikes;
       let newActive = currentActive;
@@ -707,29 +758,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       if (action === 'toggle_active') newActive = !currentActive;
 
       await api.updateUserModeration(userId, { strikes: newStrikes, isActive: newActive });
-      loadUsers();
+      await loadUsers();
       onRefreshData();
+      return true;
     } catch (error) {
       console.error('Error updating moderation:', error);
-    }
-  };
-
-  const [coursePrice, setCoursePrice] = useState<number>(course?.price || 49);
-  const [updatingPrice, setUpdatingPrice] = useState(false);
-  const [priceSuccessMsg, setPriceSuccessMsg] = useState('');
-
-  const handleSaveCoursePrice = async () => {
-    if (!course) return;
-    setUpdatingPrice(true);
-    try {
-      await api.updateCoursePrice(course.id, coursePrice);
-      setPriceSuccessMsg('¡Precio del curso actualizado exitosamente!');
-      onRefreshData();
-      setTimeout(() => setPriceSuccessMsg(''), 3000);
-    } catch (err) {
-      console.error('Error updating price:', err);
-    } finally {
-      setUpdatingPrice(false);
+      return false;
     }
   };
 
@@ -792,6 +826,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       setManualVideoUrl('');
       setManualVideoTitle('');
       setManualVideoDuration('');
+      setShowDriveSheet(false);
       refreshEverything();
       setTimeout(() => setLinkSuccessMsg(''), 4000);
     } catch (error: any) {
@@ -817,6 +852,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       (m.resources || []).map((resource) => ({ resource, moduleTitle: m.title })),
     ),
   ];
+  const catalogResourceCount = allCourses.reduce((total, item) =>
+    total + (item.resources?.length || 0) + item.modules.reduce((moduleTotal, module) => moduleTotal + (module.resources?.length || 0), 0), 0);
+
+  const resourceSearch = resourceQuery.trim().toLocaleLowerCase();
+  const filteredResources = workResources.filter(({ resource, moduleTitle }) =>
+    (!resourceSearch || [resource.title, moduleTitle, resource.kind].some((value) => value.toLocaleLowerCase().includes(resourceSearch))) &&
+    (resourceKindFilter === 'ALL' || resource.kind === resourceKindFilter),
+  );
+  const resourceKindOptions = [
+    { value: 'FILE', label: 'Archivo', count: workResources.filter(({ resource }) => resource.kind === 'FILE').length },
+    { value: 'LINK', label: 'Enlace', count: workResources.filter(({ resource }) => resource.kind === 'LINK').length },
+  ];
+  const resourcePageSize = resourceView === 'list' ? 10 : 12;
+  const resourcePageSafe = Math.min(resourcePage, Math.max(1, Math.ceil(filteredResources.length / resourcePageSize)));
+  const resourceRows = filteredResources.slice((resourcePageSafe - 1) * resourcePageSize, resourcePageSafe * resourcePageSize);
+  const visibleDriveVideos = driveVideos.filter((video) => {
+    const linkedHere = Boolean(workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id));
+    return driveLinkFilter === 'ALL' || (driveLinkFilter === 'linked' ? linkedHere : !linkedHere);
+  });
+  const drivePageSize = driveView === 'list' ? 8 : 9;
+  const drivePageSafe = Math.min(drivePage, Math.max(1, Math.ceil(visibleDriveVideos.length / drivePageSize)));
+  const pagedDriveVideos = visibleDriveVideos.slice((drivePageSafe - 1) * drivePageSize, drivePageSafe * drivePageSize);
 
   /**
    * Sobre qué curso se está trabajando.
@@ -850,43 +907,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     </div>
   );
 
-  const noModulesNotice = workModules.length === 0 && (
-    <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-xl flex items-start gap-2">
-      <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
-      <span>
-        «{workCourse.title}» todavía no tiene módulos. Créalos en la pestaña Cursos o importando
-        una carpeta de Drive antes de asignarle contenido.
-      </span>
-    </div>
-  );
-
   const animClass = uiVersion === 'v0.4-classic' ? '' : 'animate-fade-in';
   const modernContextActions: Array<{ label: string; target: SubTab }> = activeTab === 'courses'
-    ? [
-      { label: 'Catálogo y contenido', target: 'courses' },
-      { label: 'Recursos', target: 'resources' },
-    ]
+    ? [] // Cursos es una sola vista; Recursos ya es un módulo del nav
     : ['users', 'enrollments'].includes(activeTab)
-      ? [
-        { label: 'Directorio', target: 'users' },
-        { label: 'Matrículas', target: 'enrollments' },
-      ]
+      ? [] // Usuarios lleva su propio selector Directorio / Matrículas
       : ['resources', 'drive', 'tts'].includes(activeTab)
-        ? [
-          { label: 'Materiales', target: 'resources' },
-          { label: 'Google Drive', target: 'drive' },
-          { label: 'Audio TTS', target: 'tts' },
-        ]
+        ? [] // Recursos lleva su propio selector Materiales / Drive / Audio
         : ['certificates', 'contracts'].includes(activeTab)
-          ? [
-            { label: 'Certificados', target: 'certificates' },
-            { label: 'Contratos', target: 'contracts' },
-          ]
+          ? [] // Certificación lleva su propio selector Certificados / Contratos
           : ['landing', 'listening'].includes(activeTab)
-            ? [
-              { label: 'Portada', target: 'landing' },
-              { label: 'Escucha', target: 'listening' },
-            ]
+            ? [] // Portal lleva su propio selector Portada / Escucha
             : activeTab === 'plugins'
               ? [{ label: 'Plugins y configuración', target: 'plugins' }]
               : [];
@@ -1030,14 +1061,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           {/* Navegación única de DocentOS 0.5 Moderna */}
           <nav
             aria-label="Módulos de administración"
-            className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl"
+            className="admin-module-nav mentor-module-nav grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
           >
             {MODERN_ADMIN_MODULES.map((module) => {
               const iconByModule: Record<ModernAdminModuleId, React.ElementType> = {
                 overview: LayoutDashboard,
                 courses: BookOpen,
                 people: Users,
-                resources: Layers,
                 certification: Award,
                 portal: Sliders,
                 system: Shield,
@@ -1046,7 +1076,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               const selectedTarget = module.target === 'overview'
                 ? activeTab === 'overview'
                 : module.target === activeTab || (
-                  module.id === 'resources' && ['resources', 'drive', 'tts'].includes(activeTab)
+                  module.id === 'courses' && ['resources', 'drive', 'tts'].includes(activeTab)
                 ) || (
                   module.id === 'people' && ['users', 'enrollments'].includes(activeTab)
                 ) || (
@@ -1060,16 +1090,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   type="button"
                   aria-current={selectedTarget ? 'page' : undefined}
                   onClick={() => selectTab(module.target as SubTab)}
-                  className={`min-h-16 px-3 py-2.5 rounded-xl text-left flex items-center gap-2.5 transition-colors ${
-                    selectedTarget
-                      ? 'bg-elevated text-ink border border-line-strong'
-                      : 'text-ink-muted hover:text-ink hover:bg-canvas border border-transparent'
-                  }`}
+                  className="flex items-center gap-2.5 text-left"
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${selectedTarget ? 'text-brand-cyan' : 'text-ink-faint'}`} />
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span className="min-w-0">
-                    <span className="block text-xs font-semibold truncate">{module.label}</span>
-                    <span className="block text-[10px] text-ink-faint truncate">{module.description}</span>
+                    <span className="block truncate">{module.label}</span>
                   </span>
                 </button>
               );
@@ -1386,7 +1411,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Cursos', value: allCourses.length, target: 'courses' as SubTab },
-              { label: 'Personas', value: users.length, target: 'users' as SubTab },
+              { label: 'Usuarios', value: users.length, target: 'users' as SubTab },
               { label: 'Matrículas', value: enrollments.length, target: 'enrollments' as SubTab },
               { label: 'Certificados', value: certificates.length, target: 'certificates' as SubTab },
             ].map((stat) => (
@@ -1452,1189 +1477,231 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           currentUser={currentUser}
           onRefreshData={onRefreshData}
           disableAnimation={uiVersion === 'v0.4-classic'}
+          onOpenResources={(courseId) => { if (courseId) setWorkCourseId(courseId); selectTab('resources'); }}
         />
       )}
 
-      {/* TAB 1: GESTIÓN INTEGRAL DE USUARIOS, ROLES RBAC Y MATRÍCULAS */}
+      {/* PERSONAS: directorio y matrículas */}
       {(activeTab === 'users' || activeTab === 'enrollments') && (
         <div className={`space-y-6 ${animClass}`}>
-          {/* Header Unificado Dinámico & Barra de Acciones Principales */}
-          <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2.5">
-                <Users className="w-5 h-5 text-brand-cyan" />
-                <span>
-                  {userSectionView === 'directory'
-                    ? 'Directorio de Usuarios y Roles RBAC'
-                    : 'Registro Histórico de Matrículas'}
-                </span>
-              </h2>
-              <p className="text-xs text-ink-muted mt-1">
-                {userSectionView === 'directory'
-                  ? 'Control de acceso RBAC, moderación disciplinaria y asignación de permisos.'
-                  : 'Auditoría, control de estados de admisión y activación o revocación de matrículas.'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setShowQuickEnroll(!showQuickEnroll)}
-                className="btn-brand-primary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{showQuickEnroll ? 'Ocultar Formulario' : 'Nueva Matrícula'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  loadUsers();
-                  loadEnrollments();
-                }}
-                disabled={loadingUsers || loadingEnrollments}
-                className="p-2 rounded-xl bg-surface hover:bg-elevated border border-line text-ink-soft hover:text-white transition-all text-xs flex items-center gap-1.5"
-                title="Actualizar directorio y matrículas"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers || loadingEnrollments ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Actualizar</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Formulario de Alta de Matrícula (Desplegable con botón o visible en Matrículas) */}
-          {(showQuickEnroll || userSectionView === 'enrollments') && (
-            <div className="bg-raised border border-brand-cyan/40 rounded-2xl p-6 shadow-2xl space-y-4 animate-fade-in ring-1 ring-brand-cyan/20">
-              <div className="flex items-center justify-between border-b border-line pb-3">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-sm font-extrabold text-white">
-                    Matricular Usuario en Curso
-                  </h3>
-                </div>
-                {userSectionView !== 'enrollments' && (
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickEnroll(false)}
-                    className="text-xs text-ink-muted hover:text-white px-2 py-1 rounded-lg hover:bg-elevated transition-colors"
-                  >
-                    ✕ Cerrar
-                  </button>
-                )}
-              </div>
-
-              <p className="text-xs text-ink-muted">
-                Asigna o actualiza la matrícula de un usuario con estado formal verificable (ACTIVE, COMPLETED, REVOKED, EXPIRED).
-              </p>
-
-              {enrollSuccessMsg && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" /> {enrollSuccessMsg}
-                </div>
-              )}
-
-              <form onSubmit={handleCreateEnrollment} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
-                <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Usuario</label>
-                  <select
-                    value={newEnrollUserId}
-                    onChange={(e) => setNewEnrollUserId(e.target.value)}
-                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                    required
-                  >
-                    <option value="">Selecciona usuario...</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.email}) [{u.role}]
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Curso</label>
-                  <select
-                    value={newEnrollCourseId}
-                    onChange={(e) => setNewEnrollCourseId(e.target.value)}
-                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                    required
-                  >
-                    <option value="">Selecciona curso...</option>
-                    {allCourses.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title}{item.published === false ? ' (borrador)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Estado</label>
-                  <select
-                    value={newEnrollStatus}
-                    onChange={(e) => setNewEnrollStatus(e.target.value as any)}
-                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                  >
-                    <option value="ACTIVE">ACTIVE (Activa)</option>
-                    <option value="COMPLETED">COMPLETED (Graduado)</option>
-                    <option value="REVOKED">REVOKED (Revocada)</option>
-                    <option value="EXPIRED">EXPIRED (Expirada)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Origen</label>
-                  <select
-                    value={newEnrollSource}
-                    onChange={(e) => setNewEnrollSource(e.target.value as any)}
-                    className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                  >
-                    <option value="ADMIN">ADMIN (Asignación Directa)</option>
-                    <option value="PAYMENT">PAYMENT (Pago)</option>
-                    <option value="MENTORSHIP">MENTORSHIP (Mentoría)</option>
-                  </select>
-                </div>
-
-                <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
-                  <Plus className="w-4 h-4" /> Matricular
-                </button>
-              </form>
+          {enrollSuccessMsg && (
+            <div role="status" className="p-3 bg-elevated border border-line rounded-xl text-ink text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-brand-cyan" /> {enrollSuccessMsg}
             </div>
           )}
 
-          {/* VISTA 1: DIRECTORIO DE USUARIOS & ROLES RBAC */}
-          {userSectionView === 'directory' && (
-            <div className="space-y-6">
-              {/* Course Pricing Configuration Card */}
-              {course && (
-                <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-line pb-3">
-                    <div>
-                      <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-                        <Crown className="w-5 h-5 text-[#eab308]" />
-                        Monetización y Precio del Programa de Mentoría
-                      </h3>
-                      <p className="text-xs text-ink-muted">
-                        Precio público de <span className="font-bold text-ink">«{course?.title}»</span>.
-                        Deja en 0 para que sea completamente público y gratuito.
-                      </p>
-                    </div>
-                    {priceSuccessMsg && (
-                      <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl animate-fade-in">
-                        {priceSuccessMsg}
-                      </span>
-                    )}
-                  </div>
+          <AdminPeopleView
+            users={users}
+            enrollments={enrollments}
+            loading={loadingUsers}
+            roleError={roleErrorMsg}
+            section={userSectionView}
+            onSection={(s) => selectTab(s === 'directory' ? 'users' : 'enrollments')}
+            onEnrollmentStatus={handleUpdateEnrollmentStatus}
+            onNewEnrollment={() => { setEnrollFromSheet(false); setShowQuickEnroll(true); }}
+            onEnrollUser={(id) => { setNewEnrollUserId(id); setEnrollFromSheet(true); setShowQuickEnroll(true); }}
+            onUpdateRole={handleUpdateRole}
+            onModerate={(u, action) => handleUpdateModeration(u.id, u.strikes || 0, u.isActive !== false, action)}
+            onMentorCourses={handleOpenMentorCourses}
+          />
 
-                  <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div className="flex items-center gap-2 bg-surface border border-line rounded-xl px-4 py-2 w-full sm:w-64">
-                      <span className="text-ink-muted font-extrabold text-sm">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={coursePrice}
-                        onChange={(e) => setCoursePrice(Number(e.target.value))}
-                        placeholder="Ej. 49"
-                        className="w-full bg-transparent text-sm text-white font-mono focus:outline-none"
-                      />
-                      <span className="text-ink-muted text-xs uppercase font-bold">USD</span>
-                    </div>
-
-                    <button
-                      onClick={handleSaveCoursePrice}
-                      disabled={updatingPrice}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-[#eab308] to-[#f59e0b] hover:opacity-90 disabled:opacity-50 text-black font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
-                    >
-                      {updatingPrice && <Loader2 className="w-4 h-4 animate-spin" />}
-                      <span>Guardar Precio del Curso</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-3">
-                  <h3 className="font-bold text-base text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-[#06b6d4]" />
-                    <span>Directorio de Usuarios y Moderación</span>
-                  </h3>
-
-                  {/* Filtro por Rol y Búsqueda */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:w-56">
-                      <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        placeholder="Buscar por nombre o email..."
-                        value={userSearchText}
-                        onChange={(e) => setUserSearchText(e.target.value)}
-                        className="w-full bg-surface border border-line text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
-                      />
-                    </div>
-                    <select
-                      value={userRoleFilter}
-                      onChange={(e) => setUserRoleFilter(e.target.value)}
-                      className="bg-surface border border-line text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
-                    >
-                      <option value="ALL">Todos los roles</option>
-                      <option value="ADMIN">Administradores</option>
-                      <option value="MENTOR">Mentores</option>
-                      <option value="MENTEE">Mentees</option>
-                      <option value="PUBLIC_USER">Estudiantes</option>
-                      <option value="VIP">Estudiantes (VIP)</option>
-                      <option value="EXTERNAL">Invitados</option>
-                    </select>
-                  </div>
-                </div>
-
-                {roleErrorMsg && (
-                  <div
-                    role="alert"
-                    className="p-3 bg-elevated border border-line-strong rounded-xl text-ink text-xs font-bold flex items-start gap-2"
-                  >
-                    <AlertTriangle aria-hidden className="w-4 h-4 shrink-0 mt-px text-brand-orange" />
-                    <span>{roleErrorMsg}</span>
-                  </div>
-                )}
-
-                <div className="overflow-x-auto rounded-xl border border-line">
-                  <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
-                    <thead className="bg-surface text-ink-muted uppercase font-semibold text-[11px] border-b border-line">
-                      <tr>
-                        <th className="p-3.5">Usuario</th>
-                        <th className="p-3.5">Email</th>
-                        <th className="p-3.5">Rol Actual</th>
-                        <th className="p-3.5">Matrículas</th>
-                        <th className="p-3.5">Strikes & Estado</th>
-                        <th className="p-3.5 text-right">Moderación & Roles</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#2d2d44]">
-                      {users
-                        .filter((u) => {
-                          const matchesSearch =
-                            !userSearchText ||
-                            u.name.toLowerCase().includes(userSearchText.toLowerCase()) ||
-                            u.email.toLowerCase().includes(userSearchText.toLowerCase());
-                          const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
-                          return matchesSearch && matchesRole;
-                        })
-                        .map((u) => {
-                          const strikes = u.strikes || 0;
-                          const isActive = u.isActive !== false;
-                          const userEnrs = enrollments.filter(
-                            (e) => (e.userId === u.id || e.userEmail === u.email) && e.status === 'ACTIVE',
-                          );
-
-                          return (
-                            <tr key={u.id} className="hover:bg-elevated transition-colors">
-                              <td className="p-3.5 flex items-center gap-3">
-                                <img
-                                  src={avatarSrc(u.avatarUrl)}
-                                  alt={u.name}
-                                  className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
-                                />
-                                <div>
-                                  <span className="font-semibold text-white block">{u.name}</span>
-                                  {!isActive && (
-                                    <span className="text-[10px] text-red-400 font-bold uppercase">Cuenta Suspendida</span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="p-3.5 font-mono text-ink-muted">{u.email}</td>
-                              <td className="p-3.5">
-                                {u.role === 'ADMIN' && (
-                                  <span className="bg-[#a855f7]/20 text-[#a855f7] border border-[#a855f7]/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <Shield aria-hidden className="w-3 h-3" /> ADMINISTRADOR
-                                  </span>
-                                )}
-                                {u.role === 'MENTOR' && (
-                                  <span className="bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <UserCheck aria-hidden className="w-3 h-3" /> MENTOR
-                                  </span>
-                                )}
-                                {u.role === 'MENTEE' && (
-                                  <span className="bg-success/20 text-success border border-success/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <GraduationCap aria-hidden className="w-3 h-3" /> MENTEE
-                                  </span>
-                                )}
-                                {u.role === 'PUBLIC_USER' && (
-                                  <span className="bg-elevated text-ink-soft border border-line font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1">
-                                    <BookOpen aria-hidden className="w-3 h-3" /> ESTUDIANTE
-                                  </span>
-                                )}
-                                {u.role === 'VIP' && (
-                                  <span className="bg-warning/20 text-warning border border-warning/30 font-bold px-2.5 py-1 rounded-lg text-[10px] inline-flex items-center gap-1 shadow-sm">
-                                    <Crown aria-hidden className="w-3 h-3" /> ESTUDIANTE (VIP)
-                                  </span>
-                                )}
-                                {u.role === 'EXTERNAL' && (
-                                  <span className="bg-elevated border border-line text-ink-muted font-medium px-2.5 py-1 rounded-lg text-[10px]">
-                                    INVITADO
-                                  </span>
-                                )}
-                              </td>
-
-                              {/* Columna de Matrículas con botón directo */}
-                              <td className="p-3.5">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${
-                                      userEnrs.length > 0
-                                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                        : 'bg-slate-800 text-ink-muted border-slate-700'
-                                    }`}
-                                  >
-                                    {userEnrs.length} {userEnrs.length === 1 ? 'curso' : 'cursos'}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setNewEnrollUserId(u.id);
-                                      setShowQuickEnroll(true);
-                                    }}
-                                    className="px-2 py-0.5 rounded bg-surface hover:bg-elevated border border-line hover:border-brand-cyan text-brand-cyan text-[10px] font-bold transition-all"
-                                    title={`Matricular a ${u.name}`}
-                                  >
-                                    + Matricular
-                                  </button>
-                                  {u.role === 'MENTOR' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenMentorCourses(u)}
-                                      className="px-2 py-0.5 rounded bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm"
-                                      title={`Gestionar cursos a cargo de ${u.name}`}
-                                    >
-                                      <BookOpen className="w-3 h-3" />
-                                      <span>Cursos a Cargo</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-
-                              <td className="p-3.5">
-                                <div className="flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold border ${strikes > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-800 text-ink-muted border-slate-700'
-                                    }`}>
-                                    ⚠️ {strikes} Strikes
-                                  </span>
-                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
-                                    }`}>
-                                    {isActive ? 'Activo' : 'Suspendido'}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="p-3.5 text-right space-x-1.5">
-                                {/* Moderation actions */}
-                                <button
-                                  onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'add_strike')}
-                                  title="Dar Strike de Moderación"
-                                  className="px-2 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-300 font-bold rounded-lg text-[10px] transition-all"
-                                >
-                                  +1 Strike
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateModeration(u.id, strikes, isActive, 'toggle_active')}
-                                  title={isActive ? 'Suspender Usuario' : 'Activar Usuario'}
-                                  className={`px-2 py-1 border font-bold rounded-lg text-[10px] transition-all ${isActive
-                                      ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400'
-                                      : 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400'
-                                    }`}
-                                >
-                                  {isActive ? 'Suspender' : 'Activar'}
-                                </button>
-
-                                {/* Selector de Rol Dinámico */}
-                                <select
-                                  value={u.role}
-                                  onChange={(e) => handleUpdateRole(u.id, e.target.value as UserRole)}
-                                  aria-label="Asignar rol al usuario"
-                                  className="bg-canvas border border-line hover:border-brand-cyan/50 text-white rounded-lg px-2.5 py-1 text-micro font-bold focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-canvas transition-all cursor-pointer inline-block align-middle"
-                                  title="Asignar Rol al Usuario"
-                                >
-                                  <option value="ADMIN">Administrador</option>
-                                  <option value="MENTOR">Mentor</option>
-                                  <option value="MENTEE">Mentee</option>
-                                  <option value="PUBLIC_USER">Estudiante</option>
-                                  <option value="VIP">Estudiante (Pase VIP)</option>
-                                  <option value="EXTERNAL">Invitado</option>
-                                </select>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VISTA 2: REGISTRO HISTÓRICO DE MATRÍCULAS */}
-          {userSectionView === 'enrollments' && (
-            <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-3">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-emerald-400" />
-                  <span>Matrículas Registradas ({enrollments.length})</span>
-                </h3>
-
-                {/* Filtros de Matrículas */}
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-56">
-                    <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      placeholder="Buscar estudiante o curso..."
-                      value={enrollmentSearchText}
-                      onChange={(e) => setEnrollmentSearchText(e.target.value)}
-                      className="w-full bg-surface border border-line text-xs text-white rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-brand-cyan"
-                    />
-                  </div>
-                  <select
-                    value={enrollmentStatusFilter}
-                    onChange={(e) => setEnrollmentStatusFilter(e.target.value)}
-                    className="bg-surface border border-line text-xs text-white rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-brand-cyan"
-                  >
-                    <option value="ALL">Todos los estados</option>
-                    <option value="ACTIVE">ACTIVE (Activas)</option>
-                    <option value="COMPLETED">COMPLETED (Graduados)</option>
-                    <option value="REVOKED">REVOKED (Revocadas)</option>
-                    <option value="EXPIRED">EXPIRED (Expiradas)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
-                  <thead className="bg-surface text-ink-muted uppercase font-mono text-[10px] border-b border-line">
-                    <tr>
-                      <th className="py-3 px-4">Estudiante</th>
-                      <th className="py-3 px-4">Curso</th>
-                      <th className="py-3 px-4">Estado</th>
-                      <th className="py-3 px-4">Origen</th>
-                      <th className="py-3 px-4">Fecha</th>
-                      <th className="py-3 px-4 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#2d2d44]/50">
-                    {enrollments
-                      .filter((enr) => {
-                        const matchesSearch =
-                          !enrollmentSearchText ||
-                          (enr.userName || '').toLowerCase().includes(enrollmentSearchText.toLowerCase()) ||
-                          (enr.userEmail || '').toLowerCase().includes(enrollmentSearchText.toLowerCase()) ||
-                          (enr.courseTitle || '').toLowerCase().includes(enrollmentSearchText.toLowerCase());
-                        const matchesStatus =
-                          enrollmentStatusFilter === 'ALL' || enr.status === enrollmentStatusFilter;
-                        return matchesSearch && matchesStatus;
-                      })
-                      .map((enr) => (
-                        <tr key={enr.id} className="hover:bg-elevated/50 transition-colors">
-                          <td className="py-3 px-4 font-semibold text-white">
-                            {enr.userName || enr.userId}
-                            <span className="block text-[10px] text-ink-muted font-normal">{enr.userEmail}</span>
-                          </td>
-                          <td className="py-3 px-4 text-ink-soft">{enr.courseTitle || enr.courseId}</td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                enr.status === 'ACTIVE'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                  : enr.status === 'COMPLETED'
-                                    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                                    : enr.status === 'REVOKED'
-                                      ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                              }`}
-                            >
-                              {enr.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-mono text-[10px] text-ink-muted">{enr.source}</td>
-                          <td className="py-3 px-4 text-ink-muted">
-                            {new Date(enr.createdAt).toLocaleDateString('es-ES')}
-                          </td>
-                          <td className="py-3 px-4 text-right space-x-1">
-                            {enr.status !== 'ACTIVE' && (
-                              <button
-                                onClick={() => handleUpdateEnrollmentStatus(enr.id, 'ACTIVE')}
-                                className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-bold"
-                              >
-                                Activar
-                              </button>
-                            )}
-                            {enr.status !== 'REVOKED' && (
-                              <button
-                                onClick={() => handleUpdateEnrollmentStatus(enr.id, 'REVOKED')}
-                                className="px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-[10px] font-bold"
-                              >
-                                Revocar
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    {enrollments.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-ink-muted">
-                          No hay matrículas registradas aún.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <AdminEnrollSheet
+            open={showQuickEnroll}
+            canGoBack={enrollFromSheet}
+            onClose={() => setShowQuickEnroll(false)}
+            users={users}
+            courses={allCourses}
+            userId={newEnrollUserId}
+            courseId={newEnrollCourseId}
+            status={newEnrollStatus}
+            source={newEnrollSource}
+            onUserId={setNewEnrollUserId}
+            onCourseId={setNewEnrollCourseId}
+            onStatus={setNewEnrollStatus}
+            onSource={setNewEnrollSource}
+            onSubmit={handleCreateEnrollment}
+          />
         </div>
       )}
 
       {/* TAB: ESTUDIO DE MEDIOS Y RECURSOS DEL CURSO (RECURSOS + DRIVE + TTS) */}
       {['resources', 'drive', 'tts'].includes(activeTab) && (
         <div className={`space-y-6 ${animClass}`}>
-          {/* El contenido se asocia a un curso concreto; el selector va primero */}
-          {courseScopeBar}
-
-          {/* Selector de Herramienta Multimedia (solo en modo moderno unificado) */}
-          {uiVersion === 'v0.5-modern' && (
-            <div className="flex items-center gap-2 border-b border-line pb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('resources');
-                  setMediaView('resources');
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                  mediaView === 'resources' || activeTab === 'resources'
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-sm'
-                    : 'bg-surface text-ink-muted hover:text-white border border-line'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Materiales y Archivos Descargables ({workResources.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('drive');
-                  setMediaView('drive');
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                  mediaView === 'drive' || activeTab === 'drive'
-                    ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/40 shadow-sm'
-                    : 'bg-surface text-ink-muted hover:text-white border border-line'
-                }`}
-              >
-                <HardDrive className="w-4 h-4" />
-                <span>Videos de Google Drive</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('tts');
-                  setMediaView('tts');
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                  mediaView === 'tts' || activeTab === 'tts'
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
-                    : 'bg-surface text-ink-muted hover:text-white border border-line'
-                }`}
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Guías de Audio TTS con IA</span>
-              </button>
-            </div>
-          )}
-
-          {/* 1. SECCIÓN RECURSOS DESCARGABLES */}
-          {(uiVersion === 'v0.4-classic' ? activeTab === 'resources' : (mediaView === 'resources' || activeTab === 'resources')) && (
-            <div className={`space-y-6 ${animClass}`}>
-              <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-cyan-400" />
-                  <span>Agregar Recurso Descargable Protegido</span>
-                </h3>
-                <p className="text-xs text-ink-muted">
-                  Material complementario (guías, PDF, repositorios o archivos ZIP) para
-                  «{workCourse.title}». La URL privada queda protegida y sólo será accesible mediante
-                  token de sesión autorizado.
-                </p>
-
-                {resSuccessMsg && (
-                  <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> {resSuccessMsg}
-                  </div>
-                )}
-
-                {resErrorMsg && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{resErrorMsg}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleAddResource} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
+          {uiVersion === 'v0.5-modern' ? (
+            <div data-mentor-ui="modern" className="admin-courses-root admin-resources-shell">
+              <div className="mentor-mentees-panel admin-people-panel">
+                <div className="mentor-section-heading">
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Título del Recurso</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Guía de Arquitectura.pdf"
-                      value={resTitle}
-                      onChange={(e) => setResTitle(e.target.value)}
-                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                      required
-                    />
+                    <h2>Cursos</h2>
+                    <p>Gestiona el catálogo y los materiales de aprendizaje.</p>
                   </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">URL Privada / Archivo</label>
-                    <input
-                      type="url"
-                      placeholder="https://drive.google.com/..."
-                      value={resPrivateUrl}
-                      onChange={(e) => setResPrivateUrl(e.target.value)}
-                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                      required
-                    />
+                  {activeTab === 'resources' && <button type="button" className="mentor-course-control admin-resources__header-add" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />Agregar recurso</button>}
+                  {activeTab === 'drive' && <button type="button" className="mentor-course-control admin-resources__header-add" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}><Plus size={18} aria-hidden="true" />Añadir video</button>}
+                </div>
+                <div className="admin-people-top">
+                  <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
+                    <button type="button" aria-pressed="false" onClick={() => selectTab('courses')}><span>Catálogo</span><span className="mentor-publication-count">({allCourses.length})</span></button>
+                    <button type="button" aria-pressed="true"><span>Recursos</span><span className="mentor-publication-count">({catalogResourceCount})</span></button>
                   </div>
-
-                  <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Asignar a Módulo</label>
-                    <select
-                      value={resModuleId}
-                      onChange={(e) => setResModuleId(e.target.value)}
-                      className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                    >
-                      <option value="">General del Curso</option>
-                      {workModules.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <button type="submit" className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 h-[38px]">
-                    <Plus className="w-4 h-4" /> Agregar Recurso
-                  </button>
-                </form>
+                  {activeTab === 'tts' && <button type="button" className="mentor-course-control admin-resources__header-add" onClick={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }} disabled={workLessonCount === 0}><Plus size={18} aria-hidden="true" />Nueva guía</button>}
+                </div>
+                <div className="admin-resources-shell__media" role="group" aria-label="Tipo de recurso">
+                  <button type="button" aria-pressed={activeTab === 'resources'} onClick={() => { setActiveTab('resources'); setMediaView('resources'); }}>Materiales</button>
+                  <button type="button" aria-pressed={activeTab === 'drive'} onClick={() => { setActiveTab('drive'); setMediaView('drive'); }}>Videos Drive</button>
+                  <button type="button" aria-pressed={activeTab === 'tts'} onClick={() => { setActiveTab('tts'); setMediaView('tts'); }}>Audio TTS</button>
+                </div>
+                <div className="admin-resources-shell__scope">
+                  <AdminCoursePicker courses={allCourses} value={workCourseId} onChange={(courseId) => { setWorkCourseId(courseId); setResourceQuery(''); setResourceKindFilter('ALL'); setResourcePage(1); setResSuccessMsg(''); setResErrorMsg(''); }} />
+                </div>
               </div>
+            </div>
+          ) : courseScopeBar}
 
-              {/* Lista de Recursos Existentes */}
-              <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#06b6d4]" />
-                  <span>Recursos de «{workCourse.title}» ({workResources.length})</span>
-                </h3>
-
-                <div className="space-y-2 max-h-[32rem] overflow-y-auto">
-                  {workResources.length > 0 ? (
-                    workResources.map(({ resource, moduleTitle }) => (
-                      <div key={resource.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-line">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Download className="w-4 h-4 text-cyan-400 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">{resource.title}</p>
-                            <span className="text-[10px] text-ink-muted font-mono truncate block">
-                              {moduleTitle || 'General del Curso'} • {resource.kind} • {resource.downloadUrl}
-                            </span>
+          {/* Materiales del curso */}
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'resources' : (mediaView === 'resources' || activeTab === 'resources')) && (
+            <section data-mentor-ui="modern" className="admin-resources" aria-label="Materiales del curso">
+              <div className="mentor-course-toolbar admin-resources__toolbar">
+                <AdminSearchField value={resourceQuery} onChange={(value) => { setResourceQuery(value); setResourcePage(1); }} placeholder="Buscar recurso" label="Buscar recurso" />
+                <FilterMenu groups={[{ value: resourceKindFilter, onChange: (value) => { setResourceKindFilter(value); setResourcePage(1); }, options: resourceKindOptions }]} />
+                {!resourceIsMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista de recursos">
+                  <button type="button" aria-pressed={resourceView === 'list'} aria-label="Vista de lista" onClick={() => { changeResourceView('list'); setResourcePage(1); }}><List aria-hidden="true" /><span>Lista</span></button>
+                  <button type="button" aria-pressed={resourceView === 'cards'} aria-label="Vista de tarjetas" onClick={() => { changeResourceView('cards'); setResourcePage(1); }}><LayoutGrid aria-hidden="true" /><span>Tarjetas</span></button>
+                </div>}
+              </div>
+              {uiVersion === 'v0.4-classic' && <div className="admin-resources__classic-add"><button type="button" className="mentor-course-control admin-resources__add" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />Agregar recurso</button></div>}
+              <ActiveFilters noun="recursos" shown={filteredResources.length} total={workResources.length} onClear={() => { setResourceQuery(''); setResourceKindFilter('ALL'); setResourcePage(1); }} chips={[
+                ...(resourceKindFilter !== 'ALL' ? [{ key: 'kind', text: resourceKindFilter === 'FILE' ? 'Archivo' : 'Enlace', onRemove: () => { setResourceKindFilter('ALL'); setResourcePage(1); } }] : []),
+                ...(resourceQuery.trim() ? [{ key: 'query', text: `«${resourceQuery.trim()}»`, onRemove: () => { setResourceQuery(''); setResourcePage(1); } }] : []),
+              ]} />
+              {resSuccessMsg && <div role="status" className="admin-resources__notice admin-resources__notice--success"><CheckCircle2 size={18} aria-hidden="true" />{resSuccessMsg}</div>}
+              {resErrorMsg && !showResourceSheet && !resourceToDelete && <div role="alert" className="admin-resources__notice admin-resources__notice--error"><AlertTriangle size={18} aria-hidden="true" />{resErrorMsg}</div>}
+              {filteredResources.length ? (
+                <div className="admin-resources__table" data-view={resourceView}>
+                  {resourceView === 'list' && <div className="admin-resources__table-head" aria-hidden="true"><span>Recurso</span><span>Ubicación</span><span>Acciones</span></div>}
+                  <ul className="admin-resources__list" data-view={resourceView}>
+                    {resourceRows.map(({ resource, moduleTitle }) => (
+                      <li key={resource.id} className="admin-resources__item" data-view={resourceView} aria-labelledby={`admin-resource-${resource.id}`}>
+                        <div className="admin-resources__item-main">
+                          <span className="admin-resources__file" aria-hidden="true">{resource.kind === 'LINK' ? <Link2 /> : <FileText />}</span>
+                          <div className="admin-resources__item-copy">
+                            <span className="admin-resources__item-kind">{resource.kind === 'LINK' ? 'Enlace' : 'Archivo'}</span>
+                            <h3 id={`admin-resource-${resource.id}`}>{resource.title}</h3>
+                            {resource.description && <p>{resource.description}</p>}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteResource(resource.id)}
-                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-ink-muted py-4 text-center">Este curso todavía no tiene recursos.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 2. SECCIÓN VIDEOS GOOGLE DRIVE */}
-          {(uiVersion === 'v0.4-classic' ? activeTab === 'drive' : (mediaView === 'drive' || activeTab === 'drive')) && (
-          <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-line pb-4">
-              <div>
-                <h3 className="font-bold text-base text-white flex items-center gap-2">
-                  <HardDrive className="w-5 h-5 text-[#06b6d4]" />
-                  Enlazar Contenido de Google Drive al Temario
-                </h3>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Elige el módulo de «{workCourse.title}» y asóciale videos alojados en Google Drive.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <label className="text-xs text-ink-muted font-semibold shrink-0">Módulo Destino:</label>
-                <select
-                  value={selectedModuleId}
-                  onChange={(e) => setSelectedModuleId(e.target.value)}
-                  disabled={workModules.length === 0}
-                  className="bg-surface border border-line text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
-                >
-                  {workModules.length === 0 && <option value="">Sin módulos</option>}
-                  {workModules.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {noModulesNotice}
-
-            {linkSuccessMsg && (
-              <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 animate-fade-in font-semibold">
-                <CheckCircle2 className="w-4 h-4" /> {linkSuccessMsg}
-              </div>
-            )}
-
-            {driveErrorMsg && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{driveErrorMsg}</span>
-              </div>
-            )}
-
-            {/* De dónde salen estos videos. Sin decirlo, un catálogo de
-              demostración se confunde con la cuenta de Drive del centro y se
-              enlazan archivos que no existen. */}
-            {driveIsDemo ? (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 space-y-1.5">
-                <p className="font-bold flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Google Drive no está conectado: esto es un catálogo de demostración
-                </p>
-                <p className="text-amber-200/80 leading-relaxed">
-                  Los videos de abajo son ejemplos y sus identificadores no existen; si los enlazas, el
-                  reproductor saldrá vacío. Para ver los archivos reales de tu cuenta, configura en el
-                  servidor <code className="font-mono">GOOGLE_DRIVE_CLIENT_EMAIL</code> y{' '}
-                  <code className="font-mono">GOOGLE_DRIVE_PRIVATE_KEY</code> (cuenta de servicio) o{' '}
-                  <code className="font-mono">GOOGLE_DRIVE_API_KEY</code>, más{' '}
-                  <code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code> con la carpeta a listar, y
-                  comparte esa carpeta con la cuenta de servicio. Mientras tanto, usa el alta por enlace.
-                </p>
-              </div>
-            ) : (
-              <p className="text-[11px] text-ink-muted">
-                Listando los videos de la carpeta de Drive configurada en el servidor
-                (<code className="font-mono">GOOGLE_DRIVE_FOLDER_ID</code>). Si el video vive en otra
-                carpeta, añádelo por enlace.
-              </p>
-            )}
-
-            {/* Alta por enlace: el camino que funciona con o sin credenciales. */}
-            <form
-              onSubmit={handleAddManualVideo}
-              className="bg-surface border border-line rounded-xl p-4 space-y-3"
-            >
-              <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-[#a855f7]" /> Añadir una clase pegando su enlace
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
-                <div className="md:col-span-2">
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">
-                    Enlace de Drive o URL de reproducción
-                  </label>
-                  <input
-                    type="text"
-                    value={manualVideoUrl}
-                    onChange={(e) => setManualVideoUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/ABC123.../view"
-                    className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink-muted block mb-1">Título de la clase</label>
-                  <input
-                    type="text"
-                    value={manualVideoTitle}
-                    onChange={(e) => setManualVideoTitle(e.target.value)}
-                    placeholder="Ej. 03. Índices en PostgreSQL"
-                    className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">Duración</label>
-                    <input
-                      type="text"
-                      value={manualVideoDuration}
-                      onChange={(e) => setManualVideoDuration(e.target.value)}
-                      placeholder="20:00"
-                      className="w-full bg-raised border border-line rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={addingManualVideo || workModules.length === 0}
-                    className="btn-brand-primary h-[38px] px-3 text-xs font-bold flex items-center justify-center gap-1.5 self-end disabled:opacity-50"
-                  >
-                    {addingManualVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    Añadir
-                  </button>
-                </div>
-              </div>
-            </form>
-
-            {/* Buscador de la carpeta configurada. */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                loadDriveVideos(searchQuery);
-              }}
-              className="flex items-center gap-2"
-            >
-              <div className="flex-1 flex items-center gap-2 bg-surface border border-line rounded-xl px-3">
-                <Search className="w-4 h-4 text-ink-muted shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por nombre en la carpeta de Drive..."
-                  className="w-full bg-transparent py-2 text-xs text-white focus:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loadingDrive}
-                className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingDrive ? 'animate-spin' : ''}`} /> Buscar
-              </button>
-            </form>
-
-            {!loadingDrive && driveVideos.length === 0 && (
-              <p className="text-xs text-ink-muted py-6 text-center">
-                No hay videos que mostrar para esa búsqueda.
-              </p>
-            )}
-
-            {/* Drive Videos Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {driveVideos.map((video) => (
-                <div
-                  key={video.id}
-                  className="bg-elevated border border-line rounded-xl p-4 flex flex-col justify-between hover:border-[#06b6d4]/50 transition-all shadow-md"
-                >
-                  <div className="space-y-2">
-                    <div className="aspect-video bg-black rounded-xl overflow-hidden border border-line relative">
-                      <img
-                        src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
-                        alt={video.name}
-                        className="w-full h-full object-cover"
-                      />
-                      {video.duration && (
-                        <span className="absolute bottom-1.5 right-1.5 bg-black/90 text-[#06b6d4] text-[10px] font-bold px-2 py-0.5 rounded-lg border border-line">
-                          {video.duration}
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="font-semibold text-xs text-white line-clamp-2">{video.name}</h4>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-line flex items-center justify-between">
-                    <span className="text-[10px] text-ink-muted font-mono">ID: {video.id.substring(0, 12)}...</span>
-                    <button
-                      onClick={() => handleLinkDriveVideo(video)}
-                      disabled={linkingVideo?.id === video.id || workModules.length === 0}
-                      className="px-3 py-1.5 bg-[#a855f7] hover:bg-[#a855f7]/80 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
-                    >
-                      {linkingVideo?.id === video.id ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <Plus className="w-3.5 h-3.5" /> Enlazar al Módulo
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          )}
-
-          {/* 3. SECCIÓN GUÍAS DE AUDIO TTS */}
-          {(uiVersion === 'v0.4-classic' ? activeTab === 'tts' : (mediaView === 'tts' || activeTab === 'tts')) && (
-            <div className="space-y-6">
-
-          {/* Form Box */}
-          <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-6">
-            <div className="border-b border-line pb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#06b6d4]" />
-                <h3 className="font-bold text-base text-white">Gestión de Guías de Mentoría (TTS Gamificado)</h3>
-              </div>
-              <p className="text-xs text-ink-muted mt-1">
-                Crea guías de voz sintéticas que orienten a los estudiantes al inicio de cada lección de
-                «{workCourse.title}» y recompénsalos con XP por escuchar la introducción.
-              </p>
-            </div>
-
-            {noModulesNotice}
-
-            {ttsSuccessMsg && (
-              <div className="p-3 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs rounded-xl flex items-center gap-2 font-semibold animate-fade-in">
-                <CheckCircle2 className="w-4 h-4" /> {ttsSuccessMsg}
-              </div>
-            )}
-
-            {ttsErrorMsg && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" /> <span>{ttsErrorMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateTTSGuide} className="space-y-4">
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Title */}
-                <div>
-                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
-                    Título de la Guía
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Guía de Orientación: Metodología Giantucchi"
-                    value={ttsTitle}
-                    onChange={(e) => setTtsTitle(e.target.value)}
-                    className="w-full bg-surface border border-line rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  />
-                </div>
-
-                {/* Target Lesson/Video Selector */}
-                <div>
-                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
-                    Asociar a Clase / Lección Destino
-                  </label>
-                  <select
-                    value={ttsTargetVideoId}
-                    onChange={(e) => setTtsTargetVideoId(e.target.value)}
-                    disabled={workLessonCount === 0}
-                    className="w-full bg-surface border border-line text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4] disabled:opacity-50"
-                  >
-                    {workLessonCount === 0 && <option value="">Este curso aún no tiene clases</option>}
-                    {workModules.flatMap((m) =>
-                      m.videos.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {m.title} → {v.title}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              {/* Voice Selector & Speed */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider">
-                      Voz Sintética TTS (Multilenguaje)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => ttsService.testVoice(ttsVoice, ttsSpeed)}
-                      className="text-[11px] font-bold text-[#06b6d4] bg-[#06b6d4]/10 border border-[#06b6d4]/30 px-2.5 py-0.5 rounded-lg hover:bg-[#06b6d4]/20 flex items-center gap-1 transition-all"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" /> Probar Voz Seleccionada
-                    </button>
-                  </div>
-                  <select
-                    value={ttsVoice}
-                    onChange={(e) => setTtsVoice(e.target.value)}
-                    className="w-full bg-surface border border-line text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#06b6d4]"
-                  >
-                    {SUPPORTED_TTS_VOICES.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.flag} {v.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider mb-2">
-                    Velocidad de Lectura (Speed: {ttsSpeed}x)
-                  </label>
-                  <input
-                    type="range"
-                    min="0.8"
-                    max="1.4"
-                    step="0.1"
-                    value={ttsSpeed}
-                    onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
-                    className="w-full accent-[#06b6d4] mt-2 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Widget de Pruebas Rápidas de Voz Multilenguaje */}
-              <div className="bg-surface border border-line rounded-xl p-4 space-y-2">
-                <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider block">
-                  🔊 Banco de Prueba Rápida de Voces por Idioma
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {SUPPORTED_TTS_VOICES.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => {
-                        setTtsVoice(v.id);
-                        ttsService.testVoice(v.id, ttsSpeed);
-                      }}
-                      className={`p-2 rounded-lg border text-[11px] font-semibold text-left flex items-center justify-between transition-all ${ttsVoice === v.id
-                          ? 'bg-[#06b6d4]/10 border-[#06b6d4] text-white shadow-sm'
-                          : 'bg-raised border-line text-ink-muted hover:text-white hover:border-[#06b6d4]/40'
-                        }`}
-                    >
-                      <span className="truncate">{v.flag} {v.name.split('(')[0]}</span>
-                      <Volume2 className="w-3.5 h-3.5 text-[#06b6d4] shrink-0 ml-1" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Script Text with Hybrid AI Generator Button */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-ink-soft uppercase tracking-wider">
-                    Guion del Mensaje de Mentoría (Texto para TTS)
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={handleGenerateAiScript}
-                    disabled={isGeneratingAiScript}
-                    className="px-3 py-1 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#06b6d4] text-white text-[11px] font-extrabold flex items-center gap-1.5 shadow-md hover:opacity-90 transition-all disabled:opacity-50"
-                  >
-                    {isGeneratingAiScript ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Generando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="w-3.5 h-3.5 text-[#eab308]" />
-                        <span>Generar con IA</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <textarea
-                  rows={4}
-                  required
-                  placeholder="Escribe o genera con IA las instrucciones iniciales que el alumno escuchará antes de ver la lección..."
-                  value={ttsScript}
-                  onChange={(e) => setTtsScript(e.target.value)}
-                  className="w-full bg-surface border border-line rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#06b6d4] transition-all"
-                />
-              </div>
-
-              {/* Form Action Buttons */}
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={handlePreviewAudio}
-                  className="px-4 py-2 bg-elevated border border-line hover:border-[#06b6d4] text-ink text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
-                >
-                  <Volume2 className={`w-4 h-4 ${isPreviewingAudio ? 'text-[#06b6d4]' : ''}`} />
-                  {isPreviewingAudio ? 'Reproduciendo Audio de Prueba...' : 'Previsualizar Audio'}
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={!ttsTargetVideoId}
-                  className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20 disabled:opacity-50"
-                >
-                  <Sparkles className="w-4 h-4 text-[#eab308]" /> Generar y Guardar Guía TTS
-                </button>
-              </div>
-
-            </form>
-          </div>
-
-          {/* List of Existing TTS Guides */}
-          <div className="bg-raised border border-line rounded-xl p-6 shadow-xl space-y-4">
-            <h4 className="font-bold text-sm text-white flex items-center gap-2 border-b border-line pb-3">
-              <Award className="w-4 h-4 text-[#a855f7]" /> Guías de «{workCourse.title}» ({ttsGuides.length})
-            </h4>
-
-            {loadingTtsGuides ? (
-              <p className="text-xs text-ink-muted py-4 text-center">Cargando guías...</p>
-            ) : ttsGuides.length === 0 ? (
-              <p className="text-xs text-ink-muted py-4 text-center">Este curso todavía no tiene guías TTS.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {ttsGuides.map((guide) => (
-                  <div
-                    key={guide.id}
-                    className="bg-elevated border border-line rounded-xl p-4 space-y-3 relative hover:border-[#06b6d4]/40 transition-all"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={guide.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
-                          alt={guide.mentorName}
-                          className="w-8 h-8 rounded-full object-cover ring-1 ring-[#2d2d44]"
-                        />
-                        <div>
-                          <h5 className="font-bold text-xs text-white">{guide.title}</h5>
-                          <span className="text-[10px] text-[#06b6d4] font-semibold">{guide.mentorName}</span>
+                        <span className="admin-resources__item-module"><Layers aria-hidden="true" />{moduleTitle || 'General del curso'}</span>
+                        <div className="admin-resources__item-actions">
+                          <a className="admin-resources__open" href={resource.downloadUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${resource.title} en otra pestaña`}>Abrir<ExternalLink aria-hidden="true" /></a>
+                          <button type="button" className="mentor-course-control admin-resources__delete" data-danger="true" onClick={() => { setResErrorMsg(''); setResourceToDelete(resource); }} aria-haspopup="dialog" aria-label={`Eliminar ${resource.title}`}><Trash2 aria-hidden="true" />Eliminar</button>
                         </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleDeleteTTSGuide(guide.id)}
-                        className="p-1.5 text-ink-muted hover:text-red-400 rounded-lg hover:bg-raised"
-                        title="Eliminar guía"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-ink-soft italic bg-surface p-2.5 rounded-lg border border-line line-clamp-3">
-                      "{guide.scriptText}"
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] text-ink-muted pt-1">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => ttsService.speak({ text: guide.scriptText, voiceId: guide.voiceId, speed: guide.voiceSpeed })}
-                          className="px-2.5 py-1 bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] font-bold rounded-lg hover:bg-[#06b6d4]/20 flex items-center gap-1 transition-all"
-                        >
-                          <Volume2 className="w-3 h-3" /> Escuchar Guía
-                        </button>
-                        <span className="font-mono text-[#a855f7]">Voz: {guide.voiceId}</span>
-                      </div>
-                      <span className="font-bold text-[#eab308] bg-[#eab308]/10 px-2 py-0.5 rounded-lg border border-[#eab308]/20">
-                        +{guide.xpReward} XP
-                      </span>
-                    </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="admin-resources__empty"><FileText size={28} aria-hidden="true" /><p>{workResources.length ? 'Nada coincide con la búsqueda o los filtros' : 'Este curso todavía no tiene recursos'}</p><span>{workResources.length ? 'Prueba otra búsqueda o limpia los filtros.' : 'Agrega el primer material para compartirlo con tus estudiantes.'}</span>{workResources.length === 0 && <button type="button" className="mentor-course-control admin-resources__add" onClick={() => setShowResourceSheet(true)}>Agregar recurso</button>}</div>
+              )}
+              <Pager total={filteredResources.length} size={resourcePageSize} page={resourcePageSafe} onPage={setResourcePage} noun="recursos" />
+              <dialog ref={resourceConfirmRef} className="mentor-confirm admin-resource-confirm" aria-labelledby="admin-resource-delete-title" aria-describedby="admin-resource-delete-description" onCancel={(event) => { event.preventDefault(); if (!deletingResource) setResourceToDelete(null); }} onClick={(event) => { if (event.target === event.currentTarget && !deletingResource) setResourceToDelete(null); }}>
+                {resourceToDelete && <div className="mentor-confirm__body">
+                  <h3 id="admin-resource-delete-title" className="admin-confirm-title"><AlertTriangle aria-hidden="true" />Eliminar recurso</h3>
+                  <p id="admin-resource-delete-description">Vas a eliminar <strong>{resourceToDelete.title}</strong>. Los estudiantes de este curso perderán el acceso. No se puede deshacer.</p>
+                  {resErrorMsg && <p role="alert" className="admin-confirm-error"><strong>{resErrorMsg}</strong> Inténtalo de nuevo.</p>}
+                  <div className="mentor-confirm__actions">
+                    <button type="button" className="mentor-course-control" onClick={() => setResourceToDelete(null)} disabled={deletingResource}>Cancelar</button>
+                    <button type="button" className="mentor-course-control" data-danger="true" onClick={() => handleDeleteResource(resourceToDelete.id)} disabled={deletingResource} aria-busy={deletingResource}>{deletingResource ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}Eliminar recurso</button>
                   </div>
-                ))}
+                </div>}
+              </dialog>
+              <AdminResourceSheet open={showResourceSheet} onClose={() => setShowResourceSheet(false)} onSubmit={handleAddResource} modules={workModules} title={resTitle} onTitle={setResTitle} privateUrl={resPrivateUrl} onPrivateUrl={setResPrivateUrl} moduleId={resModuleId} onModuleId={setResModuleId} error={resErrorMsg} />
+            </section>
+          )}
+
+          {/* VIDEOS DE DRIVE */}
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'drive' : (mediaView === 'drive' || activeTab === 'drive')) && (
+            <section data-mentor-ui="modern" className="admin-drive" aria-labelledby="admin-drive-title">
+              <div className="admin-drive__head">
+                <div>
+                  <h3 id="admin-drive-title">Biblioteca de Drive</h3>
+                  <p>Elige un módulo y enlaza los videos que formarán parte del temario.</p>
+                </div>
+                <label className="admin-drive__destination" htmlFor="admin-drive-module">
+                  <span>Módulo de destino</span>
+                  <select id="admin-drive-module" value={selectedModuleId} onChange={(event) => { setSelectedModuleId(event.target.value); setDriveLinkFilter('ALL'); setDrivePage(1); }} disabled={workModules.length === 0}>
+                    {workModules.length === 0 && <option value="">Sin módulos</option>}
+                    {workModules.map((module) => <option key={module.id} value={module.id}>{module.title}</option>)}
+                  </select>
+                </label>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {workModules.length === 0 && <div className="admin-drive__empty" role="status"><Layers aria-hidden="true" /><strong>Este curso aún no tiene módulos</strong><span>Crea uno en el catálogo para poder asignarle videos.</span><button type="button" onClick={() => selectTab('courses')}>Ir al catálogo</button></div>}
+              {linkSuccessMsg && <p role="status" className="admin-resources__notice admin-resources__notice--success"><CheckCircle2 aria-hidden="true" />{linkSuccessMsg}</p>}
+              {driveErrorMsg && !showDriveSheet && <p role="alert" className="admin-resources__notice admin-resources__notice--error"><AlertTriangle aria-hidden="true" />{driveErrorMsg}</p>}
+              {driveIsDemo && <p className="admin-drive__demo"><AlertTriangle aria-hidden="true" /><span>Drive no está conectado. Esta lista es una demostración; puedes añadir un video real mediante su enlace.</span></p>}
+
+              <div className="mentor-course-toolbar admin-resources__toolbar admin-drive__toolbar">
+                <AdminSearchField value={searchQuery} onChange={setSearchQuery} placeholder="Buscar video en Drive" label="Buscar video en Drive" />
+                <FilterMenu groups={[{ value: driveLinkFilter, onChange: (value) => { setDriveLinkFilter(value); setDrivePage(1); }, options: [
+                  { value: 'unlinked', label: 'Sin enlazar', count: driveVideos.filter((video) => !workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id)).length },
+                  { value: 'linked', label: 'En este módulo', count: driveVideos.filter((video) => workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id)).length },
+                ] }]} />
+                {!driveIsMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista de videos"><button type="button" aria-pressed={driveView === 'list'} aria-label="Vista de lista" onClick={() => { changeDriveView('list'); setDrivePage(1); }}><List aria-hidden="true" /><span>Lista</span></button><button type="button" aria-pressed={driveView === 'cards'} aria-label="Vista de tarjetas" onClick={() => { changeDriveView('cards'); setDrivePage(1); }}><LayoutGrid aria-hidden="true" /><span>Tarjetas</span></button></div>}
+              </div>
+
+              <ActiveFilters noun="videos" shown={visibleDriveVideos.length} total={driveVideos.length} onClear={() => { setDriveLinkFilter('ALL'); setDrivePage(1); }} chips={driveLinkFilter === 'ALL' ? [] : [{ key: 'linked', text: driveLinkFilter === 'linked' ? 'En este módulo' : 'Sin enlazar', onRemove: () => { setDriveLinkFilter('ALL'); setDrivePage(1); } }]} />
+              {!loadingDrive && driveVideos.length > 0 && <p className="admin-drive__count">{visibleDriveVideos.length} {visibleDriveVideos.length === 1 ? 'video' : 'videos'} en la carpeta</p>}
+
+              {loadingDrive ? <div className="admin-drive__grid" data-view="cards" role="status" aria-label="Cargando videos">{[0, 1, 2].map((index) => <div key={index} className="admin-drive__skeleton" />)}</div> : visibleDriveVideos.length === 0 ? (
+                <div className="admin-drive__empty" role="status"><HardDrive aria-hidden="true" /><strong>{driveVideos.length ? 'No hay videos con ese filtro' : 'No encontramos videos en la carpeta'}</strong><span>{driveVideos.length ? 'Prueba otra opción de filtro.' : 'Busca por otro nombre o añade el video con su enlace.'}</span><button type="button" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}>Añadir por enlace</button></div>
+              ) : (
+                <div className="admin-drive__grid" data-view={driveView}>
+                  {pagedDriveVideos.map((video) => {
+                    const linkedHere = Boolean(workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id));
+                    return <article key={video.id} className="admin-drive__card" data-view={driveView} aria-labelledby={`admin-drive-video-${video.id}`}>
+                      <div className="admin-drive__poster">{video.thumbnailLink ? <img src={video.thumbnailLink} alt="" loading="lazy" /> : <Play aria-hidden="true" />}{video.duration && <span className="admin-drive__duration">{video.duration}</span>}</div>
+                      <div className="admin-drive__card-body"><span className="admin-drive__source">Video de Drive</span><h4 id={`admin-drive-video-${video.id}`} title={video.name}>{video.name}</h4><span className="admin-drive__state" data-linked={linkedHere}>{linkedHere ? 'En este módulo' : 'Disponible para enlazar'}</span></div>
+                      <div className="admin-drive__card-actions">{video.webViewLink && <a href={video.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={`Ver ${video.name} en Drive`}>Ver en Drive<ExternalLink aria-hidden="true" /></a>}<button type="button" onClick={() => handleLinkDriveVideo(video)} disabled={driveIsDemo || linkedHere || linkingVideo?.id === video.id || workModules.length === 0} aria-busy={linkingVideo?.id === video.id}>{linkingVideo?.id === video.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : linkedHere ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}{linkedHere ? 'Enlazado' : 'Enlazar'}</button></div>
+                    </article>;
+                  })}
+                </div>
+              )}
+              <Pager total={visibleDriveVideos.length} size={drivePageSize} page={drivePageSafe} onPage={setDrivePage} noun="videos" />
+              <AdminDriveVideoSheet open={showDriveSheet} onClose={() => setShowDriveSheet(false)} onSubmit={handleAddManualVideo} modules={workModules} moduleId={selectedModuleId} onModuleId={setSelectedModuleId} url={manualVideoUrl} onUrl={setManualVideoUrl} title={manualVideoTitle} onTitle={setManualVideoTitle} duration={manualVideoDuration} onDuration={setManualVideoDuration} busy={addingManualVideo} error={driveErrorMsg} />
+            </section>
+          )}
+
+          {/* 3. GUÍAS DE AUDIO TTS */}
+          {(uiVersion === 'v0.4-classic' ? activeTab === 'tts' : (mediaView === 'tts' || activeTab === 'tts')) && (
+            <AdminTTSView
+              courseId={workCourse.id}
+              courseTitle={workCourse.title}
+              modules={workModules}
+              guides={ttsGuides}
+              loading={loadingTtsGuides}
+              sheetOpen={showTtsSheet}
+              showCreateButton={uiVersion === 'v0.4-classic'}
+              onOpenSheet={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }}
+              onCloseSheet={() => setShowTtsSheet(false)}
+              title={ttsTitle}
+              onTitle={setTtsTitle}
+              script={ttsScript}
+              onScript={setTtsScript}
+              voice={ttsVoice}
+              onVoice={setTtsVoice}
+              speed={ttsSpeed}
+              onSpeed={setTtsSpeed}
+              videoId={ttsTargetVideoId}
+              onVideoId={setTtsTargetVideoId}
+              onSubmit={handleCreateTTSGuide}
+              onGenerate={handleGenerateAiScript}
+              onPreview={handlePreviewAudio}
+              generating={isGeneratingAiScript}
+              previewing={isPreviewingAudio}
+              success={ttsSuccessMsg}
+              error={ttsErrorMsg}
+              onDelete={handleDeleteTTSGuide}
+            />
+          )}
       </div>
       )}
 
@@ -2646,40 +1713,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       {/* TAB: PORTAL WEB Y FEEDBACK ALUMNOS (PORTADA + BUZÓN NPS) */}
       {['landing', 'listening'].includes(activeTab) && (
         <div className={`space-y-6 ${animClass}`}>
-          {/* Selector de Portada / Feedback (solo en modo moderno unificado) */}
           {uiVersion === 'v0.5-modern' && (
-            <div className="flex items-center gap-2 border-b border-line pb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('landing');
-                  setPortalView('landing');
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                  activeTab === 'landing' || portalView === 'landing'
-                    ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/40 shadow-sm'
-                    : 'bg-surface text-ink-muted hover:text-white border border-line'
-                }`}
-              >
-                <Sliders className="w-4 h-4" />
-                <span>Editor Visual de Portada</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('listening');
-                  setPortalView('listening');
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                  activeTab === 'listening' || portalView === 'listening'
-                    ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/40 shadow-sm'
-                    : 'bg-surface text-ink-muted hover:text-white border border-line'
-                }`}
-              >
-                <HeartHandshake className="w-4 h-4" />
-                <span>Buzón de Escucha y NPS del Alumnado</span>
-              </button>
+            <div data-mentor-ui="modern" className="admin-courses-root admin-resources-shell">
+              <div className="mentor-mentees-panel admin-people-panel">
+                <div className="mentor-section-heading">
+                  <div>
+                    <h2>Portal</h2>
+                    <p>Edita la portada pública y atiende el buzón de escucha.</p>
+                  </div>
+                </div>
+                <div className="admin-people-top">
+                  <div className="mentor-publication-filters" role="group" aria-label="Sección del portal">
+                    <button type="button" aria-pressed={activeTab === 'landing' || portalView === 'landing'} onClick={() => { setActiveTab('landing'); setPortalView('landing'); }}><span>Portada</span></button>
+                    <button type="button" aria-pressed={activeTab === 'listening' || portalView === 'listening'} onClick={() => { setActiveTab('listening'); setPortalView('listening'); }}><span>Escucha</span></button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2695,309 +1744,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
 
 
-      {/* TAB: CERTIFICADOS (CERTIFICATES) */}
-      {activeTab === 'certificates' && (
-        <div className={`bg-raised border border-line rounded-2xl p-6 shadow-xl space-y-4 ${animClass}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-400" />
-                <span>Certificados Oficiales Emitidos ({certificates.length})</span>
-              </h3>
-              <p className="text-xs text-ink-muted mt-1">
-                Certificados con código alfanumérico persistente y verificación pública contra base de datos.
-              </p>
-            </div>
-            <button
-              onClick={loadCertificates}
-              disabled={loadingCertificates}
-              className="p-2 bg-surface hover:bg-elevated text-ink-soft rounded-xl border border-line transition-all text-xs flex items-center gap-1"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingCertificates ? 'animate-spin' : ''}`} />
-              <span>Actualizar</span>
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
-              <thead className="bg-surface text-ink-muted uppercase font-mono text-[10px] border-b border-line">
-                <tr>
-                  <th className="py-3 px-4">Código Único</th>
-                  <th className="py-3 px-4">Graduado</th>
-                  <th className="py-3 px-4">Programa</th>
-                  <th className="py-3 px-4">Emisión</th>
-                  <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2d2d44]/50">
-                {certificates.map((cert) => (
-                  <tr key={cert.id} className="hover:bg-elevated/50 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-amber-400">
-                      {cert.verificationCode}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-white">
-                      {cert.recipientName}
-                      {cert.userEmail && <span className="block text-[10px] text-ink-muted font-normal">{cert.userEmail}</span>}
-                    </td>
-                    <td className="py-3 px-4 text-ink-soft">{cert.courseTitle}</td>
-                    <td className="py-3 px-4 text-ink-muted">
-                      {new Date(cert.issuedAt).toLocaleDateString('es-ES')}
-                    </td>
-                    <td className="py-3 px-4">
-                      {cert.revokedAt ? (
-                        <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-bold">
-                          Revocado
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                          Válido
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {!cert.revokedAt && (
-                        revokingCertId === cert.id ? (
-                          <div className="flex items-center gap-1 justify-end">
-                            <input
-                              type="text"
-                              placeholder="Motivo..."
-                              value={revokeReason}
-                              onChange={(e) => setRevokeReason(e.target.value)}
-                              className="bg-surface border border-line px-2 py-1 rounded text-[10px] text-white w-32"
-                            />
-                            <button
-                              onClick={() => handleRevokeCertificate(cert.id)}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold"
-                            >
-                              Confirmar
-                            </button>
-                            <button
-                              onClick={() => setRevokingCertId(null)}
-                              className="px-1 py-1 text-ink-muted hover:text-white text-[10px]"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setRevokingCertId(cert.id);
-                              setRevokeReason('');
-                            }}
-                            className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold"
-                          >
-                            Revocar
-                          </button>
-                        )
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {certificates.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-ink-muted">
-                      No se han emitido certificados todavía.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      {/* CERTIFICACIÓN: certificados emitidos y auditoría de contratos */}
+      {(activeTab === 'certificates' || activeTab === 'contracts') && (
+        <div className={animClass}>
+          <AdminCertificationView
+            section={activeTab}
+            onSection={(sec) => selectTab(sec)}
+            certificates={certificates}
+            signatures={contractSignatures}
+            onRevoke={handleRevokeCertificate}
+            onViewSignature={setSelectedAuditSignature}
+          />
         </div>
       )}
 
-
-
-      {/* Contracts & Legal Compliance Audit Tab */}
-      {activeTab === 'contracts' && (
-        <div className="space-y-6">
-          <div className="bg-raised border border-line rounded-2xl p-6 shadow-xl">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-ink flex items-center gap-2">
-                  <FileCheck aria-hidden="true" className="w-5 h-5 text-brand-blue" />
-                  Auditoría de Contratos y Consentimientos Legales
-                </h3>
-                <p className="text-xs text-ink-muted mt-1">
-                  Evidencia forense inmutable de términos, fechas de vigencia y custodia de datos por usuario.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative w-full sm:w-64">
-                  <Search aria-hidden="true" className="w-4 h-4 text-ink-muted absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por alumno o IP..."
-                    aria-label="Buscar firmas por alumno o IP"
-                    value={contractSearch}
-                    onChange={(e) => {
-                      setContractSearch(e.target.value);
-                      loadContracts(e.target.value);
-                    }}
-                    className="w-full bg-surface border border-line text-ink text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-brand-blue"
-                  />
-                </div>
-                <button
-                  onClick={() => loadContracts(contractSearch)}
-                  className="p-2 bg-surface border border-line hover:border-line-strong text-ink-soft rounded-xl transition-colors shrink-0"
-                  title="Recargar firmas"
-                >
-                  <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loadingContracts ? 'animate-spin text-brand-blue' : ''}`} />
-                </button>
-              </div>
-            </div>
-
-            {loadingContracts ? (
-              <div className="py-16 text-center text-ink-faint flex flex-col items-center justify-center gap-2">
-                <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin text-brand-blue" />
-                <span className="text-xs">Consultando evidencias en base de datos...</span>
-              </div>
-            ) : contractSignatures.length === 0 ? (
-              <div className="py-16 text-center text-ink-faint text-xs bg-surface/50 border border-dashed border-line rounded-xl">
-                No se encontraron firmas de contratos registradas.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-xs text-ink-soft">
-                  <thead className="bg-surface text-ink-muted uppercase font-semibold text-micro tracking-wider border-b border-line">
-                    <tr>
-                      <th className="p-3">Alumno</th>
-                      <th className="p-3">Fecha Firma</th>
-                      <th className="p-3">Vigencia Acceso</th>
-                      <th className="p-3">Custodia Datos</th>
-                      <th className="p-3">IP Origen</th>
-                      <th className="p-3">Estado</th>
-                      <th className="p-3 text-right">Evidencia</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {contractSignatures.map((sig) => (
-                      <tr key={sig.id} className="hover:bg-elevated/50 transition-colors">
-                        <td className="p-3">
-                          <div className="flex items-center gap-2.5">
-                            <img
-                              src={avatarSrc(sig.userAvatarUrl)}
-                              alt=""
-                              className="w-7 h-7 rounded-full bg-raised object-cover shrink-0"
-                            />
-                            <div>
-                              <div className="font-semibold text-ink">{sig.userName}</div>
-                              <div className="text-[11px] text-ink-faint font-mono">{sig.userEmail}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3 font-mono text-ink-muted text-[11px]">
-                          {new Date(sig.signedAt).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="p-3 text-[11px]">
-                          <span className="text-ink-soft">
-                            {new Date(sig.startDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
-                          </span>
-                          {' → '}
-                          <span className="text-ink-muted font-medium">
-                            {new Date(sig.endDate).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
-                          </span>
-                        </td>
-                        <td className="p-3 text-[11px] text-brand-violet-light">
-                          {new Date(sig.dataRetentionUntil).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="p-3 font-mono text-[11px] text-ink-muted">
-                          {sig.ipAddress}
-                        </td>
-                        <td className="p-3">
-                          {sig.status === 'VIGENTE' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-success/10 text-success-light border border-success/20">
-                              <CheckCircle2 aria-hidden="true" className="w-3 h-3" /> Vigente
-                            </span>
-                          )}
-                          {sig.status === 'POR_VENCER' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-warning/10 text-warning-light border border-warning/20">
-                              <AlertTriangle aria-hidden="true" className="w-3 h-3" /> Por Vencer
-                            </span>
-                          )}
-                          {sig.status === 'EXPIRADO' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-semibold bg-danger/10 text-danger-light border border-danger/20">
-                              <XCircle aria-hidden="true" className="w-3 h-3" /> Expirado
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => setSelectedAuditSignature(sig)}
-                            className="p-1.5 rounded-lg bg-brand-blue/10 hover:bg-brand-blue/20 text-brand-blue border border-brand-blue/20 transition-colors inline-flex items-center gap-1 text-[11px] font-medium"
-                          >
-                            <Eye aria-hidden="true" className="w-3.5 h-3.5" />
-                            <span>Ver Acta</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Detalle y Acta Forense de Firma */}
-      {selectedAuditSignature && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div role="dialog" aria-modal="true" aria-labelledby="contract-audit-title" className="bg-surface border border-line-strong/80 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl p-6 text-xs text-ink-soft space-y-4">
-            <div className="flex items-center justify-between border-b border-line pb-3">
-              <div className="flex items-center gap-2">
-                <FileCheck aria-hidden="true" className="w-5 h-5 text-brand-blue" />
-                <h3 id="contract-audit-title" className="text-base font-bold text-ink">Acta Digital de Firma y Consentimiento</h3>
-              </div>
-              <button
-                onClick={() => setSelectedAuditSignature(null)}
-                aria-label="Cerrar acta"
-                className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2 bg-surface p-4 rounded-xl border border-line font-mono text-[11px]">
-              <div><strong className="text-ink-muted">ID Registro:</strong> {selectedAuditSignature.id}</div>
-              <div><strong className="text-ink-muted">Titular:</strong> {selectedAuditSignature.userName} ({selectedAuditSignature.userEmail})</div>
-              <div><strong className="text-ink-muted">Fecha y Hora UTC:</strong> {new Date(selectedAuditSignature.signedAt).toISOString()}</div>
-              <div><strong className="text-ink-muted">IP de Firma:</strong> {selectedAuditSignature.ipAddress}</div>
-              <div><strong className="text-ink-muted">SHA-256 Hash:</strong> <span className="text-brand-blue break-all">{selectedAuditSignature.contractHash}</span></div>
-              <div className="pt-2 border-t border-line/60 text-ink-muted break-all text-micro">
-                <strong>User-Agent:</strong> {selectedAuditSignature.userAgent}
-              </div>
-            </div>
-
-            <div className="space-y-1 text-ink-soft text-[11px]">
-              <div className="flex items-center gap-1.5 text-success-light">
-                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Términos y Condiciones Generales Aceptados
-              </div>
-              <div className="flex items-center gap-1.5 text-success-light">
-                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Política de Privacidad Aceptada
-              </div>
-              <div className="flex items-center gap-1.5 text-success-light">
-                <Check aria-hidden="true" className="w-3.5 h-3.5" /> Custodia de Datos Personales y Progreso (24 meses)
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setSelectedAuditSignature(null)}
-                className="px-4 py-2 bg-raised hover:bg-elevated text-ink font-medium rounded-xl transition-colors"
-              >
-                Cerrar Acta
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminSignatureSheet signature={selectedAuditSignature} onClose={() => setSelectedAuditSignature(null)} />
 
       {/* Modal para Asignar Cursos a un Mentor */}
       {selectedMentorForCourses && (

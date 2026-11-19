@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { AdminSearchField, FilterMenu, ActiveFilters, Pager } from './AdminListKit';
 import {
   BookOpen,
   Plus,
@@ -19,6 +20,7 @@ import {
   EyeOff,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Layers,
   Play,
   Pencil,
@@ -36,12 +38,17 @@ import {
   AlertTriangle,
   Users,
   UsersRound,
+  LockKeyhole,
+  LockKeyholeOpen,
   List,
   LayoutGrid,
+  ArrowUpRight,
+  FileText,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
 import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
+import { CourseCardDescription } from './CourseCardDescription';
 import { Course, Module, VideoDriveLink, DriveVideoFile, QuizQuestion, User } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
 import { syncModuleQuizzes, getModuleQuestions } from '../plugins/QuizzesPlugin';
@@ -50,6 +57,8 @@ interface CourseManagerViewProps {
   currentUser?: User;
   onRefreshData: () => void;
   disableAnimation?: boolean;
+  /** Abre la pestaña de Recursos desde el selector Catálogo | Recursos. */
+  onOpenResources?: (courseId?: string) => void;
 }
 
 import {
@@ -89,6 +98,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   currentUser,
   onRefreshData,
   disableAnimation = false,
+  onOpenResources,
 }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
@@ -104,13 +114,22 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const deleteRef = useRef<HTMLDialogElement>(null);
   const unpublishRef = useRef<HTMLDialogElement>(null);
   const [unpublishTarget, setUnpublishTarget] = useState<Course | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'cards'>(() => {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  const [storedViewMode, setViewMode] = useState<'list' | 'cards'>(() => {
     try {
       return localStorage.getItem(VIEW_MODE_KEY) === 'cards' ? 'cards' : 'list';
     } catch {
       return 'list';
     }
   });
+  // En móvil solo hay tarjetas; la preferencia guardada de escritorio no se pisa.
+  const viewMode = isMobile ? 'cards' : storedViewMode;
   const changeViewMode = (mode: 'list' | 'cards') => {
     setViewMode(mode);
     try {
@@ -120,13 +139,21 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     }
   };
   const [courseQuery, setCourseQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'published' | 'draft'>('ALL');
+  const [accessFilter, setAccessFilter] = useState<'ALL' | 'members' | 'assigned'>('ALL');
+  const [priceFilter, setPriceFilter] = useState<'ALL' | 'free' | 'paid'>('ALL');
+  const [catFilter, setCatFilter] = useState('ALL');
+  const [coursePage, setCoursePage] = useState(1);
+  const [openModules, setOpenModules] = useState<Set<string>>(new Set());
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [savingCourse, setSavingCourse] = useState(false);
   const [generatingCover, setGeneratingCover] = useState(false);
 
   // Temario
-  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
+  const [temarioCourseId, setTemarioCourseId] = useState<string | null>(null);
+  const temarioCourse = courses.find((c) => c.id === temarioCourseId);
+  const temarioRef = useRef<HTMLDialogElement>(null);
+  const mentorsRef = useRef<HTMLDialogElement>(null);
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editingModuleTitle, setEditingModuleTitle] = useState('');
@@ -159,6 +186,19 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const [loadingCourseMentors, setLoadingCourseMentors] = useState<boolean>(false);
   const [savingCourseMentors, setSavingCourseMentors] = useState<boolean>(false);
   const [courseMentorsNotice, setCourseMentorsNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const d = temarioRef.current;
+    if (!d) return;
+    if (temarioCourseId && !d.open) d.showModal();
+    if (!temarioCourseId && d.open) d.close();
+  }, [temarioCourseId]);
+  useEffect(() => {
+    const d = mentorsRef.current;
+    if (!d) return;
+    if (mentorModalCourse && !d.open) d.showModal();
+    if (!mentorModalCourse && d.open) d.close();
+  }, [mentorModalCourse]);
 
   const handleOpenCourseMentors = async (targetCourse: Course) => {
     setMentorModalCourse(targetCourse);
@@ -403,11 +443,11 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     setDriveError('');
   };
 
-  const searchDrive = async () => {
+  const searchDrive = async (query = driveQuery) => {
     setDriveLoading(true);
     setDriveError('');
     try {
-      const res = await api.searchDriveVideos(driveQuery.trim() || undefined);
+      const res = await api.searchDriveVideos(query.trim() || undefined);
       setDriveResults(res.videos || []);
       setDriveIsDemo(Boolean(res.isDemo));
       if (!res.videos || res.videos.length === 0) {
@@ -479,7 +519,6 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       if (deleteTarget.type === 'course') {
         setBusyId(deleteTarget.id);
         await api.deleteCourse(deleteTarget.id, force);
-        if (expandedCourseId === deleteTarget.id) setExpandedCourseId(null);
         if (editingCourseId === deleteTarget.id) resetForm();
         flash(force ? 'Curso forzado y eliminado por completo.' : 'Curso eliminado.');
       } else if (deleteTarget.type === 'module') {
@@ -518,17 +557,41 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     }
   }, [deleteTarget, unpublishTarget]);
 
-  const statusCounts = {
-    all: courses.length,
-    published: courses.filter((c) => c.published).length,
-    draft: courses.filter((c) => !c.published).length,
-  };
+  useEffect(() => {
+    if (!temarioCourseId) return;
+    const c = courses.find((x) => x.id === temarioCourseId);
+    const first = c ? [...c.modules].sort((a, b) => a.order - b.order)[0] : undefined;
+    setOpenModules(new Set(first ? [first.id] : []));
+  }, [temarioCourseId]);
+  const toggleModule = (id: string) => setOpenModules((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
   const q = courseQuery.trim().toLowerCase();
-  const visibleCourses = courses.filter(
-    (c) =>
-      (statusFilter === 'all' || (statusFilter === 'published') === c.published) &&
-      (!q || `${c.title} ${c.category}`.toLowerCase().includes(q)),
-  );
+  type Facets = { status: string; access: string; price: string; cat: string };
+  const cur: Facets = { status: statusFilter, access: accessFilter, price: priceFilter, cat: catFilter };
+  const matches = (c: Course, f: Facets) =>
+    (!q || `${c.title} ${c.category}`.toLowerCase().includes(q)) &&
+    (f.status === 'ALL' || (f.status === 'published') === c.published) &&
+    (f.access === 'ALL' || (f.access === 'members') === !!c.openToAllRegistered) &&
+    (f.price === 'ALL' || (f.price === 'paid') === (c.price > 0)) &&
+    (f.cat === 'ALL' || c.category === f.cat);
+  // Cada contador respeta los demás filtros: es lo que verás al elegir esa opción.
+  const countWith = (patch: Partial<Facets>) => courses.filter((c) => matches(c, { ...cur, ...patch })).length;
+  const categories = [...new Set(courses.map((c) => c.category).filter(Boolean))].sort();
+  const visibleCourses = courses.filter((c) => matches(c, cur));
+  const resourceCount = courses.reduce((total, course) =>
+    total + (course.resources?.length || 0) + course.modules.reduce((moduleTotal, module) => moduleTotal + (module.resources?.length || 0), 0), 0);
+  const pageSize = viewMode === 'list' ? 10 : 12;
+  const curPage = Math.min(coursePage, Math.max(1, Math.ceil(visibleCourses.length / pageSize)));
+  const pageCourses = visibleCourses.slice((curPage - 1) * pageSize, curPage * pageSize);
+  const resetPage = () => setCoursePage(1);
+  const clearCourseFilters = () => { setCourseQuery(''); setStatusFilter('ALL'); setAccessFilter('ALL'); setPriceFilter('ALL'); setCatFilter('ALL'); resetPage(); };
+  const courseChips = [
+    ...(statusFilter !== 'ALL' ? [{ key: 'st', text: statusFilter === 'published' ? 'Publicado' : 'Borrador', onRemove: () => { setStatusFilter('ALL'); resetPage(); } }] : []),
+    ...(accessFilter !== 'ALL' ? [{ key: 'ac', text: accessFilter === 'members' ? 'Acceso para miembros' : 'Solo asignados', onRemove: () => { setAccessFilter('ALL'); resetPage(); } }] : []),
+    ...(priceFilter !== 'ALL' ? [{ key: 'pr', text: priceFilter === 'free' ? 'Gratuito' : 'De pago', onRemove: () => { setPriceFilter('ALL'); resetPage(); } }] : []),
+    ...(catFilter !== 'ALL' ? [{ key: 'ct', text: catFilter, onRemove: () => { setCatFilter('ALL'); resetPage(); } }] : []),
+    ...(q ? [{ key: 'q', text: `«${courseQuery.trim()}»`, onRemove: () => { setCourseQuery(''); resetPage(); } }] : []),
+  ];
 
   return (
     <div data-mentor-ui="modern" className="admin-courses-root">
@@ -571,15 +634,29 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         </div>
       </div>
 
+      {onOpenResources && (
+        <div className="admin-people-top">
+          <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
+            <button type="button" aria-pressed="true">
+              <span>Catálogo</span>
+              <span className="mentor-publication-count">({courses.length})</span>
+            </button>
+            <button type="button" aria-pressed="false" onClick={() => onOpenResources()}>
+              <span>Recursos</span>
+              <span className="mentor-publication-count">({resourceCount})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {creationTab === 'youtube' && (
         <div className="admin-courses-wizard">
           <YouTubeCourseBuilder
             currentUser={currentUser}
-            onCourseCreated={(newId) => {
+            onCourseCreated={() => {
               flash('¡Curso creado exitosamente con IA desde YouTube!');
               refreshAll();
               setCreationTab('manual');
-              setExpandedCourseId(newId);
             }}
             onCancel={() => setCreationTab('manual')}
           />
@@ -612,7 +689,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             </button>
           </header>
 
-          <form onSubmit={handleSubmitCourse} className="admin-course-form">
+          <div className="admin-course-sheet">
+          <div className="admin-course-sheet__scroll">
+          <form id="admin-course-form" onSubmit={handleSubmitCourse} className="admin-course-form">
             <div className="admin-course-fields">
             <div className="meeting-field">
               <label htmlFor="admin-course-title">Título del curso</label>
@@ -683,14 +762,18 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               </div>
             </div>
             <div className="meeting-field">
-              <label htmlFor="admin-course-cover">Imagen de portada</label>
+              <label htmlFor="admin-course-cover">URL de la portada</label>
               <input
                 id="admin-course-cover"
                 type="text"
-                placeholder="Vacía: se genera una portada con IA y el logo"
+                inputMode="url"
+                autoComplete="url"
+                placeholder="https://ejemplo.com/portada.jpg"
                 value={form.coverImage}
                 onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+                aria-describedby="admin-course-cover-hint"
               />
+              <small id="admin-course-cover-hint" className="admin-sheet-note">Pega una URL o genera una portada con IA. Puedes dejarla vacía.</small>
               <div className="admin-course-cover-tools">
                 <button
                   type="button"
@@ -747,70 +830,67 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
             </div>
 
-            <div className="mentee-sheet__foot">
-              {editingCourseId && (
-                <button
-                  type="button"
-                  className="mentor-course-control admin-course-form__delete"
-                  data-danger="true"
-                  onClick={() => {
-                    const target = courses.find((c) => c.id === editingCourseId);
-                    resetForm();
-                    if (target) handleDeleteCourse(target);
-                  }}
-                >
-                  <Trash2 aria-hidden="true" />
-                  Eliminar curso
-                </button>
-              )}
-              <button type="button" className="mentor-course-control" onClick={resetForm}>Cancelar</button>
-              <button type="submit" disabled={savingCourse} className="mentor-course-control mentor-course-publish">
-                {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
-                {editingCourseId ? 'Guardar cambios' : 'Crear curso'}
-              </button>
-            </div>
           </form>
+          </div>
+          <div className="mentee-sheet__foot admin-course-form__foot">
+            <button type="submit" form="admin-course-form" disabled={savingCourse} className="mentor-course-control mentor-course-publish admin-course-form__submit">
+              {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
+              {editingCourseId ? 'Guardar cambios' : 'Crear curso'}
+            </button>
+            <button type="button" className="mentor-course-control admin-course-form__cancel" onClick={resetForm}>Cancelar</button>
+            {editingCourseId && (
+              <button
+                type="button"
+                className="mentor-course-control"
+                data-danger="true"
+                onClick={() => {
+                  const target = courses.find((c) => c.id === editingCourseId);
+                  resetForm();
+                  if (target) handleDeleteCourse(target);
+                }}
+              >
+                <Trash2 aria-hidden="true" />
+                Eliminar curso
+              </button>
+            )}
+          </div>
+          </div>
         </div>
       </dialog>
 
       {/* Catálogo */}
       <div className="mentor-course-toolbar">
-        <label className="mentor-mentee-search">
-          <Search aria-hidden="true" />
-          <input
-            type="search"
-            value={courseQuery}
-            onChange={(e) => setCourseQuery(e.target.value)}
-            placeholder="Buscar curso"
-            aria-label="Buscar curso"
-          />
-        </label>
-        <div className="mentor-publication-filters" role="group" aria-label="Filtrar por publicación">
-          {(['all', 'published', 'draft'] as const).map((filter) => (
-            <button key={filter} type="button" aria-pressed={statusFilter === filter} onClick={() => setStatusFilter(filter)}>
-              <span>{filter === 'all' ? 'Todos' : filter === 'published' ? 'Publicados' : 'Borradores'}</span>
-              <span className="mentor-publication-count">{statusCounts[filter]}</span>
-            </button>
-          ))}
-        </div>
-        <span className="mentor-course-filter-result" role="status" aria-live="polite">
-          {visibleCourses.length} de {courses.length} cursos
-        </span>
-        <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista del catálogo">
-          <button type="button" aria-pressed={viewMode === 'list'} onClick={() => changeViewMode('list')}>
+        <AdminSearchField value={courseQuery} onChange={(value) => { setCourseQuery(value); resetPage(); }} placeholder="Buscar curso" label="Buscar curso" />
+        <FilterMenu
+          groups={[
+            { value: statusFilter, onChange: (v) => { setStatusFilter(v as typeof statusFilter); resetPage(); }, options: [
+              { value: 'published', label: 'Publicado', count: countWith({ status: 'published' }) },
+              { value: 'draft', label: 'Borrador', count: countWith({ status: 'draft' }) },
+            ] },
+            { value: accessFilter, onChange: (v) => { setAccessFilter(v as typeof accessFilter); resetPage(); }, options: [
+              { value: 'members', label: 'Acceso para miembros', count: countWith({ access: 'members' }) },
+              { value: 'assigned', label: 'Solo asignados', count: countWith({ access: 'assigned' }) },
+            ] },
+            { value: priceFilter, onChange: (v) => { setPriceFilter(v as typeof priceFilter); resetPage(); }, options: [
+              { value: 'free', label: 'Gratuito', count: countWith({ price: 'free' }) },
+              { value: 'paid', label: 'De pago', count: countWith({ price: 'paid' }) },
+            ] },
+            ...(categories.length > 1 ? [{ value: catFilter, onChange: (v: string) => { setCatFilter(v); resetPage(); }, options: categories.map((c) => ({ value: c, label: c, count: countWith({ cat: c }) })) }] : []),
+          ]}
+        />
+        {!isMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista del catálogo">
+          <button type="button" aria-pressed={viewMode === 'list'} onClick={() => { changeViewMode('list'); resetPage(); }}>
             <List aria-hidden="true" />
             <span>Lista</span>
           </button>
-          <button type="button" aria-pressed={viewMode === 'cards'} onClick={() => changeViewMode('cards')}>
+          <button type="button" aria-pressed={viewMode === 'cards'} onClick={() => { changeViewMode('cards'); resetPage(); }}>
             <LayoutGrid aria-hidden="true" />
             <span>Tarjetas</span>
           </button>
-        </div>
-        <button type="button" className="mentor-course-control" onClick={loadCourses} aria-label="Actualizar catálogo">
-          <RefreshCw aria-hidden="true" className={loading ? 'animate-spin' : ''} />
-          Actualizar
-        </button>
+        </div>}
       </div>
+
+      <ActiveFilters chips={courseChips} shown={visibleCourses.length} total={courses.length} noun="cursos" onClear={clearCourseFilters} />
 
       <div>
         {loading && courses.length === 0 ? (
@@ -830,8 +910,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           </div>
         ) : (
           <div className="admin-courses-list mentor-courses-grid" data-view={viewMode}>
-            {visibleCourses.map((course) => {
-              const isExpanded = expandedCourseId === course.id;
+            {pageCourses.map((course) => {
               const modules = [...course.modules].sort((a, b) => a.order - b.order);
 
               return (
@@ -839,7 +918,6 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   key={course.id}
                   className="mentor-course-card admin-course-card"
                   data-view={viewMode}
-                  data-expanded={isExpanded || undefined}
                   aria-labelledby={`admin-course-${course.id}`}
                 >
                   {course.coverImage ? (
@@ -859,12 +937,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
                     <div className="mentor-course-card__body">
                       <h3 id={`admin-course-${course.id}`} className="mentor-course-card__title">{course.title}</h3>
-                      {course.description && <p className="mentor-course-card__description">{course.description}</p>}
+                      {course.description && <CourseCardDescription text={course.description} />}
                     </div>
 
                     <div className="admin-course-card__facts">
+                      {onOpenResources && <button type="button" className="admin-course-card__resources" onClick={() => onOpenResources(course.id)} aria-label={`Ver recursos de ${course.title}`}><FileText aria-hidden="true" /><span>{(course.resources?.length || 0) + modules.reduce((count, module) => count + (module.resources?.length || 0), 0)} recursos</span><ArrowUpRight aria-hidden="true" /></button>}
                       <span className="mentor-course-access-label" data-access={course.openToAllRegistered ? 'members' : 'assigned'}>
-                        {course.openToAllRegistered ? <Globe aria-hidden="true" /> : <Lock aria-hidden="true" />}
+                        {course.openToAllRegistered ? <LockKeyholeOpen aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}
                         {course.openToAllRegistered ? 'Acceso para miembros' : 'Solo asignados'}
                       </span>
                       <div className="mentor-course-card__meta">
@@ -886,9 +965,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
+                      onClick={() => setTemarioCourseId(course.id)}
                       className="mentor-course-control"
-                      aria-expanded={isExpanded}
+                      aria-haspopup="dialog"
                       aria-label={`Temario de ${course.title}`}
                     >
                       <Layers aria-hidden="true" /> <span>Temario</span>
@@ -906,7 +985,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       onClick={() => (course.published ? setUnpublishTarget(course) : handleTogglePublished(course))}
                       disabled={busyId === course.id}
                       aria-busy={busyId === course.id}
-                      className={`mentor-course-control ${course.published ? '' : 'mentor-course-publish'}`}
+                      className={`mentor-course-control admin-course-card__publish ${course.published ? '' : 'mentor-course-publish'}`}
                       aria-label={`${course.published ? 'Pasar a borrador' : 'Publicar en catálogo'}: ${course.title}`}
                     >
                       {busyId === course.id ? (
@@ -921,347 +1000,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   </div>
 
 
-                  {/* Temario del curso */}
-                  {isExpanded && (
-                    <div className="border-t border-[#2d2d44] p-4 space-y-3 bg-[#141420]/40">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Título del nuevo módulo"
-                          value={newModuleTitle}
-                          onChange={(e) => setNewModuleTitle(e.target.value)}
-                          className="flex-1 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                        />
-                        <button
-                          onClick={() => handleCreateModule(course.id)}
-                          className="btn-brand-primary py-2 px-3 text-xs font-bold flex items-center gap-1.5"
-                        >
-                          <Plus className="w-4 h-4" /> Módulo
-                        </button>
-                      </div>
-
-                      {modules.length === 0 ? (
-                        <p className="text-xs text-slate-500 py-3 text-center">
-                          Este curso todavía no tiene módulos.
-                        </p>
-                      ) : (
-                        modules.map((module, moduleIndex) => {
-                          const videos = [...module.videos].sort((a, b) => a.order - b.order);
-
-                          return (
-                            <div
-                              key={module.id}
-                              className="rounded-xl bg-[#0a0a0f] border border-[#2d2d44] p-3 space-y-2"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                {editingModuleId === module.id ? (
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <input
-                                      type="text"
-                                      value={editingModuleTitle}
-                                      onChange={(e) => setEditingModuleTitle(e.target.value)}
-                                      className="flex-1 bg-[#141420] border border-[#2d2d44] rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                      autoFocus
-                                    />
-                                    <button
-                                      onClick={() => handleRenameModule(module.id)}
-                                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
-                                    >
-                                      <Save className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingModuleId(null)}
-                                      className="p-1.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-400"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-bold text-white truncate">
-                                        {module.order}. {module.title}
-                                      </p>
-                                      <span className="text-[10px] text-slate-500">
-                                        {videos.length} video(s)
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        onClick={() => handleMoveModule(modules, moduleIndex, -1)}
-                                        disabled={moduleIndex === 0}
-                                        className="p-1 rounded-lg bg-[#141420] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                        title="Subir"
-                                      >
-                                        <ChevronUp className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleMoveModule(modules, moduleIndex, 1)}
-                                        disabled={moduleIndex === modules.length - 1}
-                                        className="p-1 rounded-lg bg-[#141420] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                        title="Bajar"
-                                      >
-                                        <ChevronDown className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingModuleId(module.id);
-                                          setEditingModuleTitle(module.title);
-                                        }}
-                                        className="p-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400"
-                                        title="Renombrar"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setQuizModule(module)}
-                                        className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer"
-                                        title="Gestionar Examen con IA"
-                                      >
-                                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                        <span>Examen IA</span>
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          resetVideoForm();
-                                          setVideoModuleId(videoModuleId === module.id ? null : module.id);
-                                        }}
-                                        className="p-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
-                                        title="Agregar video"
-                                      >
-                                        <Plus className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteModule(module)}
-                                        className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                                        title="Eliminar módulo"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Alta de video */}
-                              {videoModuleId === module.id && (
-                                <form
-                                  onSubmit={(e) => handleCreateVideo(e, module.id)}
-                                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-end p-2 rounded-lg bg-[#141420] border border-[#2d2d44]"
-                                >
-                                  <div className="md:col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      Título del video
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={videoTitle}
-                                      onChange={(e) => setVideoTitle(e.target.value)}
-                                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                      required
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      Duración
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="20:00"
-                                      value={videoDuration}
-                                      onChange={(e) => setVideoDuration(e.target.value)}
-                                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      Archivo de Google Drive
-                                    </label>
-                                    <div className="flex gap-1">
-                                      <input
-                                        type="text"
-                                        placeholder="Pega el enlace de Drive o su ID"
-                                        value={videoDriveId}
-                                        onChange={(e) => setVideoDriveId(e.target.value)}
-                                        className="flex-1 min-w-0 bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const opening = !driveOpen;
-                                          setDriveOpen(opening);
-                                          if (opening && driveResults.length === 0) searchDrive();
-                                        }}
-                                        className="shrink-0 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                                        title="Buscar en Google Drive"
-                                      >
-                                        <HardDrive className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Selector de Google Drive */}
-                                  {driveOpen && (
-                                    <div className="col-span-full rounded-lg bg-[#0a0a0f] border border-[#2d2d44] p-2 space-y-2">
-                                      <div className="flex gap-1">
-                                        <input
-                                          type="text"
-                                          placeholder="Buscar por nombre en Google Drive…"
-                                          value={driveQuery}
-                                          onChange={(e) => setDriveQuery(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              e.preventDefault();
-                                              searchDrive();
-                                            }
-                                          }}
-                                          className="flex-1 bg-[#141420] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={searchDrive}
-                                          disabled={driveLoading}
-                                          className="px-2.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 disabled:opacity-50"
-                                        >
-                                          {driveLoading ? (
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                          ) : (
-                                            <Search className="w-3.5 h-3.5" />
-                                          )}
-                                        </button>
-                                      </div>
-
-                                      {driveIsDemo && (
-                                        <p className="text-[10px] text-amber-400 leading-snug">
-                                          Google Drive no está configurado: estos resultados son de
-                                          demostración y sus identificadores no existen, así que el
-                                          reproductor quedará vacío. Pega el enlace real del vídeo en
-                                          el campo de arriba, o configura las credenciales de Drive.
-                                        </p>
-                                      )}
-
-                                      {driveError && (
-                                        <p className="text-[10px] text-amber-400">{driveError}</p>
-                                      )}
-
-                                      <div className="max-h-52 overflow-y-auto space-y-1">
-                                        {driveResults.map((file) => (
-                                          <button
-                                            type="button"
-                                            key={file.id}
-                                            onClick={() => pickDriveVideo(file)}
-                                            className={`w-full flex items-center gap-2 p-1.5 rounded-lg border text-left transition-colors ${
-                                              videoDriveId === file.id
-                                                ? 'bg-cyan-500/10 border-cyan-500/40'
-                                                : 'bg-[#141420] border-[#2d2d44] hover:border-[#06b6d4]'
-                                            }`}
-                                          >
-                                            {file.thumbnailLink ? (
-                                              <img
-                                                src={file.thumbnailLink}
-                                                alt=""
-                                                className="w-12 h-8 rounded object-cover shrink-0"
-                                              />
-                                            ) : (
-                                              <div className="w-12 h-8 rounded bg-[#0a0a0f] border border-[#2d2d44] flex items-center justify-center shrink-0">
-                                                <Play className="w-3 h-3 text-slate-500" />
-                                              </div>
-                                            )}
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-[11px] text-slate-200 truncate">{file.name}</p>
-                                              <span className="text-[9px] text-slate-500 font-mono">
-                                                {file.duration || 'sin duración'} • {file.id.slice(0, 14)}…
-                                              </span>
-                                            </div>
-                                            {videoDriveId === file.id && (
-                                              <Link2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                                            )}
-                                          </button>
-                                        ))}
-                                        {!driveLoading && driveResults.length === 0 && !driveError && (
-                                          <p className="text-[10px] text-slate-500 text-center py-3">
-                                            Busca un video para enlazarlo.
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  <div className="col-span-full flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-[10px] text-slate-500 truncate">
-                                      {videoDriveId
-                                        ? `Enlazado a Drive: ${videoDriveId}`
-                                        : 'Sin archivo de Drive: se generará un enlace de marcador.'}
-                                    </span>
-                                    <button
-                                      type="submit"
-                                      className="btn-brand-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1.5 shrink-0"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" /> Agregar Video
-                                    </button>
-                                  </div>
-                                </form>
-                              )}
-
-                              {/* Videos del módulo */}
-                              {videos.length > 0 && (
-                                <div className="space-y-1">
-                                  {videos.map((video, videoIndex) => (
-                                    <div
-                                      key={video.id}
-                                      className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44]"
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <Play className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                                        <span className="text-[11px] text-slate-300 truncate">
-                                          {video.title}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 shrink-0">
-                                          {video.duration}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          onClick={() => handleMoveVideo(videos, videoIndex, -1)}
-                                          disabled={videoIndex === 0}
-                                          className="p-1 rounded bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                          title="Subir"
-                                        >
-                                          <ChevronUp className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleMoveVideo(videos, videoIndex, 1)}
-                                          disabled={videoIndex === videos.length - 1}
-                                          className="p-1 rounded bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                          title="Bajar"
-                                        >
-                                          <ChevronDown className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteVideo(video)}
-                                          className="p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                                          title="Eliminar video"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
                 </article>
               );
             })}
           </div>
         )}
       </div>
+
+      <Pager total={visibleCourses.length} size={pageSize} page={curPage} onPage={setCoursePage} noun="cursos" />
 
       {quizModule && (
         <QuizManagerModal
@@ -1357,127 +1103,284 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         )}
       </dialog>
 
-      {/* Modal para Asignar Mentores a un Curso */}
-      {mentorModalCourse && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !savingCourseMentors) {
-              setMentorModalCourse(null);
-            }
-          }}
-        >
-          <div className="bg-[#0e0e18] border border-[#2d2d44] rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-brand-cyan/10 text-brand-cyan flex items-center justify-center">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-white">
-                    Mentores a Cargo del Curso
-                  </h3>
-                  <p className="text-xs text-slate-400 truncate max-w-sm">
-                    {mentorModalCourse.title}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={savingCourseMentors}
-                onClick={() => setMentorModalCourse(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                ✕
-              </button>
+      {/* Mentores del curso en hoja lateral */}
+      <dialog
+        ref={mentorsRef}
+        className="mentee-sheet"
+        aria-labelledby="admin-course-mentors-title"
+        onCancel={(e) => { e.preventDefault(); if (!savingCourseMentors) setMentorModalCourse(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget && !savingCourseMentors) setMentorModalCourse(null); }}
+      >
+        <div className="mentee-sheet__body">
+          <header className="mentee-sheet__head">
+            <span className="mentee-sheet__icon" aria-hidden="true"><UsersRound /></span>
+            <div className="mentor-mentee-id">
+              <strong id="admin-course-mentors-title">Mentores del curso</strong>
+              <span>{mentorModalCourse?.title}</span>
             </div>
+            <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentee-sheet__close" aria-label="Cerrar">
+              <X aria-hidden="true" />
+            </button>
+          </header>
+          <div className="admin-course-sheet">
+            <div className="admin-course-sheet__scroll">
+              <p className="admin-sheet-note">Elige qué mentores pueden gestionar alumnos, tutorías y evaluaciones en este curso.</p>
+              {courseMentorsNotice && (
+                <p className="admin-sheet-note" role="status"><CheckCircle2 aria-hidden="true" /> {courseMentorsNotice}</p>
+              )}
+              {loadingCourseMentors ? (
+                <p className="admin-sheet-note"><Loader2 aria-hidden="true" className="animate-spin" /> Cargando mentores…</p>
+              ) : availableMentors.length === 0 ? (
+                <p className="admin-sheet-note">No hay usuarios con rol Mentor o Administrador registrados.</p>
+              ) : (
+                availableMentors.map((m) => (
+                  <label key={m.id} className="admin-course-check">
+                    <input type="checkbox" checked={assignedMentorIds.includes(m.id)} onChange={() => handleToggleCourseMentor(m.id)} />
+                    <span>
+                      <strong>{m.name}</strong>
+                      <small>{m.email} · {m.role}</small>
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="mentee-sheet__foot admin-course-form__foot">
+              <button type="button" disabled={savingCourseMentors || loadingCourseMentors} onClick={handleSaveCourseMentors} className="mentor-course-control mentor-course-publish admin-course-form__submit">
+                {savingCourseMentors ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
+                Guardar mentores ({assignedMentorIds.length})
+              </button>
+              <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentor-course-control admin-course-form__cancel">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </dialog>
 
-            <p className="text-xs text-slate-300">
-              Selecciona qué mentores tienen permiso para gestionar alumnos, tutorías y evaluaciones en este curso.
-            </p>
+      {/* Temario del curso en hoja lateral */}
+      <dialog
+        ref={temarioRef}
+        className="mentee-sheet"
+        aria-labelledby="admin-course-temario-title"
+        onCancel={(e) => { e.preventDefault(); setTemarioCourseId(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setTemarioCourseId(null); }}
+      >
+        <div className="mentee-sheet__body">
+          <header className="mentee-sheet__head">
+            <span className="mentee-sheet__icon" aria-hidden="true"><Layers /></span>
+            <div className="mentor-mentee-id">
+              <strong id="admin-course-temario-title">Temario</strong>
+              <span>{temarioCourse?.title}</span>
+            </div>
+            <button type="button" onClick={() => setTemarioCourseId(null)} className="mentee-sheet__close" aria-label="Cerrar">
+              <X aria-hidden="true" />
+            </button>
+          </header>
+          <div className="admin-course-sheet__scroll">
+            {temarioCourse && (() => {
+              const course = temarioCourse;
+              const modules = [...course.modules].sort((a, b) => a.order - b.order);
+              return (
+<div className="tmr">
+                <div className="tmr-add">
+                  <div className="meeting-field">
+                    <label htmlFor="tmr-new-module">Nuevo módulo</label>
+                    <input
+                      id="tmr-new-module"
+                      type="text"
+                      placeholder="Título del módulo"
+                      value={newModuleTitle}
+                      onChange={(e) => setNewModuleTitle(e.target.value)}
+                    />
+                  </div>
+                  <button type="button" onClick={() => handleCreateModule(course.id)} className="mentor-course-control mentor-course-publish">
+                    <Plus aria-hidden="true" /> <span>Agregar módulo</span>
+                  </button>
+                </div>
 
-            {courseMentorsNotice && (
-              <div className="p-3 bg-brand-cyan/10 border border-brand-cyan/30 rounded-xl text-brand-cyan text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> {courseMentorsNotice}
-              </div>
-            )}
-
-            {loadingCourseMentors ? (
-              <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
-                <span className="text-xs">Cargando mentores disponibles...</span>
-              </div>
-            ) : (
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                {availableMentors.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">
-                    No hay usuarios con rol Mentor o Administrador registrados.
-                  </p>
+                {modules.length === 0 ? (
+                  <p className="admin-sheet-note">Este curso todavía no tiene módulos.</p>
                 ) : (
-                  availableMentors.map((m) => {
-                    const isChecked = assignedMentorIds.includes(m.id);
+                  modules.map((module, moduleIndex) => {
+                    const videos = [...module.videos].sort((a, b) => a.order - b.order);
+                    const isOpen = openModules.has(module.id) || videoModuleId === module.id;
+
                     return (
-                      <label
-                        key={m.id}
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                          isChecked
-                            ? 'bg-brand-cyan/10 border-brand-cyan/40 text-white'
-                            : 'bg-[#141424] border-[#2d2d44] text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleCourseMentor(m.id)}
-                            className="w-4 h-4 accent-[#06b6d4] rounded cursor-pointer"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold truncate">{m.name}</p>
-                            <span className="text-[10px] text-slate-500">{m.email} [{m.role}]</span>
+                      <section key={module.id} className="tmr-module" aria-label={module.title}>
+                        {editingModuleId === module.id ? (
+                          <div className="tmr-rename">
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-rename-${module.id}`}>Título del módulo</label>
+                              <input
+                                id={`tmr-rename-${module.id}`}
+                                type="text"
+                                value={editingModuleTitle}
+                                onChange={(e) => setEditingModuleTitle(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
+                            <button type="button" onClick={() => handleRenameModule(module.id)} className="mentor-course-control mentor-course-publish">
+                              <Save aria-hidden="true" /> <span>Guardar</span>
+                            </button>
+                            <button type="button" onClick={() => setEditingModuleId(null)} className="mentor-course-control">
+                              <X aria-hidden="true" /> <span>Cancelar</span>
+                            </button>
                           </div>
-                        </div>
-                        {isChecked && (
-                          <span className="text-[10px] font-mono font-bold text-brand-cyan uppercase ml-2 shrink-0">
-                            Asignado
-                          </span>
+                        ) : (
+                          <>
+                            <button type="button" className="tmr-module__head" aria-expanded={isOpen} onClick={() => toggleModule(module.id)}>
+                              <ChevronRight aria-hidden="true" />
+                              <h4>{module.order}. {module.title}</h4>
+                              <span>{videos.length} {videos.length === 1 ? 'video' : 'videos'}</span>
+                            </button>
+                            {isOpen && <div className="tmr-actions">
+                              <span className="tmr-actions__icons">
+                              <span className="tmr-group">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, -1)} disabled={moduleIndex === 0} aria-label={`Subir módulo ${module.title}`} title="Subir">
+                                <ChevronUp aria-hidden="true" />
+                              </button>
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, 1)} disabled={moduleIndex === modules.length - 1} aria-label={`Bajar módulo ${module.title}`} title="Bajar">
+                                <ChevronDown aria-hidden="true" />
+                              </button>
+                              </span>
+                              <span className="tmr-group">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => { setEditingModuleId(module.id); setEditingModuleTitle(module.title); }} aria-label={`Renombrar módulo ${module.title}`} title="Renombrar">
+                                <Pencil aria-hidden="true" />
+                              </button>
+                              <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteModule(module)} aria-label={`Eliminar módulo ${module.title}`} title="Eliminar módulo">
+                                <Trash2 aria-hidden="true" />
+                              </button>
+                              </span>
+                              </span>
+                              <span className="tmr-actions__main">
+                              <button type="button" className="mentor-course-control" onClick={() => setQuizModule(module)}>
+                                <Sparkles aria-hidden="true" /> <span>Examen IA</span>
+                              </button>
+                              <button type="button" className="mentor-course-control" aria-expanded={videoModuleId === module.id} onClick={() => { resetVideoForm(); setVideoModuleId(videoModuleId === module.id ? null : module.id); }}>
+                                <Plus aria-hidden="true" /> <span>Agregar video</span>
+                              </button>
+                              </span>
+                            </div>}
+                          </>
                         )}
-                      </label>
+
+                        {/* Alta de video */}
+                        {isOpen && videoModuleId === module.id && (
+                          <form onSubmit={(e) => handleCreateVideo(e, module.id)} className="tmr-form">
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-vt-${module.id}`}>Título del video</label>
+                              <input id={`tmr-vt-${module.id}`} type="text" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} required />
+                            </div>
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-vd-${module.id}`}>Duración</label>
+                              <input id={`tmr-vd-${module.id}`} type="text" placeholder="20:00" value={videoDuration} onChange={(e) => setVideoDuration(e.target.value)} />
+                            </div>
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-vg-${module.id}`}>Archivo de Google Drive</label>
+                              <div className="tmr-inline">
+                                <input id={`tmr-vg-${module.id}`} type="text" placeholder="Pega el enlace de Drive o su ID" value={videoDriveId} onChange={(e) => setVideoDriveId(e.target.value)} />
+                                <button
+                                  type="button"
+                                  className="mentor-course-control tmr-icon"
+                                  aria-expanded={driveOpen}
+                                  aria-label="Buscar en Google Drive"
+                                  title="Buscar en Google Drive"
+                                  onClick={() => {
+                                    const opening = !driveOpen;
+                                    setDriveOpen(opening);
+                                    if (opening && driveResults.length === 0) searchDrive();
+                                  }}
+                                >
+                                  <HardDrive aria-hidden="true" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Selector de Google Drive */}
+                            {driveOpen && (
+                              <div className="tmr-drive">
+                                <div className="tmr-inline">
+                                  <AdminSearchField className="tmr-drive-search" value={driveQuery} onChange={(value) => { setDriveQuery(value); if (!value && driveQuery) searchDrive(''); }} placeholder="Buscar por nombre en Google Drive…" label="Buscar en Google Drive" onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); searchDrive(); }
+                                  }} />
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => searchDrive()} disabled={driveLoading} aria-label="Buscar">
+                                    {driveLoading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
+                                  </button>
+                                </div>
+
+                                {driveIsDemo && (
+                                  <p className="tmr-warn">
+                                    Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.
+                                  </p>
+                                )}
+                                {driveError && <p className="tmr-warn">{driveError}</p>}
+
+                                <div className="tmr-drive__list">
+                                  {driveResults.map((file) => (
+                                    <button type="button" key={file.id} onClick={() => pickDriveVideo(file)} className="tmr-drive__item" aria-pressed={videoDriveId === file.id}>
+                                      {file.thumbnailLink ? (
+                                        <img src={file.thumbnailLink} alt="" />
+                                      ) : (
+                                        <span className="tmr-drive__thumb" aria-hidden="true"><Play /></span>
+                                      )}
+                                      <span className="tmr-drive__text">
+                                        <strong>{file.name}</strong>
+                                        <small>{file.duration || 'sin duración'} · {file.id.slice(0, 14)}…</small>
+                                      </span>
+                                      {videoDriveId === file.id && <Link2 aria-hidden="true" />}
+                                    </button>
+                                  ))}
+                                  {!driveLoading && driveResults.length === 0 && !driveError && (
+                                    <p className="admin-sheet-note">Busca un video para enlazarlo.</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            <p className="admin-sheet-note">
+                              {videoDriveId ? `Enlazado a Drive: ${videoDriveId}` : 'Sin archivo de Drive: se generará un enlace de marcador.'}
+                            </p>
+                            <button type="submit" className="mentor-course-control mentor-course-publish">
+                              <Save aria-hidden="true" /> <span>Guardar video</span>
+                            </button>
+                          </form>
+                        )}
+
+                        {/* Videos del módulo */}
+                        {isOpen && videos.length > 0 && (
+                          <ul className="tmr-videos">
+                            {videos.map((video, videoIndex) => (
+                              <li key={video.id} className="tmr-video">
+                                <Play aria-hidden="true" />
+                                <span className="tmr-video__text">
+                                  <strong>{video.title}</strong>
+                                  {video.duration && <small>{video.duration}</small>}
+                                </span>
+                                <span className="tmr-video__actions">
+                                  <span className="tmr-group">
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, -1)} disabled={videoIndex === 0} aria-label={`Subir ${video.title}`} title="Subir">
+                                    <ChevronUp aria-hidden="true" />
+                                  </button>
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, 1)} disabled={videoIndex === videos.length - 1} aria-label={`Bajar ${video.title}`} title="Bajar">
+                                    <ChevronDown aria-hidden="true" />
+                                  </button>
+                                  </span>
+                                  <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteVideo(video)} aria-label={`Eliminar ${video.title}`} title="Eliminar video">
+                                    <Trash2 aria-hidden="true" />
+                                  </button>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
                     );
                   })
                 )}
               </div>
-            )}
-
-            <div className="flex items-center justify-between pt-3 border-t border-[#2d2d44]">
-              <span className="text-xs text-slate-400 font-mono">
-                {assignedMentorIds.length} mentor{assignedMentorIds.length === 1 ? '' : 'es'} asignado{assignedMentorIds.length === 1 ? '' : 's'}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={savingCourseMentors}
-                  onClick={() => setMentorModalCourse(null)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  disabled={savingCourseMentors || loadingCourseMentors}
-                  onClick={handleSaveCourseMentors}
-                  className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
-                >
-                  {savingCourseMentors && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Guardar Mentores</span>
-                </button>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
-      )}
+      </dialog>
     </div>
     </div>
   );
