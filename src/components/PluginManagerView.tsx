@@ -53,7 +53,9 @@ import {
 import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL, getCustomLogoUrl } from '../lib/logoConfig';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
-import { getAutomaticSeasonalTheme, SEASONAL_INFO, type SeasonalMode, type SeasonalTheme } from '../lib/seasonalTheme';
+import { ActiveFilters, FilterMenu, useListView } from './AdminListKit';
+import { PluginConfigSheet } from './PluginConfigSheet';
+import { LayoutGrid, List } from 'lucide-react';
 
 const FIELD_LABELS: Record<string, string> = {
   institutionName: 'Nombre de la Institución',
@@ -65,6 +67,10 @@ const FIELD_LABELS: Record<string, string> = {
   notifyOnCompletion: 'Notificar al completar módulos o cursos',
   passingScore: 'Puntuación mínima de aprobación (%)',
   maxAttempts: 'Intentos iniciales por día',
+  timeLimitMinutes: 'Tiempo límite del examen (minutos)',
+  enforceModuleLocking: 'Bloquear módulos hasta aprobar el examen anterior',
+  showExplanations: 'Mostrar la explicación de cada respuesta',
+  defaultFolderId: 'Carpeta de Drive por defecto',
   cooldownMinMinutes: 'Espera mínima después de agotar los intentos (minutos)',
   cooldownMaxMinutes: 'Espera máxima (minutos)',
   resetTimeZone: 'Zona horaria del reinicio diario',
@@ -98,7 +104,7 @@ function pluginText(t: (key: string, fallback: string) => string, plugin: { id: 
   return t(`plugin_${plugin.id.replace(/-/g, '_')}_${field}`, field === 'name' ? plugin.name : plugin.description);
 }
 
-export const PluginManagerView: React.FC = () => {
+export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = false }) => {
   const { t } = useTranslation();
   const [plugins, setPlugins] = useState<AcademiaPlugin[]>(pluginManager.getPlugins());
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -108,6 +114,8 @@ export const PluginManagerView: React.FC = () => {
   const [customizerInitialState, setCustomizerInitialState] = useState<CustomizerConfig | null>(null);
   const [savingConfig, setSavingConfig] = useState<boolean>(false);
   const [downloadingSampleCert, setDownloadingSampleCert] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const { isMobile, view, change: changeView } = useListView('admin-plugins-view');
 
   const handleDownloadSampleCert = async () => {
     try {
@@ -286,8 +294,129 @@ export const PluginManagerView: React.FC = () => {
     ? plugins
     : plugins.filter((p) => p.category === selectedCategory);
 
+  const CATEGORY_LABELS: Record<string, string> = {
+    certificates: t('pluginCatCertificates', 'Certificados'),
+    quizzes: t('pluginCatQuizzes', 'Exámenes'),
+    integrations: t('pluginCatIntegrations', 'Integraciones'),
+    analytics: t('pluginCatAnalytics', 'Analíticas'),
+    meetings: t('pluginCatMeetings', 'Clases en vivo'),
+    custom: t('pluginUi_personalizacion', 'Personalización'),
+  };
+  const categoryLabel = (category: string) => CATEGORY_LABELS[category] ?? category;
+  const visiblePlugins = filteredPlugins.filter((plugin) => statusFilter === 'ALL' || (statusFilter === 'on' ? plugin.enabled : !plugin.enabled));
+  const categoryOptions = Object.keys(CATEGORY_LABELS)
+    .map((value) => ({ value, label: CATEGORY_LABELS[value], count: plugins.filter((plugin) => plugin.category === value).length }))
+    .filter((option) => option.count > 0);
+  const activeCount = plugins.filter((plugin) => plugin.enabled).length;
+
+  const modernList = (
+    <div data-mentor-ui="modern" className="admin-courses-root admin-plugins">
+      <div className="mentor-mentees-panel admin-people-panel">
+        <div className="mentor-section-heading">
+          <div>
+            <h2>{t('pluginUi_sistema', 'Sistema')}</h2>
+            <p>{t('sistemaDescripcion', 'Activa las extensiones de la plataforma y ajusta su configuración.')}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mentor-course-toolbar admin-plugins__toolbar">
+        <FilterMenu
+          groups={[
+            { label: t('pluginUi_categoria', 'Categoría'), value: selectedCategory, onChange: setSelectedCategory, options: categoryOptions },
+            { label: t('pluginUi_estado', 'Estado'), value: statusFilter, onChange: setStatusFilter, options: [
+              { value: 'on', label: t('pluginUi_activos', 'Activos'), count: activeCount },
+              { value: 'off', label: t('pluginUi_inactivos', 'Inactivos'), count: plugins.length - activeCount },
+            ] },
+          ]}
+        />
+        {!isMobile && (
+          <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDePlugins', 'Vista de plugins')}>
+            <button type="button" aria-pressed={view === 'list'} onClick={() => changeView('list')}><List aria-hidden="true" />{t('pluginUi_lista', 'Lista')}</button>
+            <button type="button" aria-pressed={view === 'cards'} onClick={() => changeView('cards')}><LayoutGrid aria-hidden="true" />{t('pluginUi_tarjetas', 'Tarjetas')}</button>
+          </div>
+        )}
+        <span className="admin-plugins__count">{t('pluginsActivosDeTotal', '{{active}} de {{total}} activos', { active: activeCount, total: plugins.length })}</span>
+        <button type="button" className="mentor-course-control admin-plugins__sync" onClick={loadPlugins}>
+          <RefreshCw aria-hidden="true" />{t('pluginUi_sincronizar', 'Sincronizar')}
+        </button>
+      </div>
+
+      <ActiveFilters
+        noun={t('pluginUi_plugins', 'plugins')}
+        shown={visiblePlugins.length}
+        total={plugins.length}
+        onClear={() => { setSelectedCategory('ALL'); setStatusFilter('ALL'); }}
+        chips={[
+          ...(selectedCategory !== 'ALL' ? [{ key: 'category', text: categoryLabel(selectedCategory), onRemove: () => setSelectedCategory('ALL') }] : []),
+          ...(statusFilter !== 'ALL' ? [{ key: 'status', text: statusFilter === 'on' ? t('pluginUi_activos', 'Activos') : t('pluginUi_inactivos', 'Inactivos'), onRemove: () => setStatusFilter('ALL') }] : []),
+        ]}
+      />
+
+      {visiblePlugins.length === 0 ? (
+        <div className="admin-plugins__empty">
+          <Layers aria-hidden="true" />
+          <p>{plugins.length === 0
+            ? t('catalogoSeRegistraAlArrancar', 'El catálogo se registra solo al arrancar la aplicación. Si sigues viendo esto, revisa el registro del servidor.')
+            : t('ningunPluginConEstosFiltros', 'Ningún plugin coincide con los filtros.')}</p>
+        </div>
+      ) : (
+        <ul className="admin-plugins__list" data-view={view}>
+          {visiblePlugins.map((plugin) => {
+            const IconComponent = getPluginIcon(plugin.icon);
+            const hasSignature = plugin.category === 'certificates' && (plugin.config?.signatureImage || plugin.config?.signature);
+            return (
+              <li key={plugin.id} className="admin-plugins__item" data-enabled={plugin.enabled || undefined}>
+                <span className="admin-plugins__glyph" aria-hidden="true"><IconComponent /></span>
+                <div className="admin-plugins__body">
+                  <h4>{pluginText(t, plugin, 'name')} <span>v{plugin.version}</span></h4>
+                  <p>{pluginText(t, plugin, 'desc')}</p>
+                  <p className="admin-plugins__meta">
+                    <span>{categoryLabel(plugin.category)}</span>
+                    {hasSignature && <span>{t('pluginUi_firmaLista', 'Firma lista')}</span>}
+                  </p>
+                </div>
+                <div className="admin-plugins__controls">
+                  <span className="admin-plugins__state" data-on={plugin.enabled || undefined}>{plugin.enabled ? t('pluginUi_activo', 'Activo') : t('pluginUi_inactivo', 'Inactivo')}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={plugin.enabled}
+                    aria-label={t('activarPluginName', 'Activar {{name}}', { name: pluginText(t, plugin, 'name') })}
+                    className="admin-plugins__switch"
+                    onClick={() => handleTogglePlugin(plugin.id, plugin.enabled)}
+                  ><span /></button>
+                  <button type="button" className="mentor-course-control admin-plugins__config" onClick={() => handleOpenConfigModal(plugin)}>
+                    <Settings aria-hidden="true" />{t('pluginUi_configurar', 'Configurar')}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <PluginConfigSheet
+        plugin={configModalPlugin}
+        title={configModalPlugin ? t('configurarName', 'Configurar {{name}}', { name: pluginText(t, configModalPlugin, 'name') }) : ''}
+        form={configFormState}
+        setForm={setConfigFormState}
+        dirty={Boolean(configModalPlugin?.id === 'docentos-customizer' && customizerInitialState && JSON.stringify(customizerInitialState) !== JSON.stringify(normalizeCustomizerConfig(configFormState)))}
+        saving={savingConfig}
+        fieldLabels={FIELD_LABELS}
+        onPreviewCustomizer={previewCustomizerState}
+        onSave={handleSaveConfig}
+        onCancel={handleCancelConfig}
+        downloadingSample={downloadingSampleCert}
+        onDownloadSample={handleDownloadSampleCert}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-6">
+      {modern && modernList}
+      {!modern && (<>
       {/* Header Banner */}
       <div className="bg-canvas border border-line rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -419,8 +548,10 @@ export const PluginManagerView: React.FC = () => {
         })}
       </div>
 
+      </>)}
+
       {/* Configuration Modal */}
-      {configModalPlugin && typeof document !== 'undefined' && createPortal(
+      {!modern && configModalPlugin && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overscroll-contain"
           onMouseDown={handleCancelConfig}
@@ -1233,7 +1364,7 @@ export const PluginManagerView: React.FC = () => {
                             <img
                               src={configFormState.customLogoUrl || DEFAULT_LOGO_URL}
                               alt={t('logoInstitucion', 'Logo Institución')}
-                              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.5)]"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
                               }}

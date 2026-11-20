@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { VideoNote } from '../../types';
 import { useTranslation } from 'react-i18next'
 
@@ -55,7 +55,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
             {notes.map((note) => (
               <li key={note.id} className="rounded-xl bg-raised p-3">
                 <div className="flex items-baseline gap-2.5">
-                  <span className="shrink-0 text-micro font-semibold text-brand-violet-light tabular-nums">
+                  <span className="shrink-0 text-micro font-semibold text-ink-muted tabular-nums">
                     {formatTimestamp(note.timestampSeconds)}
                   </span>
                   <p className="min-w-0 flex-1 text-row leading-relaxed text-ink-soft">{note.content}</p>
@@ -66,38 +66,39 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
         )}
       </div>
 
-      <form onSubmit={onSubmit} className="shrink-0 border-t border-line p-3">
-        <div className="flex items-center gap-2">
-          <label className="academy-inline-field flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-canvas px-2.5">
-            <Clock aria-hidden className="h-3.5 w-3.5 text-ink-muted" />
-            <span className="sr-only">{t('minutoDeLaNota', 'Minuto de la nota')}</span>
-            <input
-              type="text"
-              value={timestamp}
-              onChange={(event) => onTimestampChange(event.target.value)}
-              placeholder="01:30"
-              className="academy-compound-input w-11 bg-transparent text-meta text-ink tabular-nums"
-            />
+      <form onSubmit={onSubmit} className="shrink-0 space-y-3 border-t border-line p-4">
+        <div>
+          <label htmlFor="lesson-note" className="text-sm font-medium text-ink">
+            {t('tuNota', 'Tu nota')}
           </label>
-
-          <input
-            type="text"
-            placeholder={t('queQuieresRecordarDeEsteMinuto', 'Qué quieres recordar de este minuto')}
-            aria-label={t('contenidoDeLaNota', 'Contenido de la nota')}
+          <textarea
+            id="lesson-note"
+            rows={3}
+            placeholder={t('viewer.notePlaceholder', 'Escribe lo que quieras recordar de este momento de la clase')}
             value={content}
             onChange={(event) => onContentChange(event.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-meta text-ink placeholder-ink-faint focus:border-brand-cyan focus:outline-none"
+            className="mt-1.5 w-full resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-sm leading-relaxed text-ink placeholder-ink-faint focus:border-line-strong focus:outline-none"
           />
-
-          <button
-            type="submit"
-            disabled={!content.trim()}
-            className="shrink-0 rounded-lg bg-raised p-2 text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-raised"
-          >
-            <Plus aria-hidden className="h-4 w-4" />
-            <span className="sr-only">{t('guardarNota', 'Guardar nota')}</span>
-          </button>
         </div>
+        <label className="flex items-center justify-between gap-3 text-sm text-ink-soft">
+          {t('viewer.noteMinute', 'Minuto del video')}
+          <input
+            type="text"
+            inputMode="numeric"
+            value={timestamp}
+            onChange={(event) => onTimestampChange(event.target.value)}
+            placeholder="01:30"
+            className="w-24 rounded-lg border border-line bg-canvas px-2.5 py-2 text-center text-sm tabular-nums text-ink focus:border-line-strong focus:outline-none"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={!content.trim()}
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors hover:bg-ink/5 disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-transparent"
+        >
+          <Plus aria-hidden className="h-4 w-4 shrink-0" />
+          {t('viewer.noteSave', 'Guardar nota')}
+        </button>
       </form>
     </div>
   );

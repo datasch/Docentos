@@ -664,7 +664,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {/* Statistics Cards */}
       <div className="mentor-stat-grid grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { title: currentUser.role === 'MENTOR' ? t('mentor.assignedPrograms', 'Programas Asignados') : t('mentor.catalogPrograms', 'Programas del Catálogo'), value: displayCourses.length, icon: BookOpen, color: 'text-[#06b6d4]' },
+          { title: currentUser.role === 'MENTOR' ? t('mentor.assignedPrograms', 'Programas Asignados') : t('mentor.catalogPrograms', 'Programas del Catálogo'), value: displayCourses.length, icon: BookOpen, color: 'text-[var(--color-brand-cyan)]' },
           { title: t('mentor.assignedMentees', 'Mentees Asignados'), value: mentees.length, icon: Users, color: 'text-[#a855f7]' },
           {
             title: t('mentor.answeredQuestions', 'Consultas Respondidas'),
@@ -705,7 +705,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onClick={() => setActiveTab('courses')}
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'courses'
-              ? 'border-[#06b6d4] text-[#06b6d4]'
+              ? 'border-[var(--color-brand-cyan)] text-[var(--color-brand-cyan)]'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
@@ -718,7 +718,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onClick={() => setActiveTab('mentees')}
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'mentees'
-              ? 'border-[#06b6d4] text-[#06b6d4]'
+              ? 'border-[var(--color-brand-cyan)] text-[var(--color-brand-cyan)]'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
@@ -736,7 +736,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onClick={() => setActiveTab('qna')}
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'qna'
-              ? 'border-[#06b6d4] text-[#06b6d4]'
+              ? 'border-[var(--color-brand-cyan)] text-[var(--color-brand-cyan)]'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
@@ -749,7 +749,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           onClick={() => setActiveTab('meetings')}
           className={`shrink-0 whitespace-nowrap pb-2.5 px-2.5 sm:px-3.5 font-medium text-xs flex items-center gap-1.5 sm:gap-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'meetings'
-              ? 'border-[#06b6d4] text-[#06b6d4]'
+              ? 'border-[var(--color-brand-cyan)] text-[var(--color-brand-cyan)]'
               : 'border-transparent text-ink-muted hover:text-ink'
           }`}
         >
@@ -905,7 +905,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         aria-label={t('mentor.manageCourseMentees', { title: course.title, defaultValue: `Gestionar mentees de ${course.title}` })}
                       >
                         <UsersRound aria-hidden="true" />
-                        <span>{t('mentor.assignedMenteesBtn', { count: menteesOfCourse(course.id).length, defaultValue: `Gestionar (${menteesOfCourse(course.id).length})` })}</span>
+                        <span>{t('mentor.assignedMenteesBtn', { total: menteesOfCourse(course.id).length, defaultValue: `Gestionar (${menteesOfCourse(course.id).length})` })}</span>
                       </button>
                       {currentUser.role === 'ADMIN' && (
                         <button
@@ -1660,7 +1660,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   value={newMenteeName}
                   onChange={(e) => setNewMenteeName(e.target.value)}
                   placeholder="Ej. Roberto Gómez"
-                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                   required
                 />
               </div>
@@ -1672,7 +1672,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   value={newMenteeEmail}
                   onChange={(e) => setNewMenteeEmail(e.target.value)}
                   placeholder="mentee@empresa.com"
-                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                   required
                 />
               </div>
@@ -1684,7 +1684,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <select
                   value={newMenteeCourseId}
                   onChange={(e) => setNewMenteeCourseId(e.target.value)}
-                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                 >
                   <option value="">Primer curso publicado</option>
                   {displayCourses.map((course) => (
@@ -1706,7 +1706,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   type="submit"
                   disabled={assigningMentee}
-                  className="px-4 py-2 bg-[#06b6d4] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--color-brand-cyan)] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {assigningMentee && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Asignar Mentee
@@ -1741,7 +1741,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
                   placeholder="Ej. Mentoría Elite: Arquitectura Cloud"
-                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                   required
                 />
               </div>
@@ -1753,7 +1753,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   value={newCourseDescription}
                   onChange={(e) => setNewCourseDescription(e.target.value)}
                   placeholder="Qué aprende el alumno y para quién es este programa."
-                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                  className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                 />
               </div>
 
@@ -1763,7 +1763,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   <select
                     value={newCourseCategory}
                     onChange={(e) => setNewCourseCategory(e.target.value)}
-                    className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
+                    className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)] cursor-pointer"
                   >
                     <optgroup label="Modalidades de Mentoría">
                       {MENTORSHIP_CATEGORIES.map((cat) => (
@@ -1789,7 +1789,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     min={0}
                     value={newCoursePrice}
                     onChange={(e) => setNewCoursePrice(Math.max(0, Number(e.target.value) || 0))}
-                    className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                    className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                   />
                 </div>
               </div>
@@ -1799,7 +1799,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   type="checkbox"
                   checked={newCoursePublished}
                   onChange={(e) => setNewCoursePublished(e.target.checked)}
-                  className="accent-[#06b6d4]"
+                  className="accent-[var(--color-brand-cyan)]"
                 />
                 Publicar de inmediato (visible en el catálogo, aún sin clases)
               </label>
@@ -1815,7 +1815,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   type="submit"
                   disabled={creatingCourse}
-                  className="px-4 py-2 bg-gradient-to-r from-[#06b6d4] to-[#a855f7] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-2 bg-gradient-to-r from-[var(--color-brand-cyan)] to-[#a855f7] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {creatingCourse ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                   Crear Programa

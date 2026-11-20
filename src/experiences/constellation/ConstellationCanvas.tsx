@@ -1044,7 +1044,7 @@ export const ConstellationCanvas: React.FC<{
         {/* Resplandor atmosférico etéreo: activo solo en pantallas medianas/grandes para no ralentizar móviles */}
         <div
           aria-hidden="true"
-          className="hidden md:block absolute top-1/4 right-1/4 w-[480px] h-[480px] rounded-full blur-[140px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[#06b6d4] via-[#a855f7] to-[#eab308]"
+          className="hidden md:block absolute top-1/4 right-1/4 w-[480px] h-[480px] rounded-full blur-[140px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[#06b6d4] via-[#a855f7] to-[var(--color-brand-cyan)]"
         />
         <canvas
           ref={canvasRef}

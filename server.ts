@@ -6210,14 +6210,14 @@ app.get(
   }),
 );
 
-/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido. */
+/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido, y el caso se cierra solo. */
 app.post(
   '/api/listening/mine/seen',
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     await prisma.listeningEntry.updateMany({
       where: { userId: req.user!.id, reply: { not: null }, replySeenAt: null },
-      data: { replySeenAt: new Date() },
+      data: { replySeenAt: new Date(), status: 'CLOSED' },
     });
     res.json({ success: true });
   }),

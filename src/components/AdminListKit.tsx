@@ -61,7 +61,7 @@ export function Pager({ total, size, page, onPage, noun }: { total: number; size
 
 export type Opt = { value: string; label: string; count?: number };
 
-export type Group = { value: string; options: Opt[]; onChange: (v: string) => void };
+export type Group = { value: string; options: Opt[]; onChange: (v: string) => void; label?: string };
 
 /** Un solo filtro: botón con panel; cada grupo es de selección única y se quita volviendo a tocarlo. */
 export function FilterMenu({ groups }: { groups: Group[] }) {
@@ -86,7 +86,8 @@ export function FilterMenu({ groups }: { groups: Group[] }) {
       {open && (
         <div className="admin-filter-menu__panel">
           {groups.map((g, i) => (
-            <div key={i} className="admin-filter-menu__group" role="group">
+            <div key={i} className="admin-filter-menu__group" role="group" aria-label={g.label}>
+              {g.label && <p className="admin-filter-menu__title">{g.label}</p>}
               {g.options.map((o) => (
                 <button key={o.value} type="button" aria-pressed={g.value === o.value} onClick={() => g.onChange(g.value === o.value ? 'ALL' : o.value)}>
                   <Check aria-hidden="true" />

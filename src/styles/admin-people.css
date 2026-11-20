@@ -370,6 +370,7 @@
 @keyframes admin-menu-in { from { opacity: 0; transform: scale(0.97) translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { [data-mentor-ui='modern'] .admin-filter-menu__panel { animation: none; } }
 [data-mentor-ui='modern'] .admin-filter-menu__group { display: grid; gap: 2px; }
+[data-mentor-ui='modern'] .admin-filter-menu__title { margin: 0; padding: 4px 10px; color: var(--mentor-muted); font-size: 12px; font-weight: 500; line-height: 18px; }
 [data-mentor-ui='modern'] .admin-filter-menu__group + .admin-filter-menu__group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--course-line); }
 [data-mentor-ui='modern'] .admin-filter-menu__group button {
   display: grid;
@@ -462,13 +463,13 @@
 
 /* El buscador del editor de portada usa el mismo botón de limpieza. */
 .landing-featured-search { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; border: 1px solid #2d2d44; border-radius: 12px; background: #0a0a0f; color: #94a3b8; }
-.landing-featured-search:focus-within { border-color: #06b6d4; }
+.landing-featured-search:focus-within { border-color: var(--color-brand-cyan); }
 .landing-featured-search > svg { flex: none; width: 16px; height: 16px; }
 .landing-featured-search input { flex: 1; min-width: 0; min-height: 38px; padding: 0; border: 0; outline: 0; background: transparent; color: #fff; font-size: 12px; }
 .landing-featured-search input::placeholder { color: #94a3b8; }
 .landing-featured-search .admin-search-field__clear { display: grid; place-items: center; flex: none; width: 32px; height: 32px; min-height: 32px; padding: 0; border: 1px solid #2d2d44; border-radius: 6px; background: #1d1d2a; color: #fff; cursor: pointer; }
 .landing-featured-search .admin-search-field__clear:hover { border-color: #64748b; }
-.landing-featured-search .admin-search-field__clear:focus-visible { outline: 2px solid #06b6d4; outline-offset: 2px; }
+.landing-featured-search .admin-search-field__clear:focus-visible { outline: 2px solid var(--color-brand-cyan); outline-offset: 2px; }
 .landing-featured-search .admin-search-field__clear svg { width: 16px; height: 16px; }
 
 /* Las pestañas del admin conservan el contador a la derecha del nombre en móvil. */
@@ -523,9 +524,9 @@
 
 [data-mentor-ui='modern'] .acta-paper {
   --paper: #fbfaf7;
-  --ink: #1f1d1a;
-  --ink-soft: #57524a;
-  --rule: #d9d4c9;
+  --ink: #34312c;
+  --ink-soft: #6b665d;
+  --rule: #e0dbd0;
   display: grid;
   gap: 24px;
   min-height: 0;
@@ -538,9 +539,9 @@
   font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
 }
-[data-mentor-ui='modern'] .acta-paper__top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 2px solid var(--ink); }
+[data-mentor-ui='modern'] .acta-paper__top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--ink-soft); }
 [data-mentor-ui='modern'] .acta-paper__top > div { display: grid; gap: 2px; }
-[data-mentor-ui='modern'] .acta-paper__top strong { font-size: 20px; font-weight: 700; letter-spacing: 0; line-height: 24px; }
+[data-mentor-ui='modern'] .acta-paper__top strong { font-size: 20px; font-weight: 600; letter-spacing: 0; line-height: 24px; }
 [data-mentor-ui='modern'] .acta-paper__top span { color: var(--ink-soft); font-size: 13px; line-height: 16px; }
 [data-mentor-ui='modern'] .acta-paper__no { text-align: right; }
 [data-mentor-ui='modern'] .acta-paper__no b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 500; letter-spacing: 0.04em; }
@@ -561,7 +562,7 @@
 }
 [data-mentor-ui='modern'] .acta-stamp[data-state='VIGENTE'] { border-color: #2f6f46; color: #2f6f46; }
 [data-mentor-ui='modern'] .acta-paper__lead { margin: 0; font-size: 16px; line-height: 28px; text-wrap: pretty; }
-[data-mentor-ui='modern'] .acta-paper__lead b { font-weight: 700; }
+[data-mentor-ui='modern'] .acta-paper__lead b { font-weight: 600; }
 [data-mentor-ui='modern'] .acta-paper .acta-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 500; }
 [data-mentor-ui='modern'] .acta-paper__data { display: grid; margin: 0; border-block: 1px solid var(--rule); }
 [data-mentor-ui='modern'] .acta-paper__data > div { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-top: 1px solid var(--rule); }
@@ -628,3 +629,27 @@
 @media (max-width: 639px) {
   [data-mentor-ui='modern'] .acta-modal__close { top: -8px; right: -8px; }
 }
+
+/* Matrículas: el curso se lee completo y, en tarjetas, el estado va arriba a la derecha. */
+[data-mentor-ui='modern'] .admin-people-panel .admin-enroll-card .admin-enroll-card__course { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+[data-mentor-ui='modern'] .admin-people-panel .admin-enroll-card[data-view='cards'] { position: relative; }
+[data-mentor-ui='modern'] .admin-people-panel .admin-enroll-card[data-view='cards'] .mentor-mentee-card__head { padding-right: 96px; }
+[data-mentor-ui='modern'] .admin-people-panel .admin-enroll-card[data-view='cards'] .admin-enroll-status { position: absolute; top: 20px; right: 20px; margin: 0; }
+
+/* Directorio: en tarjetas el estado va arriba a la derecha, como en Matrículas. */
+[data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-card[data-view='cards']:not(.admin-enroll-card) { position: relative; }
+[data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-card[data-view='cards']:not(.admin-enroll-card) .mentor-mentee-card__head { padding-right: 96px; }
+[data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-card[data-view='cards']:not(.admin-enroll-card) .admin-people-card__facts .mentor-mentee-status { position: absolute; top: 20px; right: 20px; margin: 0; }
+/* Tarjetas de la misma fila: el botón de acción queda siempre a la misma altura. */
+[data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-card[data-view='cards'] { display: flex; flex-direction: column; }
+[data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-card[data-view='cards'] > .mentor-course-control,
+[data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-card[data-view='cards'] > .admin-enroll-card__actions { margin-top: auto; }
+
+/* Acción principal de cada módulo: mismo botón, en la fila del selector interno. */
+[data-mentor-ui='modern'] button.mentor-course-control.admin-primary-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none; min-height: 44px; padding: 8px 16px; border: 1px solid transparent; border-radius: 8px; background: var(--mentor-accent); color: var(--color-on-brand); font-size: 14px; font-weight: 500; cursor: pointer; }
+[data-mentor-ui='modern'] button.mentor-course-control.admin-primary-action svg { width: 16px; height: 16px; }
+@media (hover: hover) and (pointer: fine) { [data-mentor-ui='modern'] button.mentor-course-control.admin-primary-action:hover:not(:disabled) { background: color-mix(in srgb, var(--mentor-accent) 85%, var(--mentor-text)); } }
+[data-mentor-ui='modern'] button.mentor-course-control.admin-primary-action:disabled { opacity: 0.55; cursor: not-allowed; }
+[data-mentor-ui='modern'] .admin-people-top .admin-courses-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
+[data-mentor-ui='modern'] .admin-people-top .admin-courses-actions .mentor-course-control:not(.admin-primary-action) { min-height: 44px; }
+@media (max-width: 639px) { [data-mentor-ui='modern'] .admin-people-top > button.admin-primary-action, [data-mentor-ui='modern'] .admin-people-top .admin-courses-actions { width: 100%; margin-left: 0; } [data-mentor-ui='modern'] .admin-people-top .admin-courses-actions > * { flex: 1 1 auto; } }

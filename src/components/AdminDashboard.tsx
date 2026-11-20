@@ -8,6 +8,8 @@
  * 3. Responder Preguntas de Mentoría en la bandeja de entrada
  */
 
+import { useToastMessage } from '../lib/useToastMessage';
+import { AdminSelect } from './AdminSelect';
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dateLocale } from '../i18n/format';
@@ -18,6 +20,7 @@ import { api, type ModerationHistoryEvent } from '../lib/api';
 import { User, UserRole, Course, Module, DriveVideoFile, TTSGuide, CertificateRecord, CourseEnrollmentRecord, CourseResource } from '../types';
 import { SUPPORTED_TTS_VOICES, ttsService } from '../lib/ttsService';
 import { PluginManagerView } from './PluginManagerView';
+import { AdminOverview } from './AdminOverview';
 import { LandingPageEditor } from './LandingPageEditor';
 import { CourseManagerView } from './CourseManagerView';
 import { AdminPeopleView } from './AdminPeopleView';
@@ -82,6 +85,34 @@ const tabFromUrl = (): SubTab | null => {
   if (typeof window === 'undefined') return null;
   const tab = new URLSearchParams(window.location.search).get('tab');
   return ADMIN_TABS.find((t) => t === tab) ?? null;
+};
+
+const WORK_COURSE_KEY = 'docentos_admin_work_course';
+
+const linkHost = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
+
+/** Tipo legible del recurso: enlace con su sitio, o el formato del archivo con su peso. */
+const resourceKindLabel = (resource: CourseResource): string => {
+  if (resource.kind === 'LINK') return 'Enlace';
+  const mime = (resource.mimeType || '').toLowerCase();
+  const format = mime.includes('pdf') ? 'PDF'
+    : mime.includes('word') || mime.includes('msword') ? 'Word'
+    : mime.includes('sheet') || mime.includes('excel') ? 'Excel'
+    : mime.includes('presentation') || mime.includes('powerpoint') ? 'PowerPoint'
+    : mime.includes('zip') || mime.includes('compressed') ? 'ZIP'
+    : mime.startsWith('image/') ? 'Imagen'
+    : mime.startsWith('video/') ? 'Video'
+    : mime.startsWith('audio/') ? 'Audio'
+    : mime.startsWith('text/') ? 'Texto'
+    : 'Archivo';
+  return format;
+};
+
+/** Detalle para el tooltip de la etiqueta: sitio del enlace o peso del archivo. */
+const resourceKindDetail = (resource: CourseResource): string => {
+  if (resource.kind === 'LINK') return linkHost(resource.downloadUrl);
+  const bytes = Number(resource.sizeBytes);
+  return Number.isFinite(bytes) && bytes > 0 ? (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`) : '';
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, course, onRefreshData }) => {
@@ -239,7 +270,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
    * cuál estaba operando. Aquí se carga el catálogo y se elige explícitamente.
    */
   const [allCourses, setAllCourses] = useState<Course[]>(course ? [course] : []);
-  const [workCourseId, setWorkCourseId] = useState<string>(course?.id || '');
+  // Hueco en la fila del selector donde el editor de Portada pinta sus botones.
+  const [portalActionsSlot, setPortalActionsSlot] = useState<HTMLElement | null>(null);
+  const [workCourseId, setWorkCourseId] = useState<string>(() => {
+    try { return localStorage.getItem(WORK_COURSE_KEY) || course?.id || ''; } catch { return course?.id || ''; }
+  });
+  // El curso elegido sobrevive a recargar la página; si ya no existe, se cae al primero del catálogo.
+  useEffect(() => {
+    if (!workCourseId) return;
+    try { localStorage.setItem(WORK_COURSE_KEY, workCourseId); } catch { /* sin almacenamiento, solo dura esta sesión */ }
+  }, [workCourseId]);
   const workCourse = allCourses.find((item) => item.id === workCourseId) || course || CURSO_VACIO;
   const workModules = workCourse.modules || [];
 
@@ -258,6 +298,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const [newEnrollStatus, setNewEnrollStatus] = useState<'ACTIVE' | 'COMPLETED' | 'REVOKED' | 'EXPIRED'>('ACTIVE');
   const [newEnrollSource, setNewEnrollSource] = useState<'ADMIN' | 'PAYMENT' | 'MENTORSHIP'>('ADMIN');
   const [enrollSuccessMsg, setEnrollSuccessMsg] = useState('');
+  useToastMessage(enrollSuccessMsg, 'success');
 
   // Certificates State
   const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
@@ -302,6 +343,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const [linkingVideo, setLinkingVideo] = useState<DriveVideoFile | null>(null);
   const [linkSuccessMsg, setLinkSuccessMsg] = useState('');
   const [driveErrorMsg, setDriveErrorMsg] = useState('');
+  useToastMessage(resSuccessMsg, 'success');
+  useToastMessage(resErrorMsg && !showResourceSheet && !resourceToDelete ? resErrorMsg : '', 'error');
+  useToastMessage(linkSuccessMsg, 'success');
+  useToastMessage(driveErrorMsg && !showDriveSheet ? driveErrorMsg : '', 'error');
   // Alta directa por enlace: sin credenciales de Drive el buscador no ve la
   // cuenta del administrador, y pegar el enlace de «Compartir» es el único
   // camino que siempre funciona.
@@ -923,17 +968,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
         <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider shrink-0">
           {t('cursoSobreElQueTrabajas', 'Curso sobre el que trabajas')}
         </label>
-        <select
-          value={workCourseId}
-          onChange={(e) => setWorkCourseId(e.target.value)}
-          className="w-full min-w-0 sm:w-64 xl:w-96 bg-surface border border-line text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#06b6d4]"
-        >
-          {allCourses.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.title}{item.published ? '' : t('borradorGuion', ' — borrador')}
-            </option>
-          ))}
-        </select>
+        <AdminSelect className="w-full min-w-0 sm:w-64 xl:w-96" ariaLabel={t('cursoSobreElQueTrabajas', 'Curso sobre el que trabajas')} value={workCourseId} onChange={setWorkCourseId} options={allCourses.map((item) => ({ value: item.id, label: `${item.title}${item.published ? '' : t('borradorGuion', ' — borrador')}` }))} />
       </div>
 
       <span className="text-[11px] font-mono text-ink-muted shrink-0">
@@ -954,7 +989,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           : ['landing', 'listening'].includes(activeTab)
             ? [] // Portal lleva su propio selector Portada / Escucha
             : activeTab === 'plugins'
-              ? [{ label: t('pluginsYConfiguracion', 'Plugins y configuración'), target: 'plugins' }]
+              ? [] // Sistema lleva su propio encabezado y filtros
               : [];
 
   return (
@@ -968,7 +1003,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <img
                 src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
                 alt={t('logo', 'Logo')}
-                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.4)]"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
                 }}
@@ -995,11 +1030,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {[
                 { id: 'users' as SubTab, label: t('usuarios', 'Usuarios'), icon: Users, iconColor: 'text-white/70' },
-                { id: 'courses' as SubTab, label: t('cursosCapital', 'Cursos'), icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'courses' as SubTab, label: t('cursosCapital', 'Cursos'), icon: BookOpen, iconColor: 'text-brand-cyan' },
                 { id: 'enrollments' as SubTab, label: t('matriculas', 'Matrículas'), icon: GraduationCap, iconColor: 'text-emerald-400' },
                 { id: 'certificates' as SubTab, label: t('certificados', 'Certificados'), icon: Award, iconColor: 'text-amber-400' },
                 { id: 'contracts' as SubTab, label: t('contratos', 'Contratos'), icon: FileCheck, iconColor: 'text-blue-400' },
-                { id: 'resources' as SubTab, label: t('recursos', 'Recursos'), icon: BookOpen, iconColor: 'text-cyan-400' },
+                { id: 'resources' as SubTab, label: t('recursos', 'Recursos'), icon: BookOpen, iconColor: 'text-brand-cyan' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -1010,7 +1045,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     onClick={() => selectTab(t.id)}
                     className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl cursor-pointer ${
                       isSelected
-                        ? 'bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-orange-500 text-white font-bold'
+                        ? 'bg-gradient-to-r from-brand-cyan via-fuchsia-500 to-orange-500 text-white font-bold'
                         : 'text-white/80 hover:text-white font-medium hover:bg-white/5'
                     }`}
                   >
@@ -1026,9 +1061,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               {[
                 { id: 'drive' as SubTab, label: t('videosDrive', 'Videos Drive'), icon: HardDrive, iconColor: 'text-white/70' },
                 { id: 'tts' as SubTab, label: t('guiasTts', 'Guías TTS'), icon: Sparkles, iconColor: 'text-amber-300' },
-                { id: 'plugins' as SubTab, label: t('plugins', 'Plugins'), icon: Layers, iconColor: 'text-cyan-400' },
-                { id: 'landing' as SubTab, label: t('portada', 'Portada'), icon: Sliders, iconColor: 'text-cyan-400' },
-                { id: 'listening' as SubTab, label: t('escucha', 'Escucha'), icon: HeartHandshake, iconColor: 'text-cyan-400' },
+                { id: 'plugins' as SubTab, label: t('plugins', 'Plugins'), icon: Layers, iconColor: 'text-brand-cyan' },
+                { id: 'landing' as SubTab, label: t('portada', 'Portada'), icon: Sliders, iconColor: 'text-brand-cyan' },
+                { id: 'listening' as SubTab, label: t('escucha', 'Escucha'), icon: HeartHandshake, iconColor: 'text-brand-cyan' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -1039,7 +1074,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     onClick={() => selectTab(t.id)}
                     className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl cursor-pointer ${
                       isSelected
-                        ? 'bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-orange-500 text-white font-bold'
+                        ? 'bg-gradient-to-r from-brand-cyan via-fuchsia-500 to-orange-500 text-white font-bold'
                         : 'text-white/80 hover:text-white font-medium hover:bg-white/5'
                     }`}
                   >
@@ -1054,44 +1089,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       ) : (
         <>
           {/* Admin Header v0.5 Moderna */}
-          <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-raised border border-line flex items-center justify-center p-2 shrink-0 relative overflow-visible shadow-inner">
+          <section className="admin-command" aria-label="Command Center">
+          <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="relative h-14 w-14 shrink-0 overflow-visible rounded-xl border border-line bg-raised p-2.5">
                 <img
                   src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
                   alt={customizerConfig.customBrandName || customizerConfig.customCampusName || 'Logo'}
-                  className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                  className="h-full w-full object-contain"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
                   }}
                 />
                 <FestiveHatOverlay size="md" />
               </div>
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-bold mb-2">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>{t('admin.badge', 'Panel de Control & Administración Global RBAC')}</span>
-                </div>
-                <h2 className="text-2xl font-extrabold text-ink tracking-tight">
+              <div className="min-w-0">
+                <h2 className="text-[28px] font-semibold leading-9 tracking-tight text-ink">
                   {customizerConfig.customCampusName || t('customBrandNameCommandCenter', '{{customBrandName}} Command Center', { customBrandName: customizerConfig.customBrandName || 'DocentOS' })}
                 </h2>
-                <p className="text-ink-muted text-xs mt-1 max-w-2xl leading-relaxed">
+                <p className="mt-1 max-w-[72ch] text-sm leading-5 text-ink-muted">
                   {t('admin.desc', 'Gestión integral de contenidos y cursos, asignación de permisos RBAC, emisión de certificados verificables y configuración de extensiones modulares.')}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-stretch md:self-auto shrink-0 flex-wrap">
-              <button
-                onClick={refreshEverything}
-                className="px-3.5 py-2.5 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
-                title={t('admin.syncTitle', 'Recargar todos los datos')}
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>{t('admin.syncBtn', 'Sincronizar Panel')}</span>
-              </button>
-            </div>
-          </div>
+            <button
+              type="button"
+              onClick={refreshEverything}
+              className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm font-medium text-ink transition-colors hover:border-ink-muted hover:bg-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan"
+              title={t('admin.syncTitle', 'Recargar todos los datos')}
+            >
+              <RefreshCw className="h-4 w-4 text-ink-muted" aria-hidden="true" />
+              <span>{t('admin.syncBtn', 'Sincronizar Panel')}</span>
+            </button>
+          </header>
 
           {/* Navegación única de DocentOS 0.5 Moderna */}
           <nav
@@ -1135,6 +1166,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               );
             })}
           </nav>
+          </section>
 
           {modernContextActions.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-1" aria-label={t('accionesDelModuloActual', 'Acciones del módulo actual')}>
@@ -1318,7 +1350,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <Layers className="w-3.5 h-3.5 text-brand-cyan" />
                 <span>{t('admin.tabResources', 'Estudio de Medios y Recursos')}</span>
               </button>
             </div>
@@ -1433,78 +1465,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
 
       {uiVersion === 'v0.5-modern' && activeTab === 'overview' && (
-        <section className={`space-y-6 ${animClass}`} aria-labelledby="admin-overview-title">
-          <div className="flex flex-col gap-2">
-            <h1 id="admin-overview-title" className="text-2xl sm:text-3xl font-semibold text-ink tracking-tight">
-              {t('estadoGeneral', 'Estado general')}
-            </h1>
-            <p className="max-w-2xl text-sm text-ink-muted">
-              {t('unPuntoDeEntradaParaRevisarElSistemaY', 'Un punto de entrada para revisar el sistema y continuar con la tarea que necesita atención.')}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: t('cursosCapital', 'Cursos'), value: allCourses.length, target: 'courses' as SubTab },
-              { label: t('adminUsuarios', 'Usuarios'), value: users.length, target: 'users' as SubTab },
-              { label: t('matriculas', 'Matrículas'), value: enrollments.length, target: 'enrollments' as SubTab },
-              { label: t('certificados', 'Certificados'), value: certificates.length, target: 'certificates' as SubTab },
-            ].map((stat) => (
-              <button
-                key={stat.label}
-                type="button"
-                onClick={() => selectTab(stat.target)}
-                className="min-w-0 p-4 text-left bg-raised border border-line rounded-xl hover:border-line-strong hover:bg-elevated transition-colors"
-              >
-                <span className="block text-xs text-ink-muted">{stat.label}</span>
-                <span className="block mt-2 text-2xl font-semibold text-ink tabular-nums">{stat.value}</span>
-                <span className="block mt-1 text-[11px] text-brand-cyan">{t('abrirModulo', 'Abrir módulo')}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] gap-4">
-            <div className="bg-raised border border-line rounded-xl p-5">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-base font-semibold text-ink">{t('entradasPrincipales', 'Entradas principales')}</h2>
-                  <p className="mt-1 text-xs text-ink-muted">{t('accedeDirectamenteALasAreasDeTrabajo', 'Accede directamente a las áreas de trabajo.')}</p>
-                </div>
-                <LayoutDashboard className="w-5 h-5 text-brand-cyan" aria-hidden />
-              </div>
-              <div className="divide-y divide-line border-y border-line">
-                {MODERN_ADMIN_MODULES.filter((module) => module.id !== 'overview').map((module) => (
-                  <button
-                    key={module.id}
-                    type="button"
-                    onClick={() => selectTab(module.target as SubTab)}
-                    className="w-full py-3.5 text-left flex items-center justify-between gap-4 hover:text-ink transition-colors"
-                  >
-                    <span>
-                      <span className="block text-sm font-medium text-ink">{module.label}</span>
-                      <span className="block mt-0.5 text-xs text-ink-muted">{module.description}</span>
-                    </span>
-                    <ExternalLink className="w-4 h-4 shrink-0 text-ink-faint" aria-hidden />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-raised border border-line rounded-xl p-5">
-              <h2 className="text-base font-semibold text-ink">{t('siguientePaso', 'Siguiente paso')}</h2>
-              <p className="mt-1 text-xs text-ink-muted">
-                {t('seleccionaUnModuloParaTrabajarConSu', 'Selecciona un módulo para trabajar con su contexto y herramientas específicas.')}
-              </p>
-              <button
-                type="button"
-                onClick={() => selectTab('courses')}
-                className="mt-5 w-full min-h-11 px-4 rounded-lg btn-brand-primary text-sm font-semibold"
-              >
-                {t('abrirCursos', 'Abrir cursos')}
-              </button>
-            </div>
-          </div>
-        </section>
+        <AdminOverview courses={allCourses} users={users} enrollments={enrollments} certificates={certificates} onOpen={(target) => { if (target === 'listening') setPortalView('listening'); selectTab(target as SubTab); }} />
       )}
 
       {activeTab === 'courses' && (
@@ -1519,11 +1480,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       {/* PERSONAS: directorio y matrículas */}
       {(activeTab === 'users' || activeTab === 'enrollments') && (
         <div className={`space-y-6 ${animClass}`}>
-          {enrollSuccessMsg && (
-            <div role="status" className="p-3 bg-elevated border border-line rounded-xl text-ink text-xs font-bold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-brand-cyan" /> {enrollSuccessMsg}
-            </div>
-          )}
 
           <AdminPeopleView
             users={users}
@@ -1571,15 +1527,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <h2>Cursos</h2>
                     <p>Gestiona el catálogo y los materiales de aprendizaje.</p>
                   </div>
-                  {activeTab === 'resources' && <button type="button" className="mentor-course-control admin-resources__header-add" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />Agregar recurso</button>}
-                  {activeTab === 'drive' && <button type="button" className="mentor-course-control admin-resources__header-add" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}><Plus size={18} aria-hidden="true" />Añadir video</button>}
                 </div>
                 <div className="admin-people-top">
                   <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
                     <button type="button" aria-pressed="false" onClick={() => selectTab('courses')}><span>Catálogo</span><span className="mentor-publication-count">({allCourses.length})</span></button>
                     <button type="button" aria-pressed="true"><span>Recursos</span><span className="mentor-publication-count">({catalogResourceCount})</span></button>
                   </div>
-                  {activeTab === 'tts' && <button type="button" className="mentor-course-control admin-resources__header-add" onClick={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }} disabled={workLessonCount === 0}><Plus size={18} aria-hidden="true" />Nueva guía</button>}
+                  {activeTab === 'resources' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />Agregar recurso</button>}
+                  {activeTab === 'drive' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}><Plus size={18} aria-hidden="true" />Añadir video</button>}
+                  {activeTab === 'tts' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }} disabled={workLessonCount === 0}><Plus size={18} aria-hidden="true" />Nueva guía</button>}
                 </div>
                 <div className="admin-resources-shell__media" role="group" aria-label="Tipo de recurso">
                   <button type="button" aria-pressed={activeTab === 'resources'} onClick={() => { setActiveTab('resources'); setMediaView('resources'); }}>Materiales</button>
@@ -1609,24 +1565,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 ...(resourceKindFilter !== 'ALL' ? [{ key: 'kind', text: resourceKindFilter === 'FILE' ? 'Archivo' : 'Enlace', onRemove: () => { setResourceKindFilter('ALL'); setResourcePage(1); } }] : []),
                 ...(resourceQuery.trim() ? [{ key: 'query', text: `«${resourceQuery.trim()}»`, onRemove: () => { setResourceQuery(''); setResourcePage(1); } }] : []),
               ]} />
-              {resSuccessMsg && <div role="status" className="admin-resources__notice admin-resources__notice--success"><CheckCircle2 size={18} aria-hidden="true" />{resSuccessMsg}</div>}
-              {resErrorMsg && !showResourceSheet && !resourceToDelete && <div role="alert" className="admin-resources__notice admin-resources__notice--error"><AlertTriangle size={18} aria-hidden="true" />{resErrorMsg}</div>}
               {filteredResources.length ? (
                 <div className="admin-resources__table" data-view={resourceView}>
-                  {resourceView === 'list' && <div className="admin-resources__table-head" aria-hidden="true"><span>Recurso</span><span>Ubicación</span><span>Acciones</span></div>}
-                  <ul className="admin-resources__list" data-view={resourceView}>
+                  <ul className="admin-tts__list" data-view={resourceView}>
                     {resourceRows.map(({ resource, moduleTitle }) => (
-                      <li key={resource.id} className="admin-resources__item" data-view={resourceView} aria-labelledby={`admin-resource-${resource.id}`}>
-                        <div className="admin-resources__item-main">
-                          <span className="admin-resources__file" aria-hidden="true">{resource.kind === 'LINK' ? <Link2 /> : <FileText />}</span>
-                          <div className="admin-resources__item-copy">
-                            <span className="admin-resources__item-kind">{resource.kind === 'LINK' ? 'Enlace' : 'Archivo'}</span>
+                      <li key={resource.id} className="admin-tts__item" aria-labelledby={`admin-resource-${resource.id}`}>
+                        <div className="admin-tts__content">
+                          <div className="admin-tts__item-main admin-tts__item-main--tagged">
+                            <span className="admin-tts__glyph" aria-hidden="true">{resource.kind === 'LINK' ? <Link2 /> : <FileText />}</span>
                             <h3 id={`admin-resource-${resource.id}`}>{resource.title}</h3>
-                            {resource.description && <p>{resource.description}</p>}
+                            <span className="admin-tts__kind" data-kind={resource.kind} title={resourceKindDetail(resource) || undefined}>{resourceKindLabel(resource)}</span>
+                            {resource.description && <div className="admin-tts__where"><p>{resource.description}</p></div>}
                           </div>
+                          <div className="admin-tts__meta"><div className="admin-tts__meta-text"><span>{moduleTitle || 'General del curso'}</span></div></div>
                         </div>
-                        <span className="admin-resources__item-module"><Layers aria-hidden="true" />{moduleTitle || 'General del curso'}</span>
-                        <div className="admin-resources__item-actions">
+                        <div className="admin-tts__actions">
                           <a className="admin-resources__open" href={resource.downloadUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${resource.title} en otra pestaña`}>Abrir<ExternalLink aria-hidden="true" /></a>
                           <button type="button" className="mentor-course-control admin-resources__delete" data-danger="true" onClick={() => { setResErrorMsg(''); setResourceToDelete(resource); }} aria-haspopup="dialog" aria-label={`Eliminar ${resource.title}`}><Trash2 aria-hidden="true" />Eliminar</button>
                         </div>
@@ -1641,7 +1594,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <dialog ref={resourceConfirmRef} className="mentor-confirm admin-resource-confirm" aria-labelledby="admin-resource-delete-title" aria-describedby="admin-resource-delete-description" onCancel={(event) => { event.preventDefault(); if (!deletingResource) setResourceToDelete(null); }} onClick={(event) => { if (event.target === event.currentTarget && !deletingResource) setResourceToDelete(null); }}>
                 {resourceToDelete && <div className="mentor-confirm__body">
                   <h3 id="admin-resource-delete-title" className="admin-confirm-title"><AlertTriangle aria-hidden="true" />Eliminar recurso</h3>
-                  <p id="admin-resource-delete-description">Vas a eliminar <strong>{resourceToDelete.title}</strong>. Los estudiantes de este curso perderán el acceso. No se puede deshacer.</p>
+                  <p id="admin-resource-delete-description">Vas a eliminar <strong>{resourceToDelete.title}</strong>. Los estudiantes de este curso perderán el acceso. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</p>
                   {resErrorMsg && <p role="alert" className="admin-confirm-error"><strong>{resErrorMsg}</strong> Inténtalo de nuevo.</p>}
                   <div className="mentor-confirm__actions">
                     <button type="button" className="mentor-course-control" onClick={() => setResourceToDelete(null)} disabled={deletingResource}>Cancelar</button>
@@ -1663,16 +1616,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 </div>
                 <label className="admin-drive__destination" htmlFor="admin-drive-module">
                   <span>Módulo de destino</span>
-                  <select id="admin-drive-module" value={selectedModuleId} onChange={(event) => { setSelectedModuleId(event.target.value); setDriveLinkFilter('ALL'); setDrivePage(1); }} disabled={workModules.length === 0}>
-                    {workModules.length === 0 && <option value="">Sin módulos</option>}
-                    {workModules.map((module) => <option key={module.id} value={module.id}>{module.title}</option>)}
-                  </select>
+                  <AdminSelect id="admin-drive-module" value={selectedModuleId} onChange={(v) => { setSelectedModuleId(v); setDriveLinkFilter('ALL'); setDrivePage(1); }} disabled={workModules.length === 0} placeholder="Sin módulos" options={workModules.map((module) => ({ value: module.id, label: module.title }))} />
                 </label>
               </div>
 
               {workModules.length === 0 && <div className="admin-drive__empty" role="status"><Layers aria-hidden="true" /><strong>Este curso aún no tiene módulos</strong><span>Crea uno en el catálogo para poder asignarle videos.</span><button type="button" onClick={() => selectTab('courses')}>Ir al catálogo</button></div>}
-              {linkSuccessMsg && <p role="status" className="admin-resources__notice admin-resources__notice--success"><CheckCircle2 aria-hidden="true" />{linkSuccessMsg}</p>}
-              {driveErrorMsg && !showDriveSheet && <p role="alert" className="admin-resources__notice admin-resources__notice--error"><AlertTriangle aria-hidden="true" />{driveErrorMsg}</p>}
               {driveIsDemo && <p className="admin-drive__demo"><AlertTriangle aria-hidden="true" /><span>Drive no está conectado. Esta lista es una demostración; puedes añadir un video real mediante su enlace.</span></p>}
 
               <div className="mentor-course-toolbar admin-resources__toolbar admin-drive__toolbar">
@@ -1743,7 +1691,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
       {/* TAB 4: GESTIÓN DE PLUGINS & EXTENSIONES */}
       {activeTab === 'plugins' && (
-        <PluginManagerView />
+        <PluginManagerView modern={uiVersion === 'v0.5-modern'} />
       )}
 
       {/* TAB: PORTAL WEB Y FEEDBACK ALUMNOS (PORTADA + BUZÓN NPS) */}
@@ -1763,17 +1711,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     <button type="button" aria-pressed={activeTab === 'landing' || portalView === 'landing'} onClick={() => { setActiveTab('landing'); setPortalView('landing'); }}><span>Portada</span></button>
                     <button type="button" aria-pressed={activeTab === 'listening' || portalView === 'listening'} onClick={() => { setActiveTab('listening'); setPortalView('listening'); }}><span>Escucha</span></button>
                   </div>
+                  <div ref={setPortalActionsSlot} className="admin-courses-actions" />
                 </div>
               </div>
             </div>
           )}
 
           {(uiVersion === 'v0.4-classic' ? activeTab === 'landing' : (activeTab === 'landing' || portalView === 'landing')) && (
-            <LandingPageEditor onSaved={onRefreshData} disableAnimation={uiVersion === 'v0.4-classic'} />
+            <LandingPageEditor onSaved={onRefreshData} disableAnimation={uiVersion === 'v0.4-classic'} actionsSlot={uiVersion === 'v0.5-modern' ? portalActionsSlot : null} />
           )}
 
           {(uiVersion === 'v0.4-classic' ? activeTab === 'listening' : (activeTab === 'listening' || portalView === 'listening')) && (
-            <ListeningAdminPanel />
+            <ListeningAdminPanel actionsSlot={uiVersion === 'v0.5-modern' ? portalActionsSlot : null} />
           )}
         </div>
       )}
@@ -1869,7 +1818,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => handleToggleMentorCourse(c.id)}
-                            className="w-4 h-4 accent-[#06b6d4] rounded cursor-pointer"
+                            className="w-4 h-4 accent-[var(--color-brand-cyan)] rounded cursor-pointer"
                           />
                           <div className="min-w-0">
                             <p className="text-xs font-bold truncate">{c.title}</p>

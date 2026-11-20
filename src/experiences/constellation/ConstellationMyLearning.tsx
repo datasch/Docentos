@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, BookOpen, LogIn, RotateCcw } from 'lucide-react';
+import { BookOpen, LogIn, Play, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Course, User } from '../../types';
 import { api } from '../../lib/api';
@@ -53,74 +53,93 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
           : stats?.total
             ? t('myLearning.toStart', 'Por comenzar')
             : t('myLearning.courseContent', 'Contenido del curso');
+    const eyebrow = recommended
+      ? t('myLearning.continueLearning', 'Continúa aprendiendo')
+      : progress
+        ? label
+        : t('myLearning.availableCourse', 'Curso disponible');
+    const action =
+      stats?.certificate || !stats?.total || stats.done === stats.total
+        ? t('myLearning.viewCourse', 'Ver curso')
+        : stats.done > 0
+          ? t('myLearning.continueAction', 'Continuar')
+          : t('myLearning.startAction', 'Comenzar');
+    const cover = course.coverImage ? (
+      <img
+        src={course.coverImage}
+        alt=""
+        loading={recommended ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02] ${recommended ? 'rounded-xl' : ''}`}
+      />
+    ) : (
+      <span className="grid h-full w-full place-items-center text-ink-faint"><BookOpen size={32} aria-hidden="true" /></span>
+    );
+    const progressBlock =
+      stats?.percent !== null && stats?.percent !== undefined ? (
+        <div className="mt-4">
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-line"
+            role="progressbar"
+            aria-label={t('leccionesCompletadasDeTitle', 'Lecciones completadas de {{title}}', { title: course.title })}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={stats.percent}
+            aria-valuetext={t('doneDeTotalLecciones', '{{done}} de {{total}} lecciones', { done: stats.done, total: stats.total })}
+          >
+            <span className="block h-full rounded-full bg-brand-cyan transition-[width] duration-500 ease-out" style={{ width: `${stats.percent}%` }} />
+          </div>
+          <p className="mt-2 flex items-baseline justify-between text-sm text-ink-muted">
+            <span>{t('myLearning.progressCount', { done: stats.done, total: stats.total, defaultValue: `${stats.done} de ${stats.total} lecciones` })}</span>
+            <span className="tabular-nums">{stats.percent}%</span>
+          </p>
+        </div>
+      ) : null;
+    const button = (
+      <button
+        type="button"
+        onClick={(event) => { event.stopPropagation(); onContinue(course); }}
+        className={`flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-cyan text-sm font-semibold text-on-brand transition-opacity hover:opacity-90 ${recommended ? 'md:max-w-xs' : ''}`}
+      >
+        <Play aria-hidden className="h-4 w-4 fill-current" />
+        {action}
+      </button>
+    );
+
+    if (recommended) {
+      return (
+        <article
+          key={course.id}
+          aria-label={`${course.title} - ${label}`}
+          onClick={() => onContinue(course)}
+          className="academy-course-card group grid cursor-pointer grid-cols-1 overflow-hidden rounded-2xl border border-line bg-surface transition-colors hover:border-line-strong lg:grid-cols-2"
+        >
+          <div className="flex items-center p-5 sm:p-8 lg:order-2">
+            <div className="aspect-video w-full overflow-hidden rounded-xl bg-raised">{cover}</div>
+          </div>
+          <div className="flex min-w-0 flex-col justify-center px-5 pb-6 sm:px-8 sm:pb-8 lg:order-1 lg:p-12">
+            <p className="text-sm text-ink-muted">{eyebrow}</p>
+            <h3 className="mt-2 text-3xl font-semibold leading-tight text-ink lg:text-4xl">{course.title}</h3>
+            {progressBlock}
+            <div className="mt-6">{button}</div>
+          </div>
+        </article>
+      );
+    }
+
     return (
       <article
         key={course.id}
-        tabIndex={0}
-        role="button"
         aria-label={`${course.title} - ${label}`}
         onClick={() => onContinue(course)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onContinue(course);
-          }
-        }}
-        className={`academy-learning-course group cursor-pointer ${recommended ? 'academy-learning-course--next' : ''}`}
+        className="academy-course-card group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface transition-colors hover:border-line-strong"
       >
-        <div className="academy-learning-course__cover">
-          {course.coverImage ? (
-            <img
-              src={course.coverImage}
-              alt={course.title}
-              loading="lazy"
-              decoding="async"
-              className="group-hover:scale-105 transition-transform duration-500 ease-out"
-            />
-          ) : (
-            <BookOpen size={32} aria-hidden="true" />
-          )}
-        </div>
-        <div className="academy-learning-course__body">
-          <span className="academy-learning-course__status">
-            {recommended
-              ? t('myLearning.continueLearning', 'Continúa aprendiendo')
-              : progress
-                ? label
-                : t('myLearning.availableCourse', 'Curso disponible')}
-          </span>
-          <h3 className="group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-            {course.title}
-          </h3>
-          {stats?.percent !== null && stats?.percent !== undefined && (
-            <div className="academy-learning-progress">
-              <div className="academy-learning-progress__track" role="progressbar" aria-label={t('leccionesCompletadasDeTitle', 'Lecciones completadas de {{title}}', { title: course.title })}
-                aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.percent} aria-valuetext={t('doneDeTotalLecciones', '{{done}} de {{total}} lecciones', { done: stats.done, total: stats.total })}>
-                <span style={{ width: `${stats.percent}%` }} />
-              </div>
-              <p>
-                {t('myLearning.progressCount', { done: stats.done, total: stats.total, defaultValue: `${stats.done} de ${stats.total} lecciones` })} <span>{stats.percent}%</span>
-              </p>
-            </div>
-          )}
-          <div className="mt-auto pt-3 flex items-center">
-            <span
-              className={`inline-flex items-center gap-1.5 transition-all select-none ${
-                recommended
-                  ? 'academy-button'
-                  : 'text-sm font-semibold text-cyan-600 dark:text-cyan-400 group-hover:translate-x-1'
-              }`}
-            >
-              <span>
-                {stats?.certificate || !stats?.total || stats.done === stats.total
-                  ? t('myLearning.viewCourse', 'Ver curso')
-                  : stats.done > 0
-                    ? t('myLearning.continueAction', 'Continuar')
-                    : t('myLearning.startAction', 'Comenzar')}
-              </span>
-              <ArrowRight size={18} aria-hidden="true" />
-            </span>
-          </div>
+        <div className="aspect-video w-full overflow-hidden bg-raised">{cover}</div>
+        <div className="flex min-w-0 flex-1 flex-col p-5">
+          <p className="text-sm text-ink-muted">{eyebrow}</p>
+          <h3 className="mt-1 text-lg font-semibold leading-snug text-ink">{course.title}</h3>
+          {progressBlock}
+          <div className="mt-auto pt-5">{button}</div>
         </div>
       </article>
     );
@@ -163,7 +182,7 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
               {rest.length > 0 && (
                 <section className="academy-learning-section">
                   <h2>{next ? (t('myLearning.moreCourses', 'Más cursos')) : (t('myLearning.myCourses', 'Mis cursos'))}</h2>
-                  <div className="academy-learning-grid">{rest.map(course => courseCard(course))}</div>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">{rest.map(course => courseCard(course))}</div>
                 </section>
               )}
             </>

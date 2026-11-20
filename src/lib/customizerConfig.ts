@@ -13,7 +13,7 @@ export interface CustomizerConfig {
 
 export const DEFAULT_CUSTOMIZER_CONFIG: CustomizerConfig = {
   interfaceVersion: 'v0.5-modern',
-  colorTheme: 'cyan',
+  colorTheme: 'amber',
   colorMode: 'dark',
   density: 'comfortable',
   showQuickVersionSwitcher: false,

@@ -1,0 +1,5 @@
+.page-loader { display: grid; place-items: center; align-content: center; gap: 12px; min-height: 220px; padding: 32px 24px; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: 12px; background: var(--mentor-surface, transparent); color: var(--mentor-muted, currentColor); text-align: center; }
+.page-loader svg { width: 56px; height: 56px; color: var(--mentor-text, currentColor); }
+.page-loader p { margin: 0; font-size: 14px; line-height: 20px; }
+.page-loader--screen { min-height: 100vh; border: 0; border-radius: 0; background: #07070b; color: #94a3b8; }
+.page-loader--screen svg { width: 72px; height: 72px; color: #fff; }

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileCheck, Shield, Calendar, Clock, AlertCircle, ChevronRight, Lock, Languages } from 'lucide-react';
 import { api } from '../lib/api';
 import { normalizeLanguage } from '../i18n/languages';
 import { ContractDocument } from './legal/ContractDocument';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next';
+import '../styles/terms-paper.css';
 
 interface ContractModalProps {
   contractData: {
@@ -49,6 +49,18 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [acceptedDataPolicy, setAcceptedDataPolicy] = useState(false);
   const [acceptedCommercials, setAcceptedCommercials] = useState(false);
+  // Las casillas se habilitan al llegar al final del contrato: así «He leído» es cierto.
+  const [readAll, setReadAll] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const checkRead = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight <= 8) setReadAll(true);
+  }, []);
+  useEffect(() => {
+    checkRead();
+    window.addEventListener('resize', checkRead);
+    return () => window.removeEventListener('resize', checkRead);
+  }, [checkRead, contractText]);
   const [isSigning, setIsSigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,157 +103,85 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
 
   if (typeof document === 'undefined') return null;
 
+  const dates = contractData.calculatedDates;
+  const facts = [
+    { label: t('inicio', 'Inicio'), value: formatDate(dates.startDate) },
+    { label: t('vigencia', 'Vigencia'), value: formatDate(dates.endDate) },
+    { label: t('custodia', 'Custodia'), value: t('retentionPeriodMonthsMeses', '{{retentionPeriodMonths}} meses', { retentionPeriodMonths: dates.retentionPeriodMonths }) },
+  ];
+  const required: Array<{ checked: boolean; set: (value: boolean) => void; label: React.ReactNode }> = [
+    { checked: acceptedTerms, set: setAcceptedTerms, label: <Trans i18nKey="heLeidoYAceptoLosTerminosYCondicionesDe">He leído y acepto los <strong>Términos y Condiciones</strong> de la plataforma.</Trans> },
+    { checked: acceptedPrivacy, set: setAcceptedPrivacy, label: <Trans i18nKey="aceptoLaPoliticaDePrivacidadParaElAcceso">Acepto la <strong>Política de Privacidad</strong> para el acceso a las clases.</Trans> },
+    { checked: acceptedDataPolicy, set: setAcceptedDataPolicy, label: <Trans i18nKey="autorizoLaCustodiaYRetencionDeMisDatos">Autorizo la <strong>custodia y retención de mis datos académicos</strong> por un período de {{ retentionPeriodMonths: dates.retentionPeriodMonths }} meses.</Trans> },
+  ];
+
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md font-sans overscroll-contain"
-      onWheel={(e) => e.stopPropagation()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contract-signature-title"
-        className="app-dialog flex flex-col bg-surface text-ink border border-line rounded-2xl w-full max-w-[620px] overflow-hidden shadow-2xl max-h-[calc(100dvh-1.5rem)] animate-in fade-in zoom-in-95 duration-150 overscroll-contain"
-        onWheel={(e) => e.stopPropagation()}
-      >
-        {/* Header amplio y profesional */}
-        <div className="px-6 py-4.5 sm:py-5 bg-gradient-to-r from-brand-cyan/10 via-brand-purple/5 to-surface border-b border-line flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-3.5">
-            <div className="p-2.5 bg-brand-cyan/10 border border-brand-cyan/20 rounded-xl text-brand-cyan">
-              <FileCheck aria-hidden="true" className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
+    <div className="terms-overlay" onWheel={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="contract-signature-title" className="terms-frame" onWheel={(e) => e.stopPropagation()}>
+        <article className="terms-paper sign-paper">
+          <header className="terms-paper__top">
             <div>
-              <h2 id="contract-signature-title" className="text-base sm:text-lg font-bold text-ink tracking-tight">
-                {t('firmaDeAcuerdoYTerminosDeLaPlataforma', 'Firma de Acuerdo y Términos de la Plataforma')}
-              </h2>
-              <p className="text-xs sm:text-[13px] text-ink-muted mt-0.5">
-                {t('habilitacionDeAccesoOficialParaNuevos', 'Habilitación de acceso oficial para nuevos miembros registrados')}
-              </p>
+              <strong>DocentOS</strong>
+              <span>{t('plataformaELearning', 'Plataforma e-Learning')}</span>
             </div>
-          </div>
-          <Shield aria-hidden="true" className="w-5 h-5 text-ink-faint hidden sm:block" />
-        </div>
+            <div className="terms-paper__no">
+              <span>{t('legal.versionLabel', 'Versión')}</span>
+              <b>{contractData.version}</b>
+            </div>
+          </header>
 
-        {/* Resumen de Fechas Clave */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 sm:px-6 py-3 bg-raised/60 border-b border-line text-xs shrink-0">
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-raised border border-line">
-            <Calendar aria-hidden="true" className="w-4 h-4 text-success-light shrink-0" />
-            <div className="min-w-0">
-              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">{t('inicio', 'Inicio')}</div>
-              <div className="text-ink font-semibold truncate text-xs">{formatDate(contractData.calculatedDates.startDate)}</div>
-            </div>
+          <div className="sign-paper__head">
+            <h2 id="contract-signature-title">{t('antesDeEmpezar', 'Antes de empezar')}</h2>
+            <p>{t('leeYAceptaParaEntrar', 'Lee con calma y acepta estas condiciones para entrar a las clases.')}</p>
           </div>
 
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-raised border border-line">
-            <Clock aria-hidden="true" className="w-4 h-4 text-brand-cyan shrink-0" />
-            <div className="min-w-0">
-              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">{t('vigencia', 'Vigencia')}</div>
-              <div className="text-ink font-semibold truncate text-xs">{formatDate(contractData.calculatedDates.endDate)}</div>
-            </div>
-          </div>
+          <dl className="sign-paper__facts">
+            {facts.map((fact) => (
+              <div key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
 
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-raised border border-line">
-            <Lock aria-hidden="true" className="w-4 h-4 text-brand-purple shrink-0" />
-            <div className="min-w-0">
-              <div className="text-ink-muted text-[10px] uppercase font-bold tracking-wider">{t('custodia', 'Custodia')}</div>
-              <div className="text-ink font-semibold truncate text-xs">{t('retentionPeriodMonthsMeses', '{{retentionPeriodMonths}} meses', { retentionPeriodMonths: contractData.calculatedDates.retentionPeriodMonths })}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Visor de Contrato: cláusulas numeradas y fáciles de recorrer */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-0 max-h-[40dvh] bg-canvas/60 border-b border-line scrollbar-thin scrollbar-thumb-white/10">
-          {isTranslation && (
-            <p className="mb-4 flex items-start gap-2.5 rounded-xl border border-brand-cyan/25 bg-brand-cyan/5 p-3 text-xs leading-relaxed text-ink-soft">
-              <Languages aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-cyan" />
-              <span>{t('legal.translationNotice', 'Traducción de cortesía. Si hay alguna diferencia, prevalece el texto original en español, que es el que se firma.')}</span>
-            </p>
-          )}
-          <ContractDocument content={contractText} idPrefix="sign" />
-        </div>
-
-        {/* Formulario y Aceptaciones */}
-        <form onSubmit={handleSign} className="p-6 bg-surface flex flex-col gap-4 shrink-0">
-          {error && (
-            <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-danger-light text-xs flex items-center gap-2.5">
-              <AlertCircle aria-hidden="true" className="w-4 h-4 shrink-0 text-danger-light" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="space-y-2.5 text-xs sm:text-[13px]">
-            <label className="flex items-start gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
-              />
-              <span className="text-ink-soft group-hover:text-ink transition-colors leading-snug">
-                <Trans i18nKey="heLeidoYAceptoLosTerminosYCondicionesDe">He leído y acepto los <strong className="text-ink font-semibold">Términos y Condiciones</strong> de la plataforma.</Trans>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={acceptedPrivacy}
-                onChange={(e) => setAcceptedPrivacy(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
-              />
-              <span className="text-ink-soft group-hover:text-ink transition-colors leading-snug">
-                <Trans i18nKey="aceptoLaPoliticaDePrivacidadParaElAcceso">Acepto la <strong className="text-ink font-semibold">Política de Privacidad</strong> para el acceso a las clases.</Trans>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={acceptedDataPolicy}
-                onChange={(e) => setAcceptedDataPolicy(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
-              />
-              <span className="text-ink-soft group-hover:text-ink transition-colors leading-snug">
-                <Trans i18nKey="autorizoLaCustodiaYRetencionDeMisDatos">Autorizo la <strong className="text-ink font-semibold">custodia y retención de mis datos académicos</strong> por un período de {{ retentionPeriodMonths: contractData.calculatedDates.retentionPeriodMonths }} meses.</Trans>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={acceptedCommercials}
-                onChange={(e) => setAcceptedCommercials(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-line-strong accent-brand-cyan text-brand-cyan focus:ring-brand-cyan bg-raised"
-              />
-              <span className="text-ink-muted group-hover:text-ink-soft transition-colors leading-snug">
-                {t('opcionalAceptoRecibirNovedadesY', '(Opcional) Acepto recibir novedades y actualizaciones académicas.')}
-              </span>
-            </label>
-          </div>
-
-          <div className="pt-2 flex items-center justify-end">
-            <button
-              type="submit"
-              disabled={!isFormValid || isSigning}
-              className={`px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg ${
-                isFormValid && !isSigning
-                  ? 'btn-brand-primary cursor-pointer'
-                  : 'bg-raised text-ink-muted border border-line cursor-not-allowed opacity-60'
-              }`}
-            >
-              {isSigning ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current/25 border-t-current rounded-full animate-spin" />
-                  <span>{t('registrandoFirmaConHash', 'Registrando firma con hash...')}</span>
-                </>
-              ) : (
-                <>
-                  <span>{t('firmarYContinuar', 'Firmar y Continuar')}</span>
-                  <ChevronRight aria-hidden="true" className="w-4 h-4" />
-                </>
+          <div className={`sign-paper__reader${readAll ? '' : ' is-unread'}`}>
+            <div ref={scrollRef} onScroll={checkRead} className="sign-paper__scroll" tabIndex={0} role="region" aria-label={t('legal.contractSectionsNav', 'Cláusulas del documento')} aria-describedby="sign-read-hint">
+              {isTranslation && (
+                <p className="terms-paper__note" style={{ marginBottom: 20 }}>
+                  <span>{t('legal.translationNotice', 'Traducción de cortesía. Si hay alguna diferencia, prevalece el texto original en español, que es el que se firma.')}</span>
+                </p>
               )}
-            </button>
+              <ContractDocument content={contractText} idPrefix="sign" paper />
+            </div>
           </div>
-        </form>
+
+          <p id="sign-read-hint" className="sign-paper__hint" data-done={readAll || undefined} role="status">
+            {readAll
+              ? t('yaPuedesAceptar', 'Listo, ya puedes aceptar.')
+              : t('lesHastaElFinalParaAceptar', 'Desplázate hasta el final para poder aceptar.')}
+          </p>
+
+          <form onSubmit={handleSign} className="sign-paper__form">
+            {error && <p role="alert" className="sign-paper__error">{error}</p>}
+
+            <fieldset className="sign-paper__checks" disabled={!readAll}>
+              {required.map((item, index) => (
+                <label key={index}>
+                  <input type="checkbox" checked={item.checked} onChange={(e) => item.set(e.target.checked)} />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+              <label className="is-optional">
+                <input type="checkbox" checked={acceptedCommercials} onChange={(e) => setAcceptedCommercials(e.target.checked)} />
+                <span>{t('opcionalAceptoRecibirNovedadesY', '(Opcional) Acepto recibir novedades y actualizaciones académicas.')}</span>
+              </label>
+            </fieldset>
+
+            <button type="submit" className="terms-paper__ok sign-paper__submit" disabled={!readAll || !isFormValid || isSigning}>
+              {isSigning ? t('guardandoTuAceptacion', 'Guardando tu aceptación...') : t('aceptarYContinuar', 'Aceptar y continuar')}
+            </button>
+          </form>
+        </article>
       </div>
     </div>,
     document.body

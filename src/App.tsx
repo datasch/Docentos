@@ -3,7 +3,9 @@
  * Plataforma Web de Educación y Mentoría de Alto Nivel
  */
 
+import { LandingConfigProvider } from './lib/landingConfig';
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { PageLoader } from './components/loading/PageLoader';
 import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { api } from './lib/api';
 import {
@@ -12,12 +14,13 @@ import {
   privateRouteView,
   TAB_PATHS,
   tabFromPath,
+  viewerPath,
+  viewerCourseIdFromPath,
   type ActiveTab,
 } from './lib/appRoutes';
 import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
 import { patchCourseCard } from './lib/courseCardUpdate';
-import { RefreshCw } from 'lucide-react';
 import { initSavedTheme } from './lib/themeApplicator';
 import { applySeasonalTheme, syncSeasonalPluginState } from './lib/seasonalTheme';
 import { pluginManager } from './plugins/PluginManager';
@@ -291,7 +294,7 @@ export default function App() {
             } catch {}
           }
 
-          const preferredId = courseIdFromPath(window.location.pathname) || lastStudiedId;
+          const preferredId = courseIdFromPath(window.location.pathname) || viewerCourseIdFromPath(window.location.pathname) || lastStudiedId;
           const preferred = preferredId
             ? coursesRes.courses.find((c) => c.id === preferredId)
             : null;
@@ -316,6 +319,13 @@ export default function App() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // En el visor, la dirección lleva el curso abierto: al recargar se vuelve a él.
+  useEffect(() => {
+    if (activeTab !== 'viewer' || !course) return;
+    const path = viewerPath(course.id);
+    if (window.location.pathname !== path) window.history.replaceState(window.history.state, '', path + window.location.search);
+  }, [activeTab, course?.id]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -396,12 +406,7 @@ export default function App() {
 
   if (privatePath && privateRouteStatus === 'pending') {
     return (
-      <div className="min-h-screen bg-[#07070b] text-white flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#0f0f17] border border-white/10 text-[#06b6d4] flex items-center justify-center animate-pulse">
-          <RefreshCw className="w-6 h-6 animate-spin" />
-        </div>
-        <p className="text-sm font-semibold text-slate-400">{t('iniciandoDocentosConstellation', 'Iniciando DocentOS Constellation...')}</p>
-      </div>
+      <PageLoader className="page-loader--screen" label={t('iniciandoDocentosConstellation', 'Iniciando DocentOS Constellation...')} />
     );
   }
 
@@ -415,7 +420,7 @@ export default function App() {
           <p className="text-sm font-medium text-[#a5a5af]">{t('docentos', 'DocentOS')}</p>
           <div
             aria-hidden="true"
-            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-cyan-500/55"
+            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-brand-cyan/55"
           />
           <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-[#f4f4f5]">
             404
@@ -431,7 +436,7 @@ export default function App() {
                 navigateTo('landing');
               }
             }}
-            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-cyan-500 hover:bg-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-500"
+            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-brand-cyan hover:bg-brand-cyan/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-cyan"
           >
             {privateRouteStatus === 'unavailable' ? t('reintentar', 'Reintentar') : t('volverAlInicio', 'Volver al inicio')}
           </button>
@@ -441,7 +446,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[#06b6d4] selection:text-[#050505] font-sans">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[var(--color-brand-cyan)] selection:text-[#050505] font-sans">
       {connectionNotice && (
         <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           <p>{connectionNotice}</p>
@@ -450,6 +455,7 @@ export default function App() {
       )}
       
       {/* Experiencia Principal Oficial: DocentOS Constellation */}
+      <LandingConfigProvider>
       <ConstellationAppShell
         currentUser={currentUser}
         courses={courses}
@@ -504,6 +510,7 @@ export default function App() {
         unreadListening={unreadListening}
         listeningDocked={listeningDocked}
       />
+      </LandingConfigProvider>
 
       {/* Modales diferidos (Lazy Loaded) para no penalizar la carga inicial */}
       <Suspense fallback={null}>

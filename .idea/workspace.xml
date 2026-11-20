@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="9184ced7-a7e8-444e-8428-bce78e315724" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/src/components/AdminDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/AdminDashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/CourseManagerView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/CourseManagerView.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/LandingPageEditor.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/LandingPageEditor.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiences/constellation/ConstellationAppShell.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiences/constellation/ConstellationAppShell.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lib/adminNavigation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib/adminNavigation.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/styles/admin-courses.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/styles/admin-courses.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/admin-navigation.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/admin-navigation.test.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 6
+}]]></component>
+  <component name="ProjectId" id="3MHuvkF7lazf0iozPOGh4qSlUEB" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "design/admin-panel",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/tyronzero/Downloads/pruebas-t1-skeleton/pruebas-t1",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "Errors"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <module name="Docentos-ui" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <module name="Docentos-ui" />
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2df11533d9fe-intellij.indexing.shared.core-IU-262.11879.100" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.11879.100" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="9184ced7-a7e8-444e-8428-bce78e315724" name="Changes" comment="" />
+      <created>1795020066437</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1795020066437</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

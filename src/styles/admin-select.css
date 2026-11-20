@@ -1,0 +1,27 @@
+/* Selector del panel admin: reemplaza al <select> nativo. */
+[data-mentor-ui='modern'] .admin-select { position: relative; min-width: 0; }
+[data-mentor-ui='modern'] .admin-select__trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--mentor-text) 10%, transparent); border-radius: 8px; background: var(--mentor-surface); color: var(--mentor-text); font: inherit; font-size: 14px; line-height: 20px; text-align: left; cursor: pointer; transition: border-color 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+[data-mentor-ui='modern'] .admin-select__trigger[data-empty] { color: var(--mentor-muted); }
+[data-mentor-ui='modern'] .admin-select__trigger:disabled { opacity: 0.55; cursor: not-allowed; }
+[data-mentor-ui='modern'] .admin-select__trigger svg { flex: none; width: 16px; height: 16px; color: var(--mentor-muted); transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+[data-mentor-ui='modern'] .admin-select[data-open] .admin-select__trigger { border-color: var(--mentor-accent); }
+[data-mentor-ui='modern'] .admin-select[data-open] .admin-select__trigger svg { transform: rotate(180deg); }
+@media (hover: hover) and (pointer: fine) { [data-mentor-ui='modern'] .admin-select__trigger:hover:not(:disabled) { border-color: var(--mentor-muted); } }
+[data-mentor-ui='modern'] .admin-select__trigger:focus-visible { outline: 2px solid var(--mentor-accent); outline-offset: 2px; }
+[data-mentor-ui='modern'] .admin-select__value { min-width: 0; overflow-wrap: anywhere; }
+[data-mentor-ui='modern'] .admin-select__value small, [data-mentor-ui='modern'] .admin-select__option small { display: block; color: var(--mentor-muted); font-size: 12px; line-height: 16px; }
+[data-mentor-ui='modern'] .admin-select__required { position: absolute; bottom: 0; left: 50%; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+[data-mentor-ui='modern'] .admin-select__list { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; display: grid; gap: 2px; min-width: 100%; width: max-content; max-width: min(420px, calc(100vw - 32px)); max-height: 280px; margin: 0; padding: 6px; overflow-y: auto; overscroll-behavior: contain; list-style: none; border: 1px solid color-mix(in srgb, var(--mentor-text) 14%, transparent); border-radius: 10px; background: var(--mentor-raised); box-shadow: 0 12px 32px rgb(0 0 0 / 0.4); transform-origin: top left; animation: admin-select-in 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+[data-mentor-ui='modern'] .admin-select[data-up] .admin-select__list { top: auto; bottom: calc(100% + 6px); transform-origin: bottom left; }
+[data-mentor-ui='modern'] .admin-select[data-inline] .admin-select__list { position: static; width: auto; max-width: none; margin-top: 6px; box-shadow: none; background: var(--mentor-surface); animation: none; }
+@keyframes admin-select-in { from { opacity: 0; transform: scale(0.97) translateY(-4px); } }
+[data-mentor-ui='modern'] .admin-select__group { display: block; padding: 8px 8px 4px; color: var(--mentor-muted); font-size: 12px; line-height: 16px; }
+[data-mentor-ui='modern'] .admin-select__option { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 40px; padding: 8px; border-radius: 6px; color: var(--mentor-text); font-size: 14px; line-height: 20px; cursor: pointer; overflow-wrap: anywhere; }
+[data-mentor-ui='modern'] .admin-select__option[data-active] { background: color-mix(in srgb, var(--mentor-text) 8%, transparent); }
+[data-mentor-ui='modern'] .admin-select__option[aria-selected='true'] { background: color-mix(in srgb, var(--mentor-accent) 12%, transparent); }
+[data-mentor-ui='modern'] .admin-select__option svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--mentor-accent); }
+@media (prefers-reduced-motion: reduce) { [data-mentor-ui='modern'] .admin-select__list, [data-mentor-ui='modern'] .admin-select__trigger, [data-mentor-ui='modern'] .admin-select__trigger svg { animation: none; transition: none; } }
+[data-mentor-ui='modern'] .admin-tts__voice-row .admin-select { flex: 1; min-width: 0; }
+[data-mentor-ui='modern'] .admin-listening__compose .admin-select { min-width: 156px; }
+[data-mentor-ui='modern'] .admin-listening__compose .admin-select__trigger { min-height: 44px; }
+@media (max-width: 639px) { [data-mentor-ui='modern'] .admin-listening__compose .admin-select { flex: 1; } }

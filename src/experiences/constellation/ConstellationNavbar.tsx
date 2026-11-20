@@ -175,9 +175,23 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
 
   const { logoUrl: customLogoUrl, brandName } = usePlatformBrand();
 
+  const goTo = (tab: ConstellationTab) => {
+    onSelectTab(tab);
+    if (activeTab === tab || (tab === 'learning' && activeTab === 'viewer')) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navItems: Array<{ tab: ConstellationTab; icon: React.ElementType; label: string; short: string; active: boolean }> = [
+    { tab: 'explore', icon: Home, label: t('nav.home', 'Inicio'), short: t('nav.home', 'Inicio'), active: activeTab === 'explore' },
+    { tab: 'courses', icon: BookOpen, label: t('nav.catalog', 'Catálogo'), short: t('nav.catalog', 'Catálogo'), active: activeTab === 'courses' },
+    { tab: 'learning', icon: GraduationCap, label: t('nav.myLearning', 'Mi aprendizaje'), short: t('nav.myLearningShort', 'Aprendizaje'), active: activeTab === 'learning' || activeTab === 'viewer' },
+    ...(isStaff ? [{ tab: 'mentor' as ConstellationTab, icon: Users, label: t('nav.mentorship', 'Mentoría'), short: t('nav.mentorship', 'Mentoría'), active: activeTab === 'mentor' }] : []),
+    ...(isAdmin ? [{ tab: 'admin' as ConstellationTab, icon: Shield, label: t('nav.admin', 'Admin'), short: t('nav.admin', 'Admin'), active: activeTab === 'admin' }] : []),
+  ];
+
   return (
+    <>
     <header
-      className={`lp-header constellation-navbar sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow] duration-200 select-none py-3 sm:py-3.5 ${isScrolled
+      className={`lp-header constellation-navbar sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow] duration-200 select-none py-2 sm:py-3 ${isScrolled
         ? 'bg-surface border-b border-line shadow-sm'
         : 'bg-surface border-b border-line'
         }`}
@@ -230,76 +244,13 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           </div>
         </button>
 
-        {/* 2. Navegación Principal Fantasma (Mayúsculas 13px weight 600, tracking 0.05em estilo Dala) */}
-        <nav aria-label={t('navegacionPrincipal', 'Navegación principal')} className="academy-navigation hidden xl:flex items-center gap-5 2xl:gap-7 font-constellation-label text-[13px] tracking-[0.05em] uppercase font-semibold">
-          <button
-            onClick={() => {
-              onSelectTab('explore');
-              if (activeTab === 'explore') window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            aria-current={activeTab === 'explore' ? 'page' : undefined}
-            className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'explore'
-              ? 'text-slate-900 dark:text-white font-bold'
-              : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
-              }`}
-          >
-            <Home size={18} aria-hidden="true" /><span>{t('nav.home', 'Inicio')}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onSelectTab('courses');
-              if (activeTab === 'courses') window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            aria-current={activeTab === 'courses' ? 'page' : undefined}
-            className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'courses'
-              ? 'text-slate-900 dark:text-white font-bold'
-              : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
-              }`}
-          >
-            <BookOpen size={18} aria-hidden="true" /><span>{t('nav.catalog', 'Catálogo')}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onSelectTab('learning');
-              if ((activeTab === 'learning' || activeTab === 'viewer')) window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            aria-current={(activeTab === 'learning' || activeTab === 'viewer') ? 'page' : undefined}
-            className={`transition-colors duration-200 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${(activeTab === 'learning' || activeTab === 'viewer')
-              ? 'text-slate-900 dark:text-white font-bold'
-              : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
-              }`}
-          >
-            <GraduationCap size={18} aria-hidden="true" /><span>{t('nav.myLearning', 'Mi aprendizaje')}</span>
-          </button>
-
-          {isStaff && (
-            <button
-              onClick={() => onSelectTab('mentor')}
-              aria-current={activeTab === 'mentor' ? 'page' : undefined}
-            className={`transition-colors duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'mentor'
-                ? 'text-slate-900 dark:text-white font-bold'
-                : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
-                }`}
-            >
-              <Users size={18} aria-hidden="true" /><span>{t('nav.mentorship', 'Mentoría')}</span>
+        {/* 2. Navegación principal (escritorio). Por debajo de 1152px la sustituye la barra inferior. */}
+        <nav aria-label={t('navegacionPrincipal', 'Navegación principal')} className="academy-navigation">
+          {navItems.map((item) => (
+            <button key={item.tab} type="button" onClick={() => goTo(item.tab)} aria-current={item.active ? 'page' : undefined}>
+              <item.icon size={18} aria-hidden="true" /><span>{item.label}</span>
             </button>
-          )}
-
-          {isAdmin && (
-            <button
-              onClick={() => onSelectTab('admin')}
-              aria-current={activeTab === 'admin' ? 'page' : undefined}
-            className={`transition-colors duration-200 cursor-pointer flex items-center gap-1 whitespace-nowrap ${activeTab === 'admin'
-                ? 'text-slate-900 dark:text-white font-bold'
-                : 'text-slate-500 dark:text-[#9a9a9a] hover:text-slate-900 dark:hover:text-white'
-                }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-600 dark:text-[#eab308]" />
-              <span>{t('nav.admin', 'Admin')}</span>
-            </button>
-          )}
+          ))}
         </nav>
 
         {/* 3. Acciones Derechas: Idioma + Modo Claro/Oscuro + Command Palette + Perfil con Desplegable */}
@@ -390,94 +341,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                 <div className="lp-menu" role="menu">
                   <div className="lp-menu-head">
                     <span className="lp-menu-name">{currentUser.name || currentUser.email}</span>
-                    <span className="lp-menu-role">{getRoleLabel(currentUser.role)}</span>
-                  </div>
-
-                  {/* Secciones de navegación en móviles dentro del menú */}
-                  <div className="xl:hidden py-1 border-b border-slate-100 dark:border-white/[0.06]">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={`lp-menu-item ${activeTab === 'explore' ? 'is-active text-[#06b6d4] font-bold' : ''}`}
-                      onClick={() => {
-                        setProfileOpen(false);
-                        onSelectTab('explore');
-                        if (activeTab === 'explore') window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                    >
-                      <span className="lp-menu-item-left">
-                        <Home className="w-4 h-4 text-[#06b6d4]" />
-                        <span>{t('nav.home', 'Inicio')}</span>
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={`lp-menu-item ${activeTab === 'courses' ? 'is-active text-[#06b6d4] font-bold' : ''}`}
-                      onClick={() => {
-                        setProfileOpen(false);
-                        onSelectTab('courses');
-                        if (activeTab === 'courses') window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                    >
-                      <span className="lp-menu-item-left">
-                        <Search className="w-4 h-4 text-[#06b6d4]" />
-                        <span>{t('nav.catalog', 'Catálogo')}</span>
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={`lp-menu-item ${(activeTab === 'learning' || activeTab === 'viewer') ? 'is-active text-[#06b6d4] font-bold' : ''}`}
-                      onClick={() => {
-                        setProfileOpen(false);
-                        onSelectTab('learning');
-                        if ((activeTab === 'learning' || activeTab === 'viewer')) window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                    >
-                      <span className="lp-menu-item-left">
-                        <GraduationCap className="w-4 h-4 text-brand-cyan" />
-                        <span>{t('nav.myLearning', 'Mi aprendizaje')}</span>
-                      </span>
-                    </button>
-
-                    {isStaff && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={`lp-menu-item ${activeTab === 'mentor' ? 'is-active text-[#a855f7] font-bold' : ''}`}
-                        onClick={() => {
-                          setProfileOpen(false);
-                          onSelectTab('mentor');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <span className="lp-menu-item-left">
-                          <Sparkles className="w-4 h-4 text-[#a855f7]" />
-                          <span>{t('nav.mentorship', 'Mentoría')}</span>
-                        </span>
-                      </button>
-                    )}
-
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={`lp-menu-item ${activeTab === 'admin' ? 'is-active text-[#eab308] font-bold' : ''}`}
-                        onClick={() => {
-                          setProfileOpen(false);
-                          onSelectTab('admin');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <span className="lp-menu-item-left">
-                          <Shield className="w-4 h-4 text-[#eab308]" />
-                          <span>{t('nav.administration', 'Administración')}</span>
-                        </span>
-                      </button>
-                    )}
+                    <span className="lp-menu-role">{getRoleLabel(currentUser.role)} · <strong className={accessNote.tone}>{accessNote.label}</strong></span>
                   </div>
 
                   {onRestartTour && (
@@ -556,37 +420,6 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
                   <button
                     type="button"
                     role="menuitem"
-                    className="lp-menu-item"
-                    onClick={() => {
-                      handleToggleTheme();
-                    }}
-                  >
-                    <span className="lp-menu-item-left">
-                      {colorMode === 'dark' ? (
-                        <>
-                          <Sun className="w-4 h-4 text-amber-400" />
-                          <span>{t('nav.themeLight', 'Modo Blanco / Claro')}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Moon className="w-4 h-4 text-cyan-500" />
-                          <span>{t('nav.themeDark', 'Modo Oscuro')}</span>
-                        </>
-                      )}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.08] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/70">
-                      {colorMode === 'dark' ? t('nav.dark', 'Oscuro') : t('nav.light', 'Claro')}
-                    </span>
-                  </button>
-
-                  <p className="lp-menu-note">
-                    <span>{t('nav.accessStatus', 'Estado de Acceso')}</span>
-                    <strong className={accessNote.tone}>{accessNote.label}</strong>
-                  </p>
-
-                  <button
-                    type="button"
-                    role="menuitem"
                     className="lp-menu-item is-danger"
                     onClick={() => {
                       setProfileOpen(false);
@@ -615,5 +448,18 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
       </div>
 
     </header>
+
+    {/* Barra inferior: la navegación de móvil y tableta, al alcance del pulgar. Se oculta dentro del reproductor. */}
+    {activeTab !== 'viewer' && (
+      <nav className="academy-tabbar" aria-label={t('navegacionPrincipal', 'Navegación principal')}>
+        {navItems.map((item) => (
+          <button key={item.tab} type="button" onClick={() => goTo(item.tab)} aria-current={item.active ? 'page' : undefined}>
+            <item.icon aria-hidden="true" />
+            <span>{item.short}</span>
+          </button>
+        ))}
+      </nav>
+    )}
+    </>
   );
 };

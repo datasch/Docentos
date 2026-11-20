@@ -9,6 +9,8 @@
  * 4. Gestionar salas, copiar enlaces y sincronizar con los cursos y módulos del catálogo
  */
 
+import { useToastMessage } from '../lib/useToastMessage';
+import { PageLoader } from './loading/PageLoader';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Video,
@@ -61,6 +63,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string>('');
+  useToastMessage(actionNotice, 'success');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -379,12 +382,6 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         </div>
       </div>
 
-      {actionNotice && (
-        <p className="mentee-sheet__error mentor-meetings-notice" role="status">
-          <Check aria-hidden="true" />
-          <span>{actionNotice}</span>
-        </p>
-      )}
 
       <div className="mentor-course-toolbar">
         <label className="mentor-mentee-search">
@@ -421,10 +418,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       </div>
 
       {loading && meetings.length === 0 ? (
-        <p className="mentor-courses-empty" role="status">
-          <RefreshCw aria-hidden="true" className="animate-spin" />
-          Cargando clases
-        </p>
+        <PageLoader label="Cargando clases" />
       ) : filteredMeetings.length === 0 ? (
         <div className="mentor-courses-empty" role="status">
           <Video aria-hidden="true" />
@@ -755,7 +749,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <div className="mentor-confirm__body">
             <h3 id="meeting-delete-title">Eliminar clase</h3>
             <p>
-              Vas a eliminar <strong>{stripEmoji(deleteTarget.title)}</strong>. Los alumnos dejarán de verla y no se puede deshacer.
+              Vas a eliminar <strong>{stripEmoji(deleteTarget.title)}</strong>. Los alumnos dejarán de verla. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.
             </p>
             <div className="mentor-confirm__actions">
               <button type="button" className="mentor-course-control" onClick={() => setDeleteTarget(null)}>

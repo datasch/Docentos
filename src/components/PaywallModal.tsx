@@ -242,7 +242,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                 {t('paywall.institutional', 'INSTITUCIONAL')}
               </div>
               <div>
-                <div className="flex items-center gap-1.5 text-[#eab308] text-xs font-bold mb-2">
+                <div className="flex items-center gap-1.5 text-[var(--color-brand-cyan)] text-xs font-bold mb-2">
                   <Crown className="w-4 h-4" /> {t('paywall.menteePassOrAssigment', 'PASE MENTEE O ASIGNACIÓN')}
                 </div>
                 <div className="text-xl font-bold text-white mb-1">

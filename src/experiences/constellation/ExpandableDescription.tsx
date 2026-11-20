@@ -63,7 +63,7 @@ export const ExpandableDescription: React.FC<ExpandableDescriptionProps> = ({
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
           }}
-          className="mt-1 inline-flex min-h-8 items-center rounded-md px-1 -ml-1 text-xs font-semibold text-cyan-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500 dark:text-cyan-300"
+          className="mt-1 inline-flex min-h-8 items-center rounded-md px-1 -ml-1 text-xs font-semibold text-brand-cyan hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan dark:text-brand-cyan"
         >
           {expanded ? t('catalog.seeLess', 'Ver menos') : t('catalog.seeMore', 'Ver más')}
         </button>

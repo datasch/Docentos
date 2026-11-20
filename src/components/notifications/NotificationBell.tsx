@@ -83,7 +83,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         {unreadCount > 0 && (
           <span
             aria-hidden
-            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#06b6d4] text-[10px] font-bold leading-[18px] text-[#050505] text-center tabular-nums"
+            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-brand-cyan)] text-[10px] font-bold leading-[18px] text-[#050505] text-center tabular-nums"
           >
             {badge}
           </span>
@@ -122,9 +122,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         setOpenState(false);
                         onOpenNotification(n);
                       }}
-                      className={`w-full text-left flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.06] ${unread ? 'bg-cyan-50/70 dark:bg-cyan-400/[0.06]' : ''}`}
+                      className={`w-full text-left flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.06] ${unread ? 'bg-brand-cyan/70 dark:bg-brand-cyan/[0.06]' : ''}`}
                     >
-                      <Icon className={`mt-0.5 w-4 h-4 shrink-0 ${n.type === 'qna.answered' ? 'text-[#a855f7]' : 'text-[#06b6d4]'}`} />
+                      <Icon className={`mt-0.5 w-4 h-4 shrink-0 ${n.type === 'qna.answered' ? 'text-[#a855f7]' : 'text-[var(--color-brand-cyan)]'}`} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline justify-between gap-2">
                           <span className={`truncate text-sm ${unread ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-white/75'}`}>
@@ -141,7 +141,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                           </span>
                         )}
                       </span>
-                      {unread && <span aria-label={t('sinLeer', 'Sin leer')} className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#06b6d4]" />}
+                      {unread && <span aria-label={t('sinLeer', 'Sin leer')} className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--color-brand-cyan)]" />}
                     </button>
                   </li>
                 );

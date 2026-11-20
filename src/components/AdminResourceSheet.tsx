@@ -1,3 +1,4 @@
+import { AdminSelect } from './AdminSelect';
 import { useEffect, useRef } from 'react';
 import { FilePlus2, X } from 'lucide-react';
 import type { Module } from '../types';
@@ -43,11 +44,11 @@ export function AdminResourceSheet({ open, onClose, onSubmit, modules, title, on
           <form id="admin-resource-form" onSubmit={onSubmit} className="admin-person-sheet__scroll">
             <div className="meeting-field"><label htmlFor="resource-title">Título del recurso</label><input id="resource-title" type="text" placeholder="Ej. Guía de Arquitectura.pdf" value={title} onChange={(event) => onTitle(event.target.value)} required /></div>
             <div className="meeting-field"><label htmlFor="resource-url">URL privada del archivo</label><input id="resource-url" type="url" placeholder="https://drive.google.com/..." value={privateUrl} onChange={(event) => onPrivateUrl(event.target.value)} required /></div>
-            <div className="meeting-field"><label htmlFor="resource-module">Asignar a módulo</label><select id="resource-module" value={moduleId} onChange={(event) => onModuleId(event.target.value)}><option value="">General del curso</option>{modules.map((module) => <option key={module.id} value={module.id}>{module.title}</option>)}</select></div>
+            <div className="meeting-field"><label htmlFor="resource-module">Asignar a módulo</label><AdminSelect inline id="resource-module" value={moduleId} onChange={onModuleId} options={[{ value: '', label: 'General del curso' }, ...modules.map((module) => ({ value: module.id, label: module.title }))]} /></div>
             <p className="admin-resource-sheet__hint">El enlace se entrega solo a quienes tienen acceso al curso.</p>
             {error && <p role="alert" className="admin-resource-sheet__error">{error}</p>}
           </form>
-          <footer className="mentee-sheet__foot mentee-sheet__foot--actions"><button type="submit" form="admin-resource-form" className="mentor-course-control admin-resource-sheet__primary">Guardar recurso</button></footer>
+          <footer className="mentee-sheet__foot mentee-sheet__foot--actions"><button type="submit" form="admin-resource-form" className="mentor-course-control mentor-course-import">Guardar recurso</button></footer>
         </div>
       </dialog>
     </div>

@@ -1,3 +1,4 @@
+import { useLandingConfig } from '../../lib/landingConfig';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../../config/theme';
@@ -22,7 +23,13 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
   const { t } = useTranslation();
   const { brandName: appName, logoUrl, logoInitial } = usePlatformBrand();
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
-  const githubUrl = siteConfig.poweredByLink || 'https://github.com/datasch/Docentos';
+  const custom = useLandingConfig();
+  const githubUrl = custom.githubUrl || siteConfig.poweredByLink || 'https://github.com/datasch/Docentos';
+  const socials = [
+    { url: custom.discordUrl, label: 'Discord' },
+    { url: custom.twitterUrl, label: 'X' },
+    { url: custom.linkedinUrl, label: 'LinkedIn' },
+  ].filter((item): item is { url: string; label: string } => Boolean(item.url));
   // Solo se anima la llegada cuando se acopla en esta visita, no al recargar.
   const wasDocked = useRef(listeningDocked);
   const [justDocked, setJustDocked] = useState(false);
@@ -41,7 +48,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
           {/* Columna Izquierda: Logo, Nombre y Motto de DocentOS */}
           <div className="lg:col-span-5 flex flex-col items-start gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-[#06b6d4] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible">
+              <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible">
                 {logoUrl ? (
                   <img
                     src={logoUrl === DEFAULT_LOGO_URL ? '/logo-64.avif' : logoUrl}
@@ -62,7 +69,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
               </span>
               <span className="min-w-0 break-words font-constellation-display text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
                 {appName}
-                <span className="text-[#06b6d4]">.</span>
+                <span className="text-[var(--color-brand-cyan)]">.</span>
               </span>
             </div>
             
@@ -82,7 +89,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
                   aria-label={unreadListening > 0 ? t('footer.listeningBoxUnread', { count: unreadListening, defaultValue_one: 'Abrir Buzón de escucha, tienes {{count}} respuesta sin leer', defaultValue_other: 'Abrir Buzón de escucha, tienes {{count}} respuestas sin leer' }) : t('footer.listeningBox', 'Buzón de escucha')}
                   className={`footer-listening-dock hidden sm:flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer ${justDocked ? 'footer-listening-dock--landing' : ''}`}
                 >
-                  <HeartHandshake aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                  <HeartHandshake aria-hidden className="h-4 w-4 text-brand-cyan dark:text-brand-cyan" />
                   <span>{t('footer.listeningBox', 'Buzón de escucha')}</span>
                   {unreadListening > 0 && (
                     <span aria-hidden className="min-w-[18px] rounded-full bg-amber-500 px-1.5 py-px text-center text-[10px] font-bold leading-4 text-white">
@@ -95,8 +102,13 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
                 <Github aria-hidden className="h-4 w-4" />
                 <span>{t('github', 'GitHub')}</span>
               </a>
+              {socials.map((item) => (
+                <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-slate-900 dark:hover:text-white transition-colors">
+                  <span>{item.label}</span>
+                </a>
+              ))}
               <button type="button" onClick={() => setShowTermsModal(true)} className="flex items-center gap-2 text-left hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">
-                <ShieldCheck aria-hidden className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                <ShieldCheck aria-hidden className="h-4 w-4 text-brand-cyan dark:text-brand-cyan" />
                 <span className="min-w-0 break-words">{t('footer.termsAndPrivacy', 'Términos y privacidad')}</span>
               </button>
               {siteConfig.complaintsBookUrl && (
@@ -106,16 +118,16 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
                 </a>
               )}
             </div>
-            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label={t('footer.backToTop', 'Volver arriba')} title={t('footer.backToTop', 'Volver arriba')} className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-cyan-500 hover:text-cyan-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-cyan-300">
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label={t('footer.backToTop', 'Volver arriba')} title={t('footer.backToTop', 'Volver arriba')} className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-brand-cyan hover:text-brand-cyan dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-brand-cyan">
               <ArrowUp aria-hidden className="h-4 w-4" />
             </button>
           </nav>
 
           {onOpenListening && (
-            <button type="button" onClick={onOpenListening} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-3 text-sm font-semibold text-cyan-700 dark:text-cyan-300 sm:hidden">
+            <button type="button" onClick={onOpenListening} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-brand-cyan/30 bg-brand-cyan/5 px-4 py-3 text-sm font-semibold text-brand-cyan dark:text-brand-cyan sm:hidden">
               <HeartHandshake aria-hidden className="h-5 w-5 shrink-0" />
               <span>{t('footer.listeningBox', 'Buzón de escucha')}</span>
-              {unreadListening > 0 && <span className="rounded-full bg-cyan-600 px-2 py-0.5 text-xs text-white">{unreadListening}<span className="sr-only"> {t('footer.unreadResponses', 'respuestas sin leer')}</span></span>}
+              {unreadListening > 0 && <span className="rounded-full bg-brand-cyan px-2 py-0.5 text-xs text-white">{unreadListening}<span className="sr-only"> {t('footer.unreadResponses', 'respuestas sin leer')}</span></span>}
             </button>
           )}
 
@@ -129,10 +141,10 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
 
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-slate-600 dark:text-slate-300">
             <span className="flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.08] text-slate-700 dark:text-slate-200">
-              <CheckCircle2 className="h-3.5 w-3.5 text-[#06b6d4]" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-brand-cyan)]" />
               <span>v{DOCENTOS_VERSION}</span>
             </span>
-            <span className="min-w-0 break-words">{siteConfig.authorCredit || t('docentosCommunityEdition', 'DocentOS Community Edition')}</span>
+            <span className="min-w-0 break-words">{custom.footerText || siteConfig.authorCredit || t('docentosCommunityEdition', 'DocentOS Community Edition')}</span>
           </div>
         </div>
 

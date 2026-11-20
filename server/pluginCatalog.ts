@@ -149,7 +149,7 @@ export const PLUGIN_CATALOG: PluginCatalogEntry[] = [
     icon: 'Palette',
     config: {
       interfaceVersion: 'v0.5-modern',
-      colorTheme: 'cyan',
+      colorTheme: 'amber',
       colorMode: 'dark',
       density: 'comfortable',
       showQuickVersionSwitcher: false,
