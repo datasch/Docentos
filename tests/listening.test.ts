@@ -117,18 +117,15 @@ test('Buzón: el CSV neutraliza fórmulas y escapa comillas', () => {
   assert.equal(csvCell(null), '');
 });
 
-test('Buzón: un mensaje anónimo no deja pasar ni nombre, ni correo, ni id de usuario', () => {
+test('Buzón: todos los comentarios NPS exponen al autor (incluso si el registro tenía anonymous=true)', () => {
   const entry = toStaffEntry({
-    id: 'e1', userId: 'secret-user-id', user: { name: 'Ana Pérez', email: 'ana@example.invalid' },
+    id: 'e1', userId: 'u-123', user: { name: 'Ana Pérez', email: 'ana@example.invalid' },
     courseId: null, course: null, type: 'COMPLAINT', topic: 'BUG', mood: 1, npsScore: 2,
     subject: 'Asunto', message: 'Mensaje largo de prueba', anonymous: true, status: 'NEW',
     reply: null, repliedAt: null, replySeenAt: null, createdAt: day(1),
   });
-  assert.equal(entry.author, null);
-  const serialized = JSON.stringify(entry);
-  assert.equal(serialized.includes('Ana'), false);
-  assert.equal(serialized.includes('ana@example.invalid'), false);
-  assert.equal(serialized.includes('secret-user-id'), false);
+  assert.equal(entry.anonymous, false);
+  assert.deepEqual(entry.author, { name: 'Ana Pérez', email: 'ana@example.invalid' });
 });
 
 test('Buzón: la validación rechaza escalas fuera de rango y textos vacíos', () => {
@@ -273,26 +270,24 @@ test('Buzón: envío, respuesta del equipo, anonimato, permisos, CSV y límite d
     assert.equal((await call(`/api/admin/listening/${publicId}`, 'PATCH', student.cookie, { reply: 'hola' })).status, 403);
   });
 
-  await t.test('un mensaje anónimo llega al equipo sin identidad, pero la persona lo sigue viendo', async () => {
+  await t.test('los envíos NPS siempre identifican al autor aunque se intente enviar anonymous=true', async () => {
     const sent = await call('/api/listening', 'POST', other.cookie, {
       ...valid, type: 'COMPLAINT', topic: 'BUG', mood: 1, npsScore: 2, subject: 'Falla', message: 'La plataforma se cierra sola.', anonymous: true,
     });
     assert.equal(sent.status, 201);
+    assert.equal(sent.json.entry.anonymous, false);
     anonymousId = sent.json.entry.id;
 
     const panel = await call('/api/admin/listening?days=0', 'GET', admin.cookie);
     assert.equal(panel.status, 200);
     const seen = panel.json.entries.find((item: any) => item.id === anonymousId);
     assert.ok(seen);
-    assert.equal(seen.author, null);
-    assert.equal(panel.raw.includes('Otra Persona'), false);
-    assert.equal(panel.raw.includes(other.email), false);
-    assert.equal(panel.raw.includes(other.id), false);
+    assert.deepEqual(seen.author, { name: 'Otra Persona', email: other.email });
 
     const visible = panel.json.entries.find((item: any) => item.id === publicId);
     assert.equal(visible.author.name, 'Estudiante Visible');
 
-    assert.equal((await call('/api/listening/mine', 'GET', other.cookie)).json.entries[0].anonymous, true);
+    assert.equal((await call('/api/listening/mine', 'GET', other.cookie)).json.entries[0].anonymous, false);
   });
 
   await t.test('el resumen sale en números', async () => {
@@ -343,7 +338,7 @@ test('Buzón: envío, respuesta del equipo, anonimato, permisos, CSV y límite d
     assert.equal((await call('/api/admin/listening/no-existe', 'PATCH', admin.cookie, { status: 'CLOSED' })).status, 404);
   });
 
-  await t.test('el CSV sale con BOM, sin identidad anónima y neutraliza fórmulas', async () => {
+  await t.test('el CSV sale con BOM, identifica al autor y neutraliza fórmulas', async () => {
     await call('/api/listening', 'POST', student.cookie, {
       ...valid, subject: 'Inyección', message: '=HYPERLINK("http://evil.invalid","clic")',
     });
@@ -357,9 +352,9 @@ test('Buzón: envío, respuesta del equipo, anonimato, permisos, CSV y límite d
     );
     assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf]);
     assert.ok(csv.raw.includes(`'=HYPERLINK`));
-    assert.equal(csv.raw.includes('Otra Persona'), false);
-    assert.equal(csv.raw.includes(other.email), false);
-    assert.match(csv.raw.split('\r\n')[0], /carita_1_a_5,sentimiento,nps_0_a_10/);
+    assert.equal(csv.raw.includes('Otra Persona'), true);
+    assert.equal(csv.raw.includes(other.email), true);
+    assert.match(csv.raw.split('\r\n')[0], /carita_1_a_5,sentimiento,nps_0_a_10.*autor,autor_email/);
   });
 
   await t.test('el límite diario frena el relleno', async () => {

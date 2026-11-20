@@ -4,7 +4,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ConstellationNeuralSearch } from '../src/experiences/constellation/ConstellationNeuralSearch.js';
 import type { Course } from '../src/types.js';
-
+
+
 import './helpers/initI18n.js';
 const mockCourses = [
   {
@@ -125,7 +126,7 @@ test('ConstellationNeuralSearch excluye cursos con categorías no estandarizadas
   );
 
   // Solo debe contabilizar los 3 cursos estandarizados
-  assert.match(html, /aria-pressed="true"[^>]*><span[^>]*>Todos<\/span><span[^>]*>3<\/span>/);
+  assert.match(html, /course-category-filter__label"><span class="text-ink-muted">Categoría: <\/span>Todos/);
   assert.match(html, /3 cursos disponibles/);
   assert.match(html, /CURSOS EN EL CATÁLOGO \(3\)/);
 

@@ -3,7 +3,9 @@
  * Plataforma Web de Educación y Mentoría de Alto Nivel
  */
 
+import { LandingConfigProvider } from './lib/landingConfig';
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { PageLoader } from './components/loading/PageLoader';
 import { ConstellationAppShell } from './experiences/constellation/ConstellationAppShell';
 import { api } from './lib/api';
 import {
@@ -12,13 +14,15 @@ import {
   privateRouteView,
   TAB_PATHS,
   tabFromPath,
+  viewerPath,
+  viewerCourseIdFromPath,
   type ActiveTab,
 } from './lib/appRoutes';
 import { courseIdFromPath, coursePath } from './lib/courseSharing';
 import { User, Course } from './types';
-import { RefreshCw } from 'lucide-react';
+import { patchCourseCard } from './lib/courseCardUpdate';
 import { initSavedTheme } from './lib/themeApplicator';
-import { applySeasonalTheme } from './lib/seasonalTheme';
+import { applySeasonalTheme, syncSeasonalPluginState } from './lib/seasonalTheme';
 import { pluginManager } from './plugins/PluginManager';
 import { setCustomBrandName, setCustomCampusName, setCustomLogoUrl } from './lib/logoConfig';
 
@@ -50,6 +54,24 @@ function readLastCourseId(): string | null {
 const CACHED_COURSES_KEY = 'docentos_cached_courses_v1';
 const CACHED_USER_KEY = 'docentos_cached_user_v1';
 type PrivateRouteStatus = 'idle' | 'pending' | 'authorized' | 'unauthorized' | 'unavailable';
+
+const LOAD_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms = LOAD_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Tiempo de espera agotado')), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 function readCachedUser(): User | null {
   if (typeof window === 'undefined') return null;
@@ -163,7 +185,7 @@ export default function App() {
 
   const checkSetupStatus = async () => {
     try {
-      const res = await fetch('/api/setup/status');
+      const res = await withTimeout(fetch('/api/setup/status'));
       if (res.ok) {
         const data = await res.json();
         const setupRequired = Boolean(data.isSetupRequired);
@@ -179,16 +201,21 @@ export default function App() {
   const loadData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      setAccessVerified(false);
+      // Una recarga silenciosa no debe desmontar la vista privada (perdería la pestaña activa).
       const currentPath = window.location.pathname;
       const privatePath = isPrivatePath(currentPath);
-      if (privatePath) setPrivateRouteStatus('pending');
+      if (!silent) {
+        setAccessVerified(false);
+        if (privatePath && privateRouteStatus !== 'authorized') {
+          setPrivateRouteStatus('pending');
+        }
+      }
 
-      const [setupResult, authResult, coursesResult] = await Promise.allSettled([
-        checkSetupStatus(),
-        api.getCurrentUser(),
-        api.getCourses(),
-      ]);
+      const setupPromise = checkSetupStatus();
+      const authPromise = withTimeout(api.getCurrentUser());
+      const coursesPromise = withTimeout(api.getCourses());
+
+      const [setupResult, authResult] = await Promise.allSettled([setupPromise, authPromise]);
 
       const setupNeeded = setupResult.status === 'fulfilled' && Boolean(setupResult.value);
       if (setupNeeded) {
@@ -198,55 +225,59 @@ export default function App() {
       }
 
       let authUser: User | null = null;
-      setConnectionNotice(authResult.status === 'rejected' || coursesResult.status === 'rejected'
-        ? t('noPudimosActualizarTusDatosIntentaloDe', 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.') : null);
+      const activePath = window.location.pathname;
+      const activePrivatePath = isPrivatePath(activePath);
+      const secondaryPromises: Promise<unknown>[] = [];
       if (authResult.status === 'fulfilled' && authResult.value?.authenticated) {
         authUser = authResult.value?.user ?? null;
         setCurrentUser(authUser);
         writeCachedUser(authUser);
-        if (privatePath) {
-          setPrivateRouteStatus(privateRouteRoleAllowed(currentPath, authUser?.role) ? 'authorized' : 'unauthorized');
+        if (activePrivatePath) {
+          setPrivateRouteStatus(privateRouteRoleAllowed(activePath, authUser?.role) ? 'authorized' : 'unauthorized');
         }
         if (authUser) {
-          try {
-            const [pendingRes, pluginsRes] = await Promise.allSettled([
-              api.contracts.getPending(),
-              api.getPlugins(),
-            ]);
-            if (pendingRes.status === 'fulfilled' && pendingRes.value.requiresSignature && pendingRes.value.contract) {
-              setPendingContract(pendingRes.value.contract);
-            }
-            if (pluginsRes.status === 'fulfilled' && pluginsRes.value?.plugins) {
-              pluginManager.setPlugins(pluginsRes.value.plugins);
-            }
-          } catch {
-            // Silencioso
-          }
+          secondaryPromises.push(
+            Promise.allSettled([api.contracts.getPending(), api.getPlugins()])
+              .then(([pendingRes, pluginsRes]) => {
+                if (pendingRes.status === 'fulfilled' && pendingRes.value.requiresSignature && pendingRes.value.contract) {
+                  setPendingContract(pendingRes.value.contract);
+                }
+                if (pluginsRes.status === 'fulfilled' && pluginsRes.value?.plugins) {
+                  pluginManager.setPlugins(pluginsRes.value.plugins);
+                }
+              })
+              .catch(() => {}),
+          );
         }
       } else if (authResult.status === 'fulfilled') {
         setCurrentUser(null);
         writeCachedUser(null);
         setPendingContract(null);
-        if (privatePath) setPrivateRouteStatus('unauthorized');
-        try {
-          const brandRes = await api.getPublicBrand();
-          if (brandRes?.brandName) {
-            setCustomBrandName(brandRes.brandName);
-          }
-          if (brandRes?.campusName) {
-            setCustomCampusName(brandRes.campusName);
-          }
-          if (brandRes?.logoUrl !== undefined) {
-            setCustomLogoUrl(brandRes.logoUrl);
-          }
-        } catch {
-          // Silencioso
-        }
-      } else if (privatePath) {
+        if (activePrivatePath) setPrivateRouteStatus('unauthorized');
+        secondaryPromises.push(
+          api
+            .getPublicBrand()
+            .then((brandRes) => {
+              if (brandRes?.brandName) setCustomBrandName(brandRes.brandName);
+              if (brandRes?.campusName) setCustomCampusName(brandRes.campusName);
+              if (brandRes?.logoUrl !== undefined) setCustomLogoUrl(brandRes.logoUrl);
+              if (brandRes?.festivities) syncSeasonalPluginState(brandRes.festivities);
+            })
+            .catch(() => {}),
+        );
+      } else if (activePrivatePath && (!silent || privateRouteStatus !== 'authorized')) {
         setCurrentUser(null);
         writeCachedUser(null);
         setPrivateRouteStatus('unavailable');
       }
+
+      const [coursesResult] = await Promise.allSettled([coursesPromise, ...secondaryPromises]);
+
+      setConnectionNotice(
+        authResult.status === 'rejected' || coursesResult.status === 'rejected'
+          ? t('noPudimosActualizarTusDatosIntentaloDe', 'No pudimos actualizar tus datos. Inténtalo de nuevo en unos momentos.')
+          : null,
+      );
 
       if (coursesResult.status === 'fulfilled') {
         const coursesRes = coursesResult.value;
@@ -263,7 +294,7 @@ export default function App() {
             } catch {}
           }
 
-          const preferredId = courseIdFromPath(window.location.pathname) || lastStudiedId;
+          const preferredId = courseIdFromPath(window.location.pathname) || viewerCourseIdFromPath(window.location.pathname) || lastStudiedId;
           const preferred = preferredId
             ? coursesRes.courses.find((c) => c.id === preferredId)
             : null;
@@ -275,7 +306,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error al inicializar datos:", err);
-      if (isPrivatePath(window.location.pathname)) {
+      if (isPrivatePath(window.location.pathname) && (!silent || privateRouteStatus !== 'authorized')) {
         setCurrentUser(null);
         writeCachedUser(null);
         setPrivateRouteStatus('unavailable');
@@ -288,6 +319,13 @@ export default function App() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // En el visor, la dirección lleva el curso abierto: al recargar se vuelve a él.
+  useEffect(() => {
+    if (activeTab !== 'viewer' || !course) return;
+    const path = viewerPath(course.id);
+    if (window.location.pathname !== path) window.history.replaceState(window.history.state, '', path + window.location.search);
+  }, [activeTab, course?.id]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -368,12 +406,7 @@ export default function App() {
 
   if (privatePath && privateRouteStatus === 'pending') {
     return (
-      <div className="min-h-screen bg-[#07070b] text-white flex flex-col items-center justify-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#0f0f17] border border-white/10 text-[#06b6d4] flex items-center justify-center animate-pulse">
-          <RefreshCw className="w-6 h-6 animate-spin" />
-        </div>
-        <p className="text-sm font-semibold text-slate-400">{t('iniciandoDocentosConstellation', 'Iniciando DocentOS Constellation...')}</p>
-      </div>
+      <PageLoader className="page-loader--screen" label={t('iniciandoDocentosConstellation', 'Iniciando DocentOS Constellation...')} />
     );
   }
 
@@ -387,7 +420,7 @@ export default function App() {
           <p className="text-sm font-medium text-[#a5a5af]">{t('docentos', 'DocentOS')}</p>
           <div
             aria-hidden="true"
-            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-cyan-500/55"
+            className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-brand-cyan/55"
           />
           <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-[#f4f4f5]">
             404
@@ -403,7 +436,7 @@ export default function App() {
                 navigateTo('landing');
               }
             }}
-            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-cyan-500 hover:bg-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-500"
+            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-brand-cyan hover:bg-brand-cyan/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-cyan"
           >
             {privateRouteStatus === 'unavailable' ? t('reintentar', 'Reintentar') : t('volverAlInicio', 'Volver al inicio')}
           </button>
@@ -413,7 +446,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[#06b6d4] selection:text-[#050505] font-sans">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[var(--color-brand-cyan)] selection:text-[#050505] font-sans">
       {connectionNotice && (
         <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           <p>{connectionNotice}</p>
@@ -422,6 +455,7 @@ export default function App() {
       )}
       
       {/* Experiencia Principal Oficial: DocentOS Constellation */}
+      <LandingConfigProvider>
       <ConstellationAppShell
         currentUser={currentUser}
         courses={courses}
@@ -456,6 +490,14 @@ export default function App() {
           }
         }}
         onRefreshData={() => loadData(true)}
+        onCourseUpdated={(courseId, patch) => {
+          setCourses(previous => {
+            const updated = patchCourseCard(previous, courseId, patch);
+            writeCachedCourses(updated);
+            return updated;
+          });
+          setCourse(previous => previous?.id === courseId ? { ...previous, ...patch } : previous);
+        }}
         onPaymentSuccess={handlePaymentSuccess}
         onVipActivated={handleVipActivated}
         onRestartTour={() => setShowTour(true)}
@@ -468,6 +510,7 @@ export default function App() {
         unreadListening={unreadListening}
         listeningDocked={listeningDocked}
       />
+      </LandingConfigProvider>
 
       {/* Modales diferidos (Lazy Loaded) para no penalizar la carga inicial */}
       <Suspense fallback={null}>

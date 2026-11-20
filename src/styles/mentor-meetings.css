@@ -1,0 +1,685 @@
+/* Clases en vivo: mismo sistema que Gestión, Mentees y Consultas (encabezado, barra de
+   herramientas, tarjetas simétricas, estado sin caja, formulario en panel lateral).
+   Reusa .mentor-section-heading, .mentor-course-toolbar, .mentor-mentee-search,
+   .mentor-course-control y .mentee-sheet. */
+[data-mentor-ui='modern'] .mentor-meetings-panel svg,
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
+  flex-shrink: 0;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-section-heading {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-icon-control {
+  width: 44px;
+  padding: 0;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-notice {
+  color: var(--mentor-text);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-notice svg {
+  color: var(--mentor-accent);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-courses-empty {
+  display: grid;
+  justify-items: center;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-select {
+  flex: 0 1 260px;
+  align-self: stretch;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--course-line) !important;
+  border-radius: 10px;
+  background-color: var(--mentor-surface) !important;
+  color: var(--mentor-text);
+  font-size: 14px;
+  color-scheme: dark;
+  text-overflow: ellipsis;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-select:focus-visible {
+  outline: 2px solid var(--mentor-accent);
+  outline-offset: 2px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  align-items: stretch;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--course-line);
+  border-radius: 12px;
+  background: var(--mentor-surface);
+  transition: border-color 160ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card[data-state='live'] {
+  border-color: color-mix(in srgb, var(--mentor-text) 28%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card:hover {
+  border-color: var(--mentor-line);
+}
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mentor-muted);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--course-line);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status[data-state='live'] {
+  color: var(--mentor-text);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status[data-state='live']::before {
+  background: var(--color-danger-light);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status[data-state='scheduled']::before {
+  background: var(--mentor-accent);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status[data-state='recording']::before {
+  background: var(--color-success-light);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-status[data-state='ended']::before {
+  background: var(--mentor-muted);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__body h3 {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  color: var(--mentor-text);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 26px;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__body p {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--mentor-muted);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__body .mentor-meeting-card__course {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course svg {
+  width: 14px;
+  height: 14px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--course-line);
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__meta svg {
+  width: 14px;
+  height: 14px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__actions .mentor-span-2 {
+  grid-column: 1 / -1;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__actions a.mentor-course-control {
+  text-decoration: none;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__actions .mentor-course-import {
+  width: 100%;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__foot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Formulario en el panel lateral. */
+[data-mentor-ui='modern'] .mentee-sheet .mentor-meeting-form {
+  gap: 16px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field > span,
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field > legend,
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field label {
+  padding: 0;
+  color: var(--mentor-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field em {
+  font-style: normal;
+  font-weight: 400;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field :is(input, select, textarea) {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--course-line) !important;
+  border-radius: 8px;
+  background-color: var(--mentor-surface) !important;
+  color: var(--mentor-text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  color-scheme: dark;
+  box-shadow: none !important;
+  outline: 0;
+  transition: border-color 160ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field textarea {
+  min-height: 88px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field :is(input, select, textarea)::placeholder {
+  color: var(--mentor-muted);
+  opacity: 1;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field :is(input, select, textarea):focus {
+  border-color: var(--mentor-accent) !important;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field :is(input, select, textarea):disabled {
+  opacity: 0.55;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field > small {
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field__link {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--mentor-accent);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-field__link:focus-visible {
+  outline: 2px solid var(--mentor-accent);
+  outline-offset: 2px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid var(--course-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mentor-text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms var(--course-ease), border-color 160ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button svg {
+  margin-bottom: 4px;
+  color: var(--mentor-muted);
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button small {
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button[aria-checked='true'] {
+  border-color: color-mix(in srgb, var(--mentor-accent) 40%, transparent);
+  background: var(--mentor-raised);
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button[aria-checked='true'] svg {
+  color: var(--mentor-accent);
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button:focus-visible {
+  outline: 2px solid var(--mentor-accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button:hover {
+  background: var(--mentor-raised);
+}
+}
+
+@media (max-width: 640px) {
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-section-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-actions .mentor-course-import {
+    flex: 1;
+    width: auto;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card {
+    padding: 16px;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-select {
+    flex-basis: auto;
+    width: 100%;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-publication-filters[data-options='4'] {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-columns: auto;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-publication-filters[data-options='4'] button {
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card,
+  [data-mentor-ui='modern'] .mentee-sheet .meeting-types button,
+  [data-mentor-ui='modern'] .mentee-sheet .meeting-field :is(input, select, textarea) {
+    transition: none;
+  }
+}
+
+/* Íconos por tipo de clase dentro de un recuadro, igual en la tarjeta y en el formulario. */
+[data-mentor-ui='modern'] :is(.mentor-meetings-panel, .mentor-quiz-panel, .mentor-youtube-panel, .mentee-sheet) .meeting-tile {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--course-line);
+  border-radius: 10px;
+  background: var(--mentor-raised);
+  color: var(--mentor-muted);
+}
+[data-mentor-ui='modern'] :is(.mentor-meetings-panel, .mentor-quiz-panel, .mentor-youtube-panel, .mentee-sheet) .meeting-tile svg {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  stroke-width: 1.5;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card[data-state='live'] .meeting-tile {
+  border-color: color-mix(in srgb, var(--mentor-accent) 45%, transparent);
+  color: var(--mentor-accent);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__when {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__when strong {
+  color: var(--mentor-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__when span {
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button .meeting-tile {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 8px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button[aria-checked='true'] .meeting-tile {
+  border-color: color-mix(in srgb, var(--mentor-accent) 45%, transparent);
+  color: var(--mentor-accent);
+}
+@media (max-width: 640px) {
+}
+
+/* Curso: bloque propio con un color estable por curso, igual de alto en todas las tarjetas. */
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__body p.mentor-meeting-card__course {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-height: 60px;
+  margin: 0 0 8px;
+  padding: 12px;
+  overflow: visible;
+  border: 1px solid var(--course-line);
+  border-radius: 8px;
+  background: var(--mentor-raised);
+  color: var(--mentor-text);
+  -webkit-line-clamp: unset;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course i {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: hsl(var(--course-hue, 0) 55% 62%);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course[data-empty='true'] i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--mentor-muted);
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course[data-empty='true'] strong {
+  color: var(--mentor-muted);
+  font-weight: 400;
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__course small {
+  display: block;
+  overflow: hidden;
+  color: var(--mentor-muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Controles del carrusel: solo donde las tarjetas se deslizan. */
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-carousel {
+  display: none;
+}
+
+/* Tablet y móvil: las tarjetas se deslizan en horizontal en vez de apilarse. */
+@media (max-width: 900px) {
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-list {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 12px) / 2);
+    gap: 12px;
+    padding: 0 0 4px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-list::-webkit-scrollbar {
+    display: none;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card {
+    scroll-snap-align: start;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--mentor-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-carousel svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* El carrusel no ensancha el panel: la columna del panel puede encogerse. */
+[data-mentor-ui='modern'] .mentor-meetings-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Cabecera de tarjeta sin ícono: tipo y fecha a la izquierda, estado a la derecha. */
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__head {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+[data-mentor-ui='modern'] .mentee-sheet .mentee-sheet__head--plain {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+/* Móvil: una tarjeta por pantalla a todo el ancho. */
+@media (max-width: 640px) {
+  [data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meetings-list {
+    grid-auto-columns: 100%;
+  }
+}
+
+/* Eliminar: acción destructiva clara, con el mismo tamaño que el resto. */
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-course-control[data-danger='true'] {
+  border-color: color-mix(in srgb, var(--color-danger-light) 45%, transparent);
+  color: var(--color-danger-light);
+}
+@media (hover: hover) and (pointer: fine) {
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-course-control[data-danger='true']:hover:not(:disabled) {
+  border-color: var(--color-danger-light);
+  background: color-mix(in srgb, var(--color-danger-light) 10%, transparent);
+  color: var(--color-danger-light);
+}
+}
+[data-mentor-ui='modern'] .mentor-meetings-panel .mentor-meeting-card__foot {
+  padding-top: 16px;
+  border-top: 1px solid var(--course-line);
+}
+
+/* Confirmación de eliminar. */
+[data-mentor-ui='modern'] .mentor-confirm {
+  --course-line: color-mix(in srgb, var(--mentor-text) 10%, transparent);
+  --course-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--course-line);
+  border-radius: 16px;
+  background: var(--mentor-surface);
+  color: var(--mentor-text);
+}
+[data-mentor-ui='modern'] .mentor-confirm::backdrop {
+  background: color-mix(in srgb, black 60%, transparent);
+}
+[data-mentor-ui='modern'] .mentor-confirm[open] {
+  animation: mentor-confirm-in 200ms var(--course-ease);
+}
+@keyframes mentor-confirm-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+[data-mentor-ui='modern'] .mentor-confirm__body {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+}
+[data-mentor-ui='modern'] .mentor-confirm__body h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: -0.02em;
+}
+[data-mentor-ui='modern'] .mentor-confirm__body p {
+  margin: 0;
+  color: var(--mentor-muted);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+[data-mentor-ui='modern'] .mentor-confirm__body p strong {
+  color: var(--mentor-text);
+  font-weight: 500;
+}
+[data-mentor-ui='modern'] .mentor-confirm__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+[data-mentor-ui='modern'] .mentor-confirm svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.5;
+}
+@media (max-width: 640px) {
+  [data-mentor-ui='modern'] .mentor-confirm {
+    margin: auto auto 0;
+    width: 100vw;
+    border-radius: 16px 16px 0 0;
+  }
+  [data-mentor-ui='modern'] .mentor-confirm__body {
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-mentor-ui='modern'] .mentor-confirm[open] { animation: none; }
+}
+
+/* Tipo de clase sin íconos genéricos: texto y un indicador de selección. */
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button {
+  position: relative;
+  min-height: 72px;
+  padding: 12px 12px 12px 12px;
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid color-mix(in srgb, var(--mentor-text) 35%, transparent);
+  border-radius: 50%;
+  transition: background-color 160ms var(--course-ease), border-color 160ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .mentee-sheet .meeting-types button[aria-checked='true']::after {
+  border-color: var(--mentor-accent);
+  background: var(--mentor-accent);
+  box-shadow: inset 0 0 0 2px var(--mentor-raised);
+}
+
+/* Confirmaciones: una sola pieza para todos los módulos. Título y texto a la izquierda, acciones a la derecha, el rojo solo en el botón que destruye. */
+[data-mentor-ui='modern'] .mentor-confirm { width: min(440px, calc(100vw - 32px)); border-radius: 14px; box-shadow: 0 24px 64px rgb(0 0 0 / 0.5); }
+[data-mentor-ui='modern'] .mentor-confirm__body { gap: 8px; padding: 24px; }
+[data-mentor-ui='modern'] .mentor-confirm__body h3, [data-mentor-ui='modern'] .mentor-confirm__body h3.admin-confirm-title { display: block; font-size: 18px; font-weight: 600; line-height: 26px; letter-spacing: 0; }
+[data-mentor-ui='modern'] .mentor-confirm__body h3 svg { display: none; }
+[data-mentor-ui='modern'] .mentor-confirm__body p { font-size: 14px; line-height: 21px; }
+[data-mentor-ui='modern'] .mentor-confirm .admin-confirm-error { margin-top: 4px; padding: 12px 16px; border-radius: 8px; font-size: 13px; line-height: 20px; }
+[data-mentor-ui='modern'] .mentor-confirm__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--course-line); }
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 1 auto; min-width: 120px; min-height: 44px; padding: 8px 16px; font-size: 14px; font-weight: 500; }
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control[data-danger='true'] { border-color: transparent; background: var(--color-danger-light); color: var(--mentor-bg); }
+@media (hover: hover) and (pointer: fine) { [data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control[data-danger='true']:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger-light) 88%, var(--mentor-text)); } }
+@media (max-width: 640px) { [data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control { flex: 1 1 0; min-width: 0; } }
+
+/* Campo dentro de una confirmación (por ejemplo, el motivo al revocar): etiqueta arriba, campo a todo el ancho. */
+[data-mentor-ui='modern'] .mentor-confirm .meeting-field { display: grid; gap: 6px; margin-top: 8px; }
+[data-mentor-ui='modern'] .mentor-confirm .meeting-field label { color: var(--mentor-text); font-size: 14px; font-weight: 500; line-height: 20px; }
+[data-mentor-ui='modern'] .mentor-confirm .meeting-field input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--course-line); border-radius: 8px; background: var(--mentor-raised); color: var(--mentor-text); font: inherit; font-size: 16px; line-height: 24px; }
+[data-mentor-ui='modern'] .mentor-confirm .meeting-field input::placeholder { color: var(--mentor-muted); opacity: 1; }
+[data-mentor-ui='modern'] .mentor-confirm .meeting-field input:focus-visible { outline: 2px solid var(--mentor-accent); outline-offset: 2px; }
+
+/* Los botones de una confirmación no dependen del panel que la contiene: borde y radio propios. */
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control { box-sizing: border-box; border: 1px solid var(--course-line); border-radius: 8px; background: transparent; color: var(--mentor-text); cursor: pointer; }
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control:hover:not(:disabled) { background: var(--mentor-raised); }
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control[data-danger='true'] { border-color: transparent; background: var(--color-danger-light); color: var(--mentor-bg); }
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control:disabled { opacity: 0.55; cursor: not-allowed; }
+[data-mentor-ui='modern'] .mentor-confirm__actions .mentor-course-control:focus-visible { outline: 2px solid var(--mentor-accent); outline-offset: 2px; }
+[data-mentor-ui='modern'] .mentor-confirm__body p strong.mentor-confirm__permanent { color: var(--color-danger-light); font-weight: 700; }

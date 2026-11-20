@@ -52,6 +52,8 @@ interface LandingPageProps {
   currentUser?: { name: string; role: string; avatarUrl?: string } | null;
   onGoToApp?: () => void;
   onLogout?: () => void;
+  /** Vista previa del editor de Portada: usa esta configuración en vez de la guardada y no toca la cabecera de la página. */
+  previewConfig?: LandingConfig;
 }
 
 /** Caras de la barra de prueba social. Ilustrativas, como el resto del demo. */
@@ -337,6 +339,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   currentUser,
   onGoToApp,
   onLogout,
+  previewConfig,
 }) => {
   const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -360,7 +363,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [testimonialError, setTestimonialError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadLandingConfig();
+    if (!previewConfig) loadLandingConfig();
     loadTestimonials();
     const handleCustomizerChange = () => setBrandState(getActiveFrontendBrand());
     window.addEventListener('docentos-customizer-change', handleCustomizerChange);
@@ -454,28 +457,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
+  /** La configuración tal y como se pinta: con valores por defecto y los enlaces ya limpios. */
+  const normalizeConfig = (raw: LandingConfig): LandingConfig => {
+    const nextConfig = {
+      ...DEFAULT_LANDING_CONFIG,
+      ...raw,
+      benefits: raw.benefits && raw.benefits.length > 0 ? raw.benefits : DEFAULT_LANDING_CONFIG.benefits,
+    };
+    // La base puede conservar enlaces antiguos: se limpian tambien al pintar.
+    for (const field of ['heroMediaUrl', 'githubUrl', 'discordUrl', 'twitterUrl', 'linkedinUrl'] as const) {
+      nextConfig[field] = safeExternalUrl(nextConfig[field], import.meta.env?.DEV);
+    }
+    for (const field of ['heroCtaLink', 'heroSecondaryCtaLink', 'bannerLinkUrl'] as const) {
+      nextConfig[field] = safeLandingLink(nextConfig[field], import.meta.env?.DEV);
+    }
+    return nextConfig;
+  };
+
   const loadLandingConfig = async () => {
     try {
       const res = await api.getLandingConfig();
-      if (res && res.config) {
-        const nextConfig = {
-          ...DEFAULT_LANDING_CONFIG,
-          ...res.config,
-          benefits: res.config.benefits && res.config.benefits.length > 0 ? res.config.benefits : DEFAULT_LANDING_CONFIG.benefits,
-        };
-        // La base puede conservar enlaces antiguos: se limpian tambien al pintar.
-        for (const field of ['heroMediaUrl', 'githubUrl', 'discordUrl', 'twitterUrl', 'linkedinUrl'] as const) {
-          nextConfig[field] = safeExternalUrl(nextConfig[field], import.meta.env?.DEV);
-        }
-        for (const field of ['heroCtaLink', 'heroSecondaryCtaLink', 'bannerLinkUrl'] as const) {
-          nextConfig[field] = safeLandingLink(nextConfig[field], import.meta.env?.DEV);
-        }
-        setLandingConfig(nextConfig);
-      }
+      if (res && res.config) setLandingConfig(normalizeConfig(res.config));
     } catch (err) {
       console.warn('Usando configuración por defecto para Landing Page:', err);
     }
   };
+
+  // En la vista previa del editor manda la configuración del borrador, no la del servidor.
+  useEffect(() => {
+    if (previewConfig) setLandingConfig(normalizeConfig(previewConfig));
+  }, [previewConfig]);
 
   /**
    * El catálogo del que se alimenta toda la portada. Con sesión abierta son los
@@ -646,7 +657,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="lp-root">
-      <Helmet>
+      {!previewConfig && <Helmet>
         {/* Basic Metadata */}
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
@@ -669,7 +680,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <meta name="twitter:image" content={landingConfig.heroMediaUrl} />
 
         {/* JSON-LD Structured Data for AEO / SEO */}
-      </Helmet>
+      </Helmet>}
 
       {/* 1. Barra de navegación */}
       <PublicNavbar
@@ -710,7 +721,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </section>
         ) : (
           /* 2b. Visitante: presentación de la plataforma. */
-          <section className="lp-hero">
+          <section className="lp-hero" data-landing-section="hero">
             <div className="lp-hero-content">
               <a href="#cursos" className="lp-hero-badge">
                 <span className="lp-hero-badge-icon" aria-hidden>
@@ -838,7 +849,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
 
         {/* 4. Catálogo */}
-        <section className="lp-section" id="cursos">
+        <section className="lp-section" id="cursos" data-landing-section="courses">
           <div className="lp-section-header">
             <div className="lp-section-title-wrap">
               <div className="lp-section-indicator" />
@@ -913,7 +924,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
 
         {/* 6. Pilares de metodología */}
-        <section className="lp-section" id="beneficios">
+        <section className="lp-section" id="beneficios" data-landing-section="benefits">
           <div className="lp-section-header">
             <div className="lp-section-title-wrap">
               <div className="lp-section-indicator" />
@@ -947,7 +958,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* 7. Testimonios */}
         {mostrarTestimonios && (
-          <section className="lp-section" id="testimonios">
+          <section className="lp-section" id="testimonios" data-landing-section="testimonials">
             <div className="lp-section-header">
               <div className="lp-section-title-wrap">
                 <div className="lp-section-indicator is-violet" />
@@ -1222,7 +1233,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
 
         {/* 9. Cierre */}
-        <section className="lp-promo-section">
+        <section className="lp-promo-section" data-landing-section="footer">
           <div className="lp-promo-banner">
             <div className="lp-promo-content">
               <span className="lp-promo-badge">
@@ -1275,7 +1286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </main>
 
       {/* 10. Pie */}
-      <footer className="lp-footer">
+      <footer className="lp-footer" data-landing-section="footer">
         <div className="lp-container">
           <div className="lp-footer-grid">
             <div className="lp-footer-left">

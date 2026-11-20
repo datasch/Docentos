@@ -2,10 +2,11 @@
  * Gestor de Festividades Estacionales para DocentOS (Halloween & Navidad)
  *
  * Detecta automáticamente si el mes actual corresponde a:
- * - Octubre (mes 9 en JS): 🎃 Halloween
- * - Diciembre (mes 11 en JS) o primeros días de enero: 🎄 Navidad
+ * - Octubre (mes 9 en JS) y 1-2 de Noviembre: 🎃 Halloween
+ * - Del 20 de Noviembre al 6 de Enero: 🎄 Navidad
  *
- * También permite anular/forzar manualmente el tema para pruebas y demostraciones.
+ * Se complementa con el plugin `seasonal-festivities` (activar/desactivar globalmente,
+ * forzar una festividad o ajustar elementos visuales si la automatización falla).
  */
 
 import { useState, useEffect } from 'react';
@@ -13,26 +14,108 @@ import i18n from '../i18n';
 
 export type SeasonalTheme = 'halloween' | 'christmas' | 'none';
 export type SeasonalOverride = 'auto' | 'halloween' | 'christmas' | 'none';
+export type SeasonalMode = SeasonalOverride;
+
+export interface SeasonalPluginState {
+  enabled: boolean;
+  mode: SeasonalMode;
+  showBanner: boolean;
+  showParticles: boolean;
+  showFestiveHats: boolean;
+}
 
 export const SEASONAL_STORAGE_KEY = 'docentos_festive_theme';
+export const SEASONAL_PLUGIN_STORAGE_KEY = 'docentos_seasonal_plugin_state';
 export const SEASONAL_EVENT_NAME = 'docentos-seasonal-change';
 
-/**
- * Determina la festividad actual automáticamente por fecha de calendario.
- * - Octubre (y 1-2 de Noviembre): 🎃 Halloween
- * - Del 20 de Noviembre al 6 de Enero: 🎄 Navidad
- * - Resto del año: ninguno (estándar)
- */
-export function getSeasonalTheme(): SeasonalTheme {
-  if (typeof window === 'undefined') return 'none';
+export const DEFAULT_SEASONAL_PLUGIN_STATE: SeasonalPluginState = {
+  enabled: true,
+  mode: 'auto',
+  showBanner: true,
+  showParticles: true,
+  showFestiveHats: true,
+};
 
-  const override = getSeasonalOverride();
-  if (override !== 'auto') {
-    return override;
+let memoryPluginState: SeasonalPluginState | null = null;
+
+function normalizeMode(value: unknown): SeasonalMode {
+  if (value === 'halloween' || value === 'christmas' || value === 'none' || value === 'auto') {
+    return value;
+  }
+  return 'auto';
+}
+
+export function normalizeSeasonalPluginState(
+  raw?: Partial<SeasonalPluginState> | null,
+): SeasonalPluginState {
+  return {
+    enabled: raw?.enabled !== undefined ? Boolean(raw.enabled) : DEFAULT_SEASONAL_PLUGIN_STATE.enabled,
+    mode: normalizeMode(raw?.mode),
+    showBanner: raw?.showBanner !== undefined ? Boolean(raw.showBanner) : DEFAULT_SEASONAL_PLUGIN_STATE.showBanner,
+    showParticles:
+      raw?.showParticles !== undefined ? Boolean(raw.showParticles) : DEFAULT_SEASONAL_PLUGIN_STATE.showParticles,
+    showFestiveHats:
+      raw?.showFestiveHats !== undefined ? Boolean(raw.showFestiveHats) : DEFAULT_SEASONAL_PLUGIN_STATE.showFestiveHats,
+  };
+}
+
+export function getSeasonalPluginState(): SeasonalPluginState {
+  if (memoryPluginState) {
+    return memoryPluginState;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(SEASONAL_PLUGIN_STORAGE_KEY);
+      if (raw) {
+        const parsed = normalizeSeasonalPluginState(JSON.parse(raw));
+        memoryPluginState = parsed;
+        return parsed;
+      }
+    } catch {
+      // Ignorar si no hay acceso a localStorage o JSON inválido
+    }
+  }
+  return { ...DEFAULT_SEASONAL_PLUGIN_STATE };
+}
+
+/**
+ * Sincroniza el estado del plugin `seasonal-festivities` con la capa visual global
+ * y notifica a todos los componentes suscritos.
+ */
+export function syncSeasonalPluginState(
+  state?: Partial<SeasonalPluginState> | null,
+): SeasonalPluginState {
+  const normalized = normalizeSeasonalPluginState(state);
+  memoryPluginState = normalized;
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(SEASONAL_PLUGIN_STORAGE_KEY, JSON.stringify(normalized));
+    } catch {
+      // Ignorar si no hay acceso a localStorage
+    }
   }
 
-  // Detección automática por fecha real de calendario
-  const now = new Date();
+  const resolvedTheme = applySeasonalTheme();
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent(SEASONAL_EVENT_NAME, {
+        detail: { theme: resolvedTheme, ...normalized },
+      }),
+    );
+  }
+
+  return normalized;
+}
+
+/**
+ * Determina la festividad automáticamente por fecha real de calendario.
+ * - Octubre (y 1-2 de Noviembre): 🎃 Halloween
+ * - Del 20 de Noviembre al 6 de Enero (Reyes Magos): 🎄 Navidad
+ * - Resto del año: 'none' (estándar)
+ */
+export function getAutomaticSeasonalTheme(now: Date = new Date()): SeasonalTheme {
   const month = now.getMonth(); // 0 = Enero, 9 = Octubre, 11 = Diciembre
   const day = now.getDate();
 
@@ -47,6 +130,45 @@ export function getSeasonalTheme(): SeasonalTheme {
   }
 
   return 'none';
+}
+
+/**
+ * Determina la festividad activa combinando:
+ * 1. Estado global del plugin `seasonal-festivities` (si está apagado -> 'none', si fuerza tema -> ese tema)
+ * 2. Override local de pruebas (`localStorage`) si el plugin está en modo 'auto'
+ * 3. Automatización nativa por fecha de calendario dentro de DocentOS
+ */
+export function getSeasonalTheme(now: Date = new Date()): SeasonalTheme {
+  const pluginState = getSeasonalPluginState();
+  if (!pluginState.enabled) {
+    return 'none';
+  }
+
+  if (pluginState.mode !== 'auto') {
+    return pluginState.mode;
+  }
+
+  if (typeof window !== 'undefined') {
+    const override = getSeasonalOverride();
+    if (override !== 'auto') {
+      return override;
+    }
+  }
+
+  return getAutomaticSeasonalTheme(now);
+}
+
+export function getSeasonalDisplayOptions(): SeasonalPluginState & { theme: SeasonalTheme } {
+  const state = getSeasonalPluginState();
+  const theme = getSeasonalTheme();
+  const active = theme !== 'none';
+  return {
+    ...state,
+    theme,
+    showBanner: active && state.showBanner,
+    showParticles: active && state.showParticles,
+    showFestiveHats: active && state.showFestiveHats,
+  };
 }
 
 export function getSeasonalOverride(): SeasonalOverride {
@@ -65,15 +187,17 @@ export function setSeasonalOverride(override: SeasonalOverride): void {
   } catch {
     // Ignorar si no hay acceso a localStorage
   }
-  applySeasonalTheme();
-  window.dispatchEvent(new CustomEvent(SEASONAL_EVENT_NAME, { detail: getSeasonalTheme() }));
+  const theme = applySeasonalTheme();
+  window.dispatchEvent(
+    new CustomEvent(SEASONAL_EVENT_NAME, { detail: { theme, ...getSeasonalPluginState() } }),
+  );
 }
 
 /**
  * Hook de React para reaccionar inmediatamente a los cambios de festividad estacional.
  */
 export function useSeasonalTheme(): SeasonalTheme {
-  const [theme, setTheme] = useState<SeasonalTheme>(getSeasonalTheme);
+  const [theme, setTheme] = useState<SeasonalTheme>(() => getSeasonalTheme());
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -84,6 +208,23 @@ export function useSeasonalTheme(): SeasonalTheme {
   }, []);
 
   return theme;
+}
+
+/**
+ * Hook de React con tema efectivo y banderas visuales del plugin de festividades.
+ */
+export function useSeasonalDisplay(): SeasonalPluginState & { theme: SeasonalTheme } {
+  const [display, setDisplay] = useState(() => getSeasonalDisplayOptions());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setDisplay(getSeasonalDisplayOptions());
+    };
+    window.addEventListener(SEASONAL_EVENT_NAME, handleUpdate);
+    return () => window.removeEventListener(SEASONAL_EVENT_NAME, handleUpdate);
+  }, []);
+
+  return display;
 }
 
 /**

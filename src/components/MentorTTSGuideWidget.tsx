@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Play, Pause, Sparkles, Shield, Award, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Volume2, VolumeX, Play, Pause, Award, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { TTSGuide } from '../types';
 import { ttsService } from '../lib/ttsService';
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ interface MentorTTSGuideWidgetProps {
 export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guide, onRewardEarned }) => {
   const { t } = useTranslation()
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [claimedReward, setClaimedReward] = useState(false);
   const [speechProgress, setSpeechProgress] = useState(0);
 
@@ -67,8 +67,6 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
     <div className="bg-surface border border-line hover:border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-xl transition-all space-y-3 relative overflow-hidden">
       
       {/* Background Subtle Gradient Glow */}
-      <div className="absolute -right-12 -top-12 w-48 h-48 bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-brand-purple/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -80,26 +78,18 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
               src={guide.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
               alt={guide.mentorName}
               className={`w-11 h-11 rounded-full object-cover ring-2 transition-all ${
-                isPlaying ? 'ring-brand-cyan scale-105 shadow-lg shadow-brand-cyan/30' : 'ring-[#2d2d44]'
+                isPlaying ? 'ring-ink' : 'ring-[#2d2d44]'
               }`}
             />
-            {isPlaying && (
-              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-cyan rounded-full border-2 border-[#141420] flex items-center justify-center animate-ping" />
-            )}
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-cyan rounded-full border-2 border-[#141420] flex items-center justify-center text-[8px] font-bold text-black">
-              {t('ai', 'AI')}
-            </span>
           </div>
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-white">{guide.title}</span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-brand-gradient text-on-brand uppercase tracking-wider shadow-sm flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#eab308]" /> {t('guiaTts', 'Guía TTS')}
-              </span>
+              <span className="text-sm font-semibold text-white">{guide.title}</span>
+              <span className="text-xs text-ink-muted">{t('guiaTts', 'Guía TTS')}</span>
             </div>
             <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-              <Shield className="w-3 h-3 text-brand-cyan" /> {t('mentor2', 'Mentor:')} <strong className="text-slate-200">{guide.mentorName}</strong>
+              {t('mentor2', 'Mentor:')} <strong className="text-slate-200">{guide.mentorName}</strong>
             </p>
           </div>
         </div>
@@ -108,10 +98,10 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
         <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
           <button
             onClick={handlePlayTTS}
-            className={`flex-1 justify-center sm:flex-none px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all shadow-md ${
+            className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors sm:w-40 sm:flex-none ${
               isPlaying
-                ? 'bg-brand-purple text-white shadow-brand-purple/30 ring-2 ring-brand-purple/50'
-                : 'btn-brand-primary shadow-brand-cyan/20'
+                ? 'border border-line bg-raised text-ink'
+                : 'border border-line text-ink hover:bg-ink/5'
             }`}
           >
             {isPlaying ? (
@@ -129,8 +119,9 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
 
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="shrink-0 p-2 rounded-xl bg-raised border border-line text-slate-400 hover:text-white"
+            className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
           >
+            <span>{isExpanded ? t('ocultarTexto', 'Ocultar texto') : t('verTexto', 'Ver texto')}</span>
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         </div>
@@ -180,7 +171,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
           {/* Gamified Reward Banner */}
           <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-raised border border-line text-xs">
             <div className="flex min-w-0 items-center gap-2">
-              <Award className="w-4 h-4 text-[#eab308]" />
+              <Award className="w-4 h-4 text-[var(--color-brand-cyan)]" />
               <span className="text-slate-300">{t('recompensaGamificadaDeLeccion', 'Recompensa Gamificada de Lección:')}</span>
               <strong className="text-brand-cyan">+{guide.xpReward || 50} {t('xp', 'XP')}</strong>
             </div>

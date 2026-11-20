@@ -4,7 +4,6 @@ export type ModernAdminModuleId =
   | 'overview'
   | 'courses'
   | 'people'
-  | 'resources'
   | 'certification'
   | 'portal'
   | 'system';
@@ -31,15 +30,9 @@ export const MODERN_ADMIN_MODULES: ModernAdminModule[] = [
   },
   {
     id: 'people',
-    get label() { return i18n.t('adminNav_people_label', 'Personas'); },
-    get description() { return i18n.t('adminNav_people_desc', 'Usuarios y matrículas'); },
+    get label() { return i18n.t('adminNav_people_label', 'Usuarios'); },
+    get description() { return i18n.t('adminNav_people_desc', 'Cuentas y matrículas'); },
     target: 'users',
-  },
-  {
-    id: 'resources',
-    get label() { return i18n.t('adminNav_resources_label', 'Recursos'); },
-    get description() { return i18n.t('adminNav_resources_desc', 'Archivos, Drive y audio'); },
-    target: 'resources',
   },
   {
     id: 'certification',

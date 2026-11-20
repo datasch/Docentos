@@ -131,7 +131,7 @@ import {
   getPaymentStatus,
   simulateDevPaymentSuccess,
 } from './server/paymentService.js';
-import { MAX_USER_STRIKES } from './src/lib/moderation.js';
+import { MAX_USER_STRIKES, strikesSuspendAccount } from './src/lib/moderation.js';
 import {
   sendApiError,
   resolveRequestLanguage,
@@ -235,6 +235,15 @@ function parseJsonArray(value: string): any[] {
   }
 }
 
+const SEASONAL_FESTIVITIES_DEFAULTS = {
+  mode: 'auto',
+  showBanner: true,
+  showParticles: true,
+  showFestiveHats: true,
+} as const;
+
+const SEASONAL_MODE_VALUES = new Set(['auto', 'halloween', 'christmas', 'none']);
+
 function parsePlugin(plugin: any, isAdmin = false) {
   let config: Record<string, unknown> = {};
   try {
@@ -251,6 +260,7 @@ function parsePlugin(plugin: any, isAdmin = false) {
   }
 
   if (plugin.id === 'interactive-quizzes') config = { ...QUIZ_POLICY_DEFAULTS, ...config };
+  if (plugin.id === 'seasonal-festivities') config = { ...SEASONAL_FESTIVITIES_DEFAULTS, ...config };
 
   // Las credenciales de la configuracion no salen de administracion. La regla
   // vive en server/pluginConfig.ts: mira la forma de la clave, no el id del
@@ -2704,7 +2714,7 @@ app.put(
   asyncRoute(async (req, res) => {
     const data: { strikes?: number; isActive?: boolean } = {};
     if (typeof req.body.strikes === 'number') {
-      // Se puede quitar un strike puesto por error, pero nunca bajar de 0 ni inventar cifras absurdas.
+      // Se puede quitar un strike puesto por error, pero nunca bajar de 0 ni pasar del máximo.
       if (!Number.isInteger(req.body.strikes) || req.body.strikes < 0 || req.body.strikes > MAX_USER_STRIKES) {
         return res.status(400).json({ error: 'Número de strikes no válido' });
       }
@@ -2713,17 +2723,57 @@ app.put(
     if (typeof req.body.isActive === 'boolean') data.isActive = req.body.isActive;
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const strikes = data.strikes ?? existing.strikes;
+    let isActive = data.isActive ?? existing.isActive;
+    if (data.isActive === true && !existing.isActive && strikesSuspendAccount(strikes)) {
+      return res.status(400).json({
+        error: 'Con 5 strikes la cuenta no se puede reactivar. Quita antes un strike.',
+      });
+    }
+    // Al llegar al máximo de strikes la cuenta se suspende sola.
+    const autoSuspended = isActive && strikesSuspendAccount(strikes);
+    if (autoSuspended) isActive = false;
+
     if (
       existing.role === 'ADMIN' &&
-      data.isActive === false &&
+      existing.isActive &&
+      !isActive &&
       (await countOtherActiveAdmins(existing.id)) === 0
     ) {
       return res.status(400).json({
         error: 'No se puede suspender al último administrador activo. Nombra antes a otro.',
       });
     }
-    const user = await prisma.user.update({ where: { id: existing.id }, data });
-    if (data.isActive === false) await revokeAllUserSessions(user.id);
+
+    // Cada cambio queda registrado con quién lo hizo.
+    const actor = { actorUserId: req.user!.id, actorName: req.user!.name || '', actorEmail: req.user!.email || '' };
+    const events: { action: string; strikesBefore: number; strikesAfter: number }[] = [];
+    if (strikes !== existing.strikes) {
+      events.push({
+        action: strikes > existing.strikes ? 'strike_added' : 'strike_removed',
+        strikesBefore: existing.strikes,
+        strikesAfter: strikes,
+      });
+    }
+    if (isActive !== existing.isActive) {
+      events.push({
+        action: autoSuspended ? 'auto_suspended' : isActive ? 'reactivated' : 'suspended',
+        strikesBefore: strikes,
+        strikesAfter: strikes,
+      });
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({ where: { id: existing.id }, data: { strikes, isActive } });
+      if (events.length) {
+        await tx.moderationEvent.createMany({
+          data: events.map((event) => ({ userId: existing.id, ...actor, ...event })),
+        });
+      }
+      return updated;
+    });
+    if (!isActive && existing.isActive) await revokeAllUserSessions(user.id);
     await recordAuditEvent(req, {
       action: 'user.moderation_updated',
       targetType: 'User',
@@ -2733,9 +2783,37 @@ app.put(
         strikes: user.strikes,
         previousIsActive: existing.isActive,
         isActive: user.isActive,
+        autoSuspended,
       },
     });
-    res.json({ success: true, user: toRuntimeUser(user) });
+    res.json({ success: true, autoSuspended, user: toRuntimeUser(user) });
+  }),
+);
+
+// Historial de moderación de una persona: quién puso o quitó cada strike y cuándo.
+app.get(
+  '/api/admin/users/:userId/moderation-history',
+  requireRole(['ADMIN']),
+  asyncRoute(async (req, res) => {
+    const target = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { id: true } });
+    if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const events = await prisma.moderationEvent.findMany({
+      where: { userId: target.id },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { actor: { select: { name: true, email: true } } },
+    });
+    res.json({
+      events: events.map((event) => ({
+        id: event.id,
+        action: event.action,
+        strikesBefore: event.strikesBefore,
+        strikesAfter: event.strikesAfter,
+        actorName: event.actor?.name || event.actorName,
+        actorEmail: event.actor?.email || event.actorEmail,
+        createdAt: event.createdAt.toISOString(),
+      })),
+    });
   }),
 );
 
@@ -3305,6 +3383,16 @@ app.post(
     if (plugin.id === 'interactive-quizzes') {
       try { validateQuizPolicy(mergedConfig); }
       catch (error) { return res.status(400).json({ error: (error as Error).message }); }
+    }
+    if (plugin.id === 'seasonal-festivities') {
+      const mode = typeof mergedConfig.mode === 'string' ? mergedConfig.mode : 'auto';
+      if (!SEASONAL_MODE_VALUES.has(mode)) {
+        return res.status(400).json({ error: 'Modo de festividad no válido' });
+      }
+      mergedConfig.mode = mode;
+      mergedConfig.showBanner = mergedConfig.showBanner !== false;
+      mergedConfig.showParticles = mergedConfig.showParticles !== false;
+      mergedConfig.showFestiveHats = mergedConfig.showFestiveHats !== false;
     }
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
@@ -4539,17 +4627,27 @@ app.put(
 app.get(
   '/api/public/brand',
   asyncRoute(async (_req, res) => {
-    const plugin = await prisma.plugin.findUnique({ where: { id: 'docentos-customizer' } });
-    if (!plugin) {
-      return res.json({ success: true, brandName: 'DocentOS', campusName: 'DocentOS Command Center', logoUrl: '' });
-    }
-    const parsed = parsePlugin(plugin, false);
-    const cfg = (parsed.config || {}) as Record<string, any>;
+    const plugins = await prisma.plugin.findMany({
+      where: { id: { in: ['docentos-customizer', 'seasonal-festivities'] } },
+    });
+    const customizerPlugin = plugins.find((p) => p.id === 'docentos-customizer');
+    const seasonalPlugin = plugins.find((p) => p.id === 'seasonal-festivities');
+
+    const cfg = customizerPlugin ? (parsePlugin(customizerPlugin, false).config as Record<string, any>) : {};
+    const seasonalCfg = seasonalPlugin ? (parsePlugin(seasonalPlugin, false).config as Record<string, any>) : {};
+
     res.json({
       success: true,
       brandName: cfg.customBrandName || 'DocentOS',
       campusName: cfg.customCampusName || 'DocentOS Command Center',
       logoUrl: cfg.customLogoUrl || '',
+      festivities: {
+        enabled: seasonalPlugin ? seasonalPlugin.enabled : true,
+        mode: typeof seasonalCfg.mode === 'string' ? seasonalCfg.mode : 'auto',
+        showBanner: seasonalCfg.showBanner !== false,
+        showParticles: seasonalCfg.showParticles !== false,
+        showFestiveHats: seasonalCfg.showFestiveHats !== false,
+      },
     });
   }),
 );
@@ -6081,7 +6179,8 @@ app.post(
         npsScore: data.npsScore ?? null,
         subject: data.subject,
         message: data.message,
-        anonymous: data.anonymous,
+        // Los comentarios del Buzón incluyen NPS: siempre quedan identificados para seguimiento.
+        anonymous: false,
       },
       include: LISTENING_INCLUDE,
     });
@@ -6111,14 +6210,14 @@ app.get(
   }),
 );
 
-/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido. */
+/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido, y el caso se cierra solo. */
 app.post(
   '/api/listening/mine/seen',
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     await prisma.listeningEntry.updateMany({
       where: { userId: req.user!.id, reply: { not: null }, replySeenAt: null },
-      data: { replySeenAt: new Date() },
+      data: { replySeenAt: new Date(), status: 'CLOSED' },
     });
     res.json({ success: true });
   }),

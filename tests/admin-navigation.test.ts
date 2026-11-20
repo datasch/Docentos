@@ -9,7 +9,7 @@ import {
 test('la navegación Moderna expone módulos orientados a tareas', () => {
   assert.deepEqual(
     MODERN_ADMIN_MODULES.map((module) => module.id),
-    ['overview', 'courses', 'people', 'resources', 'certification', 'portal', 'system'],
+    ['overview', 'courses', 'people', 'certification', 'portal', 'system'],
   );
   assert.equal(MODERN_ADMIN_MODULES.some((module) => module.label === 'Módulos'), false);
 });
@@ -19,7 +19,6 @@ test('cada módulo apunta a una vista existente del panel', () => {
     overview: 'overview',
     courses: 'courses',
     people: 'users',
-    resources: 'resources',
     certification: 'certificates',
     portal: 'landing',
     system: 'plugins',

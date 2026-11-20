@@ -32,7 +32,7 @@ export const NotificationToasts: React.FC<NotificationToastsProps> = ({ toasts, 
             key={n.id}
             className="pointer-events-auto flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-white/[0.08] dark:bg-[#121214]/95"
           >
-            <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${n.type === 'qna.answered' ? 'text-[#a855f7]' : 'text-[#06b6d4]'}`} />
+            <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${n.type === 'qna.answered' ? 'text-[#a855f7]' : 'text-[var(--color-brand-cyan)]'}`} />
             <button
               type="button"
               onClick={() => {

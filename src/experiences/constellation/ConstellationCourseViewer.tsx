@@ -19,6 +19,9 @@ interface ConstellationCourseViewerProps {
   courses?: Course[];
 }
 
+// Verdadero solo hasta que el visor se monta por primera vez tras cargar la página (entrada directa o recarga).
+let pageJustLoaded = true;
+
 export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps> = ({
   course: initialCourse,
   currentUser,
@@ -40,6 +43,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   const [certificate, setCertificate] = useState<CertificateRecord | null>(null);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const hasAutoNavigatedRef = useRef<string | null>(null);
+  const [openedByReload] = useState(() => { const first = pageJustLoaded; pageJustLoaded = false; return first; });
 
   const effectiveUser: User = currentUser || {
     id: 'guest',
@@ -235,6 +239,16 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     }, 1400);
   };
 
+  // La lección abierta queda en la URL (sin crear historial): al recargar la página se retoma donde estaba.
+  const openVideoId = isPlayerModalOpen ? course.modules?.[selectedModuleIndex]?.videos?.[selectedVideoIndex]?.id : undefined;
+  useEffect(() => {
+    if (loadingCourse || !progressLoaded) return;
+    const url = new URL(window.location.href);
+    if (openVideoId) url.searchParams.set('leccion', openVideoId);
+    else url.searchParams.delete('leccion');
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
+  }, [openVideoId, loadingCourse, progressLoaded]);
+
   // Lista plana de IDs de videos en orden secuencial del curso
   const allVideoIds = useMemo(() => {
     const ids: string[] = [];
@@ -275,7 +289,12 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       openTimer = setTimeout(() => {
         // Si se llegó desde un aviso de respuesta, se abre esa lección.
         const focus = readLessonFocus(course.id);
-        if (!focus || !openLessonById(focus.videoId)) handleOpenActiveLesson();
+        // Tras recargar, vuelve a la lección que se estaba viendo (?leccion=) y no a la primera pendiente.
+        const fromUrl = new URLSearchParams(window.location.search).get('leccion');
+        if (focus && openLessonById(focus.videoId)) return;
+        if (fromUrl && openLessonById(fromUrl)) return;
+        // Tras recargar la página no se abre sola ninguna lección: se queda donde estaba (la ruta del curso).
+        if (!openedByReload) handleOpenActiveLesson();
       }, 750);
     }, 200);
 
@@ -290,7 +309,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       <div className="constellation-viewer-root w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
         {/* Nebulosas de fondo */}
         <div className="absolute top-1/3 left-1/3 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-brand-cyan/15 rounded-full blur-3xl pointer-events-none" />
         
         {/* Orbe pulsante cósmico */}
         <div className="relative mb-6">
@@ -333,7 +352,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
             onClick={handleOpenActiveLesson}
             className="academy-button min-h-11 shrink-0 whitespace-nowrap"
           >
-            <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
+            <Play className="w-3.5 h-3.5 fill-current text-brand-cyan" />
             <span>{t('viewer.viewLesson', 'Ver lección')}</span>
           </button>
           <CourseShareButton course={course} />
@@ -350,6 +369,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         currentUser={effectiveUser}
         certificate={certificate}
         activeVideoId={frontierVideoId}
+        isLessonModalOpen={isPlayerModalOpen}
       />
 
       {/* Visor de Misión en Modal Superpuesto (como el Buzón de Escucha) */}

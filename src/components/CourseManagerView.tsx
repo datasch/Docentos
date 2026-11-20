@@ -8,7 +8,11 @@
  * 3. Enlazar, reordenar y eliminar videos dentro de cada módulo
  */
 
-import React, { useState, useEffect } from 'react';
+import { useToastMessage } from '../lib/useToastMessage';
+import { PageLoader } from './loading/PageLoader';
+import { AdminSelect } from './AdminSelect';
+import React, { useState, useEffect, useRef } from 'react';
+import { AdminSearchField, FilterMenu, ActiveFilters, Pager } from './AdminListKit';
 import {
   BookOpen,
   Plus,
@@ -19,6 +23,7 @@ import {
   EyeOff,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Layers,
   Play,
   Pencil,
@@ -35,10 +40,18 @@ import {
   Sparkles,
   AlertTriangle,
   Users,
+  UsersRound,
+  LockKeyhole,
+  LockKeyholeOpen,
+  List,
+  LayoutGrid,
+  ArrowUpRight,
+  FileText,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
 import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
+import { CourseCardDescription } from './CourseCardDescription';
 import { Course, Module, VideoDriveLink, DriveVideoFile, QuizQuestion, User } from '../types';
 import { QuizManagerModal } from './QuizManagerModal';
 import { syncModuleQuizzes, getModuleQuestions } from '../plugins/QuizzesPlugin';
@@ -47,6 +60,8 @@ interface CourseManagerViewProps {
   currentUser?: User;
   onRefreshData: () => void;
   disableAnimation?: boolean;
+  /** Abre la pestaña de Recursos desde el selector Catálogo | Recursos. */
+  onOpenResources?: (courseId?: string) => void;
 }
 
 import {
@@ -72,6 +87,8 @@ const emptyForm = {
 
 type CourseForm = typeof emptyForm;
 
+const VIEW_MODE_KEY = 'docentos_admin_courses_view';
+
 interface DeleteTarget {
   type: 'course' | 'module' | 'video';
   id: string;
@@ -85,11 +102,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   currentUser,
   onRefreshData,
   disableAnimation = false,
+  onOpenResources,
 }) => {
   const { t } = useTranslation()
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  useToastMessage(successMsg, 'success');
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Modo de creación activo: 'manual' | 'youtube' | 'drive'
@@ -97,12 +116,50 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
   // Formulario de alta / edición de curso
   const [form, setForm] = useState<CourseForm>(emptyForm);
+  const formRef = useRef<HTMLDialogElement>(null);
+  const deleteRef = useRef<HTMLDialogElement>(null);
+  const unpublishRef = useRef<HTMLDialogElement>(null);
+  const [unpublishTarget, setUnpublishTarget] = useState<Course | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  const [storedViewMode, setViewMode] = useState<'list' | 'cards'>(() => {
+    try {
+      return localStorage.getItem(VIEW_MODE_KEY) === 'cards' ? 'cards' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
+  // En móvil solo hay tarjetas; la preferencia guardada de escritorio no se pisa.
+  const viewMode = isMobile ? 'cards' : storedViewMode;
+  const changeViewMode = (mode: 'list' | 'cards') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      // Sin almacenamiento la vista solo dura esta sesión.
+    }
+  };
+  const [courseQuery, setCourseQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'published' | 'draft'>('ALL');
+  const [accessFilter, setAccessFilter] = useState<'ALL' | 'members' | 'assigned'>('ALL');
+  const [priceFilter, setPriceFilter] = useState<'ALL' | 'free' | 'paid'>('ALL');
+  const [catFilter, setCatFilter] = useState('ALL');
+  const [coursePage, setCoursePage] = useState(1);
+  const [openModules, setOpenModules] = useState<Set<string>>(new Set());
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [savingCourse, setSavingCourse] = useState(false);
   const [generatingCover, setGeneratingCover] = useState(false);
 
   // Temario
-  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
+  const [temarioCourseId, setTemarioCourseId] = useState<string | null>(null);
+  const temarioCourse = courses.find((c) => c.id === temarioCourseId);
+  const temarioRef = useRef<HTMLDialogElement>(null);
+  const mentorsRef = useRef<HTMLDialogElement>(null);
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editingModuleTitle, setEditingModuleTitle] = useState('');
@@ -135,6 +192,19 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const [loadingCourseMentors, setLoadingCourseMentors] = useState<boolean>(false);
   const [savingCourseMentors, setSavingCourseMentors] = useState<boolean>(false);
   const [courseMentorsNotice, setCourseMentorsNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const d = temarioRef.current;
+    if (!d) return;
+    if (temarioCourseId && !d.open) d.showModal();
+    if (!temarioCourseId && d.open) d.close();
+  }, [temarioCourseId]);
+  useEffect(() => {
+    const d = mentorsRef.current;
+    if (!d) return;
+    if (mentorModalCourse && !d.open) d.showModal();
+    if (!mentorModalCourse && d.open) d.close();
+  }, [mentorModalCourse]);
 
   const handleOpenCourseMentors = async (targetCourse: Course) => {
     setMentorModalCourse(targetCourse);
@@ -224,6 +294,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const resetForm = () => {
     setForm(emptyForm);
     setEditingCourseId(null);
+    formRef.current?.close();
+  };
+
+  const openNewCourse = () => {
+    setCreationTab('manual');
+    setForm(emptyForm);
+    setEditingCourseId(null);
+    formRef.current?.showModal();
   };
 
   const startEditing = (course: Course) => {
@@ -239,7 +317,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       openToAllRegistered: Boolean(course.openToAllRegistered),
       sequentialUnlock: Boolean(course.sequentialUnlock),
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    formRef.current?.showModal();
   };
 
   const handleGenerateCover = async () => {
@@ -305,7 +383,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'course',
       id: course.id,
       title: course.title,
-      warningText: t('seEliminaraElCursoJuntoConSusModulos', 'Se eliminará el curso junto con sus módulos, videos y recursos vinculados.'),
+      warningText: t('seBorraranSusLengthModulosCountVideos', 'Se borrarán sus {{length}} módulo(s), {{countVideos}} video(s) y recursos vinculados.{{val}}', { length: course.modules.length, countVideos: countVideos(course), val: course.published ? ' Está publicado: los alumnos perderán el acceso.' : '' }),
     });
   };
 
@@ -369,11 +447,11 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     setDriveError('');
   };
 
-  const searchDrive = async () => {
+  const searchDrive = async (query = driveQuery) => {
     setDriveLoading(true);
     setDriveError('');
     try {
-      const res = await api.searchDriveVideos(driveQuery.trim() || undefined);
+      const res = await api.searchDriveVideos(query.trim() || undefined);
       setDriveResults(res.videos || []);
       setDriveIsDemo(Boolean(res.isDemo));
       if (!res.videos || res.videos.length === 0) {
@@ -445,7 +523,6 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       if (deleteTarget.type === 'course') {
         setBusyId(deleteTarget.id);
         await api.deleteCourse(deleteTarget.id, force);
-        if (expandedCourseId === deleteTarget.id) setExpandedCourseId(null);
         if (editingCourseId === deleteTarget.id) resetForm();
         flash(force ? t('cursoForzadoYEliminadoPorCompleto', 'Curso forzado y eliminado por completo.') : t('cursoEliminado', 'Curso eliminado.'));
       } else if (deleteTarget.type === 'module') {
@@ -462,7 +539,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         prev
           ? {
               ...prev,
-              error: err.message || t('errorAlEliminarPunto', 'Error al eliminar.'),
+              error: err.message || t('errorAlEliminar', 'Error al eliminar.'),
               canForce: true,
             }
           : null,
@@ -476,813 +553,440 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const countVideos = (course: Course) =>
     course.modules.reduce((total, m) => total + m.videos.length, 0);
 
+  useEffect(() => {
+    for (const [target, ref] of [[deleteTarget, deleteRef], [unpublishTarget, unpublishRef]] as const) {
+      const d = ref.current;
+      if (target && d && !d.open) d.showModal();
+      if (!target && d?.open) d.close();
+    }
+  }, [deleteTarget, unpublishTarget]);
+
+  useEffect(() => {
+    if (!temarioCourseId) return;
+    const c = courses.find((x) => x.id === temarioCourseId);
+    const first = c ? [...c.modules].sort((a, b) => a.order - b.order)[0] : undefined;
+    setOpenModules(new Set(first ? [first.id] : []));
+  }, [temarioCourseId]);
+  const toggleModule = (id: string) => setOpenModules((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  const q = courseQuery.trim().toLowerCase();
+  type Facets = { status: string; access: string; price: string; cat: string };
+  const cur: Facets = { status: statusFilter, access: accessFilter, price: priceFilter, cat: catFilter };
+  const matches = (c: Course, f: Facets) =>
+    (!q || `${c.title} ${c.category}`.toLowerCase().includes(q)) &&
+    (f.status === 'ALL' || (f.status === 'published') === c.published) &&
+    (f.access === 'ALL' || (f.access === 'members') === !!c.openToAllRegistered) &&
+    (f.price === 'ALL' || (f.price === 'paid') === (c.price > 0)) &&
+    (f.cat === 'ALL' || c.category === f.cat);
+  // Cada contador respeta los demás filtros: es lo que verás al elegir esa opción.
+  const countWith = (patch: Partial<Facets>) => courses.filter((c) => matches(c, { ...cur, ...patch })).length;
+  const categories = [...new Set(courses.map((c) => c.category).filter(Boolean))].sort();
+  const visibleCourses = courses.filter((c) => matches(c, cur));
+  const resourceCount = courses.reduce((total, course) =>
+    total + (course.resources?.length || 0) + course.modules.reduce((moduleTotal, module) => moduleTotal + (module.resources?.length || 0), 0), 0);
+  const pageSize = viewMode === 'list' ? 10 : 12;
+  const curPage = Math.min(coursePage, Math.max(1, Math.ceil(visibleCourses.length / pageSize)));
+  const pageCourses = visibleCourses.slice((curPage - 1) * pageSize, curPage * pageSize);
+  const resetPage = () => setCoursePage(1);
+  const clearCourseFilters = () => { setCourseQuery(''); setStatusFilter('ALL'); setAccessFilter('ALL'); setPriceFilter('ALL'); setCatFilter('ALL'); resetPage(); };
+  const courseChips = [
+    ...(statusFilter !== 'ALL' ? [{ key: 'st', text: statusFilter === 'published' ? 'Publicado' : 'Borrador', onRemove: () => { setStatusFilter('ALL'); resetPage(); } }] : []),
+    ...(accessFilter !== 'ALL' ? [{ key: 'ac', text: accessFilter === 'members' ? t('accesoParaMiembros', 'Acceso para miembros') : t('soloAsignados', 'Solo asignados'), onRemove: () => { setAccessFilter('ALL'); resetPage(); } }] : []),
+    ...(priceFilter !== 'ALL' ? [{ key: 'pr', text: priceFilter === 'free' ? 'Gratuito' : 'De pago', onRemove: () => { setPriceFilter('ALL'); resetPage(); } }] : []),
+    ...(catFilter !== 'ALL' ? [{ key: 'ct', text: catFilter, onRemove: () => { setCatFilter('ALL'); resetPage(); } }] : []),
+    ...(q ? [{ key: 'q', text: `«${courseQuery.trim()}»`, onRemove: () => { setCourseQuery(''); resetPage(); } }] : []),
+  ];
+
   return (
-    <div className={`space-y-6 ${disableAnimation ? '' : 'animate-fade-in'}`}>
-      {successMsg && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" /> {successMsg}
+    <div data-mentor-ui="modern" className="admin-courses-root">
+    <div className={`mentor-courses-panel admin-courses-panel ${disableAnimation ? '' : 'animate-fade-in'}`}>
+      {/* Cabecera: crear curso (manual, YouTube o Drive) */}
+      <div className="mentor-section-heading">
+        <div>
+          <h2 id="admin-courses-title">{t('cursos', 'Cursos')}</h2>
+          <p>{t('creaPublicaYOrganizaElTemarioDeCadaCurso', 'Crea, publica y organiza el temario de cada curso.')}</p>
         </div>
-      )}
+      </div>
 
-      {/* Selector de Modos de Creación e Importación */}
-      {!editingCourseId && (
-        <div className="bg-canvas border border-line rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
-          <div className="space-y-1">
-            <span className="text-micro font-bold uppercase tracking-wider text-brand-cyan flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> {t('metodosDeCreacionDeCursos', 'Métodos de Creación de Cursos')}
-            </span>
-            <h3 className="text-sm font-bold text-ink">
-              {t('comoDeseasEstructurarTuProximoCurso', '¿Cómo deseas estructurar tu próximo curso?')}
-            </h3>
-            <p className="text-xs text-ink-muted">
-              {t('disenaTemariosDesdeCeroGeneraCursos', 'Diseña temarios desde cero, genera cursos completos con IA desde YouTube o importa carpetas desde Google Drive.')}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setCreationTab('manual')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                creationTab === 'manual'
-                  ? 'btn-brand-primary shadow-md'
-                  : 'bg-raised hover:bg-elevated text-ink-muted hover:text-ink border border-line'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{t('manual', 'Manual')}</span>
+      <div className="admin-people-top">
+        {onOpenResources ? (
+          <div className="mentor-publication-filters" role="group" aria-label={t('seccionDeCursos', 'Sección de cursos')}>
+            <button type="button" aria-pressed="true">
+              <span>{t('catalogo', 'Catálogo')}</span>
+              <span className="mentor-publication-count">({courses.length})</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setCreationTab('youtube')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                creationTab === 'youtube'
-                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                  : 'bg-raised hover:bg-elevated text-red-400 hover:text-red-300 border border-red-500/30'
-              }`}
-            >
-              <Youtube className="w-3.5 h-3.5" />
-              <span>{t('iaYoutubeBuilder', 'IA YouTube Builder')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreationTab('drive')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                creationTab === 'drive'
-                  ? 'bg-brand-purple text-ink shadow-md shadow-brand-purple/30'
-                  : 'bg-raised hover:bg-elevated text-ink-muted hover:text-ink border border-line'
-              }`}
-            >
-              <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{t('googleDrive', 'Google Drive')}</span>
+            <button type="button" aria-pressed="false" onClick={() => onOpenResources()}>
+              <span>{t('recursos', 'Recursos')}</span>
+              <span className="mentor-publication-count">({resourceCount})</span>
             </button>
           </div>
+        ) : <span />}
+        <div className="admin-courses-actions">
+          <button type="button" className="mentor-course-control admin-primary-action" onClick={openNewCourse}>
+            <Plus aria-hidden="true" />
+            {t('nuevoCurso', 'Nuevo curso')}
+          </button>
+          <button
+            type="button"
+            className="mentor-course-control"
+            aria-pressed={creationTab === 'youtube'}
+            onClick={() => setCreationTab(creationTab === 'youtube' ? 'manual' : 'youtube')}
+          >
+            <Youtube aria-hidden="true" />
+            {t('desdeYoutubeConIa', 'Desde YouTube con IA')}
+          </button>
+          <button
+            type="button"
+            className="mentor-course-control"
+            aria-pressed={creationTab === 'drive'}
+            onClick={() => setCreationTab(creationTab === 'drive' ? 'manual' : 'drive')}
+          >
+            <HardDrive aria-hidden="true" />
+            {t('desdeGoogleDrive', 'Desde Google Drive')}
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* Asistente 1: AI YouTube Course Builder */}
-      {!editingCourseId && creationTab === 'youtube' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-red-400 flex items-center gap-2">
-              <Youtube className="w-4 h-4" /> {t('asistenteDeCreacionDeCursosDesdeYoutube', 'Asistente de Creación de Cursos desde YouTube con IA')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCreationTab('manual')}
-              className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
-            >
-              <X className="w-3.5 h-3.5" /> {t('volverACreacionManual', 'Volver a Creación Manual')}
-            </button>
-          </div>
+      {creationTab === 'youtube' && (
+        <div className="admin-courses-wizard">
           <YouTubeCourseBuilder
             currentUser={currentUser}
-            onCourseCreated={(newId) => {
+            onCourseCreated={() => {
               flash(t('cursoCreadoExitosamenteConIaDesdeYoutube', '¡Curso creado exitosamente con IA desde YouTube!'));
               refreshAll();
               setCreationTab('manual');
-              setExpandedCourseId(newId);
             }}
             onCancel={() => setCreationTab('manual')}
           />
         </div>
       )}
 
-      {/* Asistente 2: Google Drive Video Engine */}
-      {!editingCourseId && creationTab === 'drive' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-              <HardDrive className="w-4 h-4" /> {t('importacionDesdeGoogleDriveVideoEngine', 'Importación desde Google Drive Video Engine')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCreationTab('manual')}
-              className="text-xs text-ink-muted hover:text-ink flex items-center gap-1 font-semibold transition-colors"
-            >
-              <X className="w-3.5 h-3.5" /> {t('volverACreacionManual', 'Volver a Creación Manual')}
-            </button>
-          </div>
+      {creationTab === 'drive' && (
+        <div className="admin-courses-wizard">
           <DriveCourseImport onImported={refreshAll} />
         </div>
       )}
 
-      {/* Asistente 3 / Edición: Formulario Manual */}
-      {(editingCourseId || creationTab === 'manual') && (
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-          <div>
-            <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-cyan-400" />
-              {editingCourseId ? t('editarCurso', 'Editar Curso') : t('crearNuevoCurso', 'Crear Nuevo Curso')}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {t('losCursosNuevosSeGuardanComoBorrador', 'Los cursos nuevos se guardan como borrador hasta que los publiques. Un precio de 0 los convierte en cursos públicos y gratuitos.')}
-            </p>
-          </div>
-          {editingCourseId && (
-            <button
-              onClick={resetForm}
-              className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
-            >
-              <X className="w-4 h-4" /> {t('cancelar', 'Cancelar')}
+      {/* Formulario manual en hoja lateral */}
+      <dialog
+        ref={formRef}
+        className="mentee-sheet"
+        aria-labelledby="admin-course-form-title"
+        onCancel={(e) => { e.preventDefault(); resetForm(); }}
+        onClick={(e) => { if (e.target === e.currentTarget) resetForm(); }}
+      >
+        <div className="mentee-sheet__body">
+          <header className="mentee-sheet__head">
+            <span className="mentee-sheet__icon" aria-hidden="true"><BookOpen /></span>
+            <div className="mentor-mentee-id">
+              <strong id="admin-course-form-title">{editingCourseId ? t('editarCurso', 'Editar curso') : t('nuevoCurso', 'Nuevo curso')}</strong>
+              <span>{editingCourseId ? t('cambiaLosDatosYGuarda', 'Cambia los datos y guarda.') : t('losCursosNuevosQuedanEnBorradorHasta', 'Los cursos nuevos quedan en borrador hasta publicarlos.')}</span>
+            </div>
+            <button type="button" onClick={resetForm} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
+              <X aria-hidden="true" />
             </button>
-          )}
-        </div>
+          </header>
 
-        <form onSubmit={handleSubmitCourse} className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('tituloDelCurso', 'Título del Curso')}</label>
+          <div className="admin-course-sheet">
+          <div className="admin-course-sheet__scroll">
+          <form id="admin-course-form" onSubmit={handleSubmitCourse} className="admin-course-form">
+            <div className="admin-course-fields">
+            <div className="meeting-field">
+              <label htmlFor="admin-course-title">{t('tituloDelCurso', 'Título del curso')}</label>
               <input
+                id="admin-course-title"
                 type="text"
                 placeholder={t('ejArquitecturaCloudAvanzada', 'Ej. Arquitectura Cloud Avanzada')}
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
                 required
               />
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('categoriaEtiqueta', 'Categoría')}</label>
-              <select
+            <div className="meeting-field">
+              <label htmlFor="admin-course-category">{t('categoria', 'Categoría')}</label>
+              <AdminSelect
+                inline
+                id="admin-course-category"
                 value={form.category || 'Mentoría Especializada'}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4] cursor-pointer"
-              >
-                {form.category && !COURSE_CATEGORIES.includes(form.category as any) && (
-                  <option value={form.category}>{form.category}</option>
-                )}
-                <optgroup label={t('modalidadesDeMentoria', 'Modalidades de Mentoría')}>
-                  {MENTORSHIP_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label={t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas')}>
-                  {TECHNICAL_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('descripcion', 'Descripción')}</label>
-            <textarea
-              rows={3}
-              placeholder={t('queAprenderaElEstudianteEnEstePrograma', 'Qué aprenderá el estudiante en este programa.')}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('precio', 'Precio')}</label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
+                onChange={(v) => setForm({ ...form, category: v })}
+                options={[
+                  ...(form.category && !COURSE_CATEGORIES.includes(form.category as any) ? [{ value: form.category, label: form.category }] : []),
+                  ...MENTORSHIP_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: t('modalidadesDeMentoria', 'Modalidades de Mentoría') })),
+                  ...TECHNICAL_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas') })),
+                ]}
               />
             </div>
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 block mb-1">{t('moneda', 'Moneda')}</label>
-              <select
-                value={form.currency}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              >
-                <option value="USD">{t('usd', 'USD')}</option>
-                <option value="EUR">{t('eur', 'EUR')}</option>
-                <option value="MXN">{t('mxn', 'MXN')}</option>
-                <option value="COP">{t('cop', 'COP')}</option>
-                <option value="ARS">{t('ars', 'ARS')}</option>
-              </select>
+            <div className="meeting-field">
+              <label htmlFor="admin-course-description">{t('descripcion', 'Descripción')}</label>
+              <textarea
+                id="admin-course-description"
+                rows={3}
+                placeholder={t('queAprenderaElEstudianteEnEstePrograma', 'Qué aprenderá el estudiante en este programa.')}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
             </div>
-            <div className="md:col-span-2 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-[11px] font-bold text-slate-400 block">
-                  {t('imagenDePortadaAutomaticaConIaLogoSiSe', 'Imagen de Portada (Automática con IA + Logo si se deja vacía)')}
-                </label>
+            <div className="meeting-field__row">
+              <div className="meeting-field">
+                <label htmlFor="admin-course-price">{t('precio', 'Precio')}</label>
+                <input
+                  id="admin-course-price"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                />
+              </div>
+              <div className="meeting-field">
+                <label htmlFor="admin-course-currency">{t('moneda', 'Moneda')}</label>
+                <AdminSelect inline id="admin-course-currency" value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={['USD', 'EUR', 'MXN', 'COP', 'ARS'].map((c) => ({ value: c, label: c }))} />
+              </div>
+            </div>
+            <div className="meeting-field">
+              <label htmlFor="admin-course-cover">{t('urlDeLaPortada', 'URL de la portada')}</label>
+              <input
+                id="admin-course-cover"
+                type="text"
+                inputMode="url"
+                autoComplete="url"
+                placeholder="https://ejemplo.com/portada.jpg"
+                value={form.coverImage}
+                onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+                aria-describedby="admin-course-cover-hint"
+              />
+              <small id="admin-course-cover-hint" className="admin-sheet-note">{t('pegaUnaUrlOGeneraUnaPortadaConIaPuedes', 'Pega una URL o genera una portada con IA. Puedes dejarla vacía.')}</small>
+              <div className="admin-course-cover-tools">
                 <button
                   type="button"
+                  className="mentor-course-control"
                   onClick={handleGenerateCover}
                   disabled={generatingCover}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-[11px] font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
                 >
-                  {generatingCover ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5" />
-                  )}
-                  <span>{generatingCover ? t('generandoConIa', 'Generando con IA...') : t('generarConIaLogo', 'Generar con IA + Logo')}</span>
+                  {generatingCover ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
+                  {generatingCover ? t('generando', 'Generando…') : t('generarConIa', 'Generar con IA')}
                 </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder={t('dejarVacioParaAutogenerarPortadaIa', 'Dejar vacío para autogenerar portada IA temática con logo del plugin...')}
-                  value={form.coverImage}
-                  onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
                 {form.coverImage && (
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, coverImage: '' })}
-                    title={t('limpiarPortada', 'Limpiar portada')}
-                    className="p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-rose-400"
-                  >
-                    <X className="w-3.5 h-3.5" />
+                  <button type="button" className="mentor-course-control" onClick={() => setForm({ ...form, coverImage: '' })}>
+                    <X aria-hidden="true" />
+                    {t('quitar', 'Quitar')}
                   </button>
                 )}
               </div>
-              {form.coverImage && (
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44]">
-                  <img
-                    src={form.coverImage}
-                    alt={t('vistaPreviaDePortada', 'Vista previa de portada')}
-                    className="w-28 h-16 rounded-lg object-cover border border-cyan-500/30 shrink-0"
-                  />
-                  <div className="text-[11px] text-slate-400 leading-relaxed">
-                    <Trans i18nKey="vistaPreviaDePortadaActivaincluyeDiseno"><span className="text-cyan-400 font-bold block">Vista previa de portada activa</span>
-                    Incluye diseño temático adaptado al curso y el emblema configurado en el plugin de personalización.</Trans>
-                  </div>
-                </div>
-              )}
+              {form.coverImage && <img src={form.coverImage} alt={t('vistaPreviaDeLaPortada', 'Vista previa de la portada')} className="admin-course-cover-preview" />}
             </div>
-          </div>
 
-          {/* Progresión secuencial: el candado del temario del alumno. Va en su
-              propia caja porque no es una casilla más del formulario, sino la
-              regla con la que se recorre el curso entero. */}
-          <label className="flex items-start gap-3 rounded-xl border border-[#2d2d44] bg-[#0a0a0f] p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.sequentialUnlock}
-              onChange={(e) => setForm({ ...form, sequentialUnlock: e.target.checked })}
-              className="accent-[#06b6d4] w-4 h-4 mt-0.5 shrink-0"
-            />
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                {form.sequentialUnlock ? (
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                ) : (
-                  <Unlock className="w-3.5 h-3.5 text-slate-500" />
-                )}
-                {t('progresionSecuencialBloquearModulos', 'Progresión secuencial (bloquear módulos)')}
+            <label className="admin-course-check">
+              <input
+                type="checkbox"
+                checked={form.sequentialUnlock}
+                onChange={(e) => setForm({ ...form, sequentialUnlock: e.target.checked })}
+              />
+              <span>
+                <strong>{t('progresionSecuencial', 'Progresión secuencial')}</strong>
+                <small>{t('elAlumnoAbreElModulo1YDesbloqueaCada', 'El alumno abre el Módulo 1 y desbloquea cada módulo al terminar el anterior.')}</small>
               </span>
-              <span className="block text-[11px] text-slate-400 mt-1 leading-relaxed">
-                {t('elAlumnoEmpiezaConElModulo1AbiertoYEl', 'El alumno empieza con el Módulo 1 abierto y el resto con candado. Cada módulo se desbloquea cuando termina todas las lecciones del anterior. Apagado, el temario se ve completo desde el primer día.')}
+            </label>
+            <label className="admin-course-check">
+              <input
+                type="checkbox"
+                checked={form.openToAllRegistered}
+                onChange={(e) => setForm({ ...form, openToAllRegistered: e.target.checked })}
+              />
+              <span>
+                <strong>{t('accesoParaMiembros', 'Acceso para miembros')}</strong>
+                <small>{t('menteesYPersonalDeLaAcademiaElResto', 'Mentees y personal de la academia. El resto necesita compra o asignación.')}</small>
               </span>
-            </span>
-          </label>
-
-          {/* Quién entra al curso. Va aparte del precio a propósito: hasta
-              ahora un curso publicado a 0 quedaba abierto a cualquiera —incluso
-              sin cuenta— y nadie lo había pedido. Ahora la apertura se declara,
-              y apagada el acceso lo reparte administración persona a persona. */}
-          <label className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.openToAllRegistered}
-              onChange={(e) => setForm({ ...form, openToAllRegistered: e.target.checked })}
-              className="accent-brand-cyan w-4 h-4 mt-0.5 shrink-0"
-            />
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                {form.openToAllRegistered ? (
-                  <Globe className="w-3.5 h-3.5 text-brand-cyan" />
-                ) : (
-                  <Lock className="w-3.5 h-3.5 text-ink-faint" />
-                )}
-                {t('accesoParaMiembros', 'Acceso para miembros')}
-              </span>
-              <span className="block text-micro text-ink-muted mt-1 leading-relaxed">
-                {t('disponibleParaMenteesYPersonalDeLa', 'Disponible para mentees y personal de la academia. Los invitados y estudiantes externos necesitan una compra o asignación para acceder.')}
-              </span>
-            </span>
-          </label>
-
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
+            </label>
+            <label className="admin-course-check">
               <input
                 type="checkbox"
                 checked={form.published}
                 onChange={(e) => setForm({ ...form, published: e.target.checked })}
-                className="accent-[#06b6d4] w-4 h-4"
               />
-              {t('publicarInmediatamente', 'Publicar inmediatamente')}
+              <span>
+                <strong>{t('publicarAlGuardar', 'Publicar al guardar')}</strong>
+                <small>{t('visibleEnElCatalogoDesdeAhora', 'Visible en el catálogo desde ahora.')}</small>
+              </span>
             </label>
 
-            <button
-              type="submit"
-              disabled={savingCourse}
-              className="btn-brand-primary py-2 px-4 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              {savingCourse ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : editingCourseId ? (
-                <Save className="w-4 h-4" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {editingCourseId ? t('guardarCambiosCapital', 'Guardar Cambios') : t('crearCursoCapital', 'Crear Curso')}
-            </button>
+            </div>
+
+          </form>
           </div>
-        </form>
-      </div>
-      )}
-
-      {/* Catálogo de cursos */}
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-          <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#06b6d4]" />
-            {t('catalogoLength', 'Catálogo ({{length}})', { length: courses.length })}
-          </h3>
-          <button
-            onClick={loadCourses}
-            className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> {t('actualizar', 'Actualizar')}
-          </button>
+          <div className="mentee-sheet__foot admin-course-form__foot">
+            <button type="submit" form="admin-course-form" disabled={savingCourse} className="mentor-course-control mentor-course-import admin-course-form__submit">
+              {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
+              {editingCourseId ? t('guardarCambios', 'Guardar cambios') : t('crearCurso', 'Crear curso')}
+            </button>
+            <button type="button" className="mentor-course-control admin-course-form__cancel" onClick={resetForm}>{t('cancelar', 'Cancelar')}</button>
+            {editingCourseId && (
+              <button
+                type="button"
+                className="mentor-course-control"
+                data-danger="true"
+                onClick={() => {
+                  const target = courses.find((c) => c.id === editingCourseId);
+                  resetForm();
+                  if (target) handleDeleteCourse(target);
+                }}
+              >
+                <Trash2 aria-hidden="true" />
+                {t('eliminarCurso', 'Eliminar curso')}
+              </button>
+            )}
+          </div>
+          </div>
         </div>
+      </dialog>
 
+      {/* Catálogo */}
+      <div className="mentor-course-toolbar">
+        <AdminSearchField value={courseQuery} onChange={(value) => { setCourseQuery(value); resetPage(); }} placeholder={t('buscarCurso', 'Buscar curso')} label={t('buscarCurso', 'Buscar curso')} />
+        <FilterMenu
+          groups={[
+            { value: statusFilter, onChange: (v) => { setStatusFilter(v as typeof statusFilter); resetPage(); }, options: [
+              { value: 'published', label: t('publicado', 'Publicado'), count: countWith({ status: 'published' }) },
+              { value: 'draft', label: t('borrador', 'Borrador'), count: countWith({ status: 'draft' }) },
+            ] },
+            { value: accessFilter, onChange: (v) => { setAccessFilter(v as typeof accessFilter); resetPage(); }, options: [
+              { value: 'members', label: t('accesoParaMiembros', 'Acceso para miembros'), count: countWith({ access: 'members' }) },
+              { value: 'assigned', label: t('soloAsignados', 'Solo asignados'), count: countWith({ access: 'assigned' }) },
+            ] },
+            { value: priceFilter, onChange: (v) => { setPriceFilter(v as typeof priceFilter); resetPage(); }, options: [
+              { value: 'free', label: t('gratuito', 'Gratuito'), count: countWith({ price: 'free' }) },
+              { value: 'paid', label: t('dePago', 'De pago'), count: countWith({ price: 'paid' }) },
+            ] },
+            ...(categories.length > 1 ? [{ value: catFilter, onChange: (v: string) => { setCatFilter(v); resetPage(); }, options: categories.map((c) => ({ value: c, label: c, count: countWith({ cat: c }) })) }] : []),
+          ]}
+        />
+        {!isMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDelCatalogo', 'Vista del catálogo')}>
+          <button type="button" aria-pressed={viewMode === 'list'} onClick={() => { changeViewMode('list'); resetPage(); }}>
+            <List aria-hidden="true" />
+            <span>{t('lista', 'Lista')}</span>
+          </button>
+          <button type="button" aria-pressed={viewMode === 'cards'} onClick={() => { changeViewMode('cards'); resetPage(); }}>
+            <LayoutGrid aria-hidden="true" />
+            <span>{t('tarjetas', 'Tarjetas')}</span>
+          </button>
+        </div>}
+      </div>
+
+      <ActiveFilters chips={courseChips} shown={visibleCourses.length} total={courses.length} noun="cursos" onClear={clearCourseFilters} />
+
+      <div>
         {loading && courses.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">{t('cargandoCursos', 'Cargando cursos…')}</p>
+          <PageLoader label={t('cargandoCursos', 'Cargando cursos…')} />
         ) : courses.length === 0 ? (
-          <p className="text-xs text-slate-500 py-6 text-center">
-            {t('todaviaNoHayCursosCreaElPrimeroConEl', 'Todavía no hay cursos. Crea el primero con el formulario de arriba.')}
-          </p>
+          <div className="mentor-courses-empty">
+            <BookOpen aria-hidden="true" />
+            <p>{t('todaviaNoHayCursosCreaElPrimeroConNuevo', 'Todavía no hay cursos. Crea el primero con «Nuevo curso».')}</p>
+          </div>
+        ) : visibleCourses.length === 0 ? (
+          <div className="mentor-courses-empty">
+            <BookOpen aria-hidden="true" />
+            <p>{t('ningunCursoCoincideConLaBusqueda', 'Ningún curso coincide con la búsqueda.')}</p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {courses.map((course) => {
-              const isExpanded = expandedCourseId === course.id;
+          <div className="admin-courses-list mentor-courses-grid" data-view={viewMode}>
+            {pageCourses.map((course) => {
               const modules = [...course.modules].sort((a, b) => a.order - b.order);
 
               return (
-                <div
+                <article
                   key={course.id}
-                  className="rounded-xl bg-[#0a0a0f] border border-[#2d2d44] overflow-hidden"
+                  className="mentor-course-card admin-course-card"
+                  data-view={viewMode}
+                  aria-labelledby={`admin-course-${course.id}`}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {course.coverImage && (
-                        <img
-                          src={course.coverImage}
-                          alt=""
-                          className="w-14 h-10 rounded-lg object-cover border border-[#2d2d44] shrink-0"
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-xs font-bold text-white truncate">{course.title}</p>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              course.published
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            }`}
-                          >
-                            {course.published ? t('publicado', 'Publicado') : t('borrador', 'Borrador')}
-                          </span>
-                          {course.isDemo && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                              {t('demo', 'Demo')}
-                            </span>
-                          )}
-                          {course.openToAllRegistered && (
-                            <span
-                              title={t('disponibleParaMenteesYPersonalDeLa2', 'Disponible para mentees y personal de la academia')}
-                              className="text-micro font-bold px-2 py-0.5 rounded-full bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30 flex items-center gap-1"
-                            >
-                              <Globe className="w-2.5 h-2.5" /> {t('miembros', 'Miembros')}
-                            </span>
-                          )}
-                          {course.sequentialUnlock && (
-                            <span
-                              title={t('losModulosSeDesbloqueanUnoAUno', 'Los módulos se desbloquean uno a uno')}
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1"
-                            >
-                              <Lock className="w-2.5 h-2.5" /> {t('secuencial', 'Secuencial')}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-slate-500">
-                          {course.category} • {course.price > 0 ? `${course.price} ${course.currency || 'USD'}` : t('gratuito', 'Gratuito')} •{' '}
-                          {t('modulosYVideosCount', '{{modules}} módulo(s) • {{videos}} video(s)', { modules: modules.length, videos: countVideos(course) })}
-                        </span>
-                      </div>
+                  {course.coverImage ? (
+                    <img src={course.coverImage} alt="" loading="lazy" className="admin-course-card__cover" />
+                  ) : (
+                    <span className="admin-course-card__cover admin-course-card__cover--empty" aria-hidden="true">
+                      <BookOpen />
+                    </span>
+                  )}
+                  <div className="admin-course-card__summary">
+                    <div className="mentor-course-card__header">
+                      <span className="mentor-course-card__category">{course.category}</span>
+                      <span className="mentor-course-card__status" data-published={course.published}>
+                        {course.published ? t('publicado', 'Publicado') : t('borrador', 'Borrador')}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCourseMentors(course)}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44] text-[11px] font-bold text-brand-cyan hover:text-white transition-colors flex items-center gap-1.5"
-                        title={t('asignarMentoresAutorizadosAEsteCurso', 'Asignar mentores autorizados a este curso')}
-                      >
-                        <Users className="w-3.5 h-3.5 text-brand-cyan" /> {t('mentores', 'Mentores')}
-                      </button>
-                      <button
-                        onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44] text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
-                      >
-                        <Layers className="w-3.5 h-3.5" /> {t('temario', 'Temario')}
-                      </button>
-                      <button
-                        onClick={() => startEditing(course)}
-                        className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-colors"
-                        title={t('editarCurso2', 'Editar curso')}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleTogglePublished(course)}
-                        disabled={busyId === course.id}
-                        className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors disabled:opacity-50"
-                        title={course.published ? t('pasarABorrador', 'Pasar a borrador') : t('publicar', 'Publicar')}
-                      >
-                        {course.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCourse(course)}
-                        disabled={busyId === course.id}
-                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors disabled:opacity-50"
-                        title={t('eliminarCurso', 'Eliminar curso')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div className="mentor-course-card__body">
+                      <h3 id={`admin-course-${course.id}`} className="mentor-course-card__title">{course.title}</h3>
+                      {course.description && <CourseCardDescription text={course.description} />}
+                    </div>
+
+                    <div className="admin-course-card__facts">
+                      {onOpenResources && <button type="button" className="admin-course-card__resources" onClick={() => onOpenResources(course.id)} aria-label={t('verRecursosDeTitle', 'Ver recursos de {{title}}', { title: course.title })}><FileText aria-hidden="true" /><span>{(course.resources?.length || 0) + modules.reduce((count, module) => count + (module.resources?.length || 0), 0)} {t('recursos2', 'recursos')}</span><ArrowUpRight aria-hidden="true" /></button>}
+                      <span className="mentor-course-access-label" data-access={course.openToAllRegistered ? 'members' : 'assigned'}>
+                        {course.openToAllRegistered ? <LockKeyholeOpen aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}
+                        {course.openToAllRegistered ? t('accesoParaMiembros', 'Acceso para miembros') : t('soloAsignados', 'Solo asignados')}
+                      </span>
+                      <div className="mentor-course-card__meta">
+                        <span>{t('countModulos', { defaultValue_one: '{{count}} módulo ·', defaultValue_other: '{{count}} módulos ·', count: modules.length })} {countVideos(course)} {countVideos(course) === 1 ? t('video', 'video') : t('videos', 'videos')}{course.sequentialUnlock ? t('secuencial', ' · Secuencial') : ''}</span>
+                        <span>{course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : t('gratuito', 'Gratuito')}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Temario del curso */}
-                  {isExpanded && (
-                    <div className="border-t border-[#2d2d44] p-4 space-y-3 bg-[#141420]/40">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder={t('tituloDelNuevoModulo', 'Título del nuevo módulo')}
-                          value={newModuleTitle}
-                          onChange={(e) => setNewModuleTitle(e.target.value)}
-                          className="flex-1 bg-[#0a0a0f] border border-[#2d2d44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                        />
-                        <button
-                          onClick={() => handleCreateModule(course.id)}
-                          className="btn-brand-primary py-2 px-3 text-xs font-bold flex items-center gap-1.5"
-                        >
-                          <Plus className="w-4 h-4" /> {t('modulo', 'Módulo')}
-                        </button>
-                      </div>
-
-                      {modules.length === 0 ? (
-                        <p className="text-xs text-slate-500 py-3 text-center">
-                          {t('esteCursoTodaviaNoTieneModulos', 'Este curso todavía no tiene módulos.')}
-                        </p>
+                  <div className="mentor-course-card__actions admin-course-card__actions">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCourseMentors(course)}
+                      className="mentor-course-control"
+                      aria-haspopup="dialog"
+                      aria-label={t('gestionarMentoresDeTitle', 'Gestionar mentores de {{title}}', { title: course.title })}
+                    >
+                      <UsersRound aria-hidden="true" /> <span>{t('mentores', 'Mentores')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTemarioCourseId(course.id)}
+                      className="mentor-course-control"
+                      aria-haspopup="dialog"
+                      aria-label={t('temarioDeTitle', 'Temario de {{title}}', { title: course.title })}
+                    >
+                      <Layers aria-hidden="true" /> <span>{t('temario', 'Temario')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEditing(course)}
+                      className="mentor-course-control"
+                      aria-label={t('editarTitle', 'Editar {{title}}', { title: course.title })}
+                    >
+                      <Pencil aria-hidden="true" /> <span>{t('editar', 'Editar')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => (course.published ? setUnpublishTarget(course) : handleTogglePublished(course))}
+                      disabled={busyId === course.id}
+                      aria-busy={busyId === course.id}
+                      className={`mentor-course-control admin-course-card__publish ${course.published ? '' : 'mentor-course-publish'}`}
+                      aria-label={`${course.published ? t('pasarABorrador', 'Pasar a borrador') : t('publicarEnCatalogo', 'Publicar en catálogo')}: ${course.title}`}
+                    >
+                      {busyId === course.id ? (
+                        <Loader2 aria-hidden="true" className="animate-spin" />
+                      ) : course.published ? (
+                        <EyeOff aria-hidden="true" />
                       ) : (
-                        modules.map((module, moduleIndex) => {
-                          const videos = [...module.videos].sort((a, b) => a.order - b.order);
-
-                          return (
-                            <div
-                              key={module.id}
-                              className="rounded-xl bg-[#0a0a0f] border border-[#2d2d44] p-3 space-y-2"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                {editingModuleId === module.id ? (
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <input
-                                      type="text"
-                                      value={editingModuleTitle}
-                                      onChange={(e) => setEditingModuleTitle(e.target.value)}
-                                      className="flex-1 bg-[#141420] border border-[#2d2d44] rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                      autoFocus
-                                    />
-                                    <button
-                                      onClick={() => handleRenameModule(module.id)}
-                                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
-                                    >
-                                      <Save className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingModuleId(null)}
-                                      className="p-1.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-400"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-bold text-white truncate">
-                                        {module.order}. {module.title}
-                                      </p>
-                                      <span className="text-[10px] text-slate-500">
-                                        {t('videosCountParentesis', '{{count}} video(s)', { count: videos.length })}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        onClick={() => handleMoveModule(modules, moduleIndex, -1)}
-                                        disabled={moduleIndex === 0}
-                                        className="p-1 rounded-lg bg-[#141420] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                        title={t('subir', 'Subir')}
-                                      >
-                                        <ChevronUp className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleMoveModule(modules, moduleIndex, 1)}
-                                        disabled={moduleIndex === modules.length - 1}
-                                        className="p-1 rounded-lg bg-[#141420] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                        title={t('bajar', 'Bajar')}
-                                      >
-                                        <ChevronDown className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingModuleId(module.id);
-                                          setEditingModuleTitle(module.title);
-                                        }}
-                                        className="p-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400"
-                                        title={t('renombrar', 'Renombrar')}
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setQuizModule(module)}
-                                        className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1 text-[11px] font-bold transition-all cursor-pointer"
-                                        title={t('gestionarExamenConIa', 'Gestionar Examen con IA')}
-                                      >
-                                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                                        <span>{t('examenIa', 'Examen IA')}</span>
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          resetVideoForm();
-                                          setVideoModuleId(videoModuleId === module.id ? null : module.id);
-                                        }}
-                                        className="p-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
-                                        title={t('agregarVideo', 'Agregar video')}
-                                      >
-                                        <Plus className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteModule(module)}
-                                        className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                                        title={t('eliminarModulo', 'Eliminar módulo')}
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Alta de video */}
-                              {videoModuleId === module.id && (
-                                <form
-                                  onSubmit={(e) => handleCreateVideo(e, module.id)}
-                                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-end p-2 rounded-lg bg-[#141420] border border-[#2d2d44]"
-                                >
-                                  <div className="md:col-span-2">
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      {t('tituloDelVideo', 'Título del video')}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={videoTitle}
-                                      onChange={(e) => setVideoTitle(e.target.value)}
-                                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                      required
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      {t('duracion', 'Duración')}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="20:00"
-                                      value={videoDuration}
-                                      onChange={(e) => setVideoDuration(e.target.value)}
-                                      className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                                      {t('archivoDeGoogleDrive', 'Archivo de Google Drive')}
-                                    </label>
-                                    <div className="flex gap-1">
-                                      <input
-                                        type="text"
-                                        placeholder={t('pegaElEnlaceDeDriveOSuId', 'Pega el enlace de Drive o su ID')}
-                                        value={videoDriveId}
-                                        onChange={(e) => setVideoDriveId(e.target.value)}
-                                        className="flex-1 min-w-0 bg-[#0a0a0f] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const opening = !driveOpen;
-                                          setDriveOpen(opening);
-                                          if (opening && driveResults.length === 0) searchDrive();
-                                        }}
-                                        className="shrink-0 px-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                                        title={t('buscarEnGoogleDriveSin', 'Buscar en Google Drive')}
-                                      >
-                                        <HardDrive className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Selector de Google Drive */}
-                                  {driveOpen && (
-                                    <div className="col-span-full rounded-lg bg-[#0a0a0f] border border-[#2d2d44] p-2 space-y-2">
-                                      <div className="flex gap-1">
-                                        <input
-                                          type="text"
-                                          placeholder={t('buscarPorNombreEnGoogleDrive', 'Buscar por nombre en Google Drive…')}
-                                          value={driveQuery}
-                                          onChange={(e) => setDriveQuery(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              e.preventDefault();
-                                              searchDrive();
-                                            }
-                                          }}
-                                          className="flex-1 bg-[#141420] border border-[#2d2d44] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={searchDrive}
-                                          disabled={driveLoading}
-                                          className="px-2.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 disabled:opacity-50"
-                                        >
-                                          {driveLoading ? (
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                          ) : (
-                                            <Search className="w-3.5 h-3.5" />
-                                          )}
-                                        </button>
-                                      </div>
-
-                                      {driveIsDemo && (
-                                        <p className="text-[10px] text-amber-400 leading-snug">
-                                          {t('googleDriveNoEstaConfiguradoEstos', 'Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.')}
-                                        </p>
-                                      )}
-
-                                      {driveError && (
-                                        <p className="text-[10px] text-amber-400">{driveError}</p>
-                                      )}
-
-                                      <div className="max-h-52 overflow-y-auto space-y-1">
-                                        {driveResults.map((file) => (
-                                          <button
-                                            type="button"
-                                            key={file.id}
-                                            onClick={() => pickDriveVideo(file)}
-                                            className={`w-full flex items-center gap-2 p-1.5 rounded-lg border text-left transition-colors ${
-                                              videoDriveId === file.id
-                                                ? 'bg-cyan-500/10 border-cyan-500/40'
-                                                : 'bg-[#141420] border-[#2d2d44] hover:border-[#06b6d4]'
-                                            }`}
-                                          >
-                                            {file.thumbnailLink ? (
-                                              <img
-                                                src={file.thumbnailLink}
-                                                alt=""
-                                                className="w-12 h-8 rounded object-cover shrink-0"
-                                              />
-                                            ) : (
-                                              <div className="w-12 h-8 rounded bg-[#0a0a0f] border border-[#2d2d44] flex items-center justify-center shrink-0">
-                                                <Play className="w-3 h-3 text-slate-500" />
-                                              </div>
-                                            )}
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-[11px] text-slate-200 truncate">{file.name}</p>
-                                              <span className="text-[9px] text-slate-500 font-mono">
-                                                {file.duration || t('sinDuracion', 'sin duración')} • {file.id.slice(0, 14)}…
-                                              </span>
-                                            </div>
-                                            {videoDriveId === file.id && (
-                                              <Link2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                                            )}
-                                          </button>
-                                        ))}
-                                        {!driveLoading && driveResults.length === 0 && !driveError && (
-                                          <p className="text-[10px] text-slate-500 text-center py-3">
-                                            {t('buscaUnVideoParaEnlazarlo', 'Busca un video para enlazarlo.')}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  <div className="col-span-full flex flex-wrap items-center justify-between gap-2">
-                                    <span className="text-[10px] text-slate-500 truncate">
-                                      {videoDriveId
-                                        ? t('enlazadoADriveVideoDriveId', 'Enlazado a Drive: {{videoDriveId}}', { videoDriveId })
-                                        : t('sinArchivoDeDriveSeGeneraraUnEnlaceDe', 'Sin archivo de Drive: se generará un enlace de marcador.')}
-                                    </span>
-                                    <button
-                                      type="submit"
-                                      className="btn-brand-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1.5 shrink-0"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" /> {t('agregarVideo2', 'Agregar Video')}
-                                    </button>
-                                  </div>
-                                </form>
-                              )}
-
-                              {/* Videos del módulo */}
-                              {videos.length > 0 && (
-                                <div className="space-y-1">
-                                  {videos.map((video, videoIndex) => (
-                                    <div
-                                      key={video.id}
-                                      className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-[#141420] border border-[#2d2d44]"
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <Play className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                                        <span className="text-[11px] text-slate-300 truncate">
-                                          {video.title}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 shrink-0">
-                                          {video.duration}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          onClick={() => handleMoveVideo(videos, videoIndex, -1)}
-                                          disabled={videoIndex === 0}
-                                          className="p-1 rounded bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                          title={t('subir', 'Subir')}
-                                        >
-                                          <ChevronUp className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleMoveVideo(videos, videoIndex, 1)}
-                                          disabled={videoIndex === videos.length - 1}
-                                          className="p-1 rounded bg-[#0a0a0f] border border-[#2d2d44] text-slate-400 hover:text-white disabled:opacity-30"
-                                          title={t('bajar', 'Bajar')}
-                                        >
-                                          <ChevronDown className="w-3 h-3" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteVideo(video)}
-                                          className="p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                                          title={t('eliminarVideo', 'Eliminar video')}
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
+                        <BookOpen aria-hidden="true" />
                       )}
-                    </div>
-                  )}
-                </div>
+                      <span>{course.published ? t('pasarABorrador', 'Pasar a borrador') : t('publicar', 'Publicar')}</span>
+                    </button>
+                  </div>
+
+
+                </article>
               );
             })}
           </div>
         )}
       </div>
+
+      <Pager total={visibleCourses.length} size={pageSize} page={curPage} onPage={setCoursePage} noun="cursos" />
 
       {quizModule && (
         <QuizManagerModal
@@ -1296,225 +1000,367 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         />
       )}
 
-      {/* Modal de confirmación y forzado de eliminación */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="app-dialog bg-[#141420] border border-[#2d2d44] rounded-2xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl space-y-4 animate-scale-in text-white relative">
-            <button
-              onClick={() => !isDeleting && setDeleteTarget(null)}
-              disabled={isDeleting}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#2d2d44]/50 transition-colors disabled:opacity-50"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3 border-b border-[#2d2d44] pb-3">
-              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">
-                  {deleteTarget.type === 'course'
-                    ? t('eliminarCurso2', 'Eliminar Curso')
-                    : deleteTarget.type === 'module'
-                    ? t('eliminarModulo2', 'Eliminar Módulo')
-                    : t('eliminarMisionVideo', 'Eliminar Misión / Video')}
-                </h3>
-                <p className="text-xs text-slate-400 truncate max-w-[260px]">
-                  «{deleteTarget.title}»
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {deleteTarget.warningText}
+      {/* Confirmaciones (mismo diálogo que el panel de mentor) */}
+      <dialog
+        ref={deleteRef}
+        className="mentor-confirm"
+        aria-labelledby="admin-delete-title"
+        onCancel={(e) => { e.preventDefault(); if (!isDeleting) setDeleteTarget(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null); }}
+      >
+        {deleteTarget && (
+          <div className="mentor-confirm__body">
+            <h3 id="admin-delete-title" className="admin-confirm-title">
+              <AlertTriangle aria-hidden="true" />
+              {deleteTarget.type === 'course' ? t('eliminarCurso', 'Eliminar curso') : deleteTarget.type === 'module' ? t('eliminarModulo', 'Eliminar módulo') : t('eliminarVideo', 'Eliminar video')}
+            </h3>
+            <p>
+              {t('vasAEliminar', 'Vas a eliminar')} <strong>{deleteTarget.title}</strong><Trans i18nKey="warningTextEstaAccionEsPermanente">. {{ warningText: deleteTarget.warningText }} Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans>
             </p>
-
             {deleteTarget.error && (
-              <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs space-y-2">
-                <p className="font-semibold flex items-center gap-1.5 text-red-200">
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                  {deleteTarget.error}
-                </p>
-                <p className="text-[11px] text-red-300/80 leading-snug">
-                  {deleteTarget.type === 'course'
-                    ? t('elCursoContieneRegistrosDeAlumnosPagos', 'El curso contiene registros de alumnos (pagos, matrículas, certificados o progreso). Forzar la eliminación purgará definitivamente todos estos registros asociados.')
-                    : deleteTarget.type === 'module'
-                    ? t('elModuloContieneIntentosDeExamenO', 'El módulo contiene intentos de examen o progreso de alumnos. Forzar la eliminación purgará permanentemente los datos.')
-                    : t('estaLeccionTieneProgresoONotasDeAlumnos', 'Esta lección tiene progreso o notas de alumnos. Forzar la eliminación eliminará el progreso de los alumnos en este video.')}
-                </p>
-              </div>
+              <p role="alert" className="admin-confirm-error">
+                <strong>{deleteTarget.error}</strong>{' '}
+                {deleteTarget.type === 'course'
+                  ? t('elCursoTienePagosMatriculasCertificadosO', 'El curso tiene pagos, matrículas, certificados o progreso de alumnos. Eliminarlo de todos modos borra todos esos registros.')
+                  : deleteTarget.type === 'module'
+                  ? t('elModuloTieneIntentosDeExamenOProgresoDe', 'El módulo tiene intentos de examen o progreso de alumnos. Eliminarlo de todos modos borra esos datos.')
+                  : t('estaLeccionTieneProgresoONotasDeAlumnos', 'Esta lección tiene progreso o notas de alumnos. Eliminarla de todos modos borra ese progreso.')}
+              </p>
             )}
-
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteTarget(null)}
-                disabled={isDeleting}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#1a1a2e] transition-colors disabled:opacity-50"
-              >
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" disabled={isDeleting} onClick={() => setDeleteTarget(null)}>
                 {t('cancelar', 'Cancelar')}
               </button>
+              <button
+                type="button"
+                className="mentor-course-control"
+                data-danger="true"
+                disabled={isDeleting}
+                onClick={() => executeDelete(Boolean(deleteTarget.error))}
+              >
+                {isDeleting ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
+                {deleteTarget.error
+                  ? t('eliminarDeTodosModos', 'Eliminar de todos modos')
+                  : deleteTarget.type === 'course' ? t('eliminarCurso', 'Eliminar curso') : deleteTarget.type === 'module' ? t('eliminarModulo', 'Eliminar módulo') : t('eliminarVideo', 'Eliminar video')}
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
 
-              {!deleteTarget.error ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => executeDelete(false)}
-                    disabled={isDeleting}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 text-red-400 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    {t('eliminar', 'Eliminar')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => executeDelete(true)}
-                    disabled={isDeleting}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
-                    title={t('forzarEliminacionIgnorandoYPurgando', 'Forzar eliminación ignorando y purgando progreso de alumnos')}
-                  >
-                    {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                    {t('forzarEliminacion', 'Forzar eliminación')}
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => executeDelete(true)}
-                  disabled={isDeleting}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-red-950/40 disabled:opacity-50"
-                >
-                  {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                  {t('confirmarYForzarEliminacion', 'Confirmar y Forzar Eliminación')}
-                </button>
+      <dialog
+        ref={unpublishRef}
+        className="mentor-confirm"
+        aria-labelledby="admin-unpublish-title"
+        onCancel={(e) => { e.preventDefault(); setUnpublishTarget(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setUnpublishTarget(null); }}
+      >
+        {unpublishTarget && (
+          <div className="mentor-confirm__body">
+            <h3 id="admin-unpublish-title" className="admin-confirm-title">
+              <EyeOff aria-hidden="true" />
+              {t('pasarABorrador', 'Pasar a borrador')}
+            </h3>
+            <p>
+              <strong>{unpublishTarget.title}</strong> {t('dejaraDeAparecerEnElCatalogoYLosAlumnos', 'dejará de aparecer en el catálogo y los alumnos no podrán abrirlo hasta que lo publiques de nuevo.')}
+            </p>
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" onClick={() => setUnpublishTarget(null)}>
+                {t('cancelar', 'Cancelar')}
+              </button>
+              <button
+                type="button"
+                className="mentor-course-control"
+                data-danger="true"
+                onClick={() => { const c = unpublishTarget; setUnpublishTarget(null); handleTogglePublished(c); }}
+              >
+                <EyeOff aria-hidden="true" />
+                {t('pasarABorrador', 'Pasar a borrador')}
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
+
+      {/* Mentores del curso en hoja lateral */}
+      <dialog
+        ref={mentorsRef}
+        className="mentee-sheet"
+        aria-labelledby="admin-course-mentors-title"
+        onCancel={(e) => { e.preventDefault(); if (!savingCourseMentors) setMentorModalCourse(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget && !savingCourseMentors) setMentorModalCourse(null); }}
+      >
+        <div className="mentee-sheet__body">
+          <header className="mentee-sheet__head">
+            <span className="mentee-sheet__icon" aria-hidden="true"><UsersRound /></span>
+            <div className="mentor-mentee-id">
+              <strong id="admin-course-mentors-title">{t('mentoresDelCurso', 'Mentores del curso')}</strong>
+              <span>{mentorModalCourse?.title}</span>
+            </div>
+            <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
+              <X aria-hidden="true" />
+            </button>
+          </header>
+          <div className="admin-course-sheet">
+            <div className="admin-course-sheet__scroll">
+              <p className="admin-sheet-note">{t('eligeQueMentoresPuedenGestionarAlumnos', 'Elige qué mentores pueden gestionar alumnos, tutorías y evaluaciones en este curso.')}</p>
+              {courseMentorsNotice && (
+                <p className="admin-sheet-note" role="status"><CheckCircle2 aria-hidden="true" /> {courseMentorsNotice}</p>
               )}
+              {loadingCourseMentors ? (
+                <p className="admin-sheet-note"><Loader2 aria-hidden="true" className="animate-spin" /> {t('cargandoMentores', 'Cargando mentores…')}</p>
+              ) : availableMentors.length === 0 ? (
+                <p className="admin-sheet-note">{t('noHayUsuariosConRolMentorOAdministrador', 'No hay usuarios con rol Mentor o Administrador registrados.')}</p>
+              ) : (
+                availableMentors.map((m) => (
+                  <label key={m.id} className="admin-course-check">
+                    <input type="checkbox" checked={assignedMentorIds.includes(m.id)} onChange={() => handleToggleCourseMentor(m.id)} />
+                    <span>
+                      <strong>{m.name}</strong>
+                      <small>{m.email} · {m.role}</small>
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="mentee-sheet__foot admin-course-form__foot">
+              <button type="button" disabled={savingCourseMentors || loadingCourseMentors} onClick={handleSaveCourseMentors} className="mentor-course-control mentor-course-import admin-course-form__submit">
+                {savingCourseMentors ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
+                {t('guardarMentoresLength', 'Guardar mentores ({{length}})', { length: assignedMentorIds.length })}
+              </button>
+              <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentor-course-control admin-course-form__cancel">{t('cancelar', 'Cancelar')}</button>
             </div>
           </div>
         </div>
-      )}
+      </dialog>
 
-      {/* Modal para Asignar Mentores a un Curso */}
-      {mentorModalCourse && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !savingCourseMentors) {
-              setMentorModalCourse(null);
-            }
-          }}
-        >
-          <div className="bg-[#0e0e18] border border-[#2d2d44] rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-brand-cyan/10 text-brand-cyan flex items-center justify-center">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-white">
-                    {t('mentoresACargoDelCurso', 'Mentores a Cargo del Curso')}
-                  </h3>
-                  <p className="text-xs text-slate-400 truncate max-w-sm">
-                    {mentorModalCourse.title}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={savingCourseMentors}
-                onClick={() => setMentorModalCourse(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                ✕
-              </button>
+      {/* Temario del curso en hoja lateral */}
+      <dialog
+        ref={temarioRef}
+        className="mentee-sheet"
+        aria-labelledby="admin-course-temario-title"
+        onCancel={(e) => { e.preventDefault(); setTemarioCourseId(null); }}
+        onClick={(e) => { if (e.target === e.currentTarget) setTemarioCourseId(null); }}
+      >
+        <div className="mentee-sheet__body">
+          <header className="mentee-sheet__head">
+            <span className="mentee-sheet__icon" aria-hidden="true"><Layers /></span>
+            <div className="mentor-mentee-id">
+              <strong id="admin-course-temario-title">{t('temario', 'Temario')}</strong>
+              <span>{temarioCourse?.title}</span>
             </div>
+            <button type="button" onClick={() => setTemarioCourseId(null)} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
+              <X aria-hidden="true" />
+            </button>
+          </header>
+          <div className="admin-course-sheet__scroll">
+            {temarioCourse && (() => {
+              const course = temarioCourse;
+              const modules = [...course.modules].sort((a, b) => a.order - b.order);
+              return (
+<div className="tmr">
+                <div className="tmr-add">
+                  <div className="meeting-field">
+                    <label htmlFor="tmr-new-module">{t('nuevoModulo', 'Nuevo módulo')}</label>
+                    <input
+                      id="tmr-new-module"
+                      type="text"
+                      placeholder={t('tituloDelModulo', 'Título del módulo')}
+                      value={newModuleTitle}
+                      onChange={(e) => setNewModuleTitle(e.target.value)}
+                    />
+                  </div>
+                  <button type="button" onClick={() => handleCreateModule(course.id)} className="mentor-course-control mentor-course-publish">
+                    <Plus aria-hidden="true" /> <span>{t('agregarModulo', 'Agregar módulo')}</span>
+                  </button>
+                </div>
 
-            <p className="text-xs text-slate-300">
-              {t('seleccionaQueMentoresTienenPermisoPara', 'Selecciona qué mentores tienen permiso para gestionar alumnos, tutorías y evaluaciones en este curso.')}
-            </p>
-
-            {courseMentorsNotice && (
-              <div className="p-3 bg-brand-cyan/10 border border-brand-cyan/30 rounded-xl text-brand-cyan text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> {courseMentorsNotice}
-              </div>
-            )}
-
-            {loadingCourseMentors ? (
-              <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-brand-cyan" />
-                <span className="text-xs">{t('cargandoMentoresDisponibles', 'Cargando mentores disponibles...')}</span>
-              </div>
-            ) : (
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                {availableMentors.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">
-                    {t('noHayUsuariosConRolMentorOAdministrador', 'No hay usuarios con rol Mentor o Administrador registrados.')}
-                  </p>
+                {modules.length === 0 ? (
+                  <p className="admin-sheet-note">{t('esteCursoTodaviaNoTieneModulos', 'Este curso todavía no tiene módulos.')}</p>
                 ) : (
-                  availableMentors.map((m) => {
-                    const isChecked = assignedMentorIds.includes(m.id);
+                  modules.map((module, moduleIndex) => {
+                    const videos = [...module.videos].sort((a, b) => a.order - b.order);
+                    const isOpen = openModules.has(module.id) || videoModuleId === module.id;
+
                     return (
-                      <label
-                        key={m.id}
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                          isChecked
-                            ? 'bg-brand-cyan/10 border-brand-cyan/40 text-white'
-                            : 'bg-[#141424] border-[#2d2d44] text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleCourseMentor(m.id)}
-                            className="w-4 h-4 accent-[#06b6d4] rounded cursor-pointer"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold truncate">{m.name}</p>
-                            <span className="text-[10px] text-slate-500">{m.email} [{m.role}]</span>
+                      <section key={module.id} className="tmr-module" aria-label={module.title}>
+                        {editingModuleId === module.id ? (
+                          <div className="tmr-rename">
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-rename-${module.id}`}>{t('tituloDelModulo', 'Título del módulo')}</label>
+                              <input
+                                id={`tmr-rename-${module.id}`}
+                                type="text"
+                                value={editingModuleTitle}
+                                onChange={(e) => setEditingModuleTitle(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
+                            <button type="button" onClick={() => handleRenameModule(module.id)} className="mentor-course-control mentor-course-publish">
+                              <Save aria-hidden="true" /> <span>{t('guardar', 'Guardar')}</span>
+                            </button>
+                            <button type="button" onClick={() => setEditingModuleId(null)} className="mentor-course-control">
+                              <X aria-hidden="true" /> <span>{t('cancelar', 'Cancelar')}</span>
+                            </button>
                           </div>
-                        </div>
-                        {isChecked && (
-                          <span className="text-[10px] font-mono font-bold text-brand-cyan uppercase ml-2 shrink-0">
-                            {t('asignado', 'Asignado')}
-                          </span>
+                        ) : (
+                          <>
+                            <button type="button" className="tmr-module__head" aria-expanded={isOpen} onClick={() => toggleModule(module.id)}>
+                              <ChevronRight aria-hidden="true" />
+                              <h4>{module.order}. {module.title}</h4>
+                              <span>{videos.length} {videos.length === 1 ? t('video', 'video') : t('videos', 'videos')}</span>
+                            </button>
+                            {isOpen && <div className="tmr-actions">
+                              <span className="tmr-actions__icons">
+                              <span className="tmr-group">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, -1)} disabled={moduleIndex === 0} aria-label={t('subirModuloTitle', 'Subir módulo {{title}}', { title: module.title })} title={t('subir', 'Subir')}>
+                                <ChevronUp aria-hidden="true" />
+                              </button>
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, 1)} disabled={moduleIndex === modules.length - 1} aria-label={t('bajarModuloTitle', 'Bajar módulo {{title}}', { title: module.title })} title={t('bajar', 'Bajar')}>
+                                <ChevronDown aria-hidden="true" />
+                              </button>
+                              </span>
+                              <span className="tmr-group">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => { setEditingModuleId(module.id); setEditingModuleTitle(module.title); }} aria-label={t('renombrarModuloTitle', 'Renombrar módulo {{title}}', { title: module.title })} title={t('renombrar', 'Renombrar')}>
+                                <Pencil aria-hidden="true" />
+                              </button>
+                              <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteModule(module)} aria-label={t('eliminarModuloTitle', 'Eliminar módulo {{title}}', { title: module.title })} title={t('eliminarModulo', 'Eliminar módulo')}>
+                                <Trash2 aria-hidden="true" />
+                              </button>
+                              </span>
+                              </span>
+                              <span className="tmr-actions__main">
+                              <button type="button" className="mentor-course-control" onClick={() => setQuizModule(module)}>
+                                <Sparkles aria-hidden="true" /> <span>{t('examenIa', 'Examen IA')}</span>
+                              </button>
+                              <button type="button" className="mentor-course-control" aria-expanded={videoModuleId === module.id} onClick={() => { resetVideoForm(); setVideoModuleId(videoModuleId === module.id ? null : module.id); }}>
+                                <Plus aria-hidden="true" /> <span>{t('agregarVideo', 'Agregar video')}</span>
+                              </button>
+                              </span>
+                            </div>}
+                          </>
                         )}
-                      </label>
+
+                        {/* Alta de video */}
+                        {isOpen && videoModuleId === module.id && (
+                          <form onSubmit={(e) => handleCreateVideo(e, module.id)} className="tmr-form">
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-vt-${module.id}`}>{t('tituloDelVideo', 'Título del video')}</label>
+                              <input id={`tmr-vt-${module.id}`} type="text" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} required />
+                            </div>
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-vd-${module.id}`}>{t('duracion', 'Duración')}</label>
+                              <input id={`tmr-vd-${module.id}`} type="text" placeholder="20:00" value={videoDuration} onChange={(e) => setVideoDuration(e.target.value)} />
+                            </div>
+                            <div className="meeting-field">
+                              <label htmlFor={`tmr-vg-${module.id}`}>{t('archivoDeGoogleDrive', 'Archivo de Google Drive')}</label>
+                              <div className="tmr-inline">
+                                <input id={`tmr-vg-${module.id}`} type="text" placeholder={t('pegaElEnlaceDeDriveOSuId', 'Pega el enlace de Drive o su ID')} value={videoDriveId} onChange={(e) => setVideoDriveId(e.target.value)} />
+                                <button
+                                  type="button"
+                                  className="mentor-course-control tmr-icon"
+                                  aria-expanded={driveOpen}
+                                  aria-label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')}
+                                  title={t('buscarEnGoogleDrive', 'Buscar en Google Drive')}
+                                  onClick={() => {
+                                    const opening = !driveOpen;
+                                    setDriveOpen(opening);
+                                    if (opening && driveResults.length === 0) searchDrive();
+                                  }}
+                                >
+                                  <HardDrive aria-hidden="true" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Selector de Google Drive */}
+                            {driveOpen && (
+                              <div className="tmr-drive">
+                                <div className="tmr-inline">
+                                  <AdminSearchField className="tmr-drive-search" value={driveQuery} onChange={(value) => { setDriveQuery(value); if (!value && driveQuery) searchDrive(''); }} placeholder={t('buscarPorNombreEnGoogleDrive', 'Buscar por nombre en Google Drive…')} label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')} onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); searchDrive(); }
+                                  }} />
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => searchDrive()} disabled={driveLoading} aria-label={t('buscar', 'Buscar')}>
+                                    {driveLoading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
+                                  </button>
+                                </div>
+
+                                {driveIsDemo && (
+                                  <p className="tmr-warn">
+                                    {t('googleDriveNoEstaConfiguradoEstos', 'Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.')}
+                                  </p>
+                                )}
+                                {driveError && <p className="tmr-warn">{driveError}</p>}
+
+                                <div className="tmr-drive__list">
+                                  {driveResults.map((file) => (
+                                    <button type="button" key={file.id} onClick={() => pickDriveVideo(file)} className="tmr-drive__item" aria-pressed={videoDriveId === file.id}>
+                                      {file.thumbnailLink ? (
+                                        <img src={file.thumbnailLink} alt="" />
+                                      ) : (
+                                        <span className="tmr-drive__thumb" aria-hidden="true"><Play /></span>
+                                      )}
+                                      <span className="tmr-drive__text">
+                                        <strong>{file.name}</strong>
+                                        <small>{file.duration || t('sinDuracion', 'sin duración')} · {file.id.slice(0, 14)}…</small>
+                                      </span>
+                                      {videoDriveId === file.id && <Link2 aria-hidden="true" />}
+                                    </button>
+                                  ))}
+                                  {!driveLoading && driveResults.length === 0 && !driveError && (
+                                    <p className="admin-sheet-note">{t('buscaUnVideoParaEnlazarlo', 'Busca un video para enlazarlo.')}</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            <p className="admin-sheet-note">
+                              {videoDriveId ? t('enlazadoADriveVideoDriveId', 'Enlazado a Drive: {{videoDriveId}}', { videoDriveId }) : t('sinArchivoDeDriveSeGeneraraUnEnlaceDe', 'Sin archivo de Drive: se generará un enlace de marcador.')}
+                            </p>
+                            <button type="submit" className="mentor-course-control mentor-course-publish">
+                              <Save aria-hidden="true" /> <span>{t('guardarVideo', 'Guardar video')}</span>
+                            </button>
+                          </form>
+                        )}
+
+                        {/* Videos del módulo */}
+                        {isOpen && videos.length > 0 && (
+                          <ul className="tmr-videos">
+                            {videos.map((video, videoIndex) => (
+                              <li key={video.id} className="tmr-video">
+                                <Play aria-hidden="true" />
+                                <span className="tmr-video__text">
+                                  <strong>{video.title}</strong>
+                                  {video.duration && <small>{video.duration}</small>}
+                                </span>
+                                <span className="tmr-video__actions">
+                                  <span className="tmr-group">
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, -1)} disabled={videoIndex === 0} aria-label={t('subirTitle', 'Subir {{title}}', { title: video.title })} title={t('subir', 'Subir')}>
+                                    <ChevronUp aria-hidden="true" />
+                                  </button>
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, 1)} disabled={videoIndex === videos.length - 1} aria-label={t('bajarTitle', 'Bajar {{title}}', { title: video.title })} title={t('bajar', 'Bajar')}>
+                                    <ChevronDown aria-hidden="true" />
+                                  </button>
+                                  </span>
+                                  <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteVideo(video)} aria-label={t('eliminarTitle', 'Eliminar {{title}}', { title: video.title })} title={t('eliminarVideo', 'Eliminar video')}>
+                                    <Trash2 aria-hidden="true" />
+                                  </button>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
                     );
                   })
                 )}
               </div>
-            )}
-
-            <div className="flex items-center justify-between pt-3 border-t border-[#2d2d44]">
-              <span className="text-xs text-slate-400 font-mono">
-                {t('countMentoresAsignados', { defaultValue_one: '{{count}} mentor asignado', defaultValue_other: '{{count}} mentores asignados', count: assignedMentorIds.length })}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={savingCourseMentors}
-                  onClick={() => setMentorModalCourse(null)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
-                >
-                  {t('cancelar', 'Cancelar')}
-                </button>
-                <button
-                  type="button"
-                  disabled={savingCourseMentors || loadingCourseMentors}
-                  onClick={handleSaveCourseMentors}
-                  className="btn-brand-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
-                >
-                  {savingCourseMentors && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{t('guardarMentores', 'Guardar Mentores')}</span>
-                </button>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
-      )}
+      </dialog>
+    </div>
     </div>
   );
 };

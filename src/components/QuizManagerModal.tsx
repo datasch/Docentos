@@ -7,29 +7,23 @@
  * 3. Persistir los cuestionarios en backend y sincronizar el estado del plugin interactivo.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
-  Sparkles,
   Plus,
+  Sparkles,
   Trash2,
-  Save,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
-  CheckSquare,
   ChevronUp,
   ChevronDown,
   Loader2,
-  BookOpen,
-  Award,
-  Wand2,
 } from 'lucide-react';
 import { Module, QuizQuestion } from '../types';
 import { api } from '../lib/api';
 import { setModuleQuiz, getModuleQuestions } from '../plugins/QuizzesPlugin';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 
 function normalizeText(str: string): string {
   return (str || '')
@@ -120,6 +114,20 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [confirmAll, setConfirmAll] = useState<boolean>(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const confirmRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = dialogRef.current;
+    if (isOpen && d && !d.open) d.showModal();
+  }, [isOpen]);
+  useEffect(() => {
+    const d = confirmRef.current;
+    if (!d) return;
+    if (confirmAll && !d.open) d.showModal();
+    if (!confirmAll && d.open) d.close();
+  }, [confirmAll]);
+
   const mismatches = questions
     .map((q, idx) => ({ qIdx: idx, targetIdx: detectQuestionMismatch(q) }))
     .filter((m): m is { qIdx: number; targetIdx: number } => m.targetIdx !== null);
@@ -135,7 +143,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       }
     }
     setQuestions(updated);
-    setSuccessMessage(t('seCorrigieronAutomaticamenteCount', { defaultValue_one: '✨ Se corrigieron automáticamente {{count}} respuesta para que coincidan con su justificación pedagógica.', defaultValue_other: '✨ Se corrigieron automáticamente {{count}} respuestas para que coincidan con su justificación pedagógica.', count: count }));
+    setSuccessMessage(t('seCorrigieronCountRespuestasParaQue', { defaultValue_one: 'Se corrigieron {{count}} respuesta para que coincidan con su explicación.', defaultValue_other: 'Se corrigieron {{count}} respuestas para que coincidan con su explicación.', count: count }));
   };
 
   useEffect(() => {
@@ -223,7 +231,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       const res = await api.generateModuleQuiz(module.id, 4);
       if (res.success && res.questions) {
         setQuestions(res.questions);
-        setSuccessMessage(t('examenGeneradoAutomaticamenteConIaRevisa', '✨ ¡Examen generado automáticamente con IA! Revisa las preguntas y guarda los cambios.'));
+        setSuccessMessage(t('examenGeneradoConIaRevisaLasPreguntasY', 'Examen generado con IA. Revisa las preguntas y guarda los cambios.'));
       }
     } catch (err: any) {
       setError(err.message || t('noSePudoGenerarElExamenConIa', 'No se pudo generar el examen con IA.'));
@@ -249,7 +257,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       setSuccessMessage(null);
       const res = await api.saveModuleQuiz(module.id, validQuestions);
       setModuleQuiz(module.id, res.questions || validQuestions);
-      setSuccessMessage(t('evaluacionGuardadaExitosamente', '✅ ¡Evaluación guardada exitosamente!'));
+      setSuccessMessage('Evaluación guardada');
       if (onSaved) {
         onSaved(res.questions || validQuestions);
       }
@@ -264,7 +272,6 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   };
 
   const handleDeleteAll = async () => {
-    if (!window.confirm(t('estasSeguroDeEliminarTodasLasPreguntasDe', '¿Estás seguro de eliminar todas las preguntas de este examen?'))) return;
     try {
       setSaving(true);
       await api.deleteModuleQuiz(module.id);
@@ -273,331 +280,216 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       setSuccessMessage(t('evaluacionEliminadaDelModulo', 'Evaluación eliminada del módulo.'));
       if (onSaved) onSaved([]);
     } catch (err: any) {
-      setError(err.message || t('errorAlEliminar', 'Error al eliminar'));
+      setError(err.message || t('errorAlEliminar2', 'Error al eliminar'));
     } finally {
       setSaving(false);
+      setConfirmAll(false);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fadeIn overscroll-contain"
-      onWheel={(e) => e.stopPropagation()}
+    <dialog
+      ref={dialogRef}
+      className="mentee-sheet mentee-sheet--wide"
+      aria-labelledby="quiz-editor-title"
+      onCancel={(e) => { e.preventDefault(); if (!saving) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}
     >
-      <div
-        className="app-dialog bg-surface border border-line rounded-2xl w-full max-w-4xl max-h-[calc(100dvh-1.5rem)] flex flex-col shadow-2xl overflow-hidden overscroll-contain"
-        onWheel={(e) => e.stopPropagation()}
-      >
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-line bg-[#0f0f18]">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-brand-cyan/10 border border-brand-cyan/30 rounded-xl text-brand-cyan">
-              <CheckSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                {t('gestionDeExamenTitle', 'Gestión de Examen: {{title}}', { title: module.title })}
-              </h2>
-              <p className="text-xs text-slate-400">
-                {t('configuraPreguntasInteractivasY', 'Configura preguntas interactivas y retroalimentación para la evaluación del módulo')}
-              </p>
-            </div>
+      <div className="mentee-sheet__body mentee-sheet__body--tools">
+        <header className="mentee-sheet__head mentee-sheet__head--plain">
+          <div className="mentor-mentee-id">
+            <strong id="quiz-editor-title">{t('examenDelModulo', 'Examen del módulo')}</strong>
+            <span>{module.title}</span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-raised transition-colors"
-          >
-            <X className="w-5 h-5" />
+          <button type="button" className="mentee-sheet__close" onClick={onClose} disabled={saving} aria-label={t('cerrar', 'Cerrar')}>
+            <X aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
-        {/* Toolbar */}
-        <div className="p-4 border-b border-line bg-raised/50 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleGenerateWithAi}
-              disabled={generatingAi || saving}
-              className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-purple-500/20 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              {generatingAi ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
-              <span>{generatingAi ? t('generandoConIa', 'Generando con IA...') : t('generarExamenConIa', '✨ Generar Examen con IA')}</span>
+        <div className="quiz-tools">
+          <div className="quiz-tools__actions">
+            <button type="button" className="mentor-course-control" onClick={handleGenerateWithAi} disabled={generatingAi || saving}>
+              {generatingAi ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
+              {generatingAi ? t('generandoExamen', 'Generando examen') : t('generarConIa', 'Generar con IA')}
             </button>
-
-            <button
-              type="button"
-              onClick={handleAddQuestion}
-              disabled={generatingAi || saving}
-              className="px-3.5 py-2 bg-[#232338] hover:bg-line border border-[#3b3b5c] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-brand-cyan" />
-              <span>{t('anadirPregunta', 'Añadir Pregunta')}</span>
+            <button type="button" className="mentor-course-control" onClick={handleAddQuestion} disabled={generatingAi || saving}>
+              <Plus aria-hidden="true" />
+              {t('anadirPregunta', 'Añadir pregunta')}
             </button>
-
             {mismatches.length > 0 && (
               <button
                 type="button"
+                className="mentor-course-control"
                 onClick={handleReconcileAllMismatches}
                 disabled={generatingAi || saving}
-                className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm animate-pulse"
-                title={t('alinearLasRespuestasMarcadasConSu', 'Alinear las respuestas marcadas con su justificación pedagógica')}
+                title={t('alinearLasRespuestasMarcadasConSu', 'Alinear las respuestas marcadas con su explicación')}
               >
-                <Wand2 className="w-4 h-4 text-amber-400" />
-                <span>{t('autoconciliarLength', 'Auto-conciliar ({{length}})', { length: mismatches.length })}</span>
+                {t('corregirRespuestasLength', 'Corregir respuestas ({{length}})', { length: mismatches.length })}
               </button>
             )}
           </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-400 bg-[#0f0f18] px-3 py-1.5 rounded-lg border border-line">
-              {questions.length} {t('preguntasConfiguradas', { defaultValue_one: 'pregunta configurada', defaultValue_other: 'preguntas configuradas', count: questions.length })}
-            </span>
-          </div>
+          <span className="quiz-tools__count">
+            {questions.length} {questions.length === 1 ? t('pregunta', 'pregunta') : t('preguntas', 'preguntas')}
+          </span>
         </div>
 
-        {/* Alerts */}
-        {error && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+        <div className="mentee-sheet__list quiz-editor">
+          {error && (
+            <p className="mentee-sheet__error" role="alert">
+              <AlertCircle aria-hidden="true" /> <span>{error}</span>
+            </p>
+          )}
+          {successMessage && (
+            <p className="mentee-sheet__error quiz-notice" role="status">
+              <CheckCircle2 aria-hidden="true" /> <span>{successMessage}</span>
+            </p>
+          )}
 
-        {successMessage && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{successMessage}</span>
-          </div>
-        )}
-
-        {/* Content Body */}
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-brand-cyan" />
-              <p className="text-xs">{t('cargandoDatosDeEvaluacion', 'Cargando datos de evaluación...')}</p>
-            </div>
+            <p className="mentee-sheet__empty" role="status">
+              <Loader2 aria-hidden="true" className="animate-spin" /> {t('cargandoExamen', 'Cargando examen')}
+            </p>
           ) : questions.length === 0 ? (
-            <div className="text-center py-12 px-4 border-2 border-dashed border-line rounded-2xl space-y-3">
-              <BookOpen className="w-10 h-10 text-slate-500 mx-auto" />
-              <h3 className="text-sm font-bold text-white">{t('esteModuloAunNoTieneExamenConfigurado', 'Este módulo aún no tiene examen configurado')}</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                {t('puedesGenerarUnExamenCompletoCon', 'Puedes generar un examen completo con Inteligencia Artificial en segundos o crear preguntas personalizadas manualmente.')}
-              </p>
-              <div className="flex justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleGenerateWithAi}
-                  disabled={generatingAi}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>{t('generarConIa', 'Generar con IA')}</span>
+            <div className="quiz-empty">
+              <h3>{t('esteModuloAunNoTieneExamen', 'Este módulo aún no tiene examen')}</h3>
+              <p>{t('generaUnaPropuestaAPartirDelTemarioO', 'Genera una propuesta a partir del temario o escribe las preguntas tú mismo.')}</p>
+              <div>
+                <button type="button" className="mentor-course-control mentor-course-import" onClick={handleGenerateWithAi} disabled={generatingAi}>
+                  {generatingAi ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
+                  {t('generarConIa', 'Generar con IA')}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleAddQuestion}
-                  className="px-4 py-2 bg-raised border border-line text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-line"
-                >
-                  <Plus className="w-4 h-4 text-brand-cyan" />
-                  <span>{t('crearManualmente', 'Crear Manualmente')}</span>
+                <button type="button" className="mentor-course-control" onClick={handleAddQuestion}>
+                  <Plus aria-hidden="true" />
+                  {t('crearManualmente', 'Crear manualmente')}
                 </button>
               </div>
             </div>
           ) : (
-            questions.map((q, qIdx) => (
-              <div
-                key={q.id || qIdx}
-                className="bg-[#0f0f18] border border-line rounded-xl p-4 space-y-4 hover:border-[#3b3b5c] transition-all"
-              >
-                {/* Question Header */}
-                <div className="flex items-center justify-between gap-2 border-b border-[#232338] pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-brand-cyan bg-brand-cyan/10 border border-brand-cyan/20 px-2 py-0.5 rounded-md">
-                      {t('preguntaNumero', 'Pregunta #')}{qIdx + 1}
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      {t('seleccionaLaOpcionCorrectaConElBoton', 'Selecciona la opción correcta con el botón circular')}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleMoveQuestion(qIdx, -1)}
-                      disabled={qIdx === 0}
-                      className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-raised"
-                      title={t('moverArriba', 'Mover arriba')}
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveQuestion(qIdx, 1)}
-                      disabled={qIdx === questions.length - 1}
-                      className="p-1 text-slate-400 hover:text-white disabled:opacity-30 rounded hover:bg-raised"
-                      title={t('moverAbajo', 'Mover abajo')}
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteQuestion(qIdx)}
-                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded ml-2"
-                      title={t('eliminarPregunta', 'Eliminar pregunta')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Enunciado */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-300">{t('enunciadoDeLaPregunta', 'Enunciado de la Pregunta')}</label>
-                  <input
-                    type="text"
-                    value={q.text}
-                    onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
-                    placeholder={t('ejCualEsElConceptoCentralDeEstaLeccion', 'Ej: ¿Cuál es el concepto central de esta lección?')}
-                    className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan"
-                  />
-                </div>
-
-                {/* 4 Opciones */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-300">{t('opcionesDeRespuesta', 'Opciones de Respuesta')}</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                    {q.options.map((opt, optIdx) => {
-                      const isCorrect = q.correctIndex === optIdx;
-                      return (
-                        <div
-                          key={optIdx}
-                          onClick={() => handleSetCorrectIndex(qIdx, optIdx)}
-                          className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all cursor-pointer ${
-                            isCorrect
-                              ? 'bg-emerald-950/20 border-emerald-500/50 text-emerald-300 ring-1 ring-emerald-500/30'
-                              : 'bg-surface border-line text-slate-300 hover:border-[#3b3b5c]'
-                          }`}
-                        >
-                          <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black border shrink-0 ${
-                              isCorrect
-                                ? 'bg-emerald-500 border-emerald-400 text-black'
-                                : 'bg-raised border-[#3b3b5c] text-slate-400'
-                            }`}
-                          >
-                            {String.fromCharCode(65 + optIdx)}
-                          </div>
-                          <input
-                            type="text"
-                            value={opt}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => handleUpdateOption(qIdx, optIdx, e.target.value)}
-                            placeholder={t('opcionVal', 'Opción {{val}}', { val: String.fromCharCode(65 + optIdx) })}
-                            className="flex-1 bg-transparent border-none text-xs text-white placeholder-slate-600 focus:outline-none"
-                          />
-                          {isCorrect && (
-                            <span className="text-[10px] uppercase font-black bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
-                              {t('correcta', 'Correcta')}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Alerta de inconsistencia si la justificación describe otra opción */}
-                {(() => {
-                  const mismatchIdx = detectQuestionMismatch(q);
-                  if (mismatchIdx === null) return null;
-                  return (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex flex-wrap items-center justify-between gap-2.5 text-xs text-amber-300">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>
-                          <Trans
-                            i18nKey="justificacionDescribeOtraOpcion"
-                            defaults="La justificación pedagógica parece describir la <1>Opción {{mismatch}}</1> (<3>“{{text}}...”</3>) en lugar de la {{correct}}."
-                            values={{
-                              mismatch: String.fromCharCode(65 + mismatchIdx),
-                              text: q.options[mismatchIdx]?.slice(0, 45) ?? '',
-                              correct: String.fromCharCode(65 + q.correctIndex),
-                            }}
-                            components={{ 1: <strong className="underline underline-offset-2" />, 3: <em /> }}
-                          />
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleSetCorrectIndex(qIdx, mismatchIdx)}
-                        className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0"
-                      >
-                        {t('marcarOpcionComoCorrecta', 'Marcar Opción {{letter}} como correcta', { letter: String.fromCharCode(65 + mismatchIdx) })}
+            questions.map((q, qIdx) => {
+              const mismatchIdx = detectQuestionMismatch(q);
+              return (
+                <section key={q.id || qIdx} className="quiz-question" aria-label={t('preguntaQIdx', 'Pregunta {{qIdx}}', { qIdx: qIdx + 1 })}>
+                  <header className="quiz-question__head">
+                    <strong>{t('pregunta2', 'Pregunta')} {qIdx + 1}</strong>
+                    <div className="quiz-question__actions">
+                      <button type="button" onClick={() => handleMoveQuestion(qIdx, -1)} disabled={qIdx === 0} aria-label={t('subirPregunta', 'Subir pregunta')} title={t('subir', 'Subir')}>
+                        <ChevronUp aria-hidden="true" />
+                      </button>
+                      <button type="button" onClick={() => handleMoveQuestion(qIdx, 1)} disabled={qIdx === questions.length - 1} aria-label={t('bajarPregunta', 'Bajar pregunta')} title={t('bajar', 'Bajar')}>
+                        <ChevronDown aria-hidden="true" />
+                      </button>
+                      <button type="button" data-danger="true" onClick={() => handleDeleteQuestion(qIdx)} aria-label={t('eliminarPregunta', 'Eliminar pregunta')} title={t('eliminarPregunta', 'Eliminar pregunta')}>
+                        <Trash2 aria-hidden="true" />
                       </button>
                     </div>
-                  );
-                })()}
+                  </header>
 
-                {/* Explicación / Retroalimentación */}
-                <div className="space-y-1 pt-1">
-                  <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                    <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
-                    <span>{t('explicacionJustificacionPedagogica', 'Explicación / Justificación pedagógica (mostrada al calificar)')}</span>
+                  <label className="meeting-field">
+                    <span>{t('enunciado', 'Enunciado')}</span>
+                    <textarea
+                      rows={2}
+                      value={q.text}
+                      onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
+                      placeholder={t('ejCualEsElConceptoCentralDeEstaLeccion', 'Ej: ¿Cuál es el concepto central de esta lección?')}
+                    />
                   </label>
-                  <textarea
-                    rows={2}
-                    value={q.explanation}
-                    onChange={(e) => handleUpdateExplanation(qIdx, e.target.value)}
-                    placeholder={t('explicaPorQueLaRespuestaSeleccionadaEsLa', 'Explica por qué la respuesta seleccionada es la correcta...')}
-                    className="w-full bg-surface border border-line rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 resize-none"
-                  />
-                </div>
-              </div>
-            ))
+
+                  <fieldset className="quiz-field">
+                    <legend><Trans i18nKey="respuestasMarcaLaCorrecta">Respuestas <em>(marca la correcta)</em></Trans></legend>
+                    <div className="quiz-options" role="radiogroup" aria-label={t('respuestasDeLaPreguntaQIdx', 'Respuestas de la pregunta {{qIdx}}', { qIdx: qIdx + 1 })}>
+                      {q.options.map((opt, optIdx) => {
+                        const isCorrect = q.correctIndex === optIdx;
+                        return (
+                          <label key={optIdx} className="quiz-option" data-correct={isCorrect || undefined}>
+                            <input
+                              type="radio"
+                              name={`correct-${q.id || qIdx}`}
+                              checked={isCorrect}
+                              onChange={() => handleSetCorrectIndex(qIdx, optIdx)}
+                              aria-label={t('marcarLaOpcionValComoCorrecta', 'Marcar la opción {{val}} como correcta', { val: String.fromCharCode(65 + optIdx) })}
+                            />
+                            <span className="quiz-option__letter" aria-hidden="true">{String.fromCharCode(65 + optIdx)}</span>
+                            <textarea
+                              rows={1}
+                              value={opt}
+                              onChange={(e) => handleUpdateOption(qIdx, optIdx, e.target.value)}
+                              placeholder={t('opcionVal', 'Opción {{val}}', { val: String.fromCharCode(65 + optIdx) })}
+                              aria-label={t('textoDeLaOpcionVal', 'Texto de la opción {{val}}', { val: String.fromCharCode(65 + optIdx) })}
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  {mismatchIdx !== null && (
+                    <div className="quiz-mismatch" role="note">
+                      <p>
+                        {t('laExplicacionPareceDescribirLa', 'La explicación parece describir la')} <strong>{t('opcion', 'opción')} {String.fromCharCode(65 + mismatchIdx)}</strong> {t('yNoLa', 'y no la')} {String.fromCharCode(65 + q.correctIndex)}{t('queEsLaMarcada', ', que es la marcada.')}
+                      </p>
+                      <button type="button" className="mentor-course-control" onClick={() => handleSetCorrectIndex(qIdx, mismatchIdx)}>
+                        {t('marcarLaOpcion', 'Marcar la opción')} {String.fromCharCode(65 + mismatchIdx)}
+                      </button>
+                    </div>
+                  )}
+
+                  <label className="meeting-field">
+                    <span><Trans i18nKey="explicacionSeMuestraAlCalificar">Explicación <em>(se muestra al calificar)</em></Trans></span>
+                    <textarea
+                      rows={2}
+                      value={q.explanation}
+                      onChange={(e) => handleUpdateExplanation(qIdx, e.target.value)}
+                      placeholder={t('explicaPorQueEsaRespuestaEsLaCorrecta', 'Explica por qué esa respuesta es la correcta')}
+                    />
+                  </label>
+                </section>
+              );
+            })
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-line bg-[#0f0f18] flex items-center justify-between gap-3">
+        <footer className="mentee-sheet__foot mentee-sheet__foot--actions quiz-foot">
           <div>
             {questions.length > 0 && (
-              <button
-                type="button"
-                onClick={handleDeleteAll}
-                disabled={saving}
-                className="text-xs text-red-400 hover:text-red-300 font-semibold px-2 py-1 hover:bg-red-500/10 rounded-lg transition-colors"
-              >
+              <button type="button" className="mentor-course-control quiz-foot__danger" data-danger="true" onClick={() => setConfirmAll(true)} disabled={saving}>
+                <Trash2 aria-hidden="true" />
                 {t('eliminarTodo', 'Eliminar todo')}
               </button>
             )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="px-4 py-2 bg-raised hover:bg-line text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all"
-            >
+            <button type="button" className="mentor-course-control" onClick={onClose} disabled={saving}>
               {t('cancelar', 'Cancelar')}
             </button>
-            <button
-              type="button"
-              onClick={handleSaveQuiz}
-              disabled={saving || questions.length === 0}
-              className="btn-brand-primary px-5 py-2 text-xs font-extrabold flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/10"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>{saving ? t('guardando', 'Guardando...') : t('guardarEvaluacion', 'Guardar Evaluación')}</span>
+            <button type="button" className="mentor-course-control mentor-course-import" onClick={handleSaveQuiz} disabled={saving || questions.length === 0}>
+              {saving && <Loader2 aria-hidden="true" className="animate-spin" />}
+              {saving ? t('guardando2', 'Guardando') : t('guardarEvaluacion', 'Guardar evaluación')}
             </button>
           </div>
-        </div>
+        </footer>
 
+        <dialog
+          ref={confirmRef}
+          className="mentor-confirm"
+          aria-labelledby="quiz-delete-title"
+          onCancel={(e) => { e.preventDefault(); setConfirmAll(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmAll(false); }}
+        >
+          {confirmAll && (
+            <div className="mentor-confirm__body">
+              <h3 id="quiz-delete-title">{t('eliminarElExamen', 'Eliminar el examen')}</h3>
+              <p>{t('seBorraranLasLengthPreguntasDe', 'Se borrarán las {{length}} preguntas de', { length: questions.length })} <strong>{module.title}</strong><Trans i18nKey="estaAccionEsPermanente">. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans></p>
+              <div className="mentor-confirm__actions">
+                <button type="button" className="mentor-course-control" onClick={() => setConfirmAll(false)}>{t('cancelar', 'Cancelar')}</button>
+                <button type="button" className="mentor-course-control" data-danger="true" onClick={handleDeleteAll}>
+                  <Trash2 aria-hidden="true" />
+                  {t('eliminar', 'Eliminar')}
+                </button>
+              </div>
+            </div>
+          )}
+        </dialog>
       </div>
-    </div>
+    </dialog>
   );
 };

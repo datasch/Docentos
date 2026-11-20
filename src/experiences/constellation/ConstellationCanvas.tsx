@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { getCustomLogoUrl, DEFAULT_LOGO_URL, LOGO_CHANGE_EVENT } from '../../lib/logoConfig';
-import { getSeasonalTheme, SeasonalTheme, SEASONAL_EVENT_NAME } from '../../lib/seasonalTheme';
+import { getSeasonalTheme, getSeasonalDisplayOptions, SeasonalTheme, SEASONAL_EVENT_NAME } from '../../lib/seasonalTheme';
 import { isBodyScrollLocked } from '../../lib/useBodyScrollLock';
 
 // Espectro oficial de 6 colores Giantucchi (Dala Style) - Modo Oscuro
@@ -580,10 +580,13 @@ export const ConstellationCanvas: React.FC<{
           const hatNormY = ((minY - cy) / halfSize) + 0.12;
 
           let hatPoints: ConstellationPoint[] = [];
-          if (currentSeasonalTheme === 'halloween') {
-            hatPoints = generateWitchHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
-          } else if (currentSeasonalTheme === 'christmas') {
-            hatPoints = generateSantaHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
+          const { showFestiveHats } = getSeasonalDisplayOptions();
+          if (showFestiveHats) {
+            if (currentSeasonalTheme === 'halloween') {
+              hatPoints = generateWitchHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
+            } else if (currentSeasonalTheme === 'christmas') {
+              hatPoints = generateSantaHatTrianglePoints(hatNormX, hatNormY, hatNormScale);
+            }
           }
 
           // 4. Distribuir las partículas: 18% de triángulos dedicados al gorro y 82% al logotipo
@@ -1041,7 +1044,7 @@ export const ConstellationCanvas: React.FC<{
         {/* Resplandor atmosférico etéreo: activo solo en pantallas medianas/grandes para no ralentizar móviles */}
         <div
           aria-hidden="true"
-          className="hidden md:block absolute top-1/4 right-1/4 w-[480px] h-[480px] rounded-full blur-[140px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[#06b6d4] via-[#a855f7] to-[#eab308]"
+          className="hidden md:block absolute top-1/4 right-1/4 w-[480px] h-[480px] rounded-full blur-[140px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[#06b6d4] via-[#a855f7] to-[var(--color-brand-cyan)]"
         />
         <canvas
           ref={canvasRef}

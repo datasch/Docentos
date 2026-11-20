@@ -9,30 +9,78 @@ interface ContractDocumentProps {
   idPrefix?: string;
   /** Muestra el título y el subtítulo del propio documento antes de las cláusulas. */
   showHeading?: boolean;
+  /** Sobre papel claro (términos públicos): usa las clases de `terms-paper.css` en vez del tema oscuro. */
+  paper?: boolean;
 }
 
 /**
  * El contrato como cláusulas numeradas: cada una con su número, su título y, dentro,
  * los términos con su etiqueta destacada (en vez de un párrafo corrido).
  */
-export const ContractDocument: React.FC<ContractDocumentProps> = ({ content, idPrefix = 'contract', showHeading = true }) => {
+export const ContractDocument: React.FC<ContractDocumentProps> = ({ content, idPrefix = 'contract', showHeading = true, paper = false }) => {
   const { t } = useTranslation();
   const doc = useMemo(() => parseContract(content), [content]);
 
-  return (
-    <article className="space-y-4">
-      {showHeading && doc.title && (
-        <header className="space-y-1">
-          <h3 className="text-lg font-bold leading-snug tracking-tight text-ink sm:text-xl">{doc.title}</h3>
-          {doc.subtitle && <p className="text-sm font-semibold text-brand-cyan">{doc.subtitle}</p>}
-        </header>
-      )}
+  if (paper) {
+    return (
+      <article className="terms-doc">
+        {showHeading && doc.title && (
+          <header className="terms-doc__head">
+            <h3>{doc.title}</h3>
+            {doc.subtitle && <p>{doc.subtitle}</p>}
+          </header>
+        )}
+        {doc.intro.map((paragraph, index) => (
+          <p key={index} className="terms-doc__text">{paragraph}</p>
+        ))}
+        {doc.clauses.map((clause) => (
+          <section
+            key={clause.number}
+            id={`${idPrefix}-clause-${clause.number}`}
+            data-clause={clause.number}
+            aria-labelledby={`${idPrefix}-clause-title-${clause.number}`}
+            className="terms-doc__clause"
+          >
+            <h4 id={`${idPrefix}-clause-title-${clause.number}`}>
+              <span aria-hidden="true">{clause.number}.</span>
+              <span className="sr-only">{t('legal.clause', 'Cláusula {{number}}', { number: clause.number })}. </span>
+              {clause.title}
+            </h4>
+            <div className="terms-doc__body">
+              {clause.items.map((item, index) =>
+                item.kind === 'term' ? (
+                  <dl key={index}>
+                    <dt>{item.label}</dt>
+                    <dd>{item.text}</dd>
+                  </dl>
+                ) : (
+                  <p key={index} className="terms-doc__text">{item.text}</p>
+                ),
+              )}
+            </div>
+          </section>
+        ))}
+      </article>
+    );
+  }
 
-      {doc.intro.map((paragraph, index) => (
-        <p key={index} className="text-sm leading-relaxed text-ink-soft">
-          {paragraph}
-        </p>
-      ))}
+  return (
+    <article>
+      {(showHeading && doc.title) || doc.intro.length > 0 ? (
+        <div className="space-y-3 pb-6">
+          {showHeading && doc.title && (
+            <header className="space-y-1">
+              <h3 className="text-lg font-semibold leading-snug text-ink sm:text-xl">{doc.title}</h3>
+              {doc.subtitle && <p className="text-sm text-ink-muted">{doc.subtitle}</p>}
+            </header>
+          )}
+          {doc.intro.map((paragraph, index) => (
+            <p key={index} className="font-serif text-[15px] leading-7 text-ink-soft">
+              {paragraph}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       {doc.clauses.map((clause) => (
         <section
@@ -40,34 +88,27 @@ export const ContractDocument: React.FC<ContractDocumentProps> = ({ content, idP
           id={`${idPrefix}-clause-${clause.number}`}
           data-clause={clause.number}
           aria-labelledby={`${idPrefix}-clause-title-${clause.number}`}
-          className="scroll-mt-4 rounded-2xl border border-line bg-raised/50 p-4 sm:p-5"
+          className="scroll-mt-4 border-t border-line py-6"
         >
-          <header className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-cyan to-brand-purple text-sm font-bold text-white shadow-sm"
-            >
+          <header className="flex items-baseline gap-4">
+            <span aria-hidden="true" className="w-6 shrink-0 text-sm font-medium tabular-nums text-ink-muted">
               {clause.number}
             </span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                {t('legal.clause', 'Cláusula {{number}}', { number: clause.number })}
-              </p>
-              <h4 id={`${idPrefix}-clause-title-${clause.number}`} className="text-base font-semibold leading-snug text-ink">
-                {clause.title}
-              </h4>
-            </div>
+            <h4 id={`${idPrefix}-clause-title-${clause.number}`} className="text-base font-semibold leading-snug text-ink">
+              <span className="sr-only">{t('legal.clause', 'Cláusula {{number}}', { number: clause.number })}. </span>
+              {clause.title}
+            </h4>
           </header>
 
-          <div className="mt-3 space-y-2.5 sm:pl-12">
+          <div className="mt-3 space-y-3 sm:pl-10">
             {clause.items.map((item, index) =>
               item.kind === 'term' ? (
-                <dl key={index} className="rounded-xl border border-line bg-canvas/50 px-3.5 py-3">
-                  <dt className="text-xs font-bold text-brand-cyan">{item.label}</dt>
-                  <dd className="mt-1 text-sm leading-relaxed text-ink-soft">{item.text}</dd>
+                <dl key={index} className="grid gap-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
+                  <dt className="text-sm font-semibold text-ink">{item.label}</dt>
+                  <dd className="font-serif text-[15px] leading-7 text-ink-soft">{item.text}</dd>
                 </dl>
               ) : (
-                <p key={index} className="text-sm leading-relaxed text-ink-soft">
+                <p key={index} className="font-serif text-[15px] leading-7 text-ink-soft">
                   {item.text}
                 </p>
               ),

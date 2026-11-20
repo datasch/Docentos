@@ -1,3 +1,4 @@
+import type { CourseCardPatch } from '../../lib/courseCardUpdate';
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User, Course } from '../../types';
@@ -82,6 +83,7 @@ interface ConstellationAppShellProps {
   onLogout: () => void;
   onOpenPaywall: () => void;
   onRefreshData: () => void;
+  onCourseUpdated?: (courseId: string, patch: CourseCardPatch) => void;
   onPaymentSuccess?: () => void;
   onVipActivated?: () => void;
   onRestartTour?: () => void;
@@ -109,6 +111,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   onLogout,
   onOpenPaywall,
   onRefreshData,
+  onCourseUpdated,
   onPaymentSuccess,
   onVipActivated,
   onRestartTour,
@@ -269,7 +272,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
 
 
   return (
-    <div className="academy-experience min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col font-sans selection:bg-[#06b6d4] selection:text-[#050505] relative overflow-x-clip w-full max-w-full">
+    <div className="academy-experience min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col font-sans selection:bg-[var(--color-brand-cyan)] selection:text-[#050505] relative overflow-x-clip w-full max-w-full">
       
 
       {/* Ambientación Festiva Global de DocentOS (Halloween & Navidad) */}
@@ -321,7 +324,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
       {/* Resplandor ambiental atmosférico cósmico de fondo */}
       <div
         aria-hidden="true"
-        className="fixed top-20 left-1/2 -translate-x-1/2 w-[340px] sm:w-[600px] h-[340px] sm:h-[600px] rounded-full blur-[120px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[#06b6d4] via-[#a855f7] to-[#eab308]"
+        className="fixed top-20 left-1/2 -translate-x-1/2 w-[340px] sm:w-[600px] h-[340px] sm:h-[600px] rounded-full blur-[120px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#a855f7] to-[var(--color-brand-cyan)]"
       />
 
       {/* Lienzo 3D de Constelación Neural: visible en inicio, catálogo y mi aprendizaje */}
@@ -500,11 +503,12 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                       currentUser={currentUser}
                       courses={localizedCourses}
                       onRefreshCourses={onRefreshData}
+                      onCourseUpdated={onCourseUpdated}
                     />
                   </div>
                 ) : (
                   <div className="max-w-md mx-auto py-24 px-6 text-center animate-fade-in">
-                    <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan">
                       <Users className="w-7 h-7" />
                     </div>
                     <h2 className="font-constellation-display text-2xl text-slate-900 dark:text-white mb-2">
@@ -548,7 +552,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                 className="w-full"
               >
                 {currentUser?.role === 'ADMIN' ? (
-                  <div className="w-full max-w-[1600px] mx-auto overflow-x-hidden">
+                  <div className="w-full max-w-[1600px] mx-auto overflow-x-clip">
                     <AdminDashboard
                       currentUser={currentUser}
                       course={currentCourse}

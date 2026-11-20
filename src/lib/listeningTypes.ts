@@ -18,7 +18,7 @@ export interface ListeningSubmission {
   courseId?: string | null;
   subject: string;
   message: string;
-  anonymous: boolean;
+  anonymous?: boolean;
 }
 
 export interface OwnListeningEntry {

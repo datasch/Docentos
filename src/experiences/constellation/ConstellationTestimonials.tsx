@@ -5,6 +5,7 @@ import { User, LandingTestimonial, ModeratedTestimonial } from '../../types';
 import { api } from '../../lib/api';
 import { avatarSrc } from '../../lib/avatar';
 import { useBodyScrollLock } from '../../lib/useBodyScrollLock';
+import { useToastMessage } from '../../lib/useToastMessage';
 
 const TESTIMONIAL_MAX_CHARS = 400;
 
@@ -65,6 +66,9 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  useToastMessage(statusNotice, 'success');
+  const PAGE_SIZE = 6;
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
 
   // Toggle exclusivo de desarrollo para ver mocks si la base local está vacía
   const [showDevMocks, setShowDevMocks] = useState<boolean>(false);
@@ -191,30 +195,13 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
     <section id="testimonios" className="relative w-full bg-transparent py-20 select-none border-t border-slate-200 dark:border-white/[0.04]">
       <div className="max-w-[1280px] mx-auto px-6">
 
-        {/* Notificación de envío exitoso */}
-        {statusNotice && (
-          <div className="mb-8 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-center justify-between gap-3 text-sm animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />
-              <span>{statusNotice}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setStatusNotice(null)}
-              className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
         {/* Cabecera de la Sección Testimonios */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div className="flex flex-col items-start gap-1">
             <h2 className="font-constellation-display text-[32px] sm:text-[44px] md:text-[52px] leading-tight text-slate-900 dark:text-white tracking-[-0.035em]">
               {t('testimonials.title', 'Lo que opinan nuestros mentees')}
             </h2>
-            <p className="font-constellation-body text-sm sm:text-base text-slate-600 dark:text-white/60 mt-1 max-w-2xl leading-relaxed font-extralight">
+            <p className="font-constellation-body text-sm sm:text-base text-slate-600 dark:text-white/60 mt-1 max-w-2xl leading-relaxed">
               {t('testimonials.subtitle', 'Experiencias compartidas por quienes estudian en DocentOS.')}
             </p>
           </div>
@@ -222,32 +209,18 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
           {/* Acciones para el estudiante / mentee */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             {currentUser && myTestimonial && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono border backdrop-blur-md bg-white/70 dark:bg-white/[0.04]">
-                {myTestimonial.status === 'PENDING' && (
-                  <>
-                    <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                    <span className="text-amber-600 dark:text-amber-400">{t('testimonials.statusPending', 'En revisión')}</span>
-                  </>
-                )}
-                {myTestimonial.status === 'APPROVED' && (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-emerald-600 dark:text-emerald-400">{t('testimonials.statusApproved', 'Publicado')}</span>
-                  </>
-                )}
-                {myTestimonial.status === 'REJECTED' && (
-                  <>
-                    <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="text-rose-600 dark:text-rose-400">{t('testimonials.statusRejected', 'Requiere cambios')}</span>
-                  </>
-                )}
-              </div>
+              <span className="inline-flex items-center gap-2 text-sm text-ink-soft">
+                <span aria-hidden className={`h-2 w-2 rounded-full ${myTestimonial.status === 'APPROVED' ? 'bg-success-light' : myTestimonial.status === 'REJECTED' ? 'bg-danger-light' : 'bg-warning-light'}`} />
+                {myTestimonial.status === 'PENDING' && t('testimonials.statusPending', 'En revisión')}
+                {myTestimonial.status === 'APPROVED' && t('testimonials.statusApproved', 'Publicado')}
+                {myTestimonial.status === 'REJECTED' && t('testimonials.statusRejected', 'Requiere cambios')}
+              </span>
             )}
 
             <button
               type="button"
               onClick={handleOpenModal}
-              className="academy-text-button border border-line"
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-line px-4 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
             >
               {currentUser ? (
                 myTestimonial ? (
@@ -263,7 +236,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                 )
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <Plus className="w-4 h-4" />
                   <span>{t('testimonials.leaveReview', 'Dejar mi opinión')}</span>
                 </>
               )}
@@ -287,62 +260,62 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
           </div>
         )}
 
-        {/* Grilla de Testimonios Reales */}
+        {/* Opiniones: tres columnas iguales; el texto manda, sin sellos ni afirmaciones sin respaldo */}
         {activeTestimonials.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {activeTestimonials.map((testimonial) => (
-              <article
-                key={testimonial.id}
-                className="academy-testimonial-card flex flex-col justify-between p-6 rounded-[24px] bg-white/80 dark:bg-[#0c0a1a]/80 hover:bg-slate-50 dark:hover:bg-[#141026] hover:-translate-y-1 border border-slate-200 dark:border-white/[0.08] hover:border-[#a855f7]/40 transition-all duration-200 group shadow-md dark:shadow-lg [content-visibility:auto]"
-              >
-                <div>
-                  {/* Cabecera con Persona y Estrellas */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <img
-                        src={avatarSrc(testimonial.avatarUrl)}
-                        alt={testimonial.name}
-                        width={40}
-                        height={40}
-                        decoding="async"
-                        className="w-10 h-10 shrink-0 rounded-full object-cover border border-slate-200 dark:border-white/10"
-                        loading="lazy"
-                      />
-                      <div>
-                        <h3 className="font-constellation-display text-base text-slate-900 dark:text-white font-medium">
-                          {testimonial.name}
-                        </h3>
-                        <span className="font-constellation-label text-[11px] text-[#06b6d4] tracking-wider uppercase block">
-                          {testimonial.role || t('estudiante', 'Estudiante')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Estrellas */}
-                    <div className="flex items-center gap-0.5 text-[#eab308]" aria-label={t('ratingDe5Estrellas', '{{rating}} de 5 estrellas', { rating: testimonial.rating })}>
-                      {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-[#eab308]" />
-                      ))}
-                    </div>
+          <>
+          <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {activeTestimonials.slice(0, visibleCount).map((testimonial) => (
+              <li key={testimonial.id}>
+                <article className="academy-testimonial-card flex h-full flex-col rounded-2xl border border-line bg-surface p-6 transition-colors hover:border-line-strong">
+                  <div className="flex items-center gap-0.5 text-[var(--color-brand-cyan)]" role="img" aria-label={t('ratingDe5Estrellas', '{{rating}} de 5 estrellas', { rating: testimonial.rating })}>
+                    {Array.from({ length: testimonial.rating || 5 }).map((_, i) => (
+                      <Star key={i} aria-hidden className="h-4 w-4 fill-[var(--color-brand-cyan)]" />
+                    ))}
                   </div>
 
-                  {/* Comentario */}
-                  <p className="font-constellation-body text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-extralight italic">
+                  <blockquote className="mt-4 flex-1 text-base leading-relaxed text-ink">
                     “{testimonial.comment}”
-                  </p>
-                </div>
+                  </blockquote>
 
-                <div className="mt-6 pt-3 border-t border-slate-100 dark:border-white/[0.04] text-[10px] font-mono text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                  <span>{t('estudianteVerificado', 'ESTUDIANTE VERIFICADO')}</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{t('100Autentico', '100% Auténtico')}</span>
-                </div>
-              </article>
+                  <div className="mt-6 flex items-center gap-3 border-t border-line pt-4">
+                    <img
+                      src={avatarSrc(testimonial.avatarUrl)}
+                      alt=""
+                      width={44}
+                      height={44}
+                      decoding="async"
+                      className="h-11 w-11 shrink-0 rounded-full border border-line object-cover"
+                      loading="lazy"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink">{testimonial.name}</p>
+                      <p className="text-sm text-ink-muted">{testimonial.role || t('estudiante', 'Estudiante')}</p>
+                    </div>
+                  </div>
+                </article>
+              </li>
             ))}
-          </div>
+          </ul>
+
+          {activeTestimonials.length > visibleCount && (
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <p className="text-sm text-ink-muted">
+                {t('testimonials.showing', 'Mostrando {{shown}} de {{total}} opiniones', { shown: visibleCount, total: activeTestimonials.length })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                className="flex min-h-11 w-full max-w-xs cursor-pointer items-center justify-center rounded-lg border border-line px-6 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+              >
+                {t('testimonials.showMore', 'Mostrar más opiniones')}
+              </button>
+            </div>
+          )}
+          </>
         ) : (
           /* Estado vacío si no hay testimonios aprobados aún */
           <div className="flex flex-col items-center justify-center p-10 text-center rounded-[24px] bg-white/40 dark:bg-[#0c0a1a]/40 border border-dashed border-slate-300 dark:border-white/10 max-w-xl mx-auto">
-            <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-line bg-raised text-ink-soft mb-4">
               <MessageSquare className="w-6 h-6" />
             </div>
             <h3 className="font-constellation-display text-lg text-slate-900 dark:text-white font-medium mb-1">
@@ -354,7 +327,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
             <button
               type="button"
               onClick={handleOpenModal}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm"
+              className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-line px-4 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{t('escribirMiOpinion', 'Escribir mi opinión')}</span>
@@ -395,11 +368,11 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
 
             {/* Cabecera del modal */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-raised text-ink-soft">
+                <MessageSquare className="w-5 h-5" />
               </div>
               <div>
-                <h3 id="testimonial-modal-title" className="font-constellation-display text-lg font-bold text-slate-900 dark:text-white">
+                <h3 id="testimonial-modal-title" className="font-constellation-display text-lg font-semibold text-slate-900 dark:text-white">
                   {myTestimonial ? t('editarMiTestimonio', 'Editar mi testimonio') : t('compartirMiExperiencia', 'Compartir mi experiencia')}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-white/60">
@@ -412,7 +385,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
             <form onSubmit={handleSubmitTestimonial} className="space-y-4">
               {/* Selector de calificación (Estrellas) */}
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-white/70 mb-2">
+                <label className="mb-2 block text-sm font-medium text-ink">
                   {t('tuCalificacion', 'Tu Calificación')}
                 </label>
                 <div className="flex flex-wrap items-center gap-2">
@@ -439,7 +412,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                           <Star
                             className={`w-6 h-6 transition-colors ${
                               isActive
-                                ? 'text-[#eab308] fill-[#eab308]'
+                                ? 'text-[var(--color-brand-cyan)] fill-[var(--color-brand-cyan)]'
                                 : 'text-slate-300 dark:text-white/20'
                             }`}
                           />
@@ -447,7 +420,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                       );
                     })}
                   </div>
-                  <span className="text-xs font-mono font-medium text-[#eab308] ml-2">
+                  <span className="text-xs font-mono font-medium text-[var(--color-brand-cyan)] ml-2">
                     {hoverRating ?? draftRating} {t('de5Estrellas', 'de 5 estrellas')}
                   </span>
                 </div>
@@ -456,7 +429,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
               {/* Textarea del comentario */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="testimonial-comment" className="text-xs font-mono uppercase tracking-wider text-slate-600 dark:text-white/70">
+                  <label htmlFor="testimonial-comment" className="text-sm font-medium text-ink">
                     {t('tuOpinion2', 'Tu Opinión')}
                   </label>
                   <span className={`text-[11px] font-mono ${

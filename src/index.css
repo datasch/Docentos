@@ -47,14 +47,14 @@
      la que se usa cuando el acento es texto: #8b5cf6 se queda en 4.31:1 sobre
      una tarjeta y no pasa AA, asi que el violeta pinta bordes y rellenos y el
      claro pinta letras. */
-  --color-brand-cyan: #06b6d4;
-  --color-brand-blue: #3b82f6;
+  --color-brand-cyan: #fbbf24;
+  --color-brand-blue: #fbbf24;
   --color-brand-violet: #8b5cf6;
   --color-brand-violet-light: #c4b5fd;
-  --color-brand-purple: #a855f7;
+  --color-brand-purple: #fbbf24;
   --color-brand-magenta: #ec4899;
   --color-brand-orange: #f97316;
-  --color-brand-yellow: #eab308;
+  --color-brand-yellow: #fbbf24;
 
   /* Estados. Hasta ahora el rojo, el verde y el ambar de la interfaz salian de
      la paleta por defecto de Tailwind, que pasa el filtro de hexadecimales y
@@ -103,12 +103,12 @@
     --color-ink-faint: rgb(255 255 255 / 0.40);
 
     /* Official Giantucchi Design System Tokens */
-    --color-brand-cyan: #06b6d4;
-    --color-brand-blue: #3b82f6;
-    --color-brand-purple: #a855f7;
+    --color-brand-cyan: #fbbf24;
+    --color-brand-blue: #fbbf24;
+    --color-brand-purple: #fbbf24;
     --color-brand-magenta: #ec4899;
     --color-brand-orange: #f97316;
-    --color-brand-yellow: #eab308;
+    --color-brand-yellow: #fbbf24;
 
     --color-dark-bg: #0a0a0f;
     --color-dark-surface: #141420;
@@ -121,12 +121,12 @@
     --border-giantucchi: #2d2d44;
     --text-primary: #ffffff;
 
-    --brand-cyan: #06b6d4;
-    --brand-blue: #3b82f6;
-    --brand-purple: #a855f7;
+    --brand-cyan: #fbbf24;
+    --brand-blue: #fbbf24;
+    --brand-purple: #fbbf24;
     --brand-magenta: #ec4899;
     --brand-orange: #f97316;
-    --brand-yellow: #eab308;
+    --brand-yellow: #fbbf24;
   }
 
   html, body, #root {
@@ -475,46 +475,24 @@ body.theme-emerald {
 :root.theme-amber,
 html.theme-amber,
 body.theme-amber {
-  --color-brand-cyan: #f59e0b !important;
-  --color-brand-blue: #d97706 !important;
-  --color-brand-purple: #b45309 !important;
-  --brand-cyan: #f59e0b !important;
-  --brand-blue: #d97706 !important;
-  --brand-purple: #b45309 !important;
-  --lp-cyan: #f59e0b !important;
-  --lp-accent: #f59e0b !important;
+  --color-brand-cyan: #fbbf24 !important;
+  --color-brand-blue: #fbbf24 !important;
+  --color-brand-purple: #fbbf24 !important;
+  --brand-cyan: #fbbf24 !important;
+  --brand-blue: #fbbf24 !important;
+  --brand-purple: #fbbf24 !important;
+  --lp-cyan: #fbbf24 !important;
+  --lp-accent: #fbbf24 !important;
   --lp-accent-soft: #fde68a !important;
-  --lp-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #fbbf24 100%) !important;
+  --lp-gradient: linear-gradient(135deg, #fbbf24 0%, #fbbf24 50%, #fbbf24 100%) !important;
 }
-.theme-amber [class*="text-brand-cyan"],
-.theme-amber .lp-tone-cyan {
-  color: #fbbf24 !important;
-}
-.theme-amber [class*="border-brand-cyan"] {
-  border-color: rgba(245, 158, 11, 0.45) !important;
-}
-.theme-amber .bg-brand-cyan {
-  background-color: #f59e0b !important;
-  color: #000000 !important;
-}
-.theme-amber [class*="bg-brand-cyan/"]:not(.theme-dot) {
-  background-color: rgba(245, 158, 11, 0.16) !important;
-}
-.theme-amber [class*="ring-brand-cyan"] {
-  --tw-ring-color: #f59e0b !important;
-}
-.theme-amber .btn-brand-primary {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #fbbf24 100%) !important;
-  box-shadow: 0 4px 15px -3px rgba(245, 158, 11, 0.5) !important;
-}
+/* Un solo ámbar: los componentes leen el token (--color-brand-cyan), así que el modo claro usa el ámbar oscuro y el oscuro el claro. */
+.theme-amber .btn-brand-primary,
+.theme-amber .bg-brand-gradient { background: var(--color-brand-cyan) !important; box-shadow: none !important; }
 .theme-amber .text-brand-gradient {
-  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 50%, #d97706 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-}
-.theme-amber .bg-brand-gradient {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #fbbf24 100%) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--color-brand-cyan) !important;
 }
 
 /* --- TEMA CIAN DOCENTOS (POR DEFECTO) --- */
@@ -631,11 +609,11 @@ body[data-color-mode="light"],
   --color-ink-faint: #64748b;
 
   /* Colores de Marca y Estados adaptados para contraste nítido en modo claro */
-  --color-brand-cyan: #0e7490;
-  --color-brand-blue: #1d4ed8;
+  --color-brand-cyan: #b45309;
+  --color-brand-blue: #b45309;
   --color-brand-violet: #7c3aed;
   --color-brand-violet-light: #6d28d9;
-  --color-brand-purple: #7e22ce;
+  --color-brand-purple: #b45309;
   --color-brand-magenta: #be185d;
   --color-brand-orange: #c2410c;
   --color-brand-yellow: #b45309;

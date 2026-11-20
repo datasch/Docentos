@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   Eye,
   Download,
+  CandyCane,
+  Snowflake,
 } from 'lucide-react';
 import { Course, Module, VideoDriveLink, User, CertificateRecord } from '../../types';
 import { downloadCertificate } from '../../plugins/CertificateGenerator';
@@ -43,6 +45,7 @@ interface ConstellationCosmicPathProps {
   currentUser?: User | null;
   certificate?: CertificateRecord | null;
   activeVideoId?: string;
+  isLessonModalOpen?: boolean;
 }
 
 // Iconos temáticos que rotan para las misiones cósmicas
@@ -59,38 +62,8 @@ const MISSION_ICONS = [
   Code2,      // Matriz de Código
 ];
 
-/**
- * Icono SVG idéntico al Bastón Festivo para el progreso y la ruta
- */
 export const CandyCaneIcon: React.FC<{ className?: string; size?: number }> = ({ className = '', size = 24 }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 32 32" 
-    fill="none" 
-    className={`inline-block filter  ${className}`}
-    aria-hidden="true"
-  >
-    {/* Cuerpo blanco del bastón */}
-    <path 
-      d="M10 27 L10 12 C10 6.5, 22 6.5, 22 12 L22 14" 
-      stroke="#ffffff" 
-      strokeWidth="5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-    />
-    {/* Rayas rojas festivas del Bastón Festivo */}
-    <path 
-      d="M10 27 L10 12 C10 6.5, 22 6.5, 22 12 L22 14" 
-      stroke="#dc2626" 
-      strokeWidth="5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      strokeDasharray="3.5 4.5" 
-    />
-    {/* Cascabel o lazo dorado festivo */}
-    <circle cx="16" cy="18" r="3" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
-  </svg>
+  <CandyCane size={size} className={className} color="#a72832" strokeWidth={2.2} aria-hidden="true" />
 );
 
 /**
@@ -248,6 +221,7 @@ interface ModuloCaminoTrackProps {
   isPrevModuleCompleted: boolean;
   allMissionsCompleted: boolean;
   canAccessMission: (globalIndex: number) => boolean;
+  celebratingMissionId: string | null;
 }
 
 const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
@@ -267,6 +241,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   isPrevModuleCompleted,
   allMissionsCompleted,
   canAccessMission,
+  celebratingMissionId,
 }) => {
   const { t } = useTranslation();
   const baseRef = useRef<SVGPathElement>(null);
@@ -342,9 +317,11 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   const donde = pos[Math.min(orbIdx, pos.length - 1)] || [50, 50];
 
   const isSelectedInThisModule = selectedNode && missions.some((m) => m.video.id === selectedNode.video.id);
+  const celebratingMissionIndex = missions.findIndex((mission) => mission.video.id === celebratingMissionId);
+  const celebratingSide = celebratingMissionIndex < 0 ? undefined : (pos[celebratingMissionIndex]?.[0] ?? 50) < 50 ? 'left' : 'right';
 
   return (
-    <section className="relative my-10">
+    <section className={`relative my-10${celebratingMissionIndex >= 0 ? ' christmas-module-celebrating' : ''}`}>
       {/* 1. Encabezado de Módulo en píldora con luz de cristal y conector continuo entre módulos */}
       <div className="relative mt-12 mb-6 w-full max-w-xl mx-auto flex flex-col items-center">
         {/* Conector SVG continuo que pasa por detrás del encabezado */}
@@ -352,6 +329,11 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
           <div className="absolute -top-12 -bottom-10 inset-x-0 flex justify-center pointer-events-none z-0 overflow-visible">
             <svg className="w-full max-w-[340px] h-full overflow-visible" viewBox="0 0 340 100" preserveAspectRatio="none">
               <defs>
+                <linearGradient id={`xmas-beam-${module.id}`} gradientUnits="userSpaceOnUse" x1="170" y1="0" x2="170" y2="100">
+                  <stop offset="0" stopColor="#fbbf24" stopOpacity="0" />
+                  <stop offset="0.5" stopColor="#fbbf24" />
+                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+                </linearGradient>
                 <linearGradient id={`th-connector-grad-${module.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#ffffff" />
                   <stop offset="0.5" stopColor="#fbbf24" />
@@ -359,25 +341,9 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 </linearGradient>
               </defs>
               
-              {/* Conector temático continuo: Bastón de caramelo en Navidad */}
+              {/* Conector navideño discreto entre módulos. */}
               {seasonalTheme === 'christmas' ? (
-                <>
-                  <path
-                    d="M 170 0 L 170 100"
-                    fill="none"
-                    stroke="#dc2626"
-                    strokeWidth="12"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 170 0 L 170 100"
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="12"
-                    strokeDasharray="14 14"
-                    strokeLinecap="round"
-                  />
-                </>
+                <path d="M 170 0 L 170 100" fill="none" stroke="var(--color-line-strong)" strokeWidth="5" strokeLinecap="round" className="christmas-connector" />
               ) : seasonalTheme === 'halloween' ? (
                 <>
                   {/* Conector temático: Dulces y golosinas en Halloween */}
@@ -413,11 +379,11 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 <path
                   d="M 170 0 L 170 100"
                   fill="none"
-                  stroke={seasonalTheme === 'christmas' ? '#fbbf24' : `url(#th-connector-grad-${module.id})`}
-                  strokeWidth={seasonalTheme === 'christmas' ? '12' : '8'}
-                  strokeDasharray={seasonalTheme === 'christmas' ? '14 14' : '3 14'}
+                  stroke={seasonalTheme === 'christmas' ? `url(#xmas-beam-${module.id})` : `url(#th-connector-grad-${module.id})`}
+                  strokeWidth={seasonalTheme === 'christmas' ? '3' : '8'}
+                  strokeDasharray={seasonalTheme === 'christmas' ? undefined : '3 14'}
                   strokeLinecap="round"
-                  className="ruta-viva"
+                  className={`ruta-viva${seasonalTheme === 'christmas' ? ' christmas-connector-done' : ''}`}
                 />
               )}
             </svg>
@@ -428,7 +394,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
         <div className="academy-module-heading relative z-10 w-full flex flex-wrap items-center justify-between gap-3 px-1 py-4 border-b border-line   transition-colors">
           <div className="flex flex-1 items-center gap-3.5 min-w-0">
             <div className="min-w-0">
-              <span className="text-sm font-medium text-purple-600 text-ink-muted block">
+              <span className="text-sm font-medium text-ink-muted block">
                 {t('path.moduleNumber', { number: modIdx + 1, defaultValue: `Módulo ${modIdx + 1}` })}
               </span>
               <h2 className="text-base font-semibold text-ink leading-snug">
@@ -439,8 +405,8 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             {isModuleAllCompleted ? (
-              <span className="flex items-center gap-1 text-sm px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                <Check className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+              <span className="flex items-center gap-1 text-sm px-2.5 py-0.5 rounded-full font-bold bg-brand-cyan/10 text-brand-cyan dark:text-brand-cyan border border-brand-cyan/30">
+                <Check className="w-3 h-3 text-brand-cyan dark:text-brand-cyan" />
                 {t('path.completed', 'Completado')}
               </span>
             ) : (
@@ -455,7 +421,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
       {/* 2. El Camino Serpentino de Islas */}
       <div className="camino" style={{ height: `${height}px` }}>
         {/* Decoraciones Temáticas Flotantes en Ambos Laterales del Módulo */}
-        <ModuleSideDecorations seasonalTheme={seasonalTheme} modIdx={modIdx} height={height} />
+        <ModuleSideDecorations seasonalTheme={seasonalTheme} modIdx={modIdx} height={height} celebratingSide={celebratingSide} />
 
         {ruta && (
           <svg className="ruta" viewBox={viewBox} preserveAspectRatio="none" aria-hidden="true">
@@ -470,28 +436,9 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
               </mask>
             </defs>
             
-            {/* Trazado temático: Bastón de caramelo en Navidad */}
+            {/* Trazado navideño discreto. */}
             {seasonalTheme === 'christmas' ? (
-              <>
-                <path
-                  ref={baseRef}
-                  className="ruta-base"
-                  d={ruta}
-                  fill="none"
-                  stroke="#dc2626"
-                  strokeWidth="12"
-                  strokeLinecap="round"
-                />
-                <path
-                  className="ruta-cane-white"
-                  d={ruta}
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="12"
-                  strokeLinecap="round"
-                  strokeDasharray="14 14"
-                />
-              </>
+              <path ref={baseRef} className="ruta-base" d={ruta} fill="none" stroke="var(--color-line-strong)" strokeWidth="5" strokeLinecap="round" />
             ) : seasonalTheme === 'halloween' ? (
               <>
                 {/* Trazado temático: Dulces y golosinas en Halloween */}
@@ -530,9 +477,9 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
               className="ruta-viva"
               d={ruta}
               fill="none"
-              stroke={seasonalTheme === 'christmas' ? '#fbbf24' : `url(#th-estela-color-${module.id})`}
-              strokeWidth={seasonalTheme === 'christmas' ? '12' : seasonalTheme === 'halloween' ? '10' : '8'}
-              strokeDasharray={seasonalTheme === 'christmas' ? '14 14' : seasonalTheme === 'halloween' ? '12 16' : '3 14'}
+              stroke={seasonalTheme === 'christmas' ? '#bd8232' : `url(#th-estela-color-${module.id})`}
+              strokeWidth={seasonalTheme === 'christmas' ? '5' : seasonalTheme === 'halloween' ? '10' : '8'}
+              strokeDasharray={seasonalTheme === 'christmas' ? undefined : seasonalTheme === 'halloween' ? '12 16' : '3 14'}
               strokeLinecap="round"
               mask={`url(#th-estela-mascara-${module.id})`}
             />
@@ -569,13 +516,15 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
               <button
                 type="button"
                 id={isCurrent ? 'celestial-orb-island' : undefined}
-                className={`isla ${estado} focus:outline-none focus:ring-2 focus:ring-(--th-foco) focus:ring-offset-2 focus:ring-offset-[#0a0a0f] rounded-2xl`}
+                className={`isla ${estado}${celebratingMissionId === mission.video.id ? ' isla--celebrating' : ''} focus:outline-none focus:ring-2 focus:ring-(--th-foco) focus:ring-offset-2 focus:ring-offset-[#0a0a0f] rounded-2xl`}
                 style={{ 
                   left: `${coordinates[0]}%`, 
                   top: `${coordinates[1]}%`,
                   zIndex: isSelected ? 20 : 15,
                 }}
                 aria-label={t('misionMissionNumberDeTotalMissionsTitle', 'Misión {{missionNumber}} de {{totalMissions}}: {{title}}, estado: {{estado}}', { missionNumber: mission.missionNumber, totalMissions, title: mission.video.title, estado })}
+                aria-expanded={isSelected}
+                aria-controls={isSelected ? `mission-detail-${mission.video.id}` : undefined}
                 onClick={toggleMission}
               >
                 <span className="isla-roca" aria-hidden="true">
@@ -589,14 +538,15 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                     seasonalTheme === 'halloween' ? (
                       <HalloweenCandyIcon size={28} className="animate-pulse" />
                     ) : seasonalTheme === 'christmas' ? (
-                      <CandyCaneIcon size={28} className="animate-pulse" />
+                      <CandyCaneIcon size={28} />
                     ) : (
-                      <Sparkles className="w-8 h-8 text-cyan-300  animate-pulse" />
+                      <Sparkles className="w-8 h-8 text-brand-cyan  animate-pulse" />
                     )
                   ) : (
                     <IconComponent className="w-8 h-8 text-purple-300/70" />
                   )}
                 </span>
+                {celebratingMissionId === mission.video.id && <Sparkles className="mission-complete-sparkle" size={22} aria-hidden="true" />}
                 
                 <IslaRotulo id={mission.video.id} title={mission.video.title} onOverflowChange={reportOverflow} />
               </button>
@@ -608,6 +558,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                   className="isla-vermas"
                   style={{ left: `${coordinates[0]}%`, top: `${coordinates[1]}%`, zIndex: isSelected ? 21 : 16 }}
                   aria-expanded={isSelected}
+                  aria-controls={isSelected ? `mission-detail-${mission.video.id}` : undefined}
                   aria-label={`${t('catalog.seeMore', 'Ver más')}: ${mission.video.title}`}
                   onClick={toggleMission}
                 >
@@ -617,82 +568,69 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
 
               {/* Popover / Ficha de Misión desplegada al hacer clic, con separación limpia sin solapar */}
               {isSelected && (
-                <div 
+                <div
+                  id={`mission-detail-${mission.video.id}`}
+                  role="region"
+                  aria-labelledby={`mission-title-${mission.video.id}`}
                   className="mision-popover"
                   style={{
                     left: '50%',
-                    ...(isNearBottom 
-                      ? { bottom: `calc(${100 - coordinates[1]}% + 52px)` } 
-                      // Bajo el rótulo (que acaba a 95px del centro) y, si lo hay, bajo «Ver más» (acaba a 122px).
-                      : { top: `calc(${coordinates[1]}% + ${longTitles[mission.video.id] ? 130 : 103}px)` }),
+                    ...(isNearBottom
+                      ? { bottom: `calc(${100 - coordinates[1]}% + 52px)` }
+                      : { top: `calc(${coordinates[1]}% + ${longTitles[mission.video.id] ? 150 : 103}px)` }),
                   }}
                 >
-                  {isNearBottom ? (
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-surface border-b-2 border-r-2 border-slate-300 dark:border-purple-500/40 rotate-45 pointer-events-none" />
-                  ) : (
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-surface border-t-2 border-l-2 border-slate-300 dark:border-purple-500/40 rotate-45 pointer-events-none" />
-                  )}
-
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="pt-1 text-sm font-medium text-ink-muted">
                       {t('path.missionNumber', { current: mission.missionNumber, total: totalMissions, defaultValue: `Misión ${mission.missionNumber} de ${totalMissions}` })}
                     </span>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setSelectedNode(null);
                       }}
-                      className="text-slate-400 text-ink-soft hover:text-slate-800 dark:hover:text-white p-0.5 rounded-lg transition-colors cursor-pointer"
-                      title={t('common.close', 'Cerrar')}
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan"
+                      aria-label={t('common.close', 'Cerrar')}
                     >
-                      <X className="w-4 h-4" />
+                      <X size={18} aria-hidden="true" />
                     </button>
                   </div>
 
-                  <h3 className="font-semibold text-lg text-ink leading-snug">
+                  <h3 id={`mission-title-${mission.video.id}`} className="mt-1 text-lg font-semibold leading-snug text-ink">
                     {mission.video.title}
                   </h3>
-                  
-                  <p className="text-base text-ink-soft leading-relaxed mt-2 line-clamp-2">
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
                     {mission.module.title}
                   </p>
 
                   {!isUnlocked && !completed && (
-                    <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-300 font-medium leading-relaxed">
-                      {t('path.unlockPrerequisite', '🔒 Misión Bloqueada. Para desbloquearla debes completar la misión anterior:')} <strong className="text-slate-900 dark:text-white block mt-0.5">{allMissions[mission.globalIndex - 1]?.video.title}</strong>
+                    <div className="mt-5 rounded-lg bg-raised p-3 text-sm text-ink-soft">
+                      <div className="flex items-start gap-2">
+                        <Lock size={16} className="mt-0.5 shrink-0 text-ink-muted" aria-hidden="true" />
+                        <div>
+                          <p>{t('path.unlockPrerequisite', 'Completa la misión anterior para desbloquear esta lección:')}</p>
+                          <p className="mt-1 font-medium text-ink">{allMissions[mission.globalIndex - 1]?.video.title}</p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  <div className="mt-4 pt-3 border-t border-purple-500/20 flex items-center justify-end">
-                    <button
-                      type="button"
-                      disabled={!isUnlocked && !completed}
-                      onClick={() => {
-                        if (!isUnlocked && !completed) return;
-                        setSelectedNode(null);
-                        onOpenLesson(mission.video, mission.module);
-                      }}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs uppercase tracking-wider transition-all ${
-                        !isUnlocked && !completed
-                          ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700/50 cursor-not-allowed opacity-60'
-                          : 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:brightness-110 active:scale-95 shadow-none shadow-cyan-500/25 cursor-pointer'
-                      }`}
-                    >
-                      <span>
-                        {!isUnlocked && !completed
-                          ? t('path.missionLocked', 'Misión Bloqueada')
-                          : completed
-                            ? t('path.reviewMission', 'Repasar Misión')
-                            : t('path.startMission', 'Iniciar Misión')}
-                      </span>
-                      {isUnlocked || completed ? (
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      ) : (
-                        <Lock className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
+                  {(isUnlocked || completed) && (
+                    <div className="mt-5 border-t border-line pt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedNode(null);
+                          onOpenLesson(mission.video, mission.module);
+                        }}
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-cyan px-4 py-2.5 text-sm font-semibold text-on-brand transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan"
+                      >
+                        {completed ? t('path.reviewMission', 'Repasar misión') : t('path.startMission', 'Iniciar misión')}
+                        <ArrowRight size={16} aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </React.Fragment>
@@ -736,18 +674,31 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 <HalloweenCandyIcon size={26} />
               </div>
             )}
-            {/* Si es Navidad: bastón festivo coronando el orbe centrado */}
-            {seasonalTheme === 'christmas' && (
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 filter  animate-bounce select-none pointer-events-none">
-                <CandyCaneIcon size={26} />
-              </div>
-            )}
           </div>
         )}
       </div>
     </section>
   );
 };
+
+/** Adornos de la tarjeta de meta alcanzada: acebo en las esquinas y estrellas que titilan. */
+const ChristmasGoalDecor: React.FC = () => (
+  <>
+    <svg aria-hidden className="christmas-goal__holly christmas-goal__holly--left" width="64" height="34" viewBox="0 0 44 22">
+      <path d="M22 11c-4-7-12-9-20-6 3 6 11 9 20 6z" fill="#2f9e6b" /><path d="M22 11c4 7 12 9 20 6-3-6-11-9-20-6z" fill="#237a53" />
+      <circle cx="22" cy="9" r="3.2" fill="#dc2626" /><circle cx="18.5" cy="12.5" r="3" fill="#ef4444" /><circle cx="25.5" cy="12.5" r="3" fill="#b91c1c" />
+    </svg>
+    <svg aria-hidden className="christmas-goal__holly christmas-goal__holly--right" width="64" height="34" viewBox="0 0 44 22">
+      <path d="M22 11c-4-7-12-9-20-6 3 6 11 9 20 6z" fill="#2f9e6b" /><path d="M22 11c4 7 12 9 20 6-3-6-11-9-20-6z" fill="#237a53" />
+      <circle cx="22" cy="9" r="3.2" fill="#dc2626" /><circle cx="18.5" cy="12.5" r="3" fill="#ef4444" /><circle cx="25.5" cy="12.5" r="3" fill="#b91c1c" />
+    </svg>
+    {[0, 1, 2, 3].map((i) => (
+      <svg key={i} aria-hidden className={`christmas-goal__star christmas-goal__star--${i}`} width="14" height="14" viewBox="0 0 24 24">
+        <path d="M12 1l2.6 7.4L22 11l-7.4 2.6L12 21l-2.6-7.4L2 11l7.4-2.6z" fill="#fbbf24" />
+      </svg>
+    ))}
+  </>
+);
 
 export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = ({
   course,
@@ -756,6 +707,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
   currentUser,
   certificate,
   activeVideoId: preferredActiveVideoId,
+  isLessonModalOpen = false,
 }) => {
   const { t } = useTranslation();
   const [selectedNode, setSelectedNode] = useState<{
@@ -767,6 +719,10 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showLockedCertInfo, setShowLockedCertInfo] = useState(false);
   const [seasonalTheme, setSeasonalThemeState] = useState<SeasonalTheme>(getSeasonalTheme());
+  const [celebratingMissionId, setCelebratingMissionId] = useState<string | null>(null);
+  const pendingCelebrationRef = useRef<string | null>(null);
+  const celebrationTimerRef = useRef<number | null>(null);
+  const wasLessonModalOpenRef = useRef(isLessonModalOpen);
 
   useEffect(() => {
     const handleSeasonalChange = (e: any) => {
@@ -831,8 +787,26 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
       setSelectedNode(null);
     }
 
+    const justCompleted = completedVideoIds.find((id) => !prevSet.has(id));
+    if (seasonalTheme === 'christmas' && (isLessonModalOpen || wasLessonModalOpenRef.current) && justCompleted) {
+      pendingCelebrationRef.current = justCompleted;
+    }
+
     prevCompletedSetRef.current = currentSet;
-  }, [completedVideoIds, selectedNode]);
+    wasLessonModalOpenRef.current = isLessonModalOpen;
+  }, [completedVideoIds, selectedNode, seasonalTheme, isLessonModalOpen]);
+
+  useEffect(() => {
+    if (isLessonModalOpen || seasonalTheme !== 'christmas' || !pendingCelebrationRef.current) return;
+    setCelebratingMissionId(pendingCelebrationRef.current);
+    pendingCelebrationRef.current = null;
+    if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
+    celebrationTimerRef.current = window.setTimeout(() => setCelebratingMissionId(null), 1300);
+  }, [isLessonModalOpen, completedVideoIds, seasonalTheme]);
+
+  useEffect(() => () => {
+    if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
+  }, []);
 
   // 2. Si la misión activa avanza a una nueva posición en la ruta, cerrar cualquier ficha previa rezagada
   useEffect(() => {
@@ -931,13 +905,13 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
       />
       <div 
         aria-hidden="true"
-        className="absolute top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none z-0"
+        className="absolute top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none z-0"
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6">
 
         {/* 3. Banner Superior del Curso (Ruta Oficial de Aprendizaje) */}
-        <div className="academy-course-progress mb-8 border-b border-line pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 transition-colors">
+        <div className={`academy-course-progress mb-8 flex flex-col gap-5 ${seasonalTheme === 'christmas' ? 'rounded-2xl border border-line bg-surface p-5 sm:p-7' : 'justify-between border-b border-line pb-6 sm:flex-row sm:items-center'}`}>
           <div className="flex items-start sm:items-center gap-4 min-w-0 flex-1">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl sm:text-3xl font-semibold text-ink leading-tight">
@@ -953,8 +927,9 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   </span>
                 )}
                 {seasonalTheme === 'christmas' && (
-                  <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0 animate-pulse">
-                    {t('path.christmasSpecial', '🎄 Especial Navideño')}
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-0.5 text-sm font-medium text-ink-soft">
+                    <Snowflake size={14} className="text-brand-cyan" aria-hidden="true" />
+                    {t('path.christmasSpecial', 'Especial Navideño')}
                   </span>
                 )}
               </div>
@@ -963,13 +938,23 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
             </div>
           </div>
 
-          {/* Progreso General con adaptación festiva a Dulces o Bastón de Caramelo */}
+          {/* El avance navideño ocupa todo el ancho del encabezado. */}
+          {seasonalTheme === 'christmas' ? (
+            <div className="border-t border-line pt-4">
+              <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+                <span className="font-medium text-ink-soft">{t('path.progressChristmas', 'Progreso Navideño')}</span>
+                <span className="tabular-nums font-semibold text-ink">{progressPct}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label={t('path.progressChristmas', 'Progreso Navideño')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct}>
+                <span className="christmas-candy-bar block h-full rounded-full transition-[width] duration-500" style={{ width: `${progressPct}%` }} />
+              </div>
+              <p className="mt-2 text-sm text-ink-muted">{t('path.missionsCompletedCount', { completed: completedCount, total: totalMissions, defaultValue: `Misiones completadas: ${completedCount} de ${totalMissions}` })}</p>
+            </div>
+          ) : (
           <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-white/5">
             <span className="text-sm font-medium text-ink-soft flex items-center gap-1">
               {seasonalTheme === 'halloween' ? (
                 <>{t('path.progressSweet', 'Progreso Dulce 🍬')}</>
-              ) : seasonalTheme === 'christmas' ? (
-                <>{t('path.progressChristmas', 'Progreso Navideño 🎄')}</>
               ) : (
                 <>{t('path.progress', 'Progreso')}</>
               )}
@@ -991,30 +976,11 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                     </div>
                   )}
                 </div>
-              ) : seasonalTheme === 'christmas' ? (
-                /* Barra temática de Bastón Festivo en Navidad */
-                <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-slate-900/80 border-2 border-red-500/60 p-0.5 relative ">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500  border border-red-200/50"
-                    style={{ 
-                      width: `${progressPct}%`,
-                      backgroundImage: 'repeating-linear-gradient(45deg, #dc2626, #dc2626 9px, #ffffff 9px, #ffffff 18px)'
-                    }}
-                  />
-                  {progressPct > 0 && (
-                    <div 
-                      className="absolute -top-2 transition-all duration-500 select-none -translate-x-1/2 pointer-events-none"
-                      style={{ left: `${Math.min(94, Math.max(6, progressPct))}%` }}
-                    >
-                      <CandyCaneIcon size={24} />
-                    </div>
-                  )}
-                </div>
               ) : (
                 /* Barra Cósmica Estándar */
                 <div className="w-28 h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700/80 overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-[#06b6d4] to-[#8b5cf6] rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-[var(--color-brand-cyan)] to-[#8b5cf6] rounded-full transition-all duration-500"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -1023,14 +989,13 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
               <span className={`text-xs font-semibold ${
                 seasonalTheme === 'halloween'
                   ? 'text-orange-600 dark:text-orange-400'
-                  : seasonalTheme === 'christmas'
-                    ? 'text-red-600 dark:text-red-400'
-                    : 'text-cyan-700 dark:text-cyan-400'
+                  : 'text-brand-cyan dark:text-brand-cyan'
               }`}>
                 {progressPct}%
               </span>
             </div>
           </div>
+          )}
         </div>
 
         {/* 4. El Sendero de Islas de Aprendizaje - MÓDULO POR MÓDULO CON LÍNEAS CONTINUAS */}
@@ -1068,6 +1033,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   isPrevModuleCompleted={isPrevModuleCompleted}
                   allMissionsCompleted={allMissionsCompleted}
                   canAccessMission={canAccessMission}
+                  celebratingMissionId={celebratingMissionId}
                 />
               );
             })
@@ -1088,23 +1054,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 </linearGradient>
               </defs>
               {seasonalTheme === 'christmas' ? (
-                <>
-                  <path
-                    d="M 170 0 L 170 80"
-                    fill="none"
-                    stroke="#dc2626"
-                    strokeWidth="12"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 170 0 L 170 80"
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="12"
-                    strokeDasharray="14 14"
-                    strokeLinecap="round"
-                  />
-                </>
+                <path d="M 170 0 L 170 80" fill="none" stroke="var(--color-line-strong)" strokeWidth="5" strokeLinecap="round" />
               ) : seasonalTheme === 'halloween' ? (
                 <>
                   <path
@@ -1138,9 +1088,9 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 <path
                   d="M 170 0 L 170 80"
                   fill="none"
-                  stroke="#fbbf24"
-                  strokeWidth={seasonalTheme === 'christmas' ? '12' : '8'}
-                  strokeDasharray={seasonalTheme === 'christmas' ? '14 14' : '3 14'}
+                  stroke={seasonalTheme === 'christmas' ? '#bd8232' : '#fbbf24'}
+                  strokeWidth={seasonalTheme === 'christmas' ? '5' : '8'}
+                  strokeDasharray={seasonalTheme === 'christmas' ? undefined : '3 14'}
                   strokeLinecap="round"
                   className="ruta-viva"
                 />
@@ -1152,168 +1102,93 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
           {isCourseCompleted ? (
             <div className="relative flex flex-col items-center w-full animate-fade-in">
               {/* Estación Dorada Luminosa con Vista Previa al dar clic */}
-              <button
-                type="button"
-                onClick={() => setShowPreviewModal(true)}
-                className="relative p-3.5 rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-amber-500/20 via-amber-950/40 to-black/60  hover:scale-105 active:scale-95 transition-all cursor-pointer group"
-                title={t('verVistaPreviaDelCertificado', 'Ver vista previa del certificado')}
-              >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 flex items-center justify-center shadow-none shadow-amber-500/50 group-hover:brightness-110 transition-all">
-                  <Award className="w-9 h-9 text-slate-950 stroke-[2.5]" />
-                </div>
-              </button>
-
-              {/* Banner Oficial de Curso Completado (Diseño Glassmorphism Ultra-Premium) */}
-              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border-2 border-amber-400/50 dark:border-amber-400/40 bg-surface p-6 sm:p-7 shadow-2xl   flex flex-col gap-5 text-left transition-all">
-                <div className="flex items-start sm:items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shrink-0 shadow-none shadow-amber-500/30">
-                    <Award className="w-8 h-8 stroke-[2.2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                        {t('path.goalReached', '✨ ¡Meta Alcanzada!')}
-                      </span>
-                    </div>
-                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white leading-tight mt-1">
-                      {t('path.courseCompletedTitle', 'Curso completado con éxito')}
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-600 dark:text-amber-100/80 leading-relaxed">
-                      {t('path.courseCompletedDesc', { title: course.title, defaultValue: `Tu diploma oficial de ${course.title} está listo para ser emitido con validez institucional.` })}
-                    </p>
-                    {certificate?.verificationCode && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-sm">
-                        <span className="opacity-75">{t('doc', 'DOC:')}</span>
-                        <span className="font-bold">{certificate.verificationCode}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-200 dark:border-amber-400/20 flex flex-wrap sm:flex-nowrap items-center justify-end gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowPreviewModal(true)}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>{t('path.viewDiploma', 'Ver Diploma')}</span>
+              <div className={`${seasonalTheme === 'christmas' ? 'christmas-goal ' : ''}goal-card mx-auto w-full max-w-xl rounded-2xl border border-brand-cyan/40 bg-surface p-6 text-center sm:p-8`}>
+                {seasonalTheme === 'christmas' && <ChristmasGoalDecor />}
+                <span className="goal-medal" aria-hidden="true"><Award className="h-8 w-8" /></span>
+                <p className="mt-4 text-sm font-semibold text-brand-cyan">{t('path.goalReachedPlain', 'Meta alcanzada')}</p>
+                <h2 className="mt-1 text-2xl font-semibold leading-tight text-ink">{t('path.courseCompletedPlain', 'Curso completado')}</h2>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
+                  {t('path.courseCompletedDescPlain', { title: course.title, defaultValue: `Completaste ${course.title}. Tu diploma oficial ya está listo.` })}
+                </p>
+                {certificate?.verificationCode && (
+                  <p className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm">
+                    <span className="text-ink-muted">{t('path.docCode', 'Código')}</span>
+                    <span className="font-mono font-semibold text-ink">{certificate.verificationCode}</span>
+                  </p>
+                )}
+                <div className={`mt-6 grid grid-cols-1 gap-3 ${certificate?.verificationCode ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                  <button type="button" onClick={() => setShowPreviewModal(true)} className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors hover:bg-ink/5">
+                    <Eye className="h-4 w-4" aria-hidden="true" />{t('path.viewDiploma', 'Ver diploma')}
                   </button>
-
                   {certificate?.verificationCode && (
-                    <button
-                      type="button"
-                      onClick={() => setShowVerifyModal(true)}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-xs font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      <span>{t('path.verifyDiploma', 'Verificar')}</span>
+                    <button type="button" onClick={() => setShowVerifyModal(true)} className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors hover:bg-ink/5">
+                      <ShieldCheck className="h-4 w-4" aria-hidden="true" />{t('path.verifyDiploma', 'Verificar')}
                     </button>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPreviewModal(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-slate-950 text-xs font-semibold shadow-none shadow-amber-500/30 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 stroke-[2.5]" />
-                    <span>{t('path.downloadDiploma', 'Descargar Diploma')}</span>
+                  <button type="button" onClick={() => setShowPreviewModal(true)} className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-cyan text-sm font-semibold text-on-brand transition-opacity hover:opacity-90">
+                    <Download className="h-4 w-4" aria-hidden="true" />{t('path.downloadDiploma', 'Descargar diploma')}
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="relative flex flex-col items-center w-full animate-fade-in">
-              {/* Estación Bloqueada */}
-              <div
-                className="relative p-3 rounded-3xl border border-slate-300 dark:border-purple-500/30 bg-surface text-slate-400 text-ink-muted flex items-center justify-center shadow-none"
-              >
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-purple-950/60 border border-slate-200 dark:border-purple-500/20 flex items-center justify-center relative">
-                  <Award className="w-8 h-8 text-slate-400 text-ink-muted/40" />
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-[#0c0916] border border-slate-300 dark:border-purple-400/50 flex items-center justify-center shadow-sm">
-                    <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-purple-300" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tarjeta de Certificado Bloqueado Ultra-Elegante */}
-              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border border-slate-200 dark:border-purple-500/25 bg-surface p-6 shadow-none  flex flex-col gap-4 text-left">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-purple-500/15 border border-slate-200 dark:border-purple-500/25 flex items-center justify-center text-slate-500 dark:text-purple-300 shrink-0">
-                    <Lock className="w-6 h-6" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-purple-500/20 text-slate-600 dark:text-purple-300 border border-slate-200 dark:border-purple-500/30">
-                        {t('path.lockedCertTitle', '🔒 Certificado Bloqueado')}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white mt-1">
-                      {t('path.officialAccreditation', 'Acreditación Oficial de Finalización')}
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-600 text-ink-soft leading-relaxed">
-                      {t('path.lockedCertDesc', { mission: lastMission?.video.title || t('path.finalMission', 'Misión Final'), defaultValue: `Hasta que el Orbe Celestial no complete la misión final (${lastMission?.video.title || 'Misión Final'}), este diploma permanece protegido.` })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Barra de progreso de requisitos */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-600 dark:text-purple-200/80">
-                      {t('path.missionsCompletedCount', { completed: completedCount, total: totalMissions, defaultValue: `Misiones completadas: ${completedCount} de ${totalMissions}` })}
-                    </span>
-                    <span className="font-bold text-cyan-600 dark:text-cyan-400">
-                      {progressPct}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-                    <div 
-                      className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-500"
-                      style={{ width: `${progressPct}%` }}
+            <section
+              className={`academy-locked-certificate relative w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-surface p-5 sm:p-7${seasonalTheme === 'christmas' ? ' academy-locked-certificate--christmas' : ''}`}
+              aria-labelledby="locked-certificate-title"
+              style={seasonalTheme === 'christmas' ? { '--certificate-progress': progressPct / 100 } as React.CSSProperties : undefined}
+            >
+              <div className="flex items-start gap-4">
+                <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-raised text-ink-muted" aria-hidden="true">
+                  <Lock size={22} strokeWidth={1.8} />
+                  {seasonalTheme === 'christmas' && (
+                    <Lock
+                      size={22}
+                      strokeWidth={1.8}
+                      className="absolute text-brand-cyan motion-safe:transition-opacity motion-safe:duration-500"
+                      style={{ opacity: progressPct / 100 }}
                     />
-                  </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="pt-2 border-t border-slate-200 dark:border-purple-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextMission = allMissions.find((m) => !isCompleted(m.video.id)) ?? (allMissions.length > 0 ? allMissions[allMissions.length - 1] : null);
-                      if (nextMission) {
-                        onOpenLesson(nextMission.video, nextMission.module);
-                      }
-                    }}
-                    className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:brightness-110 active:scale-95 text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
-                  >
-                    <span>{t('path.continueNextMission', 'Continuar Misión Siguiente')}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      disabled
-                      className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/30 text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
-                      title={t('debesCompletarLaUltimaMisionConElOrbe', 'Debes completar la última misión con el orbe para habilitar este botón')}
-                    >
-                      <Lock className="w-3 h-3" />
-                      <span>{t('path.viewDiploma', 'Ver Diploma')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/30 text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60"
-                      title={t('debesCompletarLaUltimaMisionConElOrbe', 'Debes completar la última misión con el orbe para habilitar este botón')}
-                    >
-                      <Lock className="w-3 h-3" />
-                      <span>{t('certificates.download', 'Descargar')}</span>
-                    </button>
-                  </div>
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <h2 id="locked-certificate-title" className="text-lg font-semibold leading-snug text-ink">
+                    {t('path.lockedCertTitle', 'Certificado bloqueado')}
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {t('path.officialAccreditation', 'Acreditación oficial de finalización')}
+                  </p>
                 </div>
               </div>
-            </div>
+
+              <p className="mt-5 text-sm leading-relaxed text-ink-soft">
+                {t('path.lockedCertDesc', { mission: lastMission?.video.title || t('path.finalMission', 'Misión final'), defaultValue: `Completa la misión final (${lastMission?.video.title || 'Misión final'}) y aprueba los exámenes para obtener tu certificado.` })}
+              </p>
+
+              <div className="mt-6 border-t border-line pt-5">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                  <span className="text-ink-soft">
+                    {t('path.missionsCompletedCount', { completed: completedCount, total: totalMissions, defaultValue: `Misiones completadas: ${completedCount} de ${totalMissions}` })}
+                  </span>
+                  <span className="tabular-nums font-semibold text-ink">{progressPct}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label={t('path.lockedCertTitle', 'Certificado bloqueado')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct}>
+                  <span className={`block h-full rounded-full motion-safe:transition-[width] motion-safe:duration-500 ${seasonalTheme === 'christmas' ? 'christmas-candy-bar' : 'bg-brand-cyan'}`} style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
+
+              {allMissions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMission = allMissions.find((m) => !isCompleted(m.video.id)) ?? allMissions[allMissions.length - 1];
+                    onOpenLesson(nextMission.video, nextMission.module);
+                  }}
+                  className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-cyan px-4 py-2.5 text-sm font-semibold text-on-brand transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan sm:w-auto"
+                >
+                  {t('path.continueNextMission', 'Continuar siguiente misión')}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+              )}
+            </section>
           )}
         </div>
 

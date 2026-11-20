@@ -36,7 +36,24 @@ export function privateRouteView(status: 'unauthorized' | 'unavailable'): {
   };
 }
 
+/** El visor de un curso tiene su propia dirección para que al recargar se vuelva a él y no al catálogo. */
+export function viewerPath(courseId: string): string {
+  return `/learning/course/${encodeURIComponent(courseId)}`;
+}
+
+export function viewerCourseIdFromPath(pathname: string): string | null {
+  const match = /^\/learning\/course\/([^/]+)\/?$/.exec(pathname);
+  if (!match) return null;
+  try {
+    const id = decodeURIComponent(match[1]);
+    return id.length > 0 && id.length <= 100 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function tabFromPath(pathname: string): ActiveTab {
+  if (viewerCourseIdFromPath(pathname)) return 'viewer';
   if (pathname.startsWith('/admin/plugins')) return 'plugins';
   if (pathname.startsWith('/admin')) return 'admin';
   if (pathname.startsWith('/mentor')) return 'mentor';

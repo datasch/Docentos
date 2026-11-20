@@ -8,7 +8,10 @@
  * cola de moderacion; lo unico que se decide es si se publican o no.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useToastMessage } from '../lib/useToastMessage';
+import { PageLoader } from './loading/PageLoader';
+import React, { useState, useEffect, useRef, useDeferredValue } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Layout,
   Sparkles,
@@ -17,8 +20,8 @@ import {
   Trash2,
   CheckCircle2,
   Eye,
-  Search,
   Star,
+  StarHalf,
   Globe,
   Layers,
   Brain,
@@ -33,18 +36,210 @@ import {
   ArrowRight,
   Clock,
   X,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { avatarSrc } from '../lib/avatar.js';
 import { api } from '../lib/api';
 import { LandingConfig, LandingBenefit, ModeratedTestimonial, TestimonialStatus, Course } from '../types';
+import { AdminSearchField } from './AdminListKit';
+import { AdminSelect } from './AdminSelect';
+import { safeLandingLink } from '../lib/safeUrl';
+import { ConstellationHero } from '../experiences/constellation/ConstellationHero';
+import { ConstellationCourseCatalog } from '../experiences/constellation/ConstellationCourseCatalog';
+import { ConstellationPillars } from '../experiences/constellation/ConstellationPillars';
+import { ConstellationTestimonials } from '../experiences/constellation/ConstellationTestimonials';
+import { ConstellationFooter } from '../experiences/constellation/ConstellationFooter';
+import { LandingConfigProvider, customLanding } from '../lib/landingConfig';
+import { siteConfig } from '../config/theme';
 import { useTranslation, Trans } from 'react-i18next'
 
 interface LandingPageEditorProps {
   onSaved?: () => void;
   disableAnimation?: boolean;
+  /** Dónde pintar Vista previa y Guardar: la fila del selector Portada | Escucha. Sin hueco, van arriba del editor. */
+  actionsSlot?: HTMLElement | null;
 }
 
-export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, disableAnimation = false }) => {
+/** Secciones reales de la portada pública: un enlace interno solo puede apuntar a una de ellas. */
+const LANDING_SECTIONS = [
+  { value: '#inicio', key: 'landingSectionTop', label: 'Inicio de la portada' },
+  { value: '#cursos', key: 'landingSectionCourses', label: 'Catálogo de cursos' },
+  { value: '#beneficios', key: 'landingSectionBenefits', label: 'Beneficios' },
+  { value: '#testimonios', key: 'landingSectionTestimonials', label: 'Testimonios' },
+];
+/** Nombres antiguos que la portada ya sabe traducir a una sección. */
+const LEGACY_LINKS: Record<string, string> = {
+  '#courses': '#cursos', '/courses': '#cursos', '#catalogo': '#cursos', '#catalog': '#cursos',
+  '#vip': '#cursos', '/vip': '#cursos', '#planes': '#cursos', '#pricing': '#cursos',
+};
+const sectionOf = (link: string) => {
+  const value = link.trim().toLowerCase();
+  const canonical = LEGACY_LINKS[value] ?? value;
+  return LANDING_SECTIONS.find((section) => section.value === canonical)?.value ?? '';
+};
+const isLinkValid = (link: string) => link.trim() === '' || !!sectionOf(link) || !!safeLandingLink(link.trim());
+
+/** Largos recomendados: pasarse no bloquea, pero la portada se ve peor. */
+const TITLE_MAX = 70;
+const SUBTITLE_MAX = 180;
+const HERO_DEFAULTS = {
+  heroTitle: 'Una nueva forma de aprender | con inteligencia artificial.',
+  heroSubtitle: 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.',
+  heroCtaText: 'Explorar Catálogo de Cursos',
+  heroCtaLink: '#cursos',
+  heroSecondaryCtaText: 'Solicitar Admisión VIP',
+  heroSecondaryCtaLink: '#cursos',
+};
+
+/** Valoración: solo números de 0 a 5 con un decimal. Se guarda como "4.9/5", que es lo que pinta la portada. */
+const ratingNumber = (value: string) => value.replace('/5', '').trim();
+const parseRating = (value: string) => { const n = parseFloat(ratingNumber(value)); return Number.isFinite(n) ? Math.min(5, Math.max(0, n)) : 0; };
+const sanitizeRating = (raw: string) => {
+  const [whole, ...rest] = raw.replace(',', '.').replace(/[^0-9.]/g, '').split('.');
+  let out = whole.slice(0, 1);
+  if (rest.length) out += '.' + rest.join('').slice(0, 1);
+  return parseFloat(out) > 5 ? '5' : out;
+};
+const starState = (rating: number, index: number) => (rating >= index + 0.75 ? 'full' : rating >= index + 0.25 ? 'half' : 'empty');
+/** Estudiantes activos: solo dígitos, con separador de miles. */
+const audienceDigits = (value: string) => value.replace(/\D/g, '');
+const formatAudience = (digits: string) => (digits ? Number(digits).toLocaleString('en-US') : '');
+
+const StarsRow: React.FC<{ rating: number }> = ({ rating }) => (
+  <>
+    {[0, 1, 2, 3, 4].map((i) => {
+      const state = starState(rating, i);
+      return state === 'half' ? <StarHalf key={i} data-state="half" aria-hidden="true" /> : <Star key={i} data-state={state} aria-hidden="true" />;
+    })}
+  </>
+);
+
+const BENEFIT_ICONS: Array<{ value: string; Icon: React.ElementType; key: string; label: string }> = [
+  { value: 'Brain', Icon: Brain, key: 'brainIa', label: 'IA' },
+  { value: 'Video', Icon: Video, key: 'videoDrive', label: 'Video' },
+  { value: 'ShieldCheck', Icon: ShieldCheck, key: 'shieldcheckRoles', label: 'Seguridad' },
+  { value: 'Layers', Icon: Layers, key: 'layersPlugins', label: 'Plugins' },
+  { value: 'Award', Icon: Award, key: 'awardCertificados', label: 'Certificados' },
+  { value: 'Sparkles', Icon: Sparkles, key: 'sparklesGamificacion', label: 'Gamificación' },
+];
+const BENEFIT_TITLE_MAX = 60;
+const BENEFIT_TEXT_MAX = 160;
+const move = <T,>(items: T[], index: number, direction: -1 | 1): T[] => {
+  const target = index + direction;
+  if (target < 0 || target >= items.length) return items;
+  const next = [...items];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
+};
+
+/** Ancho de escritorio con el que se pinta la portada dentro de la vista previa; se reduce para que quepa. */
+const PREVIEW_WIDTH = 1280;
+const noop = () => {};
+
+interface LandingLivePreviewProps { config: LandingConfig; courses: Course[]; activeTab: string; onPick: (section: string) => void }
+
+/** La portada pública completa, con el borrador actual. Un clic en una sección lleva a su pestaña. */
+const LandingLivePreview: React.FC<LandingLivePreviewProps> = ({ config, courses, activeTab, onPick }) => {
+  const { t } = useTranslation();
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.35);
+  const draft = useDeferredValue(config);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const measure = () => setScale(Math.max(0.2, box.clientWidth / PREVIEW_WIDTH));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
+
+  // Marca la sección que se está editando.
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    box.querySelectorAll('[data-editing]').forEach((node) => node.removeAttribute('data-editing'));
+    box.querySelectorAll(`[data-landing-section="${activeTab}"]`).forEach((node) => node.setAttribute('data-editing', ''));
+  });
+
+  // Al cambiar de pestaña, la vista previa se desplaza a esa sección.
+  useEffect(() => {
+    const box = boxRef.current;
+    const target = box?.querySelector<HTMLElement>(`[data-landing-section="${activeTab}"]`);
+    if (!box || !target) return;
+    const top = target.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 12;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    box.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
+  }, [activeTab]);
+
+  const handleClick = (event: React.MouseEvent) => {
+    // Es una vista previa: ningún enlace ni botón de la portada hace nada.
+    event.preventDefault();
+    event.stopPropagation();
+    const section = (event.target as HTMLElement).closest('[data-landing-section]')?.getAttribute('data-landing-section');
+    if (section) onPick(section);
+  };
+
+  return (
+    <aside className="landing-live" aria-label={t('landingLiveTitle', 'Vista previa de la portada')}>
+      <div className="landing-live__head">
+        <p>{t('landingLiveTitle', 'Vista previa de la portada')}</p>
+        <span>{t('landingLiveHint', 'Haz clic en una sección para editarla')}</span>
+      </div>
+      <div className="landing-live__box" ref={boxRef} onClickCapture={handleClick}>
+        <div className="landing-live__page" style={{ width: PREVIEW_WIDTH, zoom: scale }}>
+          <LandingConfigProvider value={draft}>
+            <div className="academy-experience landing-live__home">
+              <div data-landing-section="hero"><ConstellationHero currentUser={null} showInlineBrand={false} onExploreCourses={noop} onOpenSearch={noop} totalCoursesCount={courses.length} /></div>
+              <div data-landing-section="courses"><ConstellationCourseCatalog featuredOnly onBrowseCatalog={noop} courses={courses} onSelectCourse={noop} onPrefetchCourse={noop} /></div>
+              <div data-landing-section="benefits"><ConstellationPillars /></div>
+              <div data-landing-section="testimonials"><ConstellationTestimonials currentUser={null} onOpenAuth={noop} /></div>
+              <div data-landing-section="footer"><ConstellationFooter /></div>
+            </div>
+          </LandingConfigProvider>
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+interface LandingLinkFieldProps { id: string; label: string; value: string; onChange: (value: string) => void }
+
+/** Destino de un botón: una sección de la portada o una dirección externa, nunca texto suelto. */
+const LandingLinkField: React.FC<LandingLinkFieldProps> = ({ id, label, value, onChange }) => {
+  const { t } = useTranslation();
+  const [forceExternal, setForceExternal] = useState(false);
+  const section = sectionOf(value);
+  const external = forceExternal || (value.trim() !== '' && !section);
+  const valid = isLinkValid(value);
+  return (
+    <div className="meeting-field">
+      <label htmlFor={id}>{label}</label>
+      <AdminSelect
+        id={id}
+        value={external ? '__external' : section || '#cursos'}
+        onChange={(next) => {
+          if (next === '__external') { setForceExternal(true); if (section || !value.trim()) onChange('https://'); }
+          else { setForceExternal(false); onChange(next); }
+        }}
+        options={[
+          ...LANDING_SECTIONS.map((item) => ({ value: item.value, label: t(item.key, item.label) })),
+          { value: '__external', label: t('landingLinkExternal', 'Enlace a otro sitio') },
+        ]}
+      />
+      {external && (
+        <>
+          <input type="text" inputMode="url" aria-label={label} aria-invalid={!valid} placeholder="https://" value={value} onChange={(e) => onChange(e.target.value)} />
+          {!valid && <p className="landing-hint" data-error role="alert">{t('landingLinkInvalid', 'Escribe una dirección que empiece por https://')}</p>}
+        </>
+      )}
+    </div>
+  );
+};
+
+export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, disableAnimation = false, actionsSlot = null }) => {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'hero' | 'courses' | 'benefits' | 'testimonials' | 'footer'>('hero');
 
@@ -57,6 +252,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  useToastMessage(successMsg, 'success');
+  useToastMessage(errorMsg, 'error');
 
   // Course selector state
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
@@ -66,8 +263,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
   // Form State
   const [config, setConfig] = useState<LandingConfig>({
-    heroTitle: 'Una nueva forma de aprender | con inteligencia artificial.',
-    heroSubtitle: 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.',
+    heroTitle: t('unaNuevaFormaDeAprenderConInteligencia', 'Una nueva forma de aprender | con inteligencia artificial.'),
+    heroSubtitle: t('superaLosLimitesDeLaEducacionTradicional', 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.'),
     heroMediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
     heroCtaText: 'Explorar Cursos',
     heroCtaLink: '#courses',
@@ -75,25 +272,80 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     heroSecondaryCtaLink: '#vip',
     featuredCourseIds: ['course-giantucchi-mastery'],
     bannerEnabled: true,
-    bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
+    bannerText: t('motorDeIaOptimizadoGestionDeGuiasVocales', '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.'),
     bannerLinkText: 'Ver Novedades',
     trustRating: '4.9/5',
     trustAudience: '+12,500',
     bannerLinkUrl: '#',
     benefits: [],
     testimonials: [],
-    footerText: 'Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez)',
+    footerText: t('createdAndMaintainedByGiantucchiJoseLuis', 'Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez)'),
     githubUrl: 'https://github.com/giantucchi/docentos',
     discordUrl: '',
     twitterUrl: '',
     linkedinUrl: '',
   });
 
-  const [showLivePreview, setShowLivePreview] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const discardDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = discardDialogRef.current;
+    if (!dialog) return;
+    if (confirmDiscard && !dialog.open) dialog.showModal();
+    if (!confirmDiscard && dialog.open) dialog.close();
+  }, [confirmDiscard]);
+  const discardChanges = () => {
+    try { setConfig(JSON.parse(savedSnapshot)); } catch { /* sin copia guardada: no hay nada que restaurar */ }
+    setErrorMsg('');
+    setConfirmDiscard(false);
+  };
+
+  // Lo último que está guardado en el servidor: sirve para saber si hay cambios sin guardar.
+  const [savedSnapshot, setSavedSnapshot] = useState('');
+  const titleLength = config.heroTitle.replace('|', '').length;
+  const dirty = savedSnapshot !== '' && JSON.stringify(config) !== savedSnapshot;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  /** Lo que el inicio muestra hoy: los valores de fábrica se sustituyen por esos textos para editar sobre lo real. */
+  const currentHomeCopy = () => ({
+    heroTitle: t('hero.title', 'Dale dirección a tu aprendizaje.'),
+    heroSubtitle: t('hero.subtitle', 'Elige una especialización, estudia por módulos y encuentra los recursos que necesitas para seguir avanzando.'),
+    heroCtaText: t('hero.exploreCourses', 'Explorar cursos'),
+    heroCtaLink: '#cursos',
+    footerText: siteConfig.authorCredit || t('docentosCommunityEdition', 'DocentOS Community Edition'),
+    githubUrl: siteConfig.poweredByLink || 'https://github.com/datasch/Docentos',
+    benefits: [
+      { id: 'b1', icon: 'Video', title: t('pillars.item1Title', 'Estudia por módulos'), description: t('pillars.item1Desc', 'Videos y recursos organizados para que encuentres cada parte de tu curso.') },
+      { id: 'b2', icon: 'Brain', title: t('pillars.item2Title', 'Apoyo durante el estudio'), description: t('pillars.item2Desc', 'Consulta el asistente y las guías de voz disponibles en la plataforma.') },
+      { id: 'b3', icon: 'ShieldCheck', title: t('pillars.item3Title', 'Tu acceso, en un solo lugar'), description: t('pillars.item3Desc', 'Encuentra los cursos que tienes asignados y accede a su contenido desde tu cuenta.') },
+      { id: 'b4', icon: 'Layers', title: t('pillars.item4Title', 'Recursos para avanzar'), description: t('pillars.item4Desc', 'Consulta los materiales y las evaluaciones que incorpora cada curso.') },
+    ],
+  });
+  const withCurrentCopy = (saved: LandingConfig): LandingConfig => {
+    const mine = customLanding(saved);
+    const home = currentHomeCopy();
+    return {
+      ...saved,
+      heroTitle: mine.heroTitle ?? home.heroTitle,
+      heroSubtitle: mine.heroSubtitle ?? home.heroSubtitle,
+      heroCtaText: mine.heroCtaText ?? home.heroCtaText,
+      heroCtaLink: mine.heroCtaLink ?? home.heroCtaLink,
+      benefits: mine.benefits ?? home.benefits,
+      footerText: mine.footerText ?? home.footerText,
+      githubUrl: mine.githubUrl ?? home.githubUrl,
+    };
+  };
+  const restoreHeroDefaults = () => setConfig((current) => { const home = currentHomeCopy(); return { ...current, heroTitle: home.heroTitle, heroSubtitle: home.heroSubtitle, heroCtaText: home.heroCtaText, heroCtaLink: home.heroCtaLink }; });
 
   const loadData = async () => {
     setLoading(true);
@@ -104,7 +356,11 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
       ]);
 
       if (configRes.config) {
-        setConfig(configRes.config);
+        const shown = withCurrentCopy(configRes.config);
+        setConfig(shown);
+        setSavedSnapshot(JSON.stringify(shown));
+      } else {
+        setSavedSnapshot((current) => current || '__none__');
       }
       if (coursesRes.courses) {
         setAvailableCourses(coursesRes.courses);
@@ -119,6 +375,11 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!isLinkValid(config.heroCtaLink) || !isLinkValid(config.heroSecondaryCtaLink)) {
+      setActiveTab('hero');
+      setErrorMsg(t('landingLinksToFix', 'Revisa los enlaces de los botones: hay una dirección que no es válida.'));
+      return;
+    }
     setSaving(true);
     setSuccessMsg('');
     setErrorMsg('');
@@ -126,6 +387,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     try {
       const res = await api.updateLandingConfig(config);
       if (res.success) {
+        setSavedSnapshot(JSON.stringify(config));
         setSuccessMsg(t('configuracionDeLaPortadaGuardadaConExito', '¡Configuración de la portada guardada con éxito!'));
         if (onSaved) onSaved();
         setTimeout(() => setSuccessMsg(''), 4000);
@@ -203,25 +465,36 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     }
   };
 
-  /** Borrar de verdad. Rechazar basta para que no se vea; esto no se deshace. */
-  const removeTestimonial = async (id: string) => {
-    if (!window.confirm(t('seBorraraLaOpinionDeEstaPersonaYNoSe', 'Se borrará la opinión de esta persona y no se puede deshacer. ¿Continuar?'))) {
-      return;
-    }
+  /** Borrar de verdad. Rechazar basta para que no se vea; borrar es permanente y pide confirmación. */
+  const [testimonialToDelete, setTestimonialToDelete] = useState<ModeratedTestimonial | null>(null);
+  const [deletingTestimonial, setDeletingTestimonial] = useState(false);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = deleteDialogRef.current;
+    if (!dialog) return;
+    if (testimonialToDelete && !dialog.open) dialog.showModal();
+    if (!testimonialToDelete && dialog.open) dialog.close();
+  }, [testimonialToDelete]);
+  const removeTestimonial = async () => {
+    if (!testimonialToDelete || deletingTestimonial) return;
+    setDeletingTestimonial(true);
     try {
-      await api.deleteTestimonial(id);
+      await api.deleteTestimonial(testimonialToDelete.id);
+      setTestimonialToDelete(null);
       await loadTestimonials(testimonialFilter);
       onSaved?.();
     } catch (err: any) {
+      setTestimonialToDelete(null);
       setErrorMsg(err?.message || t('noSePudoEliminarElTestimonio', 'No se pudo eliminar el testimonio'));
+    } finally {
+      setDeletingTestimonial(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-8 text-center text-slate-400 flex items-center justify-center gap-3">
-        <RefreshCw className="w-5 h-5 animate-spin text-[#06b6d4]" />
-        <span>{t('cargandoCmsGestorDePortada', 'Cargando CMS Gestor de Portada...')}</span>
+      <div data-mentor-ui="modern" className="admin-courses-root">
+        <PageLoader label={t('cargandoCmsGestorDePortada', 'Cargando la portada…')} />
       </div>
     );
   }
@@ -232,496 +505,176 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
       c.category.toLowerCase().includes(courseSearch.toLowerCase())
   );
 
+  const actions = (
+    <>
+      <span className="landing-status" data-dirty={dirty || undefined} role="status">
+        {dirty ? t('landingUnsaved', 'Cambios sin guardar') : t('landingSaved', 'Todo guardado')}
+      </span>
+      {dirty && (
+        <button type="button" className="mentor-course-control" onClick={() => setConfirmDiscard(true)} disabled={saving}>
+          {t('landingDiscard', 'Descartar cambios')}
+        </button>
+      )}
+      <button type="button" className="mentor-course-control admin-primary-action" onClick={() => handleSave()} disabled={saving || !dirty}>
+        {saving ? <RefreshCw className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+        <span>{t('guardarCambiosCapital', 'Guardar Cambios')}</span>
+      </button>
+    </>
+  );
+
   return (
-    <div className={`space-y-6 ${disableAnimation ? '' : 'animate-fade-in'}`}>
+    <div data-mentor-ui="modern" className={`admin-courses-root landing-editor ${disableAnimation ? '' : 'animate-fade-in'}`}>
+      {actionsSlot ? createPortal(actions, actionsSlot) : <div className="landing-editor__actions">{actions}</div>}
 
-      {/* CMS Header */}
-      <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] text-xs font-bold mb-2">
-            <Sliders className="w-3.5 h-3.5" />
-            <span>{t('cmsGestorDeBloquesPortada', 'CMS Gestor de Bloques & Portada')}</span>
-          </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">
-            {t('personalizacionDeLandingPage', 'Personalización de Landing Page')}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {t('editaTitulosHeroVisualCursosDestacadosY', 'Edita títulos, hero visual, cursos destacados y secciones públicas del LMS, y modera los testimonios.')}
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button
-            type="button"
-            onClick={() => setShowLivePreview(!showLivePreview)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${showLivePreview
-                ? 'bg-[#06b6d4]/20 border-[#06b6d4] text-[#06b6d4]'
-                : 'bg-[#1a1a2e] border-[#2d2d44] text-slate-300 hover:text-white'
-              }`}
-          >
-            <Eye className="w-4 h-4" />
-            {showLivePreview ? t('ocultarPrevisualizacion', 'Ocultar Previsualización') : t('vistaPreviaRapida', 'Vista Previa Rápida')}
+      <div className="landing-workspace">
+      <div className="landing-main">
+      {/* Secciones de la portada */}
+      <div className="landing-tabs" role="tablist" aria-label={t('seccionesDeLaPortada', 'Secciones de la portada')}>
+        {([
+          { key: 'hero', label: t('landingTabMain', 'Principal') },
+          { key: 'courses', label: t('landingTabCourses', 'Cursos'), count: config.featuredCourseIds.length },
+          { key: 'benefits', label: t('beneficios', 'Beneficios'), count: config.benefits.length },
+          { key: 'testimonials', label: t('testimonios', 'Testimonios') },
+          { key: 'footer', label: t('landingTabFooter', 'Pie de página') },
+        ] as const).map((tab) => (
+          <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} onClick={() => setActiveTab(tab.key)}>
+            {tab.label}
+            {'count' in tab && <span>({tab.count})</span>}
           </button>
-
-          <button
-            onClick={() => handleSave()}
-            disabled={saving}
-            className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20 disabled:opacity-50"
-          >
-            {saving ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            <span>{t('guardarCambiosCapital', 'Guardar Cambios')}</span>
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* Notifications */}
-      {successMsg && (
-        <div className="p-4 bg-[#06b6d4]/10 border border-[#06b6d4]/40 text-[#06b6d4] text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in shadow-md">
-          <CheckCircle2 className="w-4 h-4 text-[#06b6d4]" />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="p-4 bg-red-500/10 border border-red-500/40 text-red-400 text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in shadow-md">
-          <HelpCircle className="w-4 h-4" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* Live Preview Card */}
-      {showLivePreview && (
-        <div className="bg-[#0a0a0f] border-2 border-[#06b6d4]/50 rounded-2xl p-6 space-y-4 shadow-2xl animate-fade-in">
-          <div className="flex items-center justify-between border-b border-[#2d2d44] pb-3">
-            <span className="text-xs font-extrabold text-[#06b6d4] uppercase tracking-wider flex items-center gap-2">
-              <Eye className="w-4 h-4" /> {t('previsualizacionEnTiempoRealDeLaPortada', 'Previsualización en Tiempo Real de la Portada')}
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">{t('modoLivePreview', 'Modo Live Preview')}</span>
-          </div>
-
-          {/* Hero Preview */}
-          <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 text-center space-y-4">
-            <h1 className="text-2xl font-black text-white">
-              {config.heroTitle.split('|')[0].trim()}{' '}
-              <span className="bg-gradient-to-br from-[#a78bfa] via-[#8b5cf6] to-[#22d3ee] bg-clip-text text-transparent">
-                {config.heroTitle.split('|').slice(1).join('|').trim()}
-              </span>
-            </h1>
-            <p className="text-xs text-slate-300 max-w-2xl mx-auto">{config.heroSubtitle}</p>
-
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <span className="btn-brand-primary px-4 py-2 rounded-xl text-xs font-bold">
-                {config.heroCtaText}
-              </span>
-              <span className="bg-[#1a1a2e] border border-[#2d2d44] px-4 py-2 rounded-xl text-xs font-bold text-slate-300">
-                {config.heroSecondaryCtaText}
-              </span>
-            </div>
-
-            {config.heroMediaUrl && (
-              <div className="mt-4 max-w-xs mx-auto rounded-xl overflow-hidden border border-[#2d2d44] aspect-video bg-black relative">
-                <img
-                  src={config.heroMediaUrl}
-                  alt={t('miniaturaAlCompartir', 'Miniatura al compartir')}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
-                <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold text-slate-300 bg-black/80 rounded px-1.5 py-0.5">
-                  {t('miniaturaAlCompartirNoSePintaEnLaPortada', 'Miniatura al compartir · no se pinta en la portada')}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Tabs Navigation */}
-      <div className="flex bg-[#0a0a0f] p-1.5 rounded-xl border border-[#2d2d44] gap-1 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('hero')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'hero' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
-        >
-          <Sparkles className="w-4 h-4" /> {t('heroSection', 'Hero Section')}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('courses')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'courses' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
-        >
-          <Award className="w-4 h-4" /> {t('cursosDestacadosLength', 'Cursos Destacados ({{length}})', { length: config.featuredCourseIds.length })}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('benefits')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'benefits' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
-        >
-          <Brain className="w-4 h-4" /> {t('beneficiosLength', 'Beneficios ({{length}})', { length: config.benefits.length })}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('testimonials')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'testimonials' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
-        >
-          <Star className="w-4 h-4 text-[#eab308]" /> {t('testimonios', 'Testimonios')}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('footer')}
-          className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap ${activeTab === 'footer' ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-            }`}
-        >
-          <Globe className="w-4 h-4" /> {t('anunciosFooter', 'Anuncios & Footer')}
-        </button>
-      </div>
-
-      {/* TAB 1: HERO SECTION EDITOR */}
+      {/* TAB 1: PRINCIPAL. Solo lo que el inicio muestra de verdad. */}
       {activeTab === 'hero' && (
-        <form onSubmit={handleSave} className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-          <div className="border-b border-[#2d2d44] pb-3">
-            <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#06b6d4]" />
-              {t('edicionDeLaSeccionPrincipalHeroHeader', 'Edición de la Sección Principal (Hero Header)')}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {t('personalizaLosTextosDeImpactoPrincipal', 'Personaliza los textos de impacto principal, imágenes/video de cabecera y botones de llamada a la acción.')}
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                {t('tituloPrincipalDePortada', 'Título Principal de Portada')}
-              </label>
-              <input
-                type="text"
-                required
-                value={config.heroTitle}
-                onChange={(e) => setConfig({ ...config, heroTitle: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              />
-              <p className="mt-1.5 text-[11px] text-slate-500">
-                <Trans i18nKey="unaBarraMarcaDondeEmpiezaElTramoQueSe">Una barra <code className="text-slate-300">|</code> marca dónde empieza el tramo que
-                se pinta en gradiente. Sin barra, el titular va entero en blanco.</Trans>
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                {t('subtituloDescripcion', 'Subtítulo / Descripción')}
-              </label>
-              <textarea
-                rows={3}
-                required
-                value={config.heroSubtitle}
-                onChange={(e) => setConfig({ ...config, heroSubtitle: e.target.value })}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              />
-            </div>
-
-            {/* Prueba social. Deja cualquiera de las dos en blanco y la barra
-                desaparece de la portada: mejor sin cifras que con cifras
-                prestadas. */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {t('valoracion', 'Valoración')}
-                </label>
-                <input
-                  type="text"
-                  placeholder="4.9/5"
-                  value={config.trustRating}
-                  onChange={(e) => setConfig({ ...config, trustRating: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
+        <div className="landing-hero">
+          <form onSubmit={handleSave} className="landing-form">
+            <fieldset className="landing-group">
+              <legend>{t('landingGroupHeadline', 'Titular')}</legend>
+              <div className="meeting-field">
+                <label htmlFor="landing-hero-title">{t('tituloPrincipalDePortada', 'Título Principal de Portada')}</label>
+                <input id="landing-hero-title" type="text" required maxLength={140} value={config.heroTitle} onChange={(e) => setConfig({ ...config, heroTitle: e.target.value })} />
+                <p className="landing-count" data-over={titleLength > TITLE_MAX || undefined} aria-live="polite">{titleLength} / {TITLE_MAX}{titleLength > TITLE_MAX ? ` · ${t('landingTooLong', 'Más largo de lo recomendado')}` : ''}</p>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {t('estudiantesActivosCapital', 'Estudiantes activos')}
-                </label>
-                <input
-                  type="text"
-                  placeholder="+12,500"
-                  value={config.trustAudience}
-                  onChange={(e) => setConfig({ ...config, trustAudience: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
+              <div className="meeting-field">
+                <label htmlFor="landing-hero-subtitle">{t('subtituloDescripcion', 'Subtítulo / Descripción')}</label>
+                <textarea id="landing-hero-subtitle" rows={3} required maxLength={320} value={config.heroSubtitle} onChange={(e) => setConfig({ ...config, heroSubtitle: e.target.value })} />
+                <p className="landing-count" data-over={config.heroSubtitle.length > SUBTITLE_MAX || undefined} aria-live="polite">{config.heroSubtitle.length} / {SUBTITLE_MAX}{config.heroSubtitle.length > SUBTITLE_MAX ? ` · ${t('landingTooLong', 'Más largo de lo recomendado')}` : ''}</p>
               </div>
-              <p className="col-span-2 text-[11px] text-slate-500">
-                {t('seMuestranBajoLosBotonesDelHeroDeja', 'Se muestran bajo los botones del hero. Deja cualquiera de las dos en blanco y la barra no se pinta.')}
-              </p>
-            </div>
+            </fieldset>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                {t('imagenAlCompartirElEnlace', 'Imagen al compartir el enlace')}
-              </label>
-              <p className="text-[11px] text-slate-400 mb-2">
-                {t('laMiniaturaQueApareceAlPegarLaDireccion', 'La miniatura que aparece al pegar la dirección de la portada en WhatsApp, X o LinkedIn (Open Graph). Ya no se pinta dentro de la página.')}
-              </p>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <ImageIcon className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                  <input
-                    type="url"
-                    value={config.heroMediaUrl}
-                    onChange={(e) => setConfig({ ...config, heroMediaUrl: e.target.value })}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                    placeholder="https://..."
-                  />
+            <fieldset className="landing-group">
+              <legend>{t('landingGroupButton', 'Botón principal')}</legend>
+              <div className="landing-grid">
+                <div className="meeting-field">
+                  <label htmlFor="landing-cta-text">{t('textoBotonCtaPrincipal', 'Texto Botón CTA Principal')}</label>
+                  <input id="landing-cta-text" type="text" maxLength={40} value={config.heroCtaText} onChange={(e) => setConfig({ ...config, heroCtaText: e.target.value })} />
                 </div>
+                <LandingLinkField id="landing-cta-link" label={t('enlaceBotonCtaPrincipal', 'Enlace Botón CTA Principal')} value={config.heroCtaLink} onChange={(value) => setConfig({ ...config, heroCtaLink: value })} />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {t('textoBotonCtaPrincipal', 'Texto Botón CTA Principal')}
-                </label>
-                <input
-                  type="text"
-                  value={config.heroCtaText}
-                  onChange={(e) => setConfig({ ...config, heroCtaText: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {t('enlaceBotonCtaPrincipal', 'Enlace Botón CTA Principal')}
-                </label>
-                <input
-                  type="text"
-                  value={config.heroCtaLink}
-                  onChange={(e) => setConfig({ ...config, heroCtaLink: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {t('textoBotonSecundario', 'Texto Botón Secundario')}
-                </label>
-                <input
-                  type="text"
-                  value={config.heroSecondaryCtaText}
-                  onChange={(e) => setConfig({ ...config, heroSecondaryCtaText: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {t('enlaceBotonSecundario', 'Enlace Botón Secundario')}
-                </label>
-                <input
-                  type="text"
-                  value={config.heroSecondaryCtaLink}
-                  onChange={(e) => setConfig({ ...config, heroSecondaryCtaLink: e.target.value })}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-4 border-t border-[#2d2d44]">
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
-            >
-              <Save className="w-4 h-4" /> {t('guardarSeccionHero', 'Guardar Sección Hero')}
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* TAB 2: FEATURED COURSES SELECTOR */}
-      {activeTab === 'courses' && (
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#2d2d44] pb-4">
-            <div>
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-[#06b6d4]" />
-                {t('selectorDeCursosDestacadosEnPortada', 'Selector de Cursos Destacados en Portada')}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                {t('marcaCualesDeLosCursosCreadosPorMentores', 'Marca cuáles de los cursos creados por mentores deseas destacar en el catálogo público de la portada.')}
-              </p>
-            </div>
-
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-              <input
-                type="text"
-                placeholder={t('buscarCursos', 'Buscar cursos...')}
-                value={courseSearch}
-                onChange={(e) => setCourseSearch(e.target.value)}
-                className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCourses.map((c) => {
-              const isSelected = config.featuredCourseIds.includes(c.id);
-
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => toggleFeaturedCourse(c.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${isSelected
-                      ? 'bg-[#06b6d4]/10 border-[#06b6d4] shadow-lg shadow-[#06b6d4]/10'
-                      : 'bg-[#1a1a2e] border-[#2d2d44] hover:border-slate-500'
-                    }`}
-                >
-                  <div className="space-y-3">
-                    <div className="aspect-video bg-black rounded-lg overflow-hidden relative border border-[#2d2d44]">
-                      <img src={c.coverImage} alt={c.title} className="w-full h-full object-cover" />
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 bg-[#06b6d4] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                          <CheckCircle2 className="w-3 h-3" /> {t('destacado', 'Destacado')}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-[#06b6d4] font-bold uppercase tracking-wider">{c.category}</span>
-                      <h4 className="text-xs font-bold text-white line-clamp-2 mt-0.5">{c.title}</h4>
-                      <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">{c.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 mt-3 border-t border-[#2d2d44] flex items-center justify-between text-xs">
-                    <span className="font-extrabold text-[#a855f7]">{t('priceUsdPlano', '${{price}} USD', { price: c.price.toFixed(2) })}</span>
-                    <button
-                      type="button"
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${isSelected
-                          ? 'bg-[#06b6d4] text-white'
-                          : 'bg-[#0a0a0f] border border-[#2d2d44] text-slate-300 hover:text-white'
-                        }`}
-                    >
-                      {isSelected ? t('quitarDeLaPortada', 'Quitar de la Portada') : t('destacarEnPortada', 'Destacar en Portada')}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-end pt-4 border-t border-[#2d2d44]">
-            <button
-              onClick={() => handleSave()}
-              disabled={saving}
-              className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
-            >
-              <Save className="w-4 h-4" /> {t('guardarSeleccionDeCursos', 'Guardar Selección de Cursos')}
-            </button>
-          </div>
+              <p className="landing-hint">{t('landingButtonHint', 'El botón «Buscar una lección» y el número de cursos del catálogo no se editan: se calculan solos.')}</p>
+            </fieldset>
+            <button type="button" className="landing-restore" onClick={restoreHeroDefaults}>{t('landingRestore', 'Restaurar los textos originales')}</button>
+          </form>
         </div>
       )}
 
-      {/* TAB 3: BENEFITS EDITOR */}
-      {activeTab === 'benefits' && (
-        <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
-          <div className="flex justify-between items-center border-b border-[#2d2d44] pb-4">
-            <div>
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <Brain className="w-5 h-5 text-[#06b6d4]" />
-                {t('seccionDeBeneficiosMetodologia', 'Sección de Beneficios & Metodología')}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                {t('defineLasTarjetasDePropuestaDeValorE', 'Define las tarjetas de propuesta de valor e innovaciones técnicas.')}
-              </p>
-            </div>
-
-            <button
-              onClick={addBenefit}
-              className="px-3.5 py-2 bg-[#06b6d4] hover:bg-[#06b6d4]/80 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md"
-            >
-              <Plus className="w-4 h-4" /> {t('agregarBeneficio', 'Agregar Beneficio')}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {config.benefits.map((b) => (
-              <div key={b.id} className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-3 relative">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[#06b6d4] uppercase font-mono">{t('icono', 'Icono:')}</span>
-                    <select
-                      value={b.icon}
-                      onChange={(e) => updateBenefit(b.id, 'icon', e.target.value)}
-                      className="bg-[#0a0a0f] border border-[#2d2d44] text-white text-xs rounded-lg px-2 py-1"
-                    >
-                      <option value="Brain">{t('brainIa', 'Brain (IA)')}</option>
-                      <option value="Video">{t('videoDrive', 'Video (Drive)')}</option>
-                      <option value="ShieldCheck">{t('shieldcheckRoles', 'ShieldCheck (Roles)')}</option>
-                      <option value="Layers">{t('layersPlugins', 'Layers (Plugins)')}</option>
-                      <option value="Award">{t('awardCertificados', 'Award (Certificados)')}</option>
-                      <option value="Sparkles">{t('sparklesGamificacion', 'Sparkles (Gamificación)')}</option>
-                    </select>
+      {/* TAB 2: PROGRAMA DESTACADO. El inicio muestra uno solo. */}
+      {activeTab === 'courses' && (() => {
+        const featuredId = config.featuredCourseIds[0];
+        const featured = availableCourses.find((item) => item.id === featuredId);
+        const candidates = filteredCourses.filter((item) => item.id !== featuredId);
+        return (
+          <div className="landing-courses">
+            <section className="landing-group" aria-labelledby="landing-featured-title">
+              <h3 id="landing-featured-title">{t('landingFeaturedProgram', 'Programa destacado')}</h3>
+              <p className="landing-hint">{t('landingFeaturedHint', 'El inicio destaca un solo programa, justo debajo del titular. Elige cuál.')}</p>
+              {featured ? (
+                <div className="landing-course">
+                  <img src={featured.coverImage} alt="" />
+                  <div className="landing-course__text"><strong>{featured.title}</strong><span>{featured.category}</span></div>
+                  <div className="landing-course__actions">
+                    <button type="button" className="mentor-course-control" onClick={() => setConfig({ ...config, featuredCourseIds: [] })}>{t('landingUnfeature', 'Quitar')}</button>
                   </div>
-
-                  <button
-                    onClick={() => deleteBenefit(b.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
-                    title={t('eliminarBeneficio', 'Eliminar beneficio')}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
+              ) : (
+                <p className="landing-empty">{t('landingFeaturedEmpty', 'No elegiste ninguno: el inicio destaca el primer curso del catálogo.')}</p>
+              )}
+            </section>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('tituloDelBeneficio', 'Título del Beneficio')}</label>
-                  <input
-                    type="text"
-                    value={b.title}
-                    onChange={(e) => updateBenefit(b.id, 'title', e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t('descripcion', 'Descripción')}</label>
-                  <textarea
-                    rows={2}
-                    value={b.description}
-                    onChange={(e) => updateBenefit(b.id, 'description', e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-[#06b6d4]"
-                  />
-                </div>
+            <section className="landing-group" aria-labelledby="landing-available-title">
+              <div className="landing-group__head">
+                <h3 id="landing-available-title">{t('landingAvailable', 'Cursos disponibles')}</h3>
+                <AdminSearchField className="landing-featured-search" value={courseSearch} onChange={setCourseSearch} placeholder={t('buscarCursos', 'Buscar cursos...')} label={t('buscarCursos', 'Buscar cursos...')} />
               </div>
+              {candidates.length === 0 ? (
+                <p className="landing-empty">{t('landingNoResults', 'Ningún curso coincide con la búsqueda.')}</p>
+              ) : (
+                <ul className="landing-courselist">
+                  {candidates.map((course) => (
+                    <li key={course.id} className="landing-course">
+                      <img src={course.coverImage} alt="" />
+                      <div className="landing-course__text"><strong>{course.title}</strong><span>{course.category}</span></div>
+                      <div className="landing-course__actions">
+                        <button type="button" className="mentor-course-control" onClick={() => setConfig({ ...config, featuredCourseIds: [course.id] })}>{t('landingFeature', 'Elegir')}</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        );
+      })()}
+
+      {/* TAB 3: BENEFICIOS, con vista previa viva */}
+      {activeTab === 'benefits' && (
+        <div className="landing-hero">
+          <div className="landing-form">
+            <p className="landing-hint">{t('landingBenefitsHint', 'Entre 3 y 6 beneficios se leen mejor. Cada uno lleva un icono, un título corto y una frase.')}</p>
+            {config.benefits.length === 0 && <p className="landing-empty">{t('landingBenefitsEmpty', 'Todavía no hay beneficios. Añade el primero.')}</p>}
+            {config.benefits.map((b, index) => (
+              <fieldset key={b.id} className="landing-group landing-benefit">
+                <legend>{t('landingBenefitN', 'Beneficio {{n}}', { n: index + 1 })}</legend>
+                <div className="landing-benefit__bar">
+                  <div className="landing-icons" role="group" aria-label={t('icono', 'Icono:')}>
+                    {BENEFIT_ICONS.map(({ value, Icon, key, label }) => (
+                      <button key={value} type="button" aria-pressed={b.icon === value} title={t(key, label)} aria-label={t(key, label)} onClick={() => updateBenefit(b.id, 'icon', value)}>
+                        <Icon aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="landing-course__actions">
+                    <button type="button" className="landing-iconbtn" onClick={() => setConfig({ ...config, benefits: move(config.benefits, index, -1) })} disabled={index === 0} aria-label={`${t('landingMoveUp', 'Subir')}: ${b.title}`}><ChevronUp aria-hidden="true" /></button>
+                    <button type="button" className="landing-iconbtn" onClick={() => setConfig({ ...config, benefits: move(config.benefits, index, 1) })} disabled={index === config.benefits.length - 1} aria-label={`${t('landingMoveDown', 'Bajar')}: ${b.title}`}><ChevronDown aria-hidden="true" /></button>
+                    <button type="button" className="landing-iconbtn" data-danger="true" onClick={() => deleteBenefit(b.id)} aria-label={`${t('eliminarBeneficio', 'Eliminar beneficio')}: ${b.title}`}><Trash2 aria-hidden="true" /></button>
+                  </div>
+                </div>
+                <div className="meeting-field">
+                  <label htmlFor={`benefit-title-${b.id}`}>{t('tituloDelBeneficio', 'Título del Beneficio')}</label>
+                  <input id={`benefit-title-${b.id}`} type="text" maxLength={90} value={b.title} onChange={(e) => updateBenefit(b.id, 'title', e.target.value)} />
+                  <p className="landing-count" data-over={b.title.length > BENEFIT_TITLE_MAX || undefined} aria-live="polite">{b.title.length} / {BENEFIT_TITLE_MAX}</p>
+                </div>
+                <div className="meeting-field">
+                  <label htmlFor={`benefit-text-${b.id}`}>{t('descripcion', 'Descripción')}</label>
+                  <textarea id={`benefit-text-${b.id}`} rows={2} maxLength={240} value={b.description} onChange={(e) => updateBenefit(b.id, 'description', e.target.value)} />
+                  <p className="landing-count" data-over={b.description.length > BENEFIT_TEXT_MAX || undefined} aria-live="polite">{b.description.length} / {BENEFIT_TEXT_MAX}</p>
+                </div>
+              </fieldset>
             ))}
+            <button type="button" className="mentor-course-control landing-add" onClick={addBenefit}><Plus aria-hidden="true" />{t('agregarBeneficio', 'Agregar Beneficio')}</button>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-[#2d2d44]">
-            <button
-              onClick={() => handleSave()}
-              disabled={saving}
-              className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
-            >
-              <Save className="w-4 h-4" /> {t('guardarSeccionesDeBeneficios', 'Guardar Secciones de Beneficios')}
-            </button>
-          </div>
         </div>
       )}
 
       {/* TAB 4: MODERACION DE TESTIMONIOS */}
       {activeTab === 'testimonials' && (
         <div className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
+          <p className="landing-hint" role="note">{t('landingTestimonialsLive', 'Aquí las decisiones se aplican al momento: no necesitas pulsar «Guardar Cambios».')}</p>
           <div className="border-b border-[#2d2d44] pb-4">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Star className="w-5 h-5 text-[#eab308]" />
+              <Star className="w-5 h-5 text-[var(--color-brand-cyan)]" />
               {t('testimoniosDeLaPortada', 'Testimonios de la portada')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
@@ -739,8 +692,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               <button
                 key={tab.key}
                 onClick={() => setTestimonialFilter(tab.key)}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${testimonialFilter === tab.key ? 'btn-brand-primary' : 'text-slate-400 hover:text-white'
-                  }`}
+                className="landing-filter" aria-pressed={testimonialFilter === tab.key}
               >
                 {tab.label}
               </button>
@@ -776,11 +728,11 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                       />
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-white truncate">{testimonial.name}</p>
-                        <p className="text-[10px] font-semibold text-[#06b6d4]">{testimonial.role}</p>
+                        <p className="text-[10px] font-semibold text-[var(--color-brand-cyan)]">{testimonial.role}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[#eab308] flex-shrink-0">
+                    <div className="flex items-center gap-1 text-[var(--color-brand-cyan)] flex-shrink-0">
                       {Array.from({ length: testimonial.rating }).map((_, i) => (
                         <Star key={i} className="w-3.5 h-3.5" fill="currentColor" />
                       ))}
@@ -826,7 +778,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                         </button>
                       )}
                       <button
-                        onClick={() => removeTestimonial(testimonial.id)}
+                        onClick={() => setTestimonialToDelete(testimonial)}
                         className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
                         title={t('eliminarDefinitivamente', 'Eliminar definitivamente')}
                       >
@@ -846,15 +798,14 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
         <form onSubmit={handleSave} className="bg-[#141420] border border-[#2d2d44] rounded-xl p-6 shadow-xl space-y-6">
           <div className="border-b border-[#2d2d44] pb-3">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <Globe className="w-5 h-5 text-[#06b6d4]" />
-              {t('bannerPromocionalEnlacesDelPieDePagina', 'Banner Promocional & Enlaces del Pie de Página')}
+              <Globe className="w-5 h-5 text-[var(--color-brand-cyan)]" />
+              {t('enlacesDelPieDePagina', 'Pie de página y redes')}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              {t('configuraElAnuncioPromocionalSuperiorY', 'Configura el anuncio promocional superior y los enlaces institucionales/redes sociales.')}
+              {t('configuraElTextoYLosEnlacesDelPie', 'Texto del pie de página y enlaces a redes sociales.')}
             </p>
           </div>
 
-          {/* Banner Toggle */}
           {/* Footer Texts & Links */}
           <div className="space-y-4">
             <div>
@@ -920,18 +871,55 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-[#2d2d44]">
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-brand-primary px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20"
-            >
-              <Save className="w-4 h-4" /> {t('guardarBannerFooter', 'Guardar Banner & Footer')}
-            </button>
-          </div>
         </form>
       )}
 
+      </div>
+      <LandingLivePreview config={config} courses={availableCourses} activeTab={activeTab} onPick={(section) => setActiveTab(section as typeof activeTab)} />
+      </div>
+
+      <dialog
+        ref={discardDialogRef}
+        className="mentor-confirm"
+        aria-labelledby="landing-discard-title"
+        onCancel={(event) => { event.preventDefault(); setConfirmDiscard(false); }}
+        onClick={(event) => { if (event.target === event.currentTarget) setConfirmDiscard(false); }}
+      >
+        {confirmDiscard && (
+          <div className="mentor-confirm__body">
+            <h3 id="landing-discard-title">{t('landingDiscard', 'Descartar cambios')}</h3>
+            <p>{t('landingDiscardBody', 'Se perderán los cambios que no has guardado. Esta acción es')} <strong className="mentor-confirm__permanent">{t('landingPermanent', 'permanente')}</strong>.</p>
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" onClick={() => setConfirmDiscard(false)}>{t('landingKeepEditing', 'Seguir editando')}</button>
+              <button type="button" className="mentor-course-control" data-danger="true" onClick={discardChanges}>{t('landingDiscard', 'Descartar cambios')}</button>
+            </div>
+          </div>
+        )}
+      </dialog>
+
+      <dialog
+        ref={deleteDialogRef}
+        className="mentor-confirm"
+        aria-labelledby="landing-testimonial-delete-title"
+        onCancel={(event) => { event.preventDefault(); if (!deletingTestimonial) setTestimonialToDelete(null); }}
+        onClick={(event) => { if (event.target === event.currentTarget && !deletingTestimonial) setTestimonialToDelete(null); }}
+      >
+        {testimonialToDelete && (
+          <div className="mentor-confirm__body">
+            <h3 id="landing-testimonial-delete-title">{t('eliminarOpinion', 'Eliminar opinión')}</h3>
+            <p>
+              {t('seBorraraLaOpinionDe', 'Se borrará la opinión de')} <strong>{testimonialToDelete.name || t('estaPersona', 'esta persona')}</strong><Trans i18nKey="estaAccionEsPermanente">. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans>
+            </p>
+            <div className="mentor-confirm__actions">
+              <button type="button" className="mentor-course-control" onClick={() => setTestimonialToDelete(null)} disabled={deletingTestimonial}>{t('cancelar', 'Cancelar')}</button>
+              <button type="button" className="mentor-course-control" data-danger="true" onClick={removeTestimonial} disabled={deletingTestimonial} aria-busy={deletingTestimonial}>
+                {deletingTestimonial ? <RefreshCw className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
+                {t('eliminarOpinion', 'Eliminar opinión')}
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
     </div>
   );
 };

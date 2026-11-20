@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { LucideIcon, Maximize2, Minimize2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
 
-export type PanelTabId = 'syllabus' | 'notes' | 'mentorship' | 'sessions';
+export type PanelTabId = 'syllabus' | 'resources' | 'notes' | 'mentorship' | 'sessions';
 
 interface PanelTab {
   id: PanelTabId;
@@ -19,6 +19,8 @@ interface CoursePanelProps {
   onChange: (id: PanelTabId) => void;
   theaterMode: boolean;
   onToggleTheater: () => void;
+  /** El botón de ampliar solo en la página del curso; en el visor el video ya ocupa su sitio. */
+  showTheater?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
   onChange,
   theaterMode,
   onToggleTheater,
+  showTheater = true,
 }) => {
   const { t } = useTranslation()
   const tabRefs = useRef(new Map<PanelTabId, HTMLButtonElement>());
@@ -59,7 +62,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
   return (
     <section className="academy-course-panel flex h-full flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
       <div className="flex shrink-0 items-stretch border-b border-line">
-        <div role="tablist" aria-label={t('panelesDelCurso', 'Paneles del curso')} className="flex min-w-0 flex-1">
+        <div role="tablist" aria-label={t('panelesDelCurso', 'Paneles del curso')} className="@container flex min-w-0 flex-1 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = tab.id === active;
@@ -78,23 +81,21 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => onChange(tab.id)}
                 onKeyDown={handleKeyDown}
-                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3.5 text-sm transition-colors ${
-                  isActive ? 'text-ink' : 'text-ink-muted hover:text-ink-soft'
+                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap px-1.5 py-3.5 text-sm transition-colors ${
+                  isActive ? 'font-medium text-ink' : 'text-ink-muted hover:text-ink-soft'
                 }`}
               >
-                <Icon aria-hidden className="h-4 w-4 shrink-0" />
-                <span className="truncate">{tab.label}</span>
+                <span>{tab.label}</span>
                 {typeof tab.count === 'number' && tab.count > 0 && (
-                  <span className="shrink-0 text-micro text-ink-muted tabular-nums">{tab.count}</span>
+                  <span className="hidden shrink-0 text-xs text-ink-muted tabular-nums @[24rem]:inline">{tab.count}</span>
                 )}
-                {isActive && (
-                  <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-violet" />
-                )}
+                {isActive && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-ink" />}
               </button>
             );
           })}
         </div>
 
+        {showTheater && (
         <button
           type="button"
           onClick={onToggleTheater}
@@ -110,6 +111,7 @@ export const CoursePanel: React.FC<CoursePanelProps> = ({
             {theaterMode ? t('salirDelModoCine', 'Salir del modo cine') : t('verEnModoCine', 'Ver en modo cine')}
           </span>
         </button>
+        )}
       </div>
 
       <div

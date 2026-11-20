@@ -104,6 +104,16 @@ export type TwoFactorStatus = {
   codigosDisponibles: number;
 };
 
+export interface ModerationHistoryEvent {
+  id: string;
+  action: 'strike_added' | 'strike_removed' | 'suspended' | 'reactivated' | 'auto_suspended';
+  strikesBefore: number;
+  strikesAfter: number;
+  actorName: string;
+  actorEmail: string;
+  createdAt: string;
+}
+
 export const api = {
 
   // User & Auth
@@ -497,7 +507,19 @@ export const api = {
   },
 
   // Admin Management
-  async getPublicBrand(): Promise<{ success: boolean; brandName: string; campusName: string; logoUrl: string }> {
+  async getPublicBrand(): Promise<{
+    success: boolean;
+    brandName: string;
+    campusName: string;
+    logoUrl: string;
+    festivities?: {
+      enabled: boolean;
+      mode: 'auto' | 'halloween' | 'christmas' | 'none';
+      showBanner: boolean;
+      showParticles: boolean;
+      showFestiveHats: boolean;
+    };
+  }> {
     const res = await fetch('/api/public/brand');
     if (!res.ok) throw new Error('Error al obtener la identidad de la plataforma');
     return res.json();
@@ -1115,13 +1137,22 @@ export const api = {
   },
 
   // Moderation API
-  async updateUserModeration(userId: string, data: { strikes?: number; isActive?: boolean }): Promise<{ success: boolean; user: any }> {
+  async updateUserModeration(userId: string, data: { strikes?: number; isActive?: boolean }): Promise<{ success: boolean; autoSuspended?: boolean; user: any }> {
     const res = await fetch(`/api/admin/users/${userId}/moderation`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Error al actualizar moderación del usuario');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error || 'Error al actualizar moderación del usuario');
+    }
+    return res.json();
+  },
+
+  async getUserModerationHistory(userId: string): Promise<{ events: ModerationHistoryEvent[] }> {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/moderation-history`);
+    if (!res.ok) throw new Error('Error al cargar el historial de moderación');
     return res.json();
   },
 

@@ -13,7 +13,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DriveCourseImport, PlanTree, selectedTotals } from '../src/components/DriveCourseImport.js';
 import type { ImportPlan } from '../src/types.js';
-
+
+
 import './helpers/initI18n.js';
 /** El mismo objeto que devuelve `/api/admin/drive/import/preview`. */
 function samplePlan(): ImportPlan {
@@ -190,8 +191,8 @@ test('Panel de importación: el árbol del plan se dibuja entero', async (t) => 
     assert.match(html, /5\.0 MB/, 'El tamaño ayuda a decidir qué desmarcar');
   });
 
-  await t.test('2. Lo desmarcado se muestra tachado, no oculto', () => {
-    assert.match(html, /line-through/);
+  await t.test('2. Lo desmarcado se muestra como desactivado (data-off), no oculto', () => {
+    assert.match(html, /data-off="true"/, 'El elemento desmarcado lleva data-off para el estilo CSS');
     assert.match(html, /value="Clase descartada"/, 'Sigue estando, para poder volver a marcarla');
   });
 

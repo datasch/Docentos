@@ -52,7 +52,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
           onClick={onToggleFilter}
           aria-pressed={filterMentorOnly}
           className={`rounded-lg px-2.5 py-1 text-micro font-medium transition-colors ${
-            filterMentorOnly ? 'bg-raised text-brand-purple' : 'text-ink-muted hover:text-ink'
+            filterMentorOnly ? 'bg-raised text-ink' : 'text-ink-muted hover:text-ink'
           }`}
         >
           {t('soloRespondidas', 'Solo respondidas')}
@@ -80,12 +80,12 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                     {comment.userName}
                   </span>
                   {comment.userRole === 'ADMIN' && (
-                    <ShieldCheck aria-label={t('mentorEtiqueta', 'Mentor')} className="h-3.5 w-3.5 shrink-0 text-brand-purple" />
+                    <ShieldCheck aria-label={t('mentorEtiqueta', 'Mentor')} className="h-3.5 w-3.5 shrink-0 text-ink-soft" />
                   )}
                   <button
                     type="button"
                     onClick={() => onLike(comment.id)}
-                    className="flex shrink-0 items-center gap-1 text-micro text-ink-muted transition-colors hover:text-brand-violet-light"
+                    className="flex shrink-0 items-center gap-1 text-micro text-ink-muted transition-colors hover:text-ink"
                   >
                     <ThumbsUp aria-hidden className="h-3 w-3" />
                     <span className="tabular-nums">{comment.likes}</span>
@@ -96,10 +96,10 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                 <p className="mt-2 text-row leading-relaxed text-ink-soft">{comment.content}</p>
 
                 {comment.replies && comment.replies.length > 0 && (
-                  <ul className="mt-2.5 flex flex-col gap-2 border-l-2 border-brand-purple/40 pl-2.5">
+                  <ul className="mt-2.5 flex flex-col gap-2 border-l-2 border-line-strong pl-2.5">
                     {comment.replies.map((reply) => (
                       <li key={reply.id}>
-                        <span className="text-micro font-semibold text-brand-purple">{reply.userName}</span>
+                        <span className="text-micro font-semibold text-ink">{reply.userName}</span>
                         <p className="mt-0.5 text-row leading-relaxed text-ink-soft">{reply.content}</p>
                       </li>
                     ))}
@@ -117,7 +117,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                           aria-label={t('responderAUserName', 'Responder a {{userName}}', { userName: comment.userName })}
                           value={replyTextMap[comment.id] || ''}
                           onChange={(event) => onReplyTextChange(comment.id, event.target.value)}
-                          className="w-full resize-none rounded-lg border border-line bg-canvas p-2.5 text-meta text-ink placeholder-ink-faint focus:border-brand-purple focus:outline-none"
+                          className="w-full resize-none rounded-lg border border-line bg-canvas p-2.5 text-meta text-ink placeholder-ink-faint focus:border-line-strong focus:outline-none"
                         />
                         <div className="flex justify-end gap-1">
                           <button
@@ -130,7 +130,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                           <button
                             type="button"
                             onClick={() => onPostReply(comment.id)}
-                            className="rounded-lg bg-brand-purple px-2.5 py-1 text-micro font-semibold text-ink transition-opacity hover:opacity-90"
+                            className="rounded-lg bg-ink px-2.5 py-1 text-micro font-semibold text-canvas transition-opacity hover:opacity-90"
                           >
                             {t('responder', 'Responder')}
                           </button>
@@ -140,7 +140,7 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
                       <button
                         type="button"
                         onClick={() => onStartReply(comment.id)}
-                        className="text-micro font-medium text-brand-purple transition-opacity hover:opacity-80"
+                        className="text-micro font-medium text-ink-soft underline underline-offset-2 transition-colors hover:text-ink"
                       >
                         {t('responderComoMentor', 'Responder como mentor')}
                       </button>
@@ -154,25 +154,28 @@ export const MentorshipPanel: React.FC<MentorshipPanelProps> = ({
       </div>
 
       {hasAccess ? (
-        <form onSubmit={onPostQuestion} className="shrink-0 border-t border-line p-3">
-          <div className="flex items-end gap-2">
+        <form onSubmit={onPostQuestion} className="shrink-0 space-y-3 border-t border-line p-4">
+          <div>
+            <label htmlFor="lesson-question" className="text-sm font-medium text-ink">
+              {t('tuPreguntaSobreEstaClase', 'Tu pregunta sobre esta clase')}
+            </label>
             <textarea
-              rows={1}
-              placeholder={t('preguntaSobreEstaClase', 'Pregunta sobre esta clase')}
-              aria-label={t('tuPreguntaSobreEstaClase', 'Tu pregunta sobre esta clase')}
+              id="lesson-question"
+              rows={3}
+              placeholder={t('viewer.askPlaceholder', 'Escribe tu duda y tu mentor te responderá')}
               value={question}
               onChange={(event) => onQuestionChange(event.target.value)}
-              className="min-h-[2.5rem] min-w-0 flex-1 resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-meta leading-relaxed text-ink placeholder-ink-faint focus:border-brand-cyan focus:outline-none"
+              className="mt-1.5 w-full resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-sm leading-relaxed text-ink placeholder-ink-faint focus:border-line-strong focus:outline-none"
             />
-            <button
-              type="submit"
-              disabled={!question.trim()}
-              className="shrink-0 rounded-lg bg-raised p-2.5 text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-raised"
-            >
-              <Send aria-hidden className="h-4 w-4" />
-              <span className="sr-only">{t('publicarConsulta', 'Publicar consulta')}</span>
-            </button>
           </div>
+          <button
+            type="submit"
+            disabled={!question.trim()}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors hover:bg-ink/5 disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-transparent"
+          >
+            <Send aria-hidden className="h-4 w-4 shrink-0" />
+            {t('viewer.askSend', 'Enviar pregunta')}
+          </button>
         </form>
       ) : (
         <p className="shrink-0 border-t border-line px-4 py-3 text-meta leading-relaxed text-ink-muted">

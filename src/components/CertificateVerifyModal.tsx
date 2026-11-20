@@ -8,7 +8,7 @@
 
 import { dateLocale } from '../i18n/format';
 import React, { useState, useEffect } from 'react';
-import { Award, CheckCircle2, XCircle, Search, ShieldCheck, Copy, Check, ExternalLink, X, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, ShieldCheck, Copy, Check, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { CertificateRecord } from '../types';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
@@ -69,140 +69,113 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
 
   if (!isOpen) return null;
 
+  const cert = searchResult?.certificate;
+  const state = searchResult?.valid && cert ? 'valid' : searchResult?.isRevoked ? 'revoked' : 'missing';
+  const stop = (event: React.SyntheticEvent) => event.stopPropagation();
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overscroll-contain"
-      onWheel={(e) => e.stopPropagation()}
-    >
-      <div className="app-dialog relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface border border-line p-6 sm:p-8 shadow-2xl text-white">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-raised transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="terms-overlay" onClick={onClose} onWheel={stop}>
+      <div role="dialog" aria-modal="true" aria-labelledby="verify-title" className="terms-frame" onClick={stop} onWheel={stop}>
+        <article className="terms-paper">
+          <header className="terms-paper__top">
+            <div>
+              <strong>{t('docentos', 'DocentOS')}</strong>
+              <span>{t('plataformaELearning', 'Plataforma e-Learning')}</span>
+            </div>
+          </header>
 
-        {/* Header */}
-        <div className="text-center space-y-2 mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-gradient text-on-brand mb-1 shadow-lg shadow-brand-cyan/20">
-            <Award className="w-7 h-7" />
-          </div>
-          <h3 className="text-xl font-extrabold text-white tracking-tight">
-            {t('verificacionOficialDeCertificados', 'Verificación Oficial de Certificados')}
-          </h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            {t('ingresaElCodigoUnicoDelCertificadoPara', 'Ingresa el código único del certificado para comprobar su autenticidad y estado de validez en la base de datos de DocentOS.')}
+          <h2 id="verify-title">{t('viewer.verifyTitle', 'Verificación oficial de certificados')}</h2>
+          <p className="terms-paper__state" style={{ textAlign: 'center' }}>
+            {t('viewer.verifyLead', 'Escribe el código del certificado para comprobar que es auténtico y que sigue vigente.')}
           </p>
-        </div>
 
-        {/* Search Input */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleVerify();
-          }}
-          className="flex items-center gap-2 bg-canvas border border-line focus-within:border-brand-cyan rounded-xl px-3 py-2 mb-6 transition-all"
-        >
-          <Search className="w-4 h-4 text-slate-500 shrink-0" />
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder={t('ejDoc6a1b2c3d4e5f6789', 'Ej. DOC-6A1B2C3D4E5F6789')}
-            className="w-full bg-transparent text-sm text-white font-mono placeholder:text-slate-600 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={isSearching || !code.trim()}
-            className="btn-brand-primary px-4 py-2 text-xs font-bold shrink-0 disabled:opacity-50"
+          <form
+            className="verify-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleVerify();
+            }}
           >
-            {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t('verificar', 'Verificar')}
-          </button>
-        </form>
+            <label htmlFor="verify-code">{t('viewer.verifyCodeLabel', 'Código del certificado')}</label>
+            <div className="verify-form__row">
+              <input
+                id="verify-code"
+                type="text"
+                value={code}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setCode(event.target.value.toUpperCase())}
+                placeholder={t('ejDoc6a1b2c3d4e5f6789', 'Ej. DOC-6A1B2C3D4E5F6789')}
+              />
+              <button type="submit" disabled={isSearching || !code.trim()}>
+                {isSearching ? t('viewer.verifying', 'Verificando…') : t('verificar', 'Verificar')}
+              </button>
+            </div>
+          </form>
 
-        {/* Result Card */}
-        {searchResult && (
-          <div className="space-y-4 animate-fade-in">
-            {searchResult.valid && searchResult.certificate ? (
-              <div className="bg-raised border-2 border-emerald-500/40 rounded-xl p-5 space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-line pb-3">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>{t('certificadoOficialValido', 'CERTIFICADO OFICIAL VÁLIDO')}</span>
+          {searchResult && (
+            <section aria-live="polite" className="verify-result">
+              {state === 'valid' && cert ? (
+                <>
+                  <div className="verify-valid-head">
+                    <span className="verify-stamp" data-state="valid">
+                      <CheckCircle2 aria-hidden size={16} />
+                      {t('viewer.verifyValid', 'Certificado válido')}
+                    </span>
+                    <svg className="verify-seal" aria-hidden width="76" height="76" viewBox="0 0 76 76">
+                      <defs><path id="verify-seal-ring" d="M38 38 m-27 0 a27 27 0 1 1 54 0 a27 27 0 1 1 -54 0" /></defs>
+                      <circle cx="38" cy="38" r="35" fill="none" stroke="currentColor" strokeWidth="2" />
+                      <circle cx="38" cy="38" r="21" fill="none" stroke="currentColor" strokeWidth="1" />
+                      <text fontSize="6.4" fontWeight="700" letterSpacing="1.6" fill="currentColor"><textPath href="#verify-seal-ring">{t('docentosCertificadoVerificado', 'DOCENTOS · CERTIFICADO VERIFICADO ·')} </textPath></text>
+                      <path d="M28 38.5l7 7 13-14" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </div>
-                  <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono px-2 py-0.5 rounded-lg">
-                    {t('100Verificado', '100% Verificado')}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">{t('graduado', 'Graduado')}</span>
-                    <span className="text-base font-bold text-white">{searchResult.certificate.recipientName}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold block">{t('programaAcademico', 'Programa Académico')}</span>
-                    <span className="text-sm font-semibold text-brand-cyan">{searchResult.certificate.courseTitle}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-line">
+                  <dl className="terms-paper__data">
+                    <div><dt>{t('graduado', 'Graduado')}</dt><dd>{cert.recipientName}</dd></div>
+                    <div><dt>{t('viewer.vProgram', 'Programa académico')}</dt><dd>{cert.courseTitle}</dd></div>
                     <div>
-                      <span className="text-[10px] text-slate-500 block">{t('fechaDeEmision', 'Fecha de Emisión')}</span>
-                      <span className="text-slate-300 font-medium">
-                        {new Date(searchResult.certificate.issuedAt).toLocaleDateString(dateLocale(), {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </span>
+                      <dt>{t('viewer.vIssued', 'Fecha de emisión')}</dt>
+                      <dd>{new Date(cert.issuedAt).toLocaleDateString(dateLocale(), { year: 'numeric', month: 'long', day: 'numeric' })}</dd>
                     </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 block">{t('codigoUnico', 'Código Único')}</span>
-                      <span className="font-mono text-[11px] text-amber-400">{searchResult.certificate.verificationCode}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-line flex items-center justify-between">
-                  <button
-                    onClick={copyVerificationLink}
-                    className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? t('enlaceCopiado', '¡Enlace copiado!') : t('copiarEnlacePublico', 'Copiar enlace público')}</span>
+                    <div><dt>{t('viewer.vCode', 'Código')}</dt><dd style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 14 }}>{cert.verificationCode}</dd></div>
+                  </dl>
+                  <button type="button" className="verify-secondary" onClick={copyVerificationLink}>
+                    {copied ? <Check aria-hidden size={16} /> : <Copy aria-hidden size={16} />}
+                    {copied ? t('enlaceCopiado', 'Enlace copiado') : t('copiarEnlacePublico', 'Copiar enlace público')}
                   </button>
-                  <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{t('emitidoPorDocentosEngine', 'Emitido por DocentOS Engine')}</span>
-                  </div>
-                </div>
-              </div>
-            ) : searchResult.isRevoked ? (
-              <div className="bg-red-500/10 border-2 border-red-500/40 rounded-xl p-5 space-y-2 text-center">
-                <XCircle className="w-8 h-8 text-red-400 mx-auto" />
-                <h4 className="font-bold text-sm text-red-300 uppercase">{t('certificadoRevocado', 'Certificado Revocado')}</h4>
-                <p className="text-xs text-slate-400">
-                  {t('esteCertificadoFueRevocadoFormalmentePor', 'Este certificado fue revocado formalmente por la administración académica.')}
-                </p>
-                {searchResult.certificate?.revocationReason && (
-                  <p className="text-xs text-red-200 font-medium bg-black/40 p-2 rounded-lg">
-                    {t('motivoRevocationReason', 'Motivo: {{revocationReason}}', { revocationReason: searchResult.certificate.revocationReason })}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-5 text-center space-y-2">
-                <XCircle className="w-8 h-8 text-amber-400 mx-auto" />
-                <h4 className="font-bold text-sm text-amber-300">{t('certificadoNoEncontrado', 'Certificado No Encontrado')}</h4>
-                <p className="text-xs text-slate-400">
-                  {searchResult.error || t('noSeLocalizoNingunDiplomaEmitidoConEl', 'No se localizó ningún diploma emitido con el código proporcionado.')}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                </>
+              ) : state === 'revoked' ? (
+                <>
+                  <span className="verify-stamp" data-state="revoked">
+                    <XCircle aria-hidden size={16} />
+                    {t('viewer.verifyRevoked', 'Certificado revocado')}
+                  </span>
+                  <p className="terms-paper__state">{t('esteCertificadoFueRevocadoFormalmentePor', 'Este certificado fue revocado formalmente por la administración académica.')}</p>
+                  {cert?.revocationReason && (
+                    <p className="terms-paper__state"><strong>{t('viewer.revocationReason', 'Motivo')}:</strong> {cert.revocationReason}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="verify-stamp" data-state="missing">
+                    <XCircle aria-hidden size={16} />
+                    {t('viewer.verifyMissing', 'Certificado no encontrado')}
+                  </span>
+                  <p className="terms-paper__state">{searchResult.error || t('noSeLocalizoNingunDiplomaEmitidoConEl', 'No se localizó ningún diploma emitido con el código proporcionado.')}</p>
+                </>
+              )}
+            </section>
+          )}
+
+          <footer className="terms-paper__foot">
+            <span><ShieldCheck aria-hidden size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 6 }} />{t('viewer.verifyFoot', 'Consulta pública, sin necesidad de iniciar sesión')}</span>
+            <button type="button" className="terms-paper__ok" onClick={onClose}>{t('viewer.close', 'Cerrar')}</button>
+          </footer>
+        </article>
+
+        <button type="button" className="terms-close" onClick={onClose} aria-label={t('cerrarModal', 'Cerrar modal')}>
+          <X aria-hidden />
+        </button>
       </div>
     </div>
   );
