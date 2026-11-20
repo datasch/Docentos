@@ -2,7 +2,7 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 1.1.3](https://img.shields.io/badge/Version-1.1.3-a855f7.svg)
+![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-a855f7.svg)
 ![Status: Stable](https://img.shields.io/badge/Status-Stable-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
@@ -131,7 +131,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v1.1.3.
+* **Versión actual:** v2.0.0.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -192,10 +192,10 @@ en lugar de un nombre móvil.
 
 ```bash
 # Después de publicar la etiqueta y de que Release termine en verde
-docker pull ghcr.io/datasch/docentos:1.1.3
+docker pull ghcr.io/datasch/docentos:2.0.0
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/datasch/docentos:1.1.3 \
+cosign verify ghcr.io/datasch/docentos:2.0.0 \
   --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -203,8 +203,8 @@ cosign verify ghcr.io/datasch/docentos:1.1.3 \
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/datasch/docentos:1.1.3 \
-DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:1.1.3 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:2.0.0 \
+DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:2.0.0 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -239,10 +239,10 @@ Coolify si está configurado `COOLIFY_WEBHOOK_URL`.
 npm run verify                       # versión consistente, tipado y compilación
 npm test
 ./scripts/verificar-diseno.sh HEAD    # verificador local, si está instalado
-git commit -m "chore(release): 1.1.3"
+git commit -m "chore(release): 2.0.0"
 git push datasch main
-git tag -a v1.1.3 -m "DocentOS 1.1.3"
-git push datasch v1.1.3    # el remoto de este repositorio
+git tag -a v2.0.0 -m "DocentOS 2.0.0"
+git push datasch v2.0.0    # el remoto de este repositorio
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,
@@ -252,15 +252,10 @@ Espera a que **Release termine en verde** antes de configurar las imágenes de
 aplicación y respaldo. En Coolify se actualizan `DOCENTOS_IMAGE` y
 `DOCENTOS_BACKUP_IMAGE` y se pulsa **Restart (pull latest)**.
 
-> **1.1.3 no migra el esquema de base de datos** (la interfaz y los mensajes
-> del servidor se pueden usar en español, inglés, portugués, francés e italiano,
-> y el panel de administración permite quitar un strike puesto por error).
-> Si vienes de una versión anterior a 1.1.0, al arrancar se aplican
-> automáticamente las migraciones pendientes.
->
-> La publicación usa actualmente `linux/amd64`. Recuperar `arm64` sobre runners
-> ARM nativos sigue pendiente; véase
-> [Publicación multi-arquitectura](docs/DEPLOYMENT.md#publicación-multi-arquitectura-pendiente).
+> **2.0.0 añade una migración aditiva** (crea la tabla `ModerationEvent`, el
+> historial de moderación) y no toca datos existentes: se aplica sola al
+> arrancar. Si vienes de una versión anterior a 1.1.0, también se aplican las
+> migraciones pendientes de esas versiones.
 
 ## 📄 Licencia & Atribución
 

@@ -7,9 +7,40 @@ cuando alcance su primera versión estable.
 
 ## Unreleased
 
-**Incluye una migración aditiva:** crea la tabla `ModerationEvent` (historial de moderación). No toca datos existentes.
+### Planned
+
+- Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
+  algún despliegue llega a necesitarla.
+
+## [2.0.0] - 2026-11-20
+
+**Incluye una migración aditiva:** crea la tabla `ModerationEvent` (historial de moderación). No toca datos existentes y se aplica sola al arrancar.
+
+### Changed
+
+- **La plataforma tiene una imagen nueva.** El panel de administración, el
+  catálogo, Mi aprendizaje, el reproductor, el inicio de sesión y el registro
+  comparten los mismos espacios, bordes y botones.
+- **El color de acento por defecto pasa de cian a ámbar.** Quien tuviera guardado
+  el cian en la personalización verá el ámbar; se puede volver a elegir otro
+  desde Admin → Sistema.
+- **El reproductor se ordena en pestañas** (Clases, Recursos, Notas y Mentoría),
+  con la guía de bienvenida arriba, un solo desplazamiento y botones del mismo
+  tamaño en móvil y en escritorio.
+- **Términos y privacidad, la firma al ingresar y la verificación de certificados**
+  se presentan como un documento y no como ventanas de aplicación.
+- **Los mensajes de éxito y error del panel salen como avisos** en la esquina, en
+  vez de franjas dentro de la página.
+- **El catálogo es más fácil de recorrer:** una sola barra con categoría, búsqueda
+  y vista, y «Mostrar más» cuando hay muchos cursos.
 
 ### Added
+
+- **Pestaña «Recursos» en el reproductor** con los materiales del módulo y del curso.
+- **Buscador en Admin → Sistema.**
+- **Al recargar dentro de un curso se vuelve a la misma lección y pestaña.**
+- **Ambientación de temporada ajustable desde el plugin de festividades.**
+
 
 - **Los strikes son trazables.** Cada strike puesto o quitado, suspensión y
   reactivación queda registrado con quién lo hizo, a quién y cuándo. En Admin →
@@ -32,11 +63,6 @@ cuando alcance su primera versión estable.
   cola atascada. Ahora el guion se reproduce por fragmentos, con reintento si el
   motor no arranca y sin dejar el botón «reproduciendo» si falla. La
   previsualización del panel de administración usa la misma ruta que las lecciones.
-
-### Planned
-
-- Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
-  algún despliegue llega a necesitarla.
 
 ## [1.1.3] - 2026-11-17
 
