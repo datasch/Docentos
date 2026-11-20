@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 const { default: i18n } = await import('../src/i18n/index.js');
 
 const LANGS = ['es', 'en', 'pt', 'fr', 'it'];
+// Los idiomas se descargan al pedirlos; el test espera a tener los cinco antes de comparar.
+await i18n.loadLanguages(LANGS);
 const keysOf = (lang: string) => Object.keys(i18n.getResourceBundle(lang, 'translation').youtubeBuilder ?? {}).sort();
 
 test('youtubeBuilder has the same keys in every language', () => {

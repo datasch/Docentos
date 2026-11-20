@@ -933,3 +933,100 @@ html[data-color-mode="light"] .isla-vermas:hover {
     transform: translateY(-14px) rotate(1.5deg);
   }
 }
+
+
+/* ===== Navidad: ruta en guirnalda, adornos con brillo suave y tarjeta de meta ===== */
+html[data-festividad="navidad"] .camino svg.ruta .ruta-base,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-base { stroke: #1f6b45; stroke-width: 6px; opacity: .95; }
+html[data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash {
+  display: block; stroke: #fbbf24; stroke-width: 3px; stroke-dasharray: 1 20; stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgb(251 191 36 / .9)); animation: christmas-lights-twinkle 2.6s ease-in-out infinite;
+}
+html[data-festividad="navidad"] .camino svg.ruta .ruta-viva,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-viva {
+  stroke: #dc2626; stroke-width: 6px; filter: drop-shadow(0 0 6px rgb(220 38 38 / .45));
+}
+html[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white {
+  display: block; stroke: #fef3c7; stroke-width: 6px; stroke-dasharray: 8 14; stroke-linecap: round;
+  animation: christmas-cane-flow 5s linear infinite;
+}
+.christmas-connector { stroke: #1f6b45; stroke-width: 6px; }
+@keyframes christmas-lights-twinkle { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes christmas-cane-flow { to { stroke-dashoffset: -44; } }
+
+/* Adornos: balanceo más amplio y un brillo dorado que respira */
+@keyframes christmas-ornament-sway {
+  from { transform: translate3d(-4px, 4px, 0) rotate(-4deg) scale(1); }
+  to { transform: translate3d(5px, -9px, 0) rotate(4deg) scale(1.03); }
+}
+@keyframes christmas-ornament-shine {
+  from { filter: drop-shadow(0 0 3px rgb(251 191 36 / .25)) brightness(1); }
+  to { filter: drop-shadow(0 0 11px rgb(251 191 36 / .65)) brightness(1.16); }
+}
+.christmas-module-ornament { animation: christmas-ornament-sway 7s cubic-bezier(.77, 0, .175, 1) infinite alternate, christmas-ornament-shine 3.4s ease-in-out infinite alternate; animation-delay: var(--ornament-sway-delay, 0s), var(--ornament-sway-delay, 0s); }
+.christmas-module-ornament--right { animation-duration: 8.5s, 4.1s; animation-direction: alternate-reverse, alternate; }
+
+/* Tarjeta «Meta alcanzada»: franja de bastón, acebo y estrellas que titilan */
+.christmas-goal { position: relative; overflow: hidden; border-color: rgb(220 38 38 / .45) !important; background-image: linear-gradient(180deg, rgb(18 56 42 / .55), transparent 55%) !important; }
+.christmas-goal::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: repeating-linear-gradient(45deg, #dc2626 0 8px, #fef3c7 8px 16px); }
+.christmas-goal__holly { position: absolute; top: 14px; pointer-events: none; }
+.christmas-goal__holly--left { left: 14px; }
+.christmas-goal__holly--right { right: 14px; transform: scaleX(-1); }
+.christmas-goal__star { position: absolute; pointer-events: none; filter: drop-shadow(0 0 5px rgb(251 191 36 / .9)); animation: christmas-star-twinkle 2.8s ease-in-out infinite; }
+.christmas-goal__star--0 { top: 26px; left: 22%; animation-delay: 0s; }
+.christmas-goal__star--1 { top: 40px; right: 24%; animation-delay: .7s; width: 10px; height: 10px; }
+.christmas-goal__star--2 { bottom: 70px; left: 8%; animation-delay: 1.4s; width: 10px; height: 10px; }
+.christmas-goal__star--3 { bottom: 90px; right: 9%; animation-delay: 2.1s; }
+@keyframes christmas-star-twinkle { 0%, 100% { opacity: .25; transform: scale(.7) rotate(0deg); } 50% { opacity: 1; transform: scale(1.1) rotate(20deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .christmas-module-ornament, .christmas-goal__star, .christmas-connector-done,
+  html[data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash,
+  html[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white { animation: none; }
+}
+
+/* Barra de progreso navideña: bastón de caramelo en movimiento */
+.christmas-candy-bar { background: repeating-linear-gradient(45deg, #dc2626 0 8px, #fef3c7 8px 16px); background-size: 22.63px 22.63px; animation: christmas-candy-move 1.6s linear infinite; }
+@keyframes christmas-candy-move { to { background-position-x: 22.63px; } }
+/* Misiones hechas: adorno verde con borde dorado, en vez del morado */
+html[data-festividad="navidad"] .isla.lista .isla-roca,
+body[data-festividad="navidad"] .isla.lista .isla-roca {
+  background: radial-gradient(circle at 32% 28%, #3fbf86 0%, #1f6b45 62%, #12382a 100%) !important;
+  border-color: #fbbf24 !important;
+  box-shadow: inset 0 -6px 10px rgb(0 0 0 / .25), 0 0 14px rgb(63 191 134 / .35) !important;
+}
+/* Meta alcanzada: medalla con brillo suave */
+.goal-medal { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 9999px; background: var(--color-brand-cyan); color: var(--color-on-brand); box-shadow: 0 0 0 6px rgba(var(--brand-accent-rgb), .16), 0 0 24px rgba(var(--brand-accent-rgb), .3); animation: goal-medal-glow 3.2s ease-in-out infinite alternate; }
+@keyframes goal-medal-glow { to { box-shadow: 0 0 0 9px rgba(var(--brand-accent-rgb), .1), 0 0 34px rgba(var(--brand-accent-rgb), .5); } }
+.goal-card { position: relative; }
+@media (prefers-reduced-motion: reduce) { .christmas-candy-bar, .goal-medal { animation: none; } }
+
+/* ===== Ruta navideña, versión no literal: hilo de luz dorado sobre un sendero de nieve =====
+   Lo pendiente es un camino punteado, como huellas en la nieve; lo recorrido es un hilo
+   dorado continuo con destellos que avanzan despacio. Sin franjas de bastón ni guirnaldas. */
+html[data-festividad="navidad"] .camino svg.ruta .ruta-base,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-base {
+  stroke: rgb(254 243 199 / .42); stroke-width: 4px; stroke-dasharray: .1 12; stroke-linecap: round; opacity: 1; filter: none;
+}
+html[data-festividad="navidad"] .camino svg.ruta .ruta-viva,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-viva {
+  stroke: var(--color-brand-cyan); stroke-width: 4px; stroke-linecap: round;
+  filter: drop-shadow(0 0 7px rgba(var(--brand-accent-rgb), .6));
+}
+html[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white {
+  stroke: #fffbeb; stroke-width: 2.5px; stroke-dasharray: 1 30; stroke-linecap: round;
+  filter: drop-shadow(0 0 4px #fff); animation: christmas-cane-flow 7s linear infinite;
+}
+html[data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash,
+body[data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash {
+  stroke: #fde68a; stroke-width: 3px; stroke-dasharray: 1 46; filter: drop-shadow(0 0 5px rgb(253 230 138 / .9));
+}
+.christmas-connector { stroke: rgb(254 243 199 / .42); stroke-width: 4px; stroke-dasharray: .1 12; stroke-linecap: round; }
+.christmas-connector-done {
+  stroke-width: 3px; stroke-dasharray: none; stroke-linecap: round;
+  filter: drop-shadow(0 0 7px rgba(var(--brand-accent-rgb), .6)); animation: christmas-route-breathe 3.6s ease-in-out infinite alternate;
+}
+@keyframes christmas-route-breathe { from { opacity: .8; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .christmas-connector-done, html[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white { animation: none; } }

@@ -128,3 +128,24 @@
 .sign-paper__facts dd { margin: 0; font-size: 15px; font-weight: 600; line-height: 24px; font-variant-numeric: tabular-nums; }
 .sign-paper__reader .terms-doc__head { padding-bottom: 4px; }
 @media (max-width: 639px) { .sign-paper__facts dd { font-size: 14px; } .sign-paper__head h2 { font-size: 24px; line-height: 30px; } }
+
+/* Verificación oficial de certificados (misma hoja que Términos y el acta) */
+.verify-form { display: grid; gap: 8px; font-family: system-ui, sans-serif; }
+.verify-form label { font-size: 14px; font-weight: 600; }
+.verify-form__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.verify-form input { min-height: 44px; min-width: 0; padding: 0 12px; border: 1px solid var(--rule); border-radius: 8px; background: #fff; color: var(--ink); font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
+.verify-form input::placeholder { color: var(--ink-soft); opacity: .7; letter-spacing: 0; }
+.verify-form input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.verify-form button { min-height: 44px; padding: 0 22px; border: 0; border-radius: 8px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.verify-form button:disabled { opacity: .35; cursor: not-allowed; }
+.verify-result { display: grid; gap: 16px; justify-items: start; }
+.verify-result .terms-paper__data { width: 100%; }
+.verify-stamp { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1.5px solid currentColor; border-radius: 6px; font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600; line-height: 16px; }
+.verify-stamp[data-state='valid'] { color: #2f6f46; }
+.verify-stamp[data-state='revoked'] { color: #9b2c2c; }
+.verify-stamp[data-state='missing'] { color: var(--ink-soft); }
+.verify-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; width: 100%; padding: 0 16px; border: 1px solid var(--rule); border-radius: 8px; background: transparent; color: var(--ink); font-family: system-ui, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; }
+@media (max-width: 639px) { .verify-form__row { grid-template-columns: minmax(0, 1fr); } }
+
+.verify-valid-head { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; }
+.verify-seal { flex: none; color: #2f6f46; opacity: .85; transform: rotate(-10deg); }

@@ -53,8 +53,9 @@ import {
 import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL, getCustomLogoUrl } from '../lib/logoConfig';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
-import { ActiveFilters, FilterMenu, useListView } from './AdminListKit';
+import { ActiveFilters, AdminSearchField, FilterMenu, useListView } from './AdminListKit';
 import { PluginConfigSheet } from './PluginConfigSheet';
+import { getAutomaticSeasonalTheme, SEASONAL_INFO, type SeasonalMode, type SeasonalTheme } from '../lib/seasonalTheme';
 import { LayoutGrid, List } from 'lucide-react';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -115,6 +116,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
   const [savingConfig, setSavingConfig] = useState<boolean>(false);
   const [downloadingSampleCert, setDownloadingSampleCert] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [query, setQuery] = useState('');
   const { isMobile, view, change: changeView } = useListView('admin-plugins-view');
 
   const handleDownloadSampleCert = async () => {
@@ -303,7 +305,10 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
     custom: t('pluginUi_personalizacion', 'Personalización'),
   };
   const categoryLabel = (category: string) => CATEGORY_LABELS[category] ?? category;
-  const visiblePlugins = filteredPlugins.filter((plugin) => statusFilter === 'ALL' || (statusFilter === 'on' ? plugin.enabled : !plugin.enabled));
+  const needle = query.trim().toLowerCase();
+  const visiblePlugins = filteredPlugins
+    .filter((plugin) => statusFilter === 'ALL' || (statusFilter === 'on' ? plugin.enabled : !plugin.enabled))
+    .filter((plugin) => !needle || `${plugin.name} ${plugin.description ?? ''}`.toLowerCase().includes(needle));
   const categoryOptions = Object.keys(CATEGORY_LABELS)
     .map((value) => ({ value, label: CATEGORY_LABELS[value], count: plugins.filter((plugin) => plugin.category === value).length }))
     .filter((option) => option.count > 0);
@@ -321,6 +326,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
       </div>
 
       <div className="mentor-course-toolbar admin-plugins__toolbar">
+        <AdminSearchField value={query} onChange={setQuery} placeholder={t('pluginUi_buscar', 'Buscar plugin por nombre')} label={t('pluginUi_buscarLabel', 'Buscar plugin')} />
         <FilterMenu
           groups={[
             { label: t('pluginUi_categoria', 'Categoría'), value: selectedCategory, onChange: setSelectedCategory, options: categoryOptions },
@@ -336,18 +342,15 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
             <button type="button" aria-pressed={view === 'cards'} onClick={() => changeView('cards')}><LayoutGrid aria-hidden="true" />{t('pluginUi_tarjetas', 'Tarjetas')}</button>
           </div>
         )}
-        <span className="admin-plugins__count">{t('pluginsActivosDeTotal', '{{active}} de {{total}} activos', { active: activeCount, total: plugins.length })}</span>
-        <button type="button" className="mentor-course-control admin-plugins__sync" onClick={loadPlugins}>
-          <RefreshCw aria-hidden="true" />{t('pluginUi_sincronizar', 'Sincronizar')}
-        </button>
       </div>
 
       <ActiveFilters
         noun={t('pluginUi_plugins', 'plugins')}
         shown={visiblePlugins.length}
         total={plugins.length}
-        onClear={() => { setSelectedCategory('ALL'); setStatusFilter('ALL'); }}
+        onClear={() => { setSelectedCategory('ALL'); setStatusFilter('ALL'); setQuery(''); }}
         chips={[
+          ...(needle ? [{ key: 'query', text: `“${query.trim()}”`, onRemove: () => setQuery('') }] : []),
           ...(selectedCategory !== 'ALL' ? [{ key: 'category', text: categoryLabel(selectedCategory), onRemove: () => setSelectedCategory('ALL') }] : []),
           ...(statusFilter !== 'ALL' ? [{ key: 'status', text: statusFilter === 'on' ? t('pluginUi_activos', 'Activos') : t('pluginUi_inactivos', 'Inactivos'), onRemove: () => setStatusFilter('ALL') }] : []),
         ]}
@@ -432,13 +435,6 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
           </p>
         </div>
 
-        <button
-          onClick={loadPlugins}
-          className="px-4 py-2 bg-raised hover:bg-elevated border border-line text-ink-soft text-xs font-bold rounded-xl transition-all flex items-center gap-2"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-brand-cyan" />
-          <span>{t('sincronizarPlugins', 'Sincronizar Plugins')}</span>
-        </button>
       </div>
 
       {/* Category Pills */}

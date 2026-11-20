@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { getSeasonalTheme, SeasonalTheme, SEASONAL_INFO } from '../lib/seasonalTheme';
+import { useSeasonalDisplay, SEASONAL_INFO } from '../lib/seasonalTheme';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
 import Snowfall from 'react-snowfall';
@@ -75,7 +75,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
   return (
     <>
       {/* 1. Efecto Ambiental de Fondo en TODO DocentOS (Adaptativo y optimizado para móviles) */}
-      {theme === 'christmas' && !reduceMotion && (
+      {showParticles && theme === 'christmas' && !reduceMotion && (
         <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden" aria-hidden="true">
           <Snowfall
             images={snowImages}
@@ -134,7 +134,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
       )}
 
       {/* 2. Franja festiva: bastón de caramelo abajo, acebo a los lados, el mensaje al centro */}
-      {!dismissBanner && (
+      {showBanner && !dismissBanner && (
         <aside
           role="region"
           aria-label={t('avisoDeFestividadActiva', 'Aviso de festividad activa')}

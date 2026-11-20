@@ -329,6 +329,11 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
           <div className="absolute -top-12 -bottom-10 inset-x-0 flex justify-center pointer-events-none z-0 overflow-visible">
             <svg className="w-full max-w-[340px] h-full overflow-visible" viewBox="0 0 340 100" preserveAspectRatio="none">
               <defs>
+                <linearGradient id={`xmas-beam-${module.id}`} gradientUnits="userSpaceOnUse" x1="170" y1="0" x2="170" y2="100">
+                  <stop offset="0" stopColor="#fbbf24" stopOpacity="0" />
+                  <stop offset="0.5" stopColor="#fbbf24" />
+                  <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+                </linearGradient>
                 <linearGradient id={`th-connector-grad-${module.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0" stopColor="#ffffff" />
                   <stop offset="0.5" stopColor="#fbbf24" />
@@ -338,7 +343,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
               
               {/* Conector navideño discreto entre módulos. */}
               {seasonalTheme === 'christmas' ? (
-                <path d="M 170 0 L 170 100" fill="none" stroke="var(--color-line-strong)" strokeWidth="5" strokeLinecap="round" />
+                <path d="M 170 0 L 170 100" fill="none" stroke="var(--color-line-strong)" strokeWidth="5" strokeLinecap="round" className="christmas-connector" />
               ) : seasonalTheme === 'halloween' ? (
                 <>
                   {/* Conector temático: Dulces y golosinas en Halloween */}
@@ -374,11 +379,11 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 <path
                   d="M 170 0 L 170 100"
                   fill="none"
-                  stroke={seasonalTheme === 'christmas' ? '#bd8232' : `url(#th-connector-grad-${module.id})`}
-                  strokeWidth={seasonalTheme === 'christmas' ? '5' : '8'}
+                  stroke={seasonalTheme === 'christmas' ? `url(#xmas-beam-${module.id})` : `url(#th-connector-grad-${module.id})`}
+                  strokeWidth={seasonalTheme === 'christmas' ? '3' : '8'}
                   strokeDasharray={seasonalTheme === 'christmas' ? undefined : '3 14'}
                   strokeLinecap="round"
-                  className="ruta-viva"
+                  className={`ruta-viva${seasonalTheme === 'christmas' ? ' christmas-connector-done' : ''}`}
                 />
               )}
             </svg>
@@ -389,7 +394,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
         <div className="academy-module-heading relative z-10 w-full flex flex-wrap items-center justify-between gap-3 px-1 py-4 border-b border-line   transition-colors">
           <div className="flex flex-1 items-center gap-3.5 min-w-0">
             <div className="min-w-0">
-              <span className="text-sm font-medium text-purple-600 text-ink-muted block">
+              <span className="text-sm font-medium text-ink-muted block">
                 {t('path.moduleNumber', { number: modIdx + 1, defaultValue: `Módulo ${modIdx + 1}` })}
               </span>
               <h2 className="text-base font-semibold text-ink leading-snug">
@@ -676,6 +681,25 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
   );
 };
 
+/** Adornos de la tarjeta de meta alcanzada: acebo en las esquinas y estrellas que titilan. */
+const ChristmasGoalDecor: React.FC = () => (
+  <>
+    <svg aria-hidden className="christmas-goal__holly christmas-goal__holly--left" width="64" height="34" viewBox="0 0 44 22">
+      <path d="M22 11c-4-7-12-9-20-6 3 6 11 9 20 6z" fill="#2f9e6b" /><path d="M22 11c4 7 12 9 20 6-3-6-11-9-20-6z" fill="#237a53" />
+      <circle cx="22" cy="9" r="3.2" fill="#dc2626" /><circle cx="18.5" cy="12.5" r="3" fill="#ef4444" /><circle cx="25.5" cy="12.5" r="3" fill="#b91c1c" />
+    </svg>
+    <svg aria-hidden className="christmas-goal__holly christmas-goal__holly--right" width="64" height="34" viewBox="0 0 44 22">
+      <path d="M22 11c-4-7-12-9-20-6 3 6 11 9 20 6z" fill="#2f9e6b" /><path d="M22 11c4 7 12 9 20 6-3-6-11-9-20-6z" fill="#237a53" />
+      <circle cx="22" cy="9" r="3.2" fill="#dc2626" /><circle cx="18.5" cy="12.5" r="3" fill="#ef4444" /><circle cx="25.5" cy="12.5" r="3" fill="#b91c1c" />
+    </svg>
+    {[0, 1, 2, 3].map((i) => (
+      <svg key={i} aria-hidden className={`christmas-goal__star christmas-goal__star--${i}`} width="14" height="14" viewBox="0 0 24 24">
+        <path d="M12 1l2.6 7.4L22 11l-7.4 2.6L12 21l-2.6-7.4L2 11l7.4-2.6z" fill="#fbbf24" />
+      </svg>
+    ))}
+  </>
+);
+
 export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = ({
   course,
   onOpenLesson,
@@ -904,7 +928,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 )}
                 {seasonalTheme === 'christmas' && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-0.5 text-sm font-medium text-ink-soft">
-                    <Snowflake size={14} className="text-[#bd8232]" aria-hidden="true" />
+                    <Snowflake size={14} className="text-brand-cyan" aria-hidden="true" />
                     {t('path.christmasSpecial', 'Especial Navideño')}
                   </span>
                 )}
@@ -922,7 +946,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 <span className="tabular-nums font-semibold text-ink">{progressPct}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label={t('path.progressChristmas', 'Progreso Navideño')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct}>
-                <span className="block h-full rounded-full bg-[#bd8232] transition-[width] duration-500" style={{ width: `${progressPct}%` }} />
+                <span className="christmas-candy-bar block h-full rounded-full transition-[width] duration-500" style={{ width: `${progressPct}%` }} />
               </div>
               <p className="mt-2 text-sm text-ink-muted">{t('path.missionsCompletedCount', { completed: completedCount, total: totalMissions, defaultValue: `Misiones completadas: ${completedCount} de ${totalMissions}` })}</p>
             </div>
@@ -1078,72 +1102,31 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
           {isCourseCompleted ? (
             <div className="relative flex flex-col items-center w-full animate-fade-in">
               {/* Estación Dorada Luminosa con Vista Previa al dar clic */}
-              <button
-                type="button"
-                onClick={() => setShowPreviewModal(true)}
-                className="relative p-3.5 rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-amber-500/20 via-amber-950/40 to-black/60  hover:scale-105 active:scale-95 transition-all cursor-pointer group"
-                title={t('verVistaPreviaDelCertificado', 'Ver vista previa del certificado')}
-              >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 flex items-center justify-center shadow-none shadow-amber-500/50 group-hover:brightness-110 transition-all">
-                  <Award className="w-9 h-9 text-slate-950 stroke-[2.5]" />
-                </div>
-              </button>
-
-              {/* Banner Oficial de Curso Completado (Diseño Glassmorphism Ultra-Premium) */}
-              <div className="mt-5 w-full max-w-xl mx-auto rounded-3xl border-2 border-amber-400/50 dark:border-amber-400/40 bg-surface p-6 sm:p-7 shadow-2xl   flex flex-col gap-5 text-left transition-all">
-                <div className="flex items-start sm:items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shrink-0 shadow-none shadow-amber-500/30">
-                    <Award className="w-8 h-8 stroke-[2.2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                        {t('path.goalReached', '✨ ¡Meta Alcanzada!')}
-                      </span>
-                    </div>
-                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white leading-tight mt-1">
-                      {t('path.courseCompletedTitle', 'Curso completado con éxito')}
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-600 dark:text-amber-100/80 leading-relaxed">
-                      {t('path.courseCompletedDesc', { title: course.title, defaultValue: `Tu diploma oficial de ${course.title} está listo para ser emitido con validez institucional.` })}
-                    </p>
-                    {certificate?.verificationCode && (
-                      <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-sm">
-                        <span className="opacity-75">{t('doc', 'DOC:')}</span>
-                        <span className="font-bold">{certificate.verificationCode}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-200 dark:border-amber-400/20 flex flex-wrap sm:flex-nowrap items-center justify-end gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowPreviewModal(true)}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>{t('path.viewDiploma', 'Ver Diploma')}</span>
+              <div className={`${seasonalTheme === 'christmas' ? 'christmas-goal ' : ''}goal-card mx-auto w-full max-w-xl rounded-2xl border border-brand-cyan/40 bg-surface p-6 text-center sm:p-8`}>
+                {seasonalTheme === 'christmas' && <ChristmasGoalDecor />}
+                <span className="goal-medal" aria-hidden="true"><Award className="h-8 w-8" /></span>
+                <p className="mt-4 text-sm font-semibold text-brand-cyan">{t('path.goalReachedPlain', 'Meta alcanzada')}</p>
+                <h2 className="mt-1 text-2xl font-semibold leading-tight text-ink">{t('path.courseCompletedPlain', 'Curso completado')}</h2>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
+                  {t('path.courseCompletedDescPlain', { title: course.title, defaultValue: `Completaste ${course.title}. Tu diploma oficial ya está listo.` })}
+                </p>
+                {certificate?.verificationCode && (
+                  <p className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm">
+                    <span className="text-ink-muted">{t('path.docCode', 'Código')}</span>
+                    <span className="font-mono font-semibold text-ink">{certificate.verificationCode}</span>
+                  </p>
+                )}
+                <div className={`mt-6 grid grid-cols-1 gap-3 ${certificate?.verificationCode ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                  <button type="button" onClick={() => setShowPreviewModal(true)} className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors hover:bg-ink/5">
+                    <Eye className="h-4 w-4" aria-hidden="true" />{t('path.viewDiploma', 'Ver diploma')}
                   </button>
-
                   {certificate?.verificationCode && (
-                    <button
-                      type="button"
-                      onClick={() => setShowVerifyModal(true)}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-xs font-bold text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
-                    >
-                      <ShieldCheck className="w-4 h-4 text-brand-cyan dark:text-brand-cyan" />
-                      <span>{t('path.verifyDiploma', 'Verificar')}</span>
+                    <button type="button" onClick={() => setShowVerifyModal(true)} className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors hover:bg-ink/5">
+                      <ShieldCheck className="h-4 w-4" aria-hidden="true" />{t('path.verifyDiploma', 'Verificar')}
                     </button>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPreviewModal(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-slate-950 text-xs font-semibold shadow-none shadow-amber-500/30 hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 stroke-[2.5]" />
-                    <span>{t('path.downloadDiploma', 'Descargar Diploma')}</span>
+                  <button type="button" onClick={() => setShowPreviewModal(true)} className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-cyan text-sm font-semibold text-on-brand transition-opacity hover:opacity-90">
+                    <Download className="h-4 w-4" aria-hidden="true" />{t('path.downloadDiploma', 'Descargar diploma')}
                   </button>
                 </div>
               </div>
@@ -1161,7 +1144,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                     <Lock
                       size={22}
                       strokeWidth={1.8}
-                      className="absolute text-[#bd8232] motion-safe:transition-opacity motion-safe:duration-500"
+                      className="absolute text-brand-cyan motion-safe:transition-opacity motion-safe:duration-500"
                       style={{ opacity: progressPct / 100 }}
                     />
                   )}
@@ -1188,7 +1171,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   <span className="tabular-nums font-semibold text-ink">{progressPct}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label={t('path.lockedCertTitle', 'Certificado bloqueado')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct}>
-                  <span className={`block h-full rounded-full motion-safe:transition-[width] motion-safe:duration-500 ${seasonalTheme === 'christmas' ? 'bg-[#bd8232]' : 'bg-brand-cyan'}`} style={{ width: `${progressPct}%` }} />
+                  <span className={`block h-full rounded-full motion-safe:transition-[width] motion-safe:duration-500 ${seasonalTheme === 'christmas' ? 'christmas-candy-bar' : 'bg-brand-cyan'}`} style={{ width: `${progressPct}%` }} />
                 </div>
               </div>
 

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CourseCategoryFilter } from '../src/components/CourseCategoryFilter.js';
-
+
+
 import './helpers/initI18n.js';
 test('el filtro omite la categoría seleccionada de las alternativas y permite volver a Todos', () => {
   const html = renderToStaticMarkup(
@@ -13,7 +14,9 @@ test('el filtro omite la categoría seleccionada de las alternativas y permite v
   const options = html.slice(html.indexOf('role="group"'), html.indexOf('</details>'));
   assert.doesNotMatch(options, /Cloud &amp; DevOps/);
   assert.match(options, /<span>Todos<\/span>/);
-  assert.match(html, /aria-pressed="true"[^>]*><span[^>]*>Cloud &amp; DevOps<\/span><span[^>]*>2<\/span>/);
+  // La categoría activa se lee en el propio menú, con su nombre delante.
+  assert.match(html, /<summary[^>]*aria-label="Filtrar por categoría: Cloud &amp; DevOps"/);
+  assert.match(html, /course-category-filter__label"><span class="text-ink-muted">Categoría: <\/span>Cloud &amp; DevOps/);
   assert.match(html, /Todos<\/span><span class="course-category-filter__count">3<\/span>/);
 });
 

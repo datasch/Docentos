@@ -227,8 +227,14 @@
   margin: 0;
 }
 [data-mentor-ui='modern'] .admin-course-form__foot .admin-course-form__submit,
-[data-mentor-ui='modern'] .admin-course-form__foot .admin-course-form__cancel:last-child {
+[data-mentor-ui='modern'] .admin-course-form__foot .admin-course-form__cancel:last-child,
+[data-mentor-ui='modern'] .admin-course-form__foot .mentor-course-control[data-danger='true'] {
   grid-column: 1 / -1;
+}
+/* «Pasar a borrador»: mismo borde que los otros botones de la tarjeta */
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__actions .admin-course-card__publish:not(.mentor-course-publish) {
+  color: var(--mentor-text);
+  border-color: var(--mentor-line, color-mix(in srgb, var(--mentor-text) 18%, transparent));
 }
 [data-mentor-ui='modern'] .admin-course-cover-tools {
   display: flex;

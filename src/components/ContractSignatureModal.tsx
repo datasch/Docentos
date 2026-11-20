@@ -5,7 +5,6 @@ import { normalizeLanguage } from '../i18n/languages';
 import { ContractDocument } from './legal/ContractDocument';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { useTranslation, Trans } from 'react-i18next';
-import '../styles/terms-paper.css';
 
 interface ContractModalProps {
   contractData: {

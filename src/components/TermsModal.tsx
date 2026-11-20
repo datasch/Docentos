@@ -7,7 +7,6 @@ import { normalizeLanguage } from '../i18n/languages';
 import { parseContract } from '../lib/contractMarkdown';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { ContractDocument } from './legal/ContractDocument';
-import '../styles/terms-paper.css';
 
 interface TermsModalProps {
   isOpen: boolean;

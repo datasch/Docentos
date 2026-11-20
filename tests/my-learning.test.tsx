@@ -8,7 +8,8 @@ import { searchCourseCatalog } from '../src/lib/catalogSearch';
 import { TAB_PATHS, tabFromPath } from '../src/lib/appRoutes';
 import { ConstellationMyLearning } from '../src/experiences/constellation/ConstellationMyLearning';
 import { ConstellationNavbar } from '../src/experiences/constellation/ConstellationNavbar';
-
+
+
 import './helpers/initI18n.js';
 function course(id: string, overrides: Partial<Course> = {}): Course {
   return { id, title: `Curso ${id}`, description: '', published: true, category: 'Ciberseguridad', price: 10, coverImage: '', hasAccess: true,
@@ -67,9 +68,12 @@ test('Sin sesión o sin acceso verificado no se muestran cursos personales', () 
   assert.doesNotMatch(pending, /Curso privado/);
 });
 
-test('La navegación ofrece una sola barra con Inicio, Catálogo y Mi aprendizaje', () => {
+test('La navegación ofrece una barra superior y su gemela inferior (móvil) con Inicio, Catálogo y Mi aprendizaje', () => {
   const html = renderToStaticMarkup(<ConstellationNavbar currentUser={null} courses={[]} activeCourse={course('a')} activeTab="learning" onSelectTab={() => {}} onOpenAuth={() => {}} onLogout={() => {}} />);
-  assert.equal((html.match(/<nav\b/g) || []).length, 1);
+  // Una sola se ve en cada ancho: la superior en escritorio y la de pestañas inferiores en móvil y tableta.
+  assert.equal((html.match(/<nav\b/g) || []).length, 2);
+  assert.match(html, /<nav[^>]*class="academy-navigation"/);
+  assert.match(html, /<nav[^>]*class="academy-tabbar"/);
   assert.match(html, /Inicio/);
   assert.match(html, /Catálogo/);
   assert.match(html, /Mi aprendizaje/);

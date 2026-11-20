@@ -374,7 +374,7 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
 
         {visible.map((entry) => {
           const face = MOODS.find((item) => item.value === entry.mood);
-          const name = entry.anonymous ? t('anonimo', 'Anónimo') : entry.author?.name || '?';
+          const name = entry.anonymous ? t('anonimo', 'Anónimo') : entry.author?.name || t('usuarioSinDatos', 'Usuario sin datos');
           const draft = drafts[entry.id] || '';
           return (
             <article key={entry.id} className="admin-listening__entry" data-status={entry.status}>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
-import '../styles/toaster.css';
 
 // Por debajo de 1152px la app muestra la barra de pestañas inferior: los avisos suben para no taparla.
 const NARROW = '(max-width: 1151px)';

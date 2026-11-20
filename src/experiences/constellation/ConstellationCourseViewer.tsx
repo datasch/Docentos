@@ -19,6 +19,9 @@ interface ConstellationCourseViewerProps {
   courses?: Course[];
 }
 
+// Verdadero solo hasta que el visor se monta por primera vez tras cargar la página (entrada directa o recarga).
+let pageJustLoaded = true;
+
 export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps> = ({
   course: initialCourse,
   currentUser,
@@ -40,6 +43,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   const [certificate, setCertificate] = useState<CertificateRecord | null>(null);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const hasAutoNavigatedRef = useRef<string | null>(null);
+  const [openedByReload] = useState(() => { const first = pageJustLoaded; pageJustLoaded = false; return first; });
 
   const effectiveUser: User = currentUser || {
     id: 'guest',
@@ -289,7 +293,8 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         const fromUrl = new URLSearchParams(window.location.search).get('leccion');
         if (focus && openLessonById(focus.videoId)) return;
         if (fromUrl && openLessonById(fromUrl)) return;
-        handleOpenActiveLesson();
+        // Tras recargar la página no se abre sola ninguna lección: se queda donde estaba (la ruta del curso).
+        if (!openedByReload) handleOpenActiveLesson();
       }, 750);
     }, 200);
 

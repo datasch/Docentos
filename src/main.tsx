@@ -15,6 +15,8 @@ import './styles/admin-tts.css';
 import './styles/admin-listening.css';
 import './styles/admin-plugins.css';
 import './styles/page-loader.css';
+import './styles/toaster.css';
+import './styles/terms-paper.css';
 import './styles/admin-overview.css';
 import './styles/admin-select.css';
 import './styles/admin-import.css';
