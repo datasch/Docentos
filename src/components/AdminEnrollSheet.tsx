@@ -1,3 +1,4 @@
+import { AdminSelect } from './AdminSelect';
 import { useEffect, useRef } from 'react';
 import { X, ArrowLeft, GraduationCap } from 'lucide-react';
 import type { User, Course, CourseEnrollmentRecord } from '../types';
@@ -63,35 +64,20 @@ export function AdminEnrollSheet({ open, canGoBack, onClose, users, courses, use
           <form id="admin-enroll-form" onSubmit={onSubmit} className="admin-person-sheet__scroll">
             <div className="meeting-field">
               <label htmlFor="enroll-user">Usuario</label>
-              <select id="enroll-user" value={userId} onChange={(e) => onUserId(e.target.value)} required>
-                <option value="">Selecciona un usuario</option>
-                {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+              <AdminSelect inline id="enroll-user" required value={userId} onChange={onUserId} placeholder="Selecciona un usuario" options={users.map((u) => ({ value: u.id, label: u.name, hint: u.email }))} />
             </div>
             <div className="meeting-field">
               <label htmlFor="enroll-course">Curso</label>
-              <select id="enroll-course" value={courseId} onChange={(e) => onCourseId(e.target.value)} required>
-                <option value="">Selecciona un curso</option>
-                {courses.map((c) => <option key={c.id} value={c.id}>{c.title}{c.published === false ? ' (borrador)' : ''}</option>)}
-              </select>
+              <AdminSelect inline id="enroll-course" required value={courseId} onChange={onCourseId} placeholder="Selecciona un curso" options={courses.map((c) => ({ value: c.id, label: `${c.title}${c.published === false ? ' (borrador)' : ''}` }))} />
             </div>
             <div className="meeting-field__row">
               <div className="meeting-field">
                 <label htmlFor="enroll-status">Estado</label>
-                <select id="enroll-status" value={status} onChange={(e) => onStatus(e.target.value as Status)}>
-                  <option value="ACTIVE">Activa</option>
-                  <option value="COMPLETED">Graduado</option>
-                  <option value="REVOKED">Revocada</option>
-                  <option value="EXPIRED">Expirada</option>
-                </select>
+                <AdminSelect inline id="enroll-status" value={status} onChange={(v) => onStatus(v as Status)} options={[{ value: 'ACTIVE', label: 'Activa' }, { value: 'COMPLETED', label: 'Graduado' }, { value: 'REVOKED', label: 'Revocada' }, { value: 'EXPIRED', label: 'Expirada' }]} />
               </div>
               <div className="meeting-field">
                 <label htmlFor="enroll-source">Origen</label>
-                <select id="enroll-source" value={source} onChange={(e) => onSource(e.target.value as Source)}>
-                  <option value="ADMIN">Asignación directa</option>
-                  <option value="PAYMENT">Pago</option>
-                  <option value="MENTORSHIP">Mentoría</option>
-                </select>
+                <AdminSelect inline id="enroll-source" value={source} onChange={(v) => onSource(v as Source)} options={[{ value: 'ADMIN', label: 'Asignación directa' }, { value: 'PAYMENT', label: 'Pago' }, { value: 'MENTORSHIP', label: 'Mentoría' }]} />
               </div>
             </div>
           </form>

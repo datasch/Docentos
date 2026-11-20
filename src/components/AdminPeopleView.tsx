@@ -1,6 +1,8 @@
+import { PageLoader } from './loading/PageLoader';
+import { AdminSelect } from './AdminSelect';
 import { MAX_USER_STRIKES, nextStrikes } from '../lib/moderation';
 import { useEffect, useRef, useState } from 'react';
-import { X, Plus, List, LayoutGrid, BookOpen, Check, SlidersHorizontal, TriangleAlert, ShieldAlert, Loader2 } from 'lucide-react';
+import { X, Plus, List, LayoutGrid, BookOpen, Check, SlidersHorizontal, TriangleAlert, ShieldAlert, Loader2, Ban } from 'lucide-react';
 import type { User, UserRole, CourseEnrollmentRecord } from '../types';
 import { avatarSrc } from '../lib/avatar.js';
 import { AdminSearchField, FilterMenu, ActiveFilters, Pager } from './AdminListKit';
@@ -170,12 +172,6 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                 : 'Acceso de cada usuario a los cursos: estado, origen y fecha de alta.'}
             </p>
           </div>
-          <div className="admin-courses-actions">
-            <button type="button" className="mentor-course-control mentor-course-publish" onClick={onNewEnrollment}>
-              <Plus aria-hidden="true" />
-              Nueva matrícula
-            </button>
-          </div>
         </div>
 
         <div className="admin-people-top">
@@ -187,6 +183,12 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
             <button type="button" aria-pressed={section === 'enrollments'} onClick={() => onSection('enrollments')}>
               <span>Matrículas</span>
               <span className="mentor-publication-count">({enrollments.length})</span>
+            </button>
+          </div>
+          <div className="admin-courses-actions">
+            <button type="button" className="mentor-course-control admin-primary-action" onClick={onNewEnrollment}>
+              <Plus aria-hidden="true" />
+              Nueva matrícula
             </button>
           </div>
         </div>
@@ -222,7 +224,9 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
               </p>
             )}
 
-            {visible.length === 0 ? (
+            {users.length === 0 && loading ? (
+              <PageLoader label="Cargando usuarios…" />
+            ) : visible.length === 0 ? (
               <p className="mentor-courses-empty" role="status">
                 {users.length === 0 ? (loading ? 'Cargando usuarios…' : 'Todavía no hay usuarios registrados.') : 'Nadie coincide con el filtro.'}
               </p>
@@ -320,8 +324,8 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                         {new Date(e.createdAt).toLocaleDateString('es-ES')} · {ENR_SOURCE[e.source]}
                       </p>
                       <div className="admin-enroll-card__actions">
-                        <button type="button" className="mentor-course-control" disabled={e.status === 'ACTIVE'} onClick={() => onEnrollmentStatus(e.id, 'ACTIVE')}>Activar</button>
-                        <button type="button" className="mentor-course-control" data-danger="true" disabled={e.status === 'REVOKED'} onClick={() => setRevokeTarget(e)} aria-haspopup="dialog">Revocar</button>
+                        <button type="button" className="mentor-course-control" disabled={e.status === 'ACTIVE'} onClick={() => onEnrollmentStatus(e.id, 'ACTIVE')}><Check aria-hidden="true" />Activar</button>
+                        <button type="button" className="mentor-course-control" data-danger="true" disabled={e.status === 'REVOKED'} onClick={() => setRevokeTarget(e)} aria-haspopup="dialog"><Ban aria-hidden="true" />Revocar</button>
                       </div>
                     </li>
                   );
@@ -357,6 +361,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                   data-danger="true"
                   onClick={() => { const t = revokeTarget; setRevokeTarget(null); onEnrollmentStatus(t.id, 'REVOKED'); }}
                 >
+                  <Ban aria-hidden="true" />
                   Revocar matrícula
                 </button>
               </div>
@@ -387,9 +392,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
               <div className="admin-person-sheet__scroll">
                 <div className="meeting-field">
                   <label htmlFor="admin-person-role">Rol</label>
-                  <select id="admin-person-role" value={sheetUser.role} onChange={(e) => onUpdateRole(sheetUser.id, e.target.value as UserRole)}>
-                    {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                  </select>
+                  <AdminSelect inline id="admin-person-role" value={sheetUser.role} onChange={(v) => onUpdateRole(sheetUser.id, v as UserRole)} options={ROLES.map((r) => ({ value: r.value, label: r.label }))} />
                 </div>
                 {roleError && <p role="alert" className="admin-people-error"><TriangleAlert aria-hidden="true" />{roleError}</p>}
 

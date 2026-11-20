@@ -15,6 +15,7 @@ import {
   Award,
   CheckSquare,
   Bookmark,
+  FolderOpen,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -78,6 +79,8 @@ import { CoursePanel, PanelTabId } from './course/CoursePanel';
 import { DocentOSPlayer } from './course/DocentOSPlayer';
 import { SyllabusTree } from './course/SyllabusTree';
 import { NotesPanel } from './course/NotesPanel';
+import { ResourcesPanel } from './course/ResourcesPanel';
+import { SessionsPanel } from './course/SessionsPanel';
 import { MentorshipPanel } from './course/MentorshipPanel';
 import { LessonMetaBar, MobileLessonBar } from './course/LessonMetaBar';
 
@@ -211,6 +214,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     initialModuleIndex !== undefined || initialVideoIndex !== undefined,
   );
   const [activePanel, setActivePanel] = useState<PanelTabId>(() => {
+    // Tras recargar: la misma pestaña que se estaba usando.
+    const fromUrl = new URLSearchParams(window.location.search).get('panel');
+    if (isModal && (fromUrl === 'resources' || fromUrl === 'sessions' || fromUrl === 'notes' || fromUrl === 'mentorship' || (fromUrl === 'syllabus' && !hideSyllabus))) {
+      return fromUrl;
+    }
     // Desde un aviso de respuesta: se abre directamente la conversación.
     try {
       if (sessionStorage.getItem(LESSON_PANEL_STORAGE_KEY) === 'mentorship') {
@@ -222,7 +230,21 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
     return hideSyllabus ? 'sessions' : 'syllabus';
   });
+  useEffect(() => {
+    if (!isModal) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('panel', activePanel);
+    window.history.replaceState(window.history.state, '', url);
+  }, [isModal, activePanel]);
+  useEffect(() => () => {
+    if (!isModal) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('panel');
+    window.history.replaceState(window.history.state, '', url);
+  }, [isModal]);
   const [theaterMode, setTheaterMode] = useState(false);
+  const totalResources =
+    (course.resources?.length || 0) + (course.modules || []).reduce((sum, module) => sum + (module.resources?.length || 0), 0);
 
   useEffect(() => {
     if (hideSyllabus && activePanel === 'syllabus') {
@@ -1429,7 +1451,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               <button
                 type="button"
                 onClick={onBackToPath}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 px-3 py-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/25 active:scale-95 transition-all shadow-sm"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-cyan/10 dark:bg-brand-cyan/20 px-3 py-1.5 text-xs font-bold text-brand-cyan dark:text-brand-cyan border border-brand-cyan/20 hover:bg-brand-cyan/25 active:scale-95 transition-all shadow-sm"
               >
                 <Compass aria-hidden className="h-3.5 w-3.5" />
                 <span>{t('volverALaRuta', 'Volver a la Ruta')}</span>
@@ -1460,10 +1482,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         </div>
       )}
 
-      <div className={`lg:grid lg:gap-6 ${theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}>
+      <div className={`min-w-0 lg:grid lg:gap-6 ${theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-12'}`}>
 
           {/* Columna del reproductor */}
-          <div className={theaterMode ? '' : 'lg:col-span-8'}>
+          <div className={`min-w-0 ${theaterMode ? '' : isModal ? 'lg:col-span-7' : 'lg:col-span-8'}`}>
             {/* El examen ocupa el sitio del reproductor, con su propio scroll
                 en escritorio para que la fila no crezca y el temario siga a la
                 vista. Verlo debajo del video mientras corría la clase era leer
@@ -1489,27 +1511,27 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
             <>
             {/* Banner Destacado de Clase Sincrónica En Vivo */}
             {hasAccess && activeLiveMeeting && (
-              <div className="mb-4 mx-4 lg:mx-0 rounded-2xl border border-[var(--color-brand-cyan)] bg-surface p-4 shadow-xl shadow-[var(--color-brand-cyan)]/10 ring-1 ring-[var(--color-brand-cyan)]/30 animate-fade-in">
+              <div className="mb-4 mx-4 lg:mx-0 rounded-2xl border border-line bg-surface p-4 animate-fade-in">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-cyan)]/15 border border-[var(--color-brand-cyan)]/40 text-[var(--color-brand-cyan)]">
-                      <Radio className="h-5 w-5 animate-pulse text-[var(--color-brand-cyan)]" />
+                  <div className="flex w-full min-w-0 items-start gap-3.5 sm:w-auto sm:flex-1 sm:items-center">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-raised text-ink-soft">
+                      <Radio className="h-5 w-5 text-ink-soft" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-cyan)]/20 px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider text-[var(--color-brand-cyan)] border border-[var(--color-brand-cyan)]/50 animate-pulse-slow">
-                          <span className="h-2 w-2 rounded-full bg-[var(--color-brand-cyan)] animate-ping" />
-                          {t('claseEnVivo', '¡CLASE EN VIVO!')}
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-danger-light">
+                          <span className="h-2 w-2 rounded-full bg-danger-light" />
+                          {t('claseEnVivoAhora', 'En vivo ahora')}
                         </span>
-                        <span className="text-micro font-bold uppercase tracking-wider text-ink-muted bg-raised px-2 py-0.5 rounded border border-line">
+                        <span className="text-xs text-ink-muted">
                           {activeLiveMeeting.meetingType === 'jitsi' ? t('jitsiMeet', 'Jitsi Meet') : t('googleMeet', 'Google Meet')}
                         </span>
                       </div>
-                      <h2 className="mt-1 text-section font-bold text-ink leading-tight truncate">
-                        {activeLiveMeeting.title}
+                      <h2 className="mt-1 text-section font-semibold leading-tight text-ink [overflow-wrap:anywhere]">
+                        {activeLiveMeeting.title.replace(/^[^\p{L}\p{N}¿¡]+/u, '')}
                       </h2>
                       {activeLiveMeeting.description && (
-                        <p className="mt-0.5 text-meta text-ink-muted line-clamp-1">
+                        <p className="mt-0.5 text-meta text-ink-muted [overflow-wrap:anywhere]">
                           {activeLiveMeeting.description}
                         </p>
                       )}
@@ -1520,11 +1542,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     href={activeLiveMeeting.meetingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn-brand-primary flex shrink-0 items-center gap-2 px-5 py-2.5 text-xs font-bold shadow-lg shadow-[var(--color-brand-cyan)]/25 hover:scale-[1.02] transition-transform"
+                    className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand-cyan px-3 text-sm font-medium text-on-brand transition-opacity hover:opacity-90 sm:w-40"
                   >
-                    <Video className="h-4 w-4" />
-                    <span>{t('unirseALaClaseEnVivo', 'Unirse a la clase en vivo')}</span>
-                    <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                    <ExternalLink aria-hidden className="h-4 w-4 shrink-0" />
+                    {t('viewer.join', 'Unirme ahora')}
                   </a>
                 </div>
               </div>
@@ -1534,9 +1555,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
             {hasAccess && !activeLiveMeeting && upcomingMeeting && (
               <div className="mb-3 mx-4 lg:mx-0 rounded-xl border border-line bg-card p-3 flex items-center justify-between gap-3 text-meta animate-fade-in">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Calendar className="h-4 w-4 shrink-0 text-brand-purple" />
+                  <Calendar className="h-4 w-4 shrink-0 text-ink-muted" />
                   <div className="min-w-0">
-                    <span className="font-semibold text-ink truncate block">
+                    <span className="block font-semibold text-ink [overflow-wrap:anywhere]">
                       {t('proximaClaseSincronicaTitle', 'Próxima clase sincrónica: {{title}}', { title: upcomingMeeting.title })}
                     </span>
                     <span className="text-micro text-ink-muted">
@@ -1853,11 +1874,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           {new Date(selectedMeetingPlayback.scheduledAt).toLocaleDateString(dateLocale(), { dateStyle: 'medium' })}
                         </span>
                       </div>
-                      <h3 className="mt-1 font-bold text-sm text-ink truncate">
+                      <h3 className="mt-1 text-sm font-semibold text-ink [overflow-wrap:anywhere]">
                         {selectedMeetingPlayback.title}
                       </h3>
                       {selectedMeetingPlayback.description && (
-                        <p className="mt-0.5 text-xs text-ink-soft line-clamp-1">
+                        <p className="mt-0.5 text-xs text-ink-soft [overflow-wrap:anywhere]">
                           {selectedMeetingPlayback.description}
                         </p>
                       )}
@@ -1923,6 +1944,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   />
                 )}
 
+
                 {/* Notificación destacada cuando está en la última lección de un módulo con examen */}
                 {(() => {
                   if (!currentModule || !currentModule.videos || currentModule.videos.length === 0) return null;
@@ -1952,7 +1974,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         <button
                           type="button"
                           onClick={() => abrirExamen(activeModuleIndex)}
-                          className="btn-brand-primary px-4 py-2 text-xs font-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-cyan-500/20 cursor-pointer"
+                          className="btn-brand-primary px-4 py-2 text-xs font-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand-cyan/20 cursor-pointer"
                         >
                           <CheckSquare className="w-4 h-4 text-amber-300" />
                           <span>{t('rendirElExamen', 'Rendir el examen')}</span>
@@ -1972,19 +1994,20 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               celda para que la fila la marque el video y no el largo del
               temario; en móvil o modal es un bloque de altura adaptable y responsivo que
               crece de forma dinámica con el contenido (sesiones, notas, mentoría). */}
-          <div className={theaterMode ? 'lg:hidden' : `lg:relative lg:col-span-4 flex flex-col ${isModal ? 'lg:self-start' : ''}`}>
-            <div className={`h-auto min-h-0 max-h-[70vh] flex flex-col px-4 ${isModal ? 'lg:relative lg:h-auto lg:max-h-[calc(100dvh-12rem)] lg:px-0' : 'lg:absolute lg:inset-0 lg:h-auto lg:max-h-none lg:px-0'}`}>
+          <div className={theaterMode ? 'flex flex-col lg:mt-4' : `lg:relative flex flex-col ${isModal ? 'lg:col-span-5 lg:self-start' : 'lg:col-span-4'}`}>
+            <div className={`h-auto min-h-0 flex flex-col px-4 ${isModal ? 'max-h-none lg:relative lg:h-auto lg:px-0' : 'max-h-[70vh] lg:absolute lg:inset-0 lg:h-auto lg:max-h-none lg:px-0'}`}>
               <CoursePanel
                 active={activePanel}
                 onChange={setActivePanel}
                 theaterMode={theaterMode}
                 onToggleTheater={() => setTheaterMode(!theaterMode)}
+                showTheater={!isModal}
                 tabs={[
                   ...(!hideSyllabus
                     ? [
                         {
                           id: 'syllabus' as const,
-                          label: t('viewer.syllabusTab', 'Temario'),
+                          label: t('viewer.syllabusTab', 'Contenido'),
                           icon: ListTree,
                           content: (
                             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -2012,189 +2035,24 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     : []),
                   {
                     id: 'sessions',
-                    label: t('viewer.sessionsTab', 'Sesiones'),
+                    label: t('viewer.sessionsTab', 'Clases'),
                     icon: Radio,
                     count: courseMeetings.length,
                     content: (
-                      <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
-                        <div className="flex items-center justify-between pb-2 border-b border-line">
-                          <div>
-                            <h3 className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                              <Radio className="h-3.5 w-3.5 text-brand-cyan" />
-                              {t('viewer.syncSessionsTitle', 'Clases Sincrónicas & Grabaciones')}
-                            </h3>
-                            <p className="text-micro text-ink-muted mt-0.5">
-                              {t('viewer.syncSessionsSubtitle', 'Sesiones en vivo y clases grabadas bajo demanda del curso.')}
-                            </p>
-                          </div>
-                        </div>
-
-                        {courseMeetings.length === 0 ? (
-                          <div className="py-8 text-center space-y-2 bg-card rounded-xl border border-line p-4">
-                            <Video className="h-8 w-8 mx-auto text-ink-faint" />
-                            <p className="text-xs font-semibold text-ink">{t('viewer.noSessionsScheduled', 'No hay sesiones programadas aún')}</p>
-                            <p className="text-micro text-ink-muted">
-                              {t('viewer.mentorWillSchedule', 'Tu mentor programará clases sincrónicas y grabaciones en este espacio.')}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-5">
-                            {(() => {
-                              const moduleGroups: { moduleId: string | null; moduleTitle: string; meetings: typeof courseMeetings }[] = [];
-                              
-                              (course.modules || []).forEach((mod, idx) => {
-                                const modMeetings = courseMeetings.filter((m) => m.moduleId === mod.id);
-                                if (modMeetings.length > 0) {
-                                  moduleGroups.push({
-                                    moduleId: mod.id,
-                                    moduleTitle: t('moduloIdxTitle', 'Módulo {{idx}}: {{title}}', { idx: idx + 1, title: mod.title }),
-                                    meetings: modMeetings,
-                                  });
-                                }
-                              });
-
-                              const unassignedMeetings = courseMeetings.filter(
-                                (m) => !m.moduleId || !course.modules?.some((mod) => mod.id === m.moduleId)
-                              );
-                              if (unassignedMeetings.length > 0) {
-                                moduleGroups.push({
-                                  moduleId: null,
-                                  moduleTitle: t('sesionesGeneralesDelCurso', 'Sesiones Generales del Curso'),
-                                  meetings: unassignedMeetings,
-                                });
-                              }
-
-                              return moduleGroups.map((group) => (
-                                <div key={group.moduleId || 'general'} className="space-y-2.5">
-                                  <div className="flex items-center gap-2 px-1">
-                                    <span className="h-2 w-2 rounded-full bg-brand-cyan" />
-                                    <h4 className="text-micro font-bold uppercase tracking-wider text-ink-soft">
-                                      {group.moduleTitle}
-                                    </h4>
-                                    <span className="text-micro font-bold text-ink-faint bg-card border border-line px-1.5 py-0.2 rounded-full">
-                                      {group.meetings.length}
-                                    </span>
-                                  </div>
-
-                                  <div className="space-y-3">
-                                    {group.meetings.map((m) => {
-                                      const isLive = m.isLive;
-                                      const isAsync = m.meetingType === 'async_record';
-                                      const isPlayingThis = selectedMeetingPlayback?.id === m.id;
-
-                                      return (
-                                        <div
-                                          key={m.id}
-                                          className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${isPlayingThis
-                                              ? 'bg-success/10 border-success/50 shadow-md ring-1 ring-emerald-500/30'
-                                              : isLive
-                                                ? 'bg-surface border-brand-cyan shadow-md shadow-brand-cyan/10 ring-1 ring-brand-cyan/30'
-                                                : 'bg-raised border-line hover:border-line-strong'
-                                            }`}
-                                        >
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                              {isLive ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-bold bg-danger/20 text-danger-light border border-danger/40 animate-pulse-slow">
-                                                  <span className="h-1.5 w-1.5 rounded-full bg-danger animate-ping" />
-                                                  {t('enVivo', 'EN VIVO')}
-                                                </span>
-                                              ) : isAsync ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-bold bg-success/10 text-success-light border border-success/30">
-                                                  <PlaySquare className="h-3 w-3" />
-                                                  {t('grabacionAsincronica', 'Grabación Asincrónica')}
-                                                </span>
-                                              ) : (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-micro font-bold bg-brand-purple/10 text-brand-purple border border-brand-purple/30">
-                                                  <Calendar className="h-3 w-3" />
-                                                  {t('sincronica', 'Sincrónica')}
-                                                </span>
-                                              )}
-
-                                              <span className="text-micro font-bold text-ink-muted uppercase bg-canvas px-1.5 py-0.5 rounded border border-line">
-                                                {m.meetingType === 'jitsi'
-                                                  ? t('jitsi', 'Jitsi')
-                                                  : m.meetingType === 'meet'
-                                                    ? t('meet', 'Meet')
-                                                    : t('video', 'Video')}
-                                              </span>
-                                            </div>
-
-                                            <span className="text-micro text-ink-muted">
-                                              {new Date(m.scheduledAt).toLocaleDateString(dateLocale(), {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                              })}
-                                            </span>
-                                          </div>
-
-                                          <div>
-                                            <h4 className="font-bold text-xs text-ink leading-snug">
-                                              {m.title}
-                                            </h4>
-                                            {m.description && (
-                                              <p className="text-micro text-ink-muted line-clamp-2 mt-0.5">
-                                                {m.description}
-                                              </p>
-                                            )}
-                                          </div>
-
-                                          {/* Actions */}
-                                          <div className="flex items-center gap-2 pt-1 border-t border-line/50">
-                                            {isAsync ? (
-                                              <>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setSelectedMeetingPlayback(m);
-                                                  }}
-                                                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isPlayingThis
-                                                      ? 'bg-success text-black shadow-md'
-                                                      : 'bg-success/15 hover:bg-success/25 border border-success/40 text-success-light'
-                                                    }`}
-                                                >
-                                                  <Play className="h-3 w-3" />
-                                                  <span>{isPlayingThis ? t('reproduciendoAhora', 'Reproduciendo Ahora') : t('verGrabacion', 'Ver Grabación')}</span>
-                                                </button>
-                                                <a
-                                                  href={m.recordingUrl || m.meetingUrl}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="p-1.5 rounded-lg bg-canvas hover:bg-elevated border border-line text-ink-muted hover:text-ink"
-                                                  title={t('abrirEnlaceExterno', 'Abrir enlace externo')}
-                                                >
-                                                  <ExternalLink className="h-3.5 w-3.5" />
-                                                </a>
-                                              </>
-                                            ) : (
-                                              <a
-                                                href={m.meetingUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1.5 transition-all ${isLive
-                                                    ? 'btn-brand-primary text-ink shadow-md'
-                                                    : 'bg-raised hover:bg-line border border-line text-ink-soft hover:text-ink'
-                                                  }`}
-                                              >
-                                                <Video className="h-3.5 w-3.5" />
-                                                <span>{isLive ? t('unirseALaClaseEnVivo2', 'Unirse a la Clase en Vivo') : t('abrirSalaSincronica', 'Abrir Sala Sincrónica')}</span>
-                                                <ExternalLink className="h-3 w-3 opacity-70" />
-                                              </a>
-                                            )}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ));
-                            })()}
-                          </div>
-                        )}
-                      </div>
+                      <SessionsPanel
+                        course={course}
+                        meetings={courseMeetings}
+                        playingId={selectedMeetingPlayback?.id}
+                        onPlayRecording={setSelectedMeetingPlayback}
+                      />
                     ),
+                  },
+                  {
+                    id: 'resources',
+                    label: t('viewer.resourcesTab', 'Recursos'),
+                    icon: FolderOpen,
+                    count: totalResources,
+                    content: <ResourcesPanel course={course} activeModuleIndex={activeModuleIndex} />,
                   },
                   {
                     id: 'notes',
@@ -2248,7 +2106,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               nunca compite con él. Sin quiz ni diploma no se monta, para no
               dejar una banda de relleno vacía al pie de la página. */}
           {showsExtras && (
-            <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : 'lg:col-span-8'}`}>
+            <div className={`flex flex-col gap-4 px-4 py-4 lg:px-0 ${theaterMode ? '' : isModal ? 'lg:col-span-7' : 'lg:col-span-8'}`}>
               {/* El diploma pertenece al final del curso: mostrarlo bajo cada lección
                 anunciaba «Disponible» desde la primera clase. */}
               {hasAccess &&
@@ -2342,13 +2200,13 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
     return createPortal(
       <div
-        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 dark:bg-black/85 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fade-in overscroll-contain"
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-2 sm:p-4 md:p-6 animate-fade-in overscroll-contain"
         onMouseDown={handleBackdropClose}
         onClick={handleBackdropClose}
         onWheel={(e) => e.stopPropagation()}
       >
         <div
-          className="app-dialog academy-study-player constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
+          className="app-dialog academy-study-player constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
@@ -2356,29 +2214,22 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           aria-modal="true"
         >
           {/* Cabecera del Modal de Misión */}
-          <header className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4 bg-raised transition-colors">
+          <header className="flex shrink-0 items-center justify-between border-b border-line px-6 py-4 bg-raised transition-colors">
             <div className="flex items-center gap-3 min-w-0">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
-                examenActivo
-                  ? 'bg-amber-500/10 dark:bg-amber-500/20 border-amber-400/30 dark:border-amber-400/40 text-amber-500 dark:text-amber-300'
-                  : 'bg-purple-500/10 dark:bg-purple-600/30 border border-purple-400/30 dark:border-purple-400/40 text-purple-600 dark:text-purple-300'
-              }`}>
-                {examenActivo ? <Award className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
-              </span>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                  <span className="text-xs font-medium text-ink-muted">
                     {moduloDelExamen?.title || currentModule?.title || t('mision', 'Misión')}
                   </span>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                     examenActivo
                       ? 'bg-amber-500/15 dark:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-400/30'
-                      : 'text-purple-600/80 dark:text-purple-300/70'
+                      : 'text-ink-muted'
                   }`}>
                     {examenActivo ? t('evaluacionRequerida', 'Evaluación Requerida') : t('leccionActiveVideoIndexDeVal', 'Lección {{activeVideoIndex}} de {{val}}', { activeVideoIndex: activeVideoIndex + 1, val: currentModule?.videos.length || 1 })}
                   </span>
                 </div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate max-w-xl">
+                <h2 className="text-base font-semibold leading-snug text-ink [overflow-wrap:anywhere] sm:text-lg">
                   {examenActivo ? t('examenVal', 'Examen: {{val}}', { val: moduloDelExamen?.title || currentModule?.title }) : currentVideo?.title}
                 </h2>
               </div>

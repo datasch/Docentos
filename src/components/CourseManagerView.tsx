@@ -8,6 +8,9 @@
  * 3. Enlazar, reordenar y eliminar videos dentro de cada módulo
  */
 
+import { useToastMessage } from '../lib/useToastMessage';
+import { PageLoader } from './loading/PageLoader';
+import { AdminSelect } from './AdminSelect';
 import React, { useState, useEffect, useRef } from 'react';
 import { AdminSearchField, FilterMenu, ActiveFilters, Pager } from './AdminListKit';
 import {
@@ -103,6 +106,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  useToastMessage(successMsg, 'success');
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Modo de creación activo: 'manual' | 'youtube' | 'drive'
@@ -596,20 +600,29 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   return (
     <div data-mentor-ui="modern" className="admin-courses-root">
     <div className={`mentor-courses-panel admin-courses-panel ${disableAnimation ? '' : 'animate-fade-in'}`}>
-      {successMsg && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" /> {successMsg}
-        </div>
-      )}
-
       {/* Cabecera: crear curso (manual, YouTube o Drive) */}
       <div className="mentor-section-heading">
         <div>
           <h2 id="admin-courses-title">Cursos</h2>
           <p>Crea, publica y organiza el temario de cada curso.</p>
         </div>
+      </div>
+
+      <div className="admin-people-top">
+        {onOpenResources ? (
+          <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
+            <button type="button" aria-pressed="true">
+              <span>Catálogo</span>
+              <span className="mentor-publication-count">({courses.length})</span>
+            </button>
+            <button type="button" aria-pressed="false" onClick={() => onOpenResources()}>
+              <span>Recursos</span>
+              <span className="mentor-publication-count">({resourceCount})</span>
+            </button>
+          </div>
+        ) : <span />}
         <div className="admin-courses-actions">
-          <button type="button" className="mentor-course-control mentor-course-publish" onClick={openNewCourse}>
+          <button type="button" className="mentor-course-control admin-primary-action" onClick={openNewCourse}>
             <Plus aria-hidden="true" />
             Nuevo curso
           </button>
@@ -633,21 +646,6 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           </button>
         </div>
       </div>
-
-      {onOpenResources && (
-        <div className="admin-people-top">
-          <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
-            <button type="button" aria-pressed="true">
-              <span>Catálogo</span>
-              <span className="mentor-publication-count">({courses.length})</span>
-            </button>
-            <button type="button" aria-pressed="false" onClick={() => onOpenResources()}>
-              <span>Recursos</span>
-              <span className="mentor-publication-count">({resourceCount})</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {creationTab === 'youtube' && (
         <div className="admin-courses-wizard">
@@ -706,25 +704,17 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             </div>
             <div className="meeting-field">
               <label htmlFor="admin-course-category">Categoría</label>
-              <select
+              <AdminSelect
+                inline
                 id="admin-course-category"
                 value={form.category || 'Mentoría Especializada'}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-              >
-                {form.category && !COURSE_CATEGORIES.includes(form.category as any) && (
-                  <option value={form.category}>{form.category}</option>
-                )}
-                <optgroup label="Modalidades de Mentoría">
-                  {MENTORSHIP_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Áreas Temáticas Técnicas">
-                  {TECHNICAL_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </optgroup>
-              </select>
+                onChange={(v) => setForm({ ...form, category: v })}
+                options={[
+                  ...(form.category && !COURSE_CATEGORIES.includes(form.category as any) ? [{ value: form.category, label: form.category }] : []),
+                  ...MENTORSHIP_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: 'Modalidades de Mentoría' })),
+                  ...TECHNICAL_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: 'Áreas Temáticas Técnicas' })),
+                ]}
+              />
             </div>
             <div className="meeting-field">
               <label htmlFor="admin-course-description">Descripción</label>
@@ -750,15 +740,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               </div>
               <div className="meeting-field">
                 <label htmlFor="admin-course-currency">Moneda</label>
-                <select
-                  id="admin-course-currency"
-                  value={form.currency}
-                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                >
-                  {['USD', 'EUR', 'MXN', 'COP', 'ARS'].map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <AdminSelect inline id="admin-course-currency" value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={['USD', 'EUR', 'MXN', 'COP', 'ARS'].map((c) => ({ value: c, label: c }))} />
               </div>
             </div>
             <div className="meeting-field">
@@ -833,7 +815,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           </form>
           </div>
           <div className="mentee-sheet__foot admin-course-form__foot">
-            <button type="submit" form="admin-course-form" disabled={savingCourse} className="mentor-course-control mentor-course-publish admin-course-form__submit">
+            <button type="submit" form="admin-course-form" disabled={savingCourse} className="mentor-course-control mentor-course-import admin-course-form__submit">
               {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
               {editingCourseId ? 'Guardar cambios' : 'Crear curso'}
             </button>
@@ -894,10 +876,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
       <div>
         {loading && courses.length === 0 ? (
-          <div className="mentor-courses-empty" role="status">
-            <Loader2 aria-hidden="true" className="animate-spin" />
-            <p>Cargando cursos…</p>
-          </div>
+          <PageLoader label="Cargando cursos…" />
         ) : courses.length === 0 ? (
           <div className="mentor-courses-empty">
             <BookOpen aria-hidden="true" />
@@ -1036,7 +1015,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               {deleteTarget.type === 'course' ? 'Eliminar curso' : deleteTarget.type === 'module' ? 'Eliminar módulo' : 'Eliminar video'}
             </h3>
             <p>
-              Vas a eliminar <strong>{deleteTarget.title}</strong>. {deleteTarget.warningText} No se puede deshacer.
+              Vas a eliminar <strong>{deleteTarget.title}</strong>. {deleteTarget.warningText} Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.
             </p>
             {deleteTarget.error && (
               <p role="alert" className="admin-confirm-error">
@@ -1145,7 +1124,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               )}
             </div>
             <div className="mentee-sheet__foot admin-course-form__foot">
-              <button type="button" disabled={savingCourseMentors || loadingCourseMentors} onClick={handleSaveCourseMentors} className="mentor-course-control mentor-course-publish admin-course-form__submit">
+              <button type="button" disabled={savingCourseMentors || loadingCourseMentors} onClick={handleSaveCourseMentors} className="mentor-course-control mentor-course-import admin-course-form__submit">
                 {savingCourseMentors ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
                 Guardar mentores ({assignedMentorIds.length})
               </button>

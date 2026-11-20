@@ -541,6 +541,18 @@
 }
 .admin-module-nav > button[aria-current='page'] svg { color: var(--color-brand-cyan); }
 
+/* Command Center: cabecera y navegación en una sola pieza, para que se distinga del contenido del módulo. */
+.admin-command {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  background: var(--color-surface);
+}
+.admin-command .admin-module-nav { padding: 16px 0 0; border: 0; border-top: 1px solid var(--color-line); border-radius: 0; background: transparent; }
+@media (max-width: 639px) { .admin-command { padding: 16px; gap: 16px; } }
+
 /* Temario: módulos plegables. */
 [data-mentor-ui='modern'] button.tmr-module__head {
   display: grid;

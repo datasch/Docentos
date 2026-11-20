@@ -476,7 +476,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
           {confirmAll && (
             <div className="mentor-confirm__body">
               <h3 id="quiz-delete-title">Eliminar el examen</h3>
-              <p>Se borrarán las {questions.length} preguntas de <strong>{module.title}</strong>. No se puede deshacer.</p>
+              <p>Se borrarán las {questions.length} preguntas de <strong>{module.title}</strong>. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</p>
               <div className="mentor-confirm__actions">
                 <button type="button" className="mentor-course-control" onClick={() => setConfirmAll(false)}>Cancelar</button>
                 <button type="button" className="mentor-course-control" data-danger="true" onClick={handleDeleteAll}>

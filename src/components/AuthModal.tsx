@@ -360,7 +360,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setError(null);
                   setSuccessMessage(null);
                 }}
-                className="mt-2 text-[11px] font-semibold text-brand-cyan hover:text-cyan-300"
+                className="mt-2 text-[11px] font-semibold text-brand-cyan hover:text-brand-cyan"
               >
                 {t('auth.forgotPassword', '¿Olvidaste tu contraseña?')}
               </button>

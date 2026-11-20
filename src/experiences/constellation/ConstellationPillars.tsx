@@ -1,11 +1,15 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, Video, ShieldCheck, Layers } from 'lucide-react';
+import { Brain, Video, ShieldCheck, Layers, Award, Sparkles } from 'lucide-react';
+import { useLandingConfig } from '../../lib/landingConfig';
+
+const ICONS: Record<string, React.ElementType> = { Brain, Video, ShieldCheck, Layers, Award, Sparkles };
 
 export const ConstellationPillars: React.FC = () => {
   const { t } = useTranslation();
+  const custom = useLandingConfig();
 
-  const pillars = [
+  const defaults = [
     {
       icon: Video,
       title: t('pillars.item1Title', 'Estudia por módulos'),
@@ -27,9 +31,12 @@ export const ConstellationPillars: React.FC = () => {
       description: t('pillars.item4Desc', 'Consulta los materiales y las evaluaciones que incorpora cada curso.'),
     },
   ];
+  const pillars = custom.benefits?.length
+    ? custom.benefits.map((item) => ({ icon: ICONS[item.icon] ?? Brain, title: item.title, description: item.description }))
+    : defaults;
 
   return (
-    <section className="academy-method">
+    <section id="beneficios" className="academy-method">
       <div className="academy-container">
         <h2 className="academy-section-title">{t('pillars.title', 'Un entorno pensado para aprender')}</h2>
         <div className="academy-method__grid">

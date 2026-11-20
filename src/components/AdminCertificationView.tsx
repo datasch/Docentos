@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { List, LayoutGrid, Award, FileCheck, Eye, ShieldAlert } from 'lucide-react';
+import { List, LayoutGrid, Award, FileCheck, Eye, ShieldAlert, Ban } from 'lucide-react';
 import type { CertificateRecord } from '../types';
 import { AdminSearchField, FilterMenu, ActiveFilters, Pager, useListView } from './AdminListKit';
 
@@ -71,10 +71,11 @@ export function AdminCertificationView({ section, onSection, certificates, signa
     if (target && !d.open) d.showModal();
     if (!target && d.open) d.close();
   }, [target]);
+  useEffect(() => { if (target) setReason(''); }, [target]);
   const confirmRevoke = async () => {
-    if (!target) return;
+    if (!target || !reason.trim()) return;
     setBusy(true);
-    await onRevoke(target.id, reason);
+    await onRevoke(target.id, reason.trim());
     setBusy(false);
     setTarget(null);
     setReason('');
@@ -167,6 +168,7 @@ export function AdminCertificationView({ section, onSection, certificates, signa
                     <p className="admin-people-card__meta">{date(c.issuedAt)}</p>
                     <span className="mentor-mentee-status" data-state={revoked ? 'REVOKED' : 'active'} title={c.revocationReason || undefined}>{revoked ? 'Revocado' : 'Válido'}</span>
                     <button type="button" className="mentor-course-control" data-danger="true" disabled={revoked} onClick={() => setTarget(c)} aria-haspopup="dialog">
+                      <Ban aria-hidden="true" />
                       Revocar
                     </button>
                   </li>
@@ -220,15 +222,16 @@ export function AdminCertificationView({ section, onSection, certificates, signa
                 Revocar certificado
               </h3>
               <p>
-                El certificado <strong>{target.verificationCode}</strong> de <strong>{target.recipientName}</strong> dejará de ser válido en la verificación pública. La revocación no se puede deshacer.
+                El certificado <strong>{target.verificationCode}</strong> de <strong>{target.recipientName}</strong> dejará de ser válido en la verificación pública. La revocación es <strong className="mentor-confirm__permanent">permanente</strong>.
               </p>
               <div className="meeting-field">
-                <label htmlFor="cert-revoke-reason">Motivo (opcional)</label>
-                <input id="cert-revoke-reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Revocado por administración docente" />
+                <label htmlFor="cert-revoke-reason">Motivo de la revocación</label>
+                <input id="cert-revoke-reason" type="text" required aria-required="true" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explica por qué se revoca este certificado" autoComplete="off" />
               </div>
               <div className="mentor-confirm__actions">
                 <button type="button" className="mentor-course-control" onClick={() => setTarget(null)} disabled={busy}>Cancelar</button>
-                <button type="button" className="mentor-course-control" data-danger="true" onClick={confirmRevoke} disabled={busy} aria-busy={busy}>
+                <button type="button" className="mentor-course-control" data-danger="true" onClick={confirmRevoke} disabled={busy || !reason.trim()} aria-busy={busy}>
+                  <Ban aria-hidden="true" />
                   Revocar certificado
                 </button>
               </div>

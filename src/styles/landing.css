@@ -208,7 +208,7 @@ html:has(.lp-root) {
   height: 38px;
   border-radius: 10px;
   padding: 2px;
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, #eab308 100%);
+  background: linear-gradient(135deg, var(--color-brand-cyan) 0%, #3b82f6 20%, #a855f7 40%, #ec4899 60%, #f97316 80%, var(--color-brand-cyan) 100%);
   box-shadow: var(--lp-glow-accent);
   flex-shrink: 0;
 }
@@ -227,7 +227,7 @@ html:has(.lp-root) {
 }
 
 .lp-logo-badge-inner span {
-  background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--color-brand-cyan) 0%, #a855f7 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1569,7 +1569,7 @@ html:has(.lp-root) {
 
 /* Familias de color por indice de categoria, para que dos cursos distintos no
    se lean como el mismo bloque de contenido. */
-.lp-cat-badge.tone-0 { color: #22d3ee; border-color: rgba(6, 182, 212, 0.4); }
+.lp-cat-badge.tone-0 { color: #22d3ee; border-color: rgba(var(--brand-accent-rgb), 0.4); }
 .lp-cat-badge.tone-1 { color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); }
 .lp-cat-badge.tone-2 { color: #c4b5fd; border-color: rgba(168, 85, 247, 0.4); }
 .lp-cat-badge.tone-3 { color: #f472b6; border-color: rgba(236, 72, 153, 0.4); }
@@ -2649,7 +2649,7 @@ body[data-color-mode="light"],
 
   --lp-border: rgba(15, 23, 42, 0.08);
   --lp-glow-accent: 0 0 24px rgba(124, 58, 237, 0.08);
-  --lp-glow-cyan: 0 0 25px rgba(6, 182, 212, 0.12);
+  --lp-glow-cyan: 0 0 25px rgba(var(--brand-accent-rgb), 0.12);
   --lp-glow-gold: 0 0 18px rgba(245, 158, 11, 0.12);
   --lp-glow-green: 0 0 18px rgba(16, 185, 129, 0.12);
 }
@@ -2697,8 +2697,8 @@ body[data-color-mode="light"],
 
 [data-color-mode="light"] .lp-search-box:focus-within {
   background: #ffffff !important;
-  border-color: #06b6d4 !important;
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15), 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  border-color: var(--color-brand-cyan) !important;
+  box-shadow: 0 0 0 3px rgba(var(--brand-accent-rgb), 0.15), 0 1px 2px rgba(15, 23, 42, 0.05) !important;
 }
 
 [data-color-mode="light"] .lp-search-input {
@@ -2811,7 +2811,7 @@ body[data-color-mode="light"]:has(.lp-root) {
 }
 
 [data-color-mode="light"] .lp-root::after {
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.035) 0%, rgba(248, 250, 252, 0) 70%) !important;
+  background: radial-gradient(circle, rgba(var(--brand-accent-rgb), 0.035) 0%, rgba(248, 250, 252, 0) 70%) !important;
 }
 
 [data-color-mode="light"] .lp-welcome-text h1 {
@@ -2856,7 +2856,7 @@ body[data-color-mode="light"]:has(.lp-root) {
   background: #ecfeff !important;
   border-color: #a5f3fc !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(var(--brand-accent-rgb), 0.12) !important;
 }
 
 [data-color-mode="light"] .lp-section-title {
@@ -2879,14 +2879,14 @@ body[data-color-mode="light"]:has(.lp-root) {
 }
 
 [data-color-mode="light"] .lp-course-card::before {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(124, 58, 237, 0.06), transparent 70%) !important;
+  background: linear-gradient(135deg, rgba(var(--brand-accent-rgb), 0.12), rgba(124, 58, 237, 0.06), transparent 70%) !important;
 }
 
 [data-color-mode="light"] .lp-course-card:hover {
   background: #ffffff !important;
   transform: translateY(-4px) !important;
-  border-color: rgba(6, 182, 212, 0.35) !important;
-  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.1), 0 0 20px rgba(6, 182, 212, 0.12) !important;
+  border-color: rgba(var(--brand-accent-rgb), 0.35) !important;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.1), 0 0 20px rgba(var(--brand-accent-rgb), 0.12) !important;
 }
 
 [data-color-mode="light"] .lp-card-cover {
@@ -2931,7 +2931,7 @@ body[data-color-mode="light"]:has(.lp-root) {
 }
 
 [data-color-mode="light"] .lp-promo-banner::before {
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(6, 182, 212, 0.06) 50%, transparent 80%) !important;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(var(--brand-accent-rgb), 0.06) 50%, transparent 80%) !important;
 }
 
 [data-color-mode="light"] .lp-promo-banner::after {
@@ -3293,4 +3293,25 @@ body[data-color-mode="light"]:has(.lp-root) {
   .footer-listening-dock--landing {
     animation: none;
   }
+}
+
+/* Menú de categorías: flota sobre los cursos (no empuja el contenido) y sigue el estilo neutro del resto */
+.course-category-filter,
+.course-category-filter[open],
+.academy-ui .course-category-filter,
+.academy-ui .course-category-filter[open] { border-radius: 0.75rem; }
+.course-category-filter:hover,
+.course-category-filter:has(:focus-visible) { border-color: var(--color-line-strong); }
+.course-category-filter :focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+.course-category-filter .course-category-filter__options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -1px;
+  right: -1px;
+  z-index: 40;
+  padding: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
 }

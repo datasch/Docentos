@@ -165,7 +165,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
           <div className="space-y-3">
             <div>
               <h5 className="font-bold text-sm text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#eab308]" />
+                <Sparkles className="w-4 h-4 text-[var(--color-brand-cyan)]" />
                 {steps[currentStep].title}
               </h5>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">
@@ -247,7 +247,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                     >
                       <Star
                         className={`w-6 h-6 ${
-                          star <= feedbackRating ? 'text-[#eab308] fill-[#eab308]' : 'text-slate-600'
+                          star <= feedbackRating ? 'text-[var(--color-brand-cyan)] fill-[var(--color-brand-cyan)]' : 'text-slate-600'
                         }`}
                       />
                     </button>

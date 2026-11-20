@@ -42,12 +42,12 @@ export const THEME_PALETTES: Record<ColorTheme, ThemePalette> = {
     gradient: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
   },
   amber: {
-    name: 'Ámbar Gold',
-    brandCyan: '#f59e0b',
-    brandBlue: '#d97706',
-    brandPurple: '#b45309',
-    accentRgb: '245, 158, 11',
-    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+    name: 'Ámbar',
+    brandCyan: '#fbbf24',
+    brandBlue: '#fbbf24',
+    brandPurple: '#fbbf24',
+    accentRgb: '251, 191, 36',
+    gradient: 'linear-gradient(135deg, #fbbf24 0%, #fbbf24 100%)',
   },
 };
 
@@ -59,8 +59,14 @@ const LIGHT_ACCENTS: Record<ColorTheme, [string, string, string]> = {
   cyan: ['#0e7490', '#1d4ed8', '#6b21a8'],
   violet: ['#7e22ce', '#4338ca', '#6d28d9'],
   emerald: ['#047857', '#0e7490', '#0f766e'],
-  amber: ['#b45309', '#9a3412', '#b91c1c'],
+  amber: ['#b45309', '#b45309', '#b45309'],
 };
+
+/** El cian era el valor de fábrica, no una elección: quien lo tenía guardado pasa al ámbar. */
+function storedTheme(): ColorTheme {
+  const saved = localStorage.getItem(STORAGE_THEME_KEY);
+  return saved === 'violet' || saved === 'emerald' || saved === 'amber' ? saved : 'amber';
+}
 
 export function getThemePalette(theme: ColorTheme, mode: ColorMode): ThemePalette {
   const palette = THEME_PALETTES[theme] || THEME_PALETTES.cyan;
@@ -72,7 +78,7 @@ export function getThemePalette(theme: ColorTheme, mode: ColorMode): ThemePalett
 }
 
 export function applyPlatformTheme(
-  theme: ColorTheme = 'cyan',
+  theme: ColorTheme = 'amber',
   density: Density = 'comfortable',
   colorMode: ColorMode = getCurrentColorMode(),
   options: { persist?: boolean } = {},
@@ -174,11 +180,11 @@ export function getCurrentColorMode(): ColorMode {
 
 export function setColorMode(mode: ColorMode): ColorMode {
   try {
-    const savedTheme = (localStorage.getItem(STORAGE_THEME_KEY) as ColorTheme) || 'cyan';
+    const savedTheme = storedTheme();
     const savedDensity = (localStorage.getItem(STORAGE_DENSITY_KEY) as Density) || 'comfortable';
     applyPlatformTheme(savedTheme, savedDensity, mode);
   } catch {
-    applyPlatformTheme('cyan', 'comfortable', mode);
+    applyPlatformTheme('amber', 'comfortable', mode);
   }
   return mode;
 }
@@ -192,11 +198,11 @@ export function toggleColorMode(): ColorMode {
 export function initSavedTheme() {
   if (typeof window === 'undefined') return;
   try {
-    const savedTheme = (localStorage.getItem(STORAGE_THEME_KEY) as ColorTheme) || 'cyan';
+    const savedTheme = storedTheme();
     const savedDensity = (localStorage.getItem(STORAGE_DENSITY_KEY) as Density) || 'comfortable';
     const savedMode = (localStorage.getItem(STORAGE_COLOR_MODE_KEY) as ColorMode) || 'dark';
     applyPlatformTheme(savedTheme, savedDensity, savedMode);
   } catch {
-    applyPlatformTheme('cyan', 'comfortable', 'dark');
+    applyPlatformTheme('amber', 'comfortable', 'dark');
   }
 }

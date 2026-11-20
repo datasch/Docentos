@@ -50,9 +50,12 @@ import {
   normalizeCustomizerConfig,
   type CustomizerConfig,
 } from '../lib/customizerConfig';
-import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL } from '../lib/logoConfig';
+import { setCustomLogoUrl, setCustomBrandName, setCustomCampusName, DEFAULT_LOGO_URL, getCustomLogoUrl } from '../lib/logoConfig';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
+import { ActiveFilters, FilterMenu, useListView } from './AdminListKit';
+import { PluginConfigSheet } from './PluginConfigSheet';
+import { LayoutGrid, List } from 'lucide-react';
 
 const FIELD_LABELS: Record<string, string> = {
   institutionName: 'Nombre de la Institución',
@@ -64,6 +67,10 @@ const FIELD_LABELS: Record<string, string> = {
   notifyOnCompletion: 'Notificar al completar módulos o cursos',
   passingScore: 'Puntuación mínima de aprobación (%)',
   maxAttempts: 'Intentos iniciales por día',
+  timeLimitMinutes: 'Tiempo límite del examen (minutos)',
+  enforceModuleLocking: 'Bloquear módulos hasta aprobar el examen anterior',
+  showExplanations: 'Mostrar la explicación de cada respuesta',
+  defaultFolderId: 'Carpeta de Drive por defecto',
   cooldownMinMinutes: 'Espera mínima después de agotar los intentos (minutos)',
   cooldownMaxMinutes: 'Espera máxima (minutos)',
   resetTimeZone: 'Zona horaria del reinicio diario',
@@ -86,6 +93,10 @@ const FIELD_LABELS: Record<string, string> = {
   showQuickVersionSwitcher: 'Mostrar selector rápido de versiones en cabecera',
   customBrandName: 'Nombre de la Plataforma / Marca',
   customCampusName: 'Título del Campus / Panel de Administración',
+  mode: 'Modo de Festividad',
+  showBanner: 'Mostrar banner superior conmemorativo',
+  showParticles: 'Mostrar efectos ambientales (nieve / murciélagos)',
+  showFestiveHats: 'Mostrar gorro festivo en logos y constelación 3D',
 };
 
 /** Nombre o descripción del plugin en el idioma activo; el texto del catálogo (español) queda como respaldo. */
@@ -93,7 +104,7 @@ function pluginText(t: (key: string, fallback: string) => string, plugin: { id: 
   return t(`plugin_${plugin.id.replace(/-/g, '_')}_${field}`, field === 'name' ? plugin.name : plugin.description);
 }
 
-export const PluginManagerView: React.FC = () => {
+export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = false }) => {
   const { t } = useTranslation();
   const [plugins, setPlugins] = useState<AcademiaPlugin[]>(pluginManager.getPlugins());
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -103,6 +114,8 @@ export const PluginManagerView: React.FC = () => {
   const [customizerInitialState, setCustomizerInitialState] = useState<CustomizerConfig | null>(null);
   const [savingConfig, setSavingConfig] = useState<boolean>(false);
   const [downloadingSampleCert, setDownloadingSampleCert] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const { isMobile, view, change: changeView } = useListView('admin-plugins-view');
 
   const handleDownloadSampleCert = async () => {
     try {
@@ -179,6 +192,12 @@ export const PluginManagerView: React.FC = () => {
     if (plugin.id === 'live-meetings' || plugin.category === 'meetings') {
       if (!initialConfig.defaultProvider) initialConfig.defaultProvider = 'jitsi';
       if (!initialConfig.jitsiDomain) initialConfig.jitsiDomain = 'meet.jit.si';
+    }
+    if (plugin.id === 'seasonal-festivities') {
+      if (!initialConfig.mode) initialConfig.mode = 'auto';
+      if (initialConfig.showBanner === undefined) initialConfig.showBanner = true;
+      if (initialConfig.showParticles === undefined) initialConfig.showParticles = true;
+      if (initialConfig.showFestiveHats === undefined) initialConfig.showFestiveHats = true;
     }
     if (plugin.id === 'docentos-customizer') {
       const normalizedConfig = normalizeCustomizerConfig({
@@ -266,6 +285,7 @@ export const PluginManagerView: React.FC = () => {
       case 'Youtube': return Youtube;
       case 'HardDrive': return HardDrive;
       case 'Palette': return Palette;
+      case 'Sparkles': return Sparkles;
       default: return Layers;
     }
   };
@@ -274,8 +294,129 @@ export const PluginManagerView: React.FC = () => {
     ? plugins
     : plugins.filter((p) => p.category === selectedCategory);
 
+  const CATEGORY_LABELS: Record<string, string> = {
+    certificates: t('pluginCatCertificates', 'Certificados'),
+    quizzes: t('pluginCatQuizzes', 'Exámenes'),
+    integrations: t('pluginCatIntegrations', 'Integraciones'),
+    analytics: t('pluginCatAnalytics', 'Analíticas'),
+    meetings: t('pluginCatMeetings', 'Clases en vivo'),
+    custom: t('pluginUi_personalizacion', 'Personalización'),
+  };
+  const categoryLabel = (category: string) => CATEGORY_LABELS[category] ?? category;
+  const visiblePlugins = filteredPlugins.filter((plugin) => statusFilter === 'ALL' || (statusFilter === 'on' ? plugin.enabled : !plugin.enabled));
+  const categoryOptions = Object.keys(CATEGORY_LABELS)
+    .map((value) => ({ value, label: CATEGORY_LABELS[value], count: plugins.filter((plugin) => plugin.category === value).length }))
+    .filter((option) => option.count > 0);
+  const activeCount = plugins.filter((plugin) => plugin.enabled).length;
+
+  const modernList = (
+    <div data-mentor-ui="modern" className="admin-courses-root admin-plugins">
+      <div className="mentor-mentees-panel admin-people-panel">
+        <div className="mentor-section-heading">
+          <div>
+            <h2>{t('pluginUi_sistema', 'Sistema')}</h2>
+            <p>{t('sistemaDescripcion', 'Activa las extensiones de la plataforma y ajusta su configuración.')}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mentor-course-toolbar admin-plugins__toolbar">
+        <FilterMenu
+          groups={[
+            { label: t('pluginUi_categoria', 'Categoría'), value: selectedCategory, onChange: setSelectedCategory, options: categoryOptions },
+            { label: t('pluginUi_estado', 'Estado'), value: statusFilter, onChange: setStatusFilter, options: [
+              { value: 'on', label: t('pluginUi_activos', 'Activos'), count: activeCount },
+              { value: 'off', label: t('pluginUi_inactivos', 'Inactivos'), count: plugins.length - activeCount },
+            ] },
+          ]}
+        />
+        {!isMobile && (
+          <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDePlugins', 'Vista de plugins')}>
+            <button type="button" aria-pressed={view === 'list'} onClick={() => changeView('list')}><List aria-hidden="true" />{t('pluginUi_lista', 'Lista')}</button>
+            <button type="button" aria-pressed={view === 'cards'} onClick={() => changeView('cards')}><LayoutGrid aria-hidden="true" />{t('pluginUi_tarjetas', 'Tarjetas')}</button>
+          </div>
+        )}
+        <span className="admin-plugins__count">{t('pluginsActivosDeTotal', '{{active}} de {{total}} activos', { active: activeCount, total: plugins.length })}</span>
+        <button type="button" className="mentor-course-control admin-plugins__sync" onClick={loadPlugins}>
+          <RefreshCw aria-hidden="true" />{t('pluginUi_sincronizar', 'Sincronizar')}
+        </button>
+      </div>
+
+      <ActiveFilters
+        noun={t('pluginUi_plugins', 'plugins')}
+        shown={visiblePlugins.length}
+        total={plugins.length}
+        onClear={() => { setSelectedCategory('ALL'); setStatusFilter('ALL'); }}
+        chips={[
+          ...(selectedCategory !== 'ALL' ? [{ key: 'category', text: categoryLabel(selectedCategory), onRemove: () => setSelectedCategory('ALL') }] : []),
+          ...(statusFilter !== 'ALL' ? [{ key: 'status', text: statusFilter === 'on' ? t('pluginUi_activos', 'Activos') : t('pluginUi_inactivos', 'Inactivos'), onRemove: () => setStatusFilter('ALL') }] : []),
+        ]}
+      />
+
+      {visiblePlugins.length === 0 ? (
+        <div className="admin-plugins__empty">
+          <Layers aria-hidden="true" />
+          <p>{plugins.length === 0
+            ? t('catalogoSeRegistraAlArrancar', 'El catálogo se registra solo al arrancar la aplicación. Si sigues viendo esto, revisa el registro del servidor.')
+            : t('ningunPluginConEstosFiltros', 'Ningún plugin coincide con los filtros.')}</p>
+        </div>
+      ) : (
+        <ul className="admin-plugins__list" data-view={view}>
+          {visiblePlugins.map((plugin) => {
+            const IconComponent = getPluginIcon(plugin.icon);
+            const hasSignature = plugin.category === 'certificates' && (plugin.config?.signatureImage || plugin.config?.signature);
+            return (
+              <li key={plugin.id} className="admin-plugins__item" data-enabled={plugin.enabled || undefined}>
+                <span className="admin-plugins__glyph" aria-hidden="true"><IconComponent /></span>
+                <div className="admin-plugins__body">
+                  <h4>{pluginText(t, plugin, 'name')} <span>v{plugin.version}</span></h4>
+                  <p>{pluginText(t, plugin, 'desc')}</p>
+                  <p className="admin-plugins__meta">
+                    <span>{categoryLabel(plugin.category)}</span>
+                    {hasSignature && <span>{t('pluginUi_firmaLista', 'Firma lista')}</span>}
+                  </p>
+                </div>
+                <div className="admin-plugins__controls">
+                  <span className="admin-plugins__state" data-on={plugin.enabled || undefined}>{plugin.enabled ? t('pluginUi_activo', 'Activo') : t('pluginUi_inactivo', 'Inactivo')}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={plugin.enabled}
+                    aria-label={t('activarPluginName', 'Activar {{name}}', { name: pluginText(t, plugin, 'name') })}
+                    className="admin-plugins__switch"
+                    onClick={() => handleTogglePlugin(plugin.id, plugin.enabled)}
+                  ><span /></button>
+                  <button type="button" className="mentor-course-control admin-plugins__config" onClick={() => handleOpenConfigModal(plugin)}>
+                    <Settings aria-hidden="true" />{t('pluginUi_configurar', 'Configurar')}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <PluginConfigSheet
+        plugin={configModalPlugin}
+        title={configModalPlugin ? t('configurarName', 'Configurar {{name}}', { name: pluginText(t, configModalPlugin, 'name') }) : ''}
+        form={configFormState}
+        setForm={setConfigFormState}
+        dirty={Boolean(configModalPlugin?.id === 'docentos-customizer' && customizerInitialState && JSON.stringify(customizerInitialState) !== JSON.stringify(normalizeCustomizerConfig(configFormState)))}
+        saving={savingConfig}
+        fieldLabels={FIELD_LABELS}
+        onPreviewCustomizer={previewCustomizerState}
+        onSave={handleSaveConfig}
+        onCancel={handleCancelConfig}
+        downloadingSample={downloadingSampleCert}
+        onDownloadSample={handleDownloadSampleCert}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-6">
+      {modern && modernList}
+      {!modern && (<>
       {/* Header Banner */}
       <div className="bg-canvas border border-line rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -407,8 +548,10 @@ export const PluginManagerView: React.FC = () => {
         })}
       </div>
 
+      </>)}
+
       {/* Configuration Modal */}
-      {configModalPlugin && typeof document !== 'undefined' && createPortal(
+      {!modern && configModalPlugin && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fade-in overscroll-contain"
           onMouseDown={handleCancelConfig}
@@ -1221,7 +1364,7 @@ export const PluginManagerView: React.FC = () => {
                             <img
                               src={configFormState.customLogoUrl || DEFAULT_LOGO_URL}
                               alt={t('logoInstitucion', 'Logo Institución')}
-                              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.5)]"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
                               }}
@@ -1309,11 +1452,152 @@ export const PluginManagerView: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Special: seasonal-festivities suite */}
+                  {configModalPlugin.id === 'seasonal-festivities' && (() => {
+                    const autoTheme = getAutomaticSeasonalTheme();
+                    const selectedMode = (configFormState.mode || 'auto') as SeasonalMode;
+                    const effectivePreviewTheme: SeasonalTheme =
+                      selectedMode === 'auto' ? autoTheme : selectedMode;
+                    const previewInfo = SEASONAL_INFO[effectivePreviewTheme];
+
+                    return (
+                      <div className="space-y-4 p-4 bg-canvas border border-line rounded-2xl">
+                        {!configModalPlugin.enabled && (
+                          <div className="rounded-xl border border-warning-light/40 bg-warning-light/10 px-3.5 py-2.5 text-xs text-warning-light">
+                            {t('pluginFestividadesDesactivadoAviso', 'Este plugin está desactivado en el interruptor principal. Actívalo para que la ambientación festiva se aplique en DocentOS.')}
+                          </div>
+                        )}
+
+                        <div className="rounded-xl border border-line bg-raised p-3.5 flex items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-brand-cyan">
+                              {t('automatizacionNativaDocentos', 'Automatización nativa de DocentOS')}
+                            </p>
+                            <p className="text-xs text-ink-soft">
+                              {t('calendarioDetectadoHoy', 'Calendario detectado hoy:')}{' '}
+                              <strong className="text-ink">
+                                {SEASONAL_INFO[autoTheme].emoji} {SEASONAL_INFO[autoTheme].nombre}
+                              </strong>
+                            </p>
+                            <p className="text-[11px] text-ink-muted">
+                              {t('rangoFechasFestividades', 'Halloween: 1 Oct – 2 Nov · Navidad: 20 Nov – 6 Ene')}
+                            </p>
+                          </div>
+
+                          <div className="w-12 h-12 rounded-xl bg-black/40 border border-line flex items-center justify-center p-1.5 relative overflow-visible shrink-0">
+                            <img
+                              src={getCustomLogoUrl()}
+                              alt={t('vistaPreviaFestiva', 'Vista previa festiva')}
+                              className="w-full h-full object-contain"
+                            />
+                            {configFormState.showFestiveHats !== false && (
+                              <FestiveHatOverlay size="md" forcedTheme={effectivePreviewTheme} />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                            {t('modoOperacionFestividades', 'Modo de operación (Complemento + Respaldo)')}
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {[
+                              {
+                                value: 'auto' as SeasonalMode,
+                                title: t('festividadModoAutoTitulo', 'Automático (Calendario)'),
+                                desc: t('festividadModoAutoDesc', 'Usa las fechas integradas en DocentOS.'),
+                                emoji: '🗓️',
+                              },
+                              {
+                                value: 'christmas' as SeasonalMode,
+                                title: t('festividadModoNavidadTitulo', 'Forzar Navidad'),
+                                desc: t('festividadModoNavidadDesc', 'Activa nieve, gorro navideño y paleta festiva.'),
+                                emoji: '🎄',
+                              },
+                              {
+                                value: 'halloween' as SeasonalMode,
+                                title: t('festividadModoHalloweenTitulo', 'Forzar Halloween'),
+                                desc: t('festividadModoHalloweenDesc', 'Activa murciélagos, sombrero y paleta nocturna.'),
+                                emoji: '🎃',
+                              },
+                              {
+                                value: 'none' as SeasonalMode,
+                                title: t('festividadModoNingunoTitulo', 'Apagar Festividades'),
+                                desc: t('festividadModoNingunoDesc', 'Mantiene la interfaz cósmica estándar.'),
+                                emoji: '✨',
+                              },
+                            ].map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setConfigFormState({ ...configFormState, mode: opt.value })}
+                                className={`text-left p-3 rounded-xl border transition-all ${
+                                  selectedMode === opt.value
+                                    ? 'border-brand-cyan bg-brand-cyan/10 ring-1 ring-brand-cyan/30'
+                                    : 'border-line bg-raised hover:border-line-strong'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 text-xs font-bold text-ink">
+                                  <span>{opt.emoji}</span>
+                                  <span>{opt.title}</span>
+                                </div>
+                                <p className="mt-1 text-[11px] text-ink-muted leading-snug">{opt.desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-line bg-raised px-3.5 py-2.5 text-xs text-ink-soft flex items-center justify-between">
+                          <span>{t('resultadoEfectivoFestividades', 'Resultado efectivo con esta configuración:')}</span>
+                          <span className="font-bold" style={{ color: previewInfo.colorAcento }}>
+                            {previewInfo.emoji} {previewInfo.nombre}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 pt-1">
+                          {[
+                            {
+                              key: 'showBanner',
+                              label: t('festividadMostrarBanner', 'Mostrar banner superior conmemorativo'),
+                            },
+                            {
+                              key: 'showParticles',
+                              label: t('festividadMostrarParticulas', 'Mostrar efectos ambientales (nieve / murciélagos y brumas)'),
+                            },
+                            {
+                              key: 'showFestiveHats',
+                              label: t('festividadMostrarGorros', 'Mostrar gorro festivo en logos y constelación 3D'),
+                            },
+                          ].map((toggle) => (
+                            <label
+                              key={toggle.key}
+                              className="flex items-center justify-between p-3 bg-raised border border-line rounded-xl cursor-pointer"
+                            >
+                              <span className="text-xs font-bold text-ink-soft">{toggle.label}</span>
+                              <input
+                                type="checkbox"
+                                checked={configFormState[toggle.key] !== false}
+                                onChange={(e) =>
+                                  setConfigFormState({
+                                    ...configFormState,
+                                    [toggle.key]: e.target.checked,
+                                  })
+                                }
+                                className="w-4 h-4 rounded text-brand-cyan focus:ring-0 cursor-pointer"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {Object.keys(configModalPlugin.config || {})
                     .filter((k) => {
                       if (k === 'signatureImage' || k === 'signature' || k === 'institutionLogo' || k === 'backgroundColor') return false;
                       if (configModalPlugin.id === 'live-meetings' && (k === 'defaultProvider' || k === 'jitsiDomain')) return false;
                       if (configModalPlugin.id === 'docentos-customizer') return false;
+                      if (configModalPlugin.id === 'seasonal-festivities') return false;
                       return true;
                     })
                     .map((key) => {

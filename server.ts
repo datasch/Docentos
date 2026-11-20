@@ -235,6 +235,15 @@ function parseJsonArray(value: string): any[] {
   }
 }
 
+const SEASONAL_FESTIVITIES_DEFAULTS = {
+  mode: 'auto',
+  showBanner: true,
+  showParticles: true,
+  showFestiveHats: true,
+} as const;
+
+const SEASONAL_MODE_VALUES = new Set(['auto', 'halloween', 'christmas', 'none']);
+
 function parsePlugin(plugin: any, isAdmin = false) {
   let config: Record<string, unknown> = {};
   try {
@@ -251,6 +260,7 @@ function parsePlugin(plugin: any, isAdmin = false) {
   }
 
   if (plugin.id === 'interactive-quizzes') config = { ...QUIZ_POLICY_DEFAULTS, ...config };
+  if (plugin.id === 'seasonal-festivities') config = { ...SEASONAL_FESTIVITIES_DEFAULTS, ...config };
 
   // Las credenciales de la configuracion no salen de administracion. La regla
   // vive en server/pluginConfig.ts: mira la forma de la clave, no el id del
@@ -3374,6 +3384,16 @@ app.post(
       try { validateQuizPolicy(mergedConfig); }
       catch (error) { return res.status(400).json({ error: (error as Error).message }); }
     }
+    if (plugin.id === 'seasonal-festivities') {
+      const mode = typeof mergedConfig.mode === 'string' ? mergedConfig.mode : 'auto';
+      if (!SEASONAL_MODE_VALUES.has(mode)) {
+        return res.status(400).json({ error: 'Modo de festividad no válido' });
+      }
+      mergedConfig.mode = mode;
+      mergedConfig.showBanner = mergedConfig.showBanner !== false;
+      mergedConfig.showParticles = mergedConfig.showParticles !== false;
+      mergedConfig.showFestiveHats = mergedConfig.showFestiveHats !== false;
+    }
     const updated = await prisma.plugin.update({
       where: { id: plugin.id },
       // Se guarda cifrada: aqui es donde entran las URL de webhook y las
@@ -4607,17 +4627,27 @@ app.put(
 app.get(
   '/api/public/brand',
   asyncRoute(async (_req, res) => {
-    const plugin = await prisma.plugin.findUnique({ where: { id: 'docentos-customizer' } });
-    if (!plugin) {
-      return res.json({ success: true, brandName: 'DocentOS', campusName: 'DocentOS Command Center', logoUrl: '' });
-    }
-    const parsed = parsePlugin(plugin, false);
-    const cfg = (parsed.config || {}) as Record<string, any>;
+    const plugins = await prisma.plugin.findMany({
+      where: { id: { in: ['docentos-customizer', 'seasonal-festivities'] } },
+    });
+    const customizerPlugin = plugins.find((p) => p.id === 'docentos-customizer');
+    const seasonalPlugin = plugins.find((p) => p.id === 'seasonal-festivities');
+
+    const cfg = customizerPlugin ? (parsePlugin(customizerPlugin, false).config as Record<string, any>) : {};
+    const seasonalCfg = seasonalPlugin ? (parsePlugin(seasonalPlugin, false).config as Record<string, any>) : {};
+
     res.json({
       success: true,
       brandName: cfg.customBrandName || 'DocentOS',
       campusName: cfg.customCampusName || 'DocentOS Command Center',
       logoUrl: cfg.customLogoUrl || '',
+      festivities: {
+        enabled: seasonalPlugin ? seasonalPlugin.enabled : true,
+        mode: typeof seasonalCfg.mode === 'string' ? seasonalCfg.mode : 'auto',
+        showBanner: seasonalCfg.showBanner !== false,
+        showParticles: seasonalCfg.showParticles !== false,
+        showFestiveHats: seasonalCfg.showFestiveHats !== false,
+      },
     });
   }),
 );
@@ -6149,7 +6179,8 @@ app.post(
         npsScore: data.npsScore ?? null,
         subject: data.subject,
         message: data.message,
-        anonymous: data.anonymous,
+        // Los comentarios del Buzón incluyen NPS: siempre quedan identificados para seguimiento.
+        anonymous: false,
       },
       include: LISTENING_INCLUDE,
     });
@@ -6179,14 +6210,14 @@ app.get(
   }),
 );
 
-/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido. */
+/** La persona abrio la pestaña de respuestas: lo que habia sin leer pasa a leido, y el caso se cierra solo. */
 app.post(
   '/api/listening/mine/seen',
   requireAuthenticated,
   asyncRoute(async (req, res) => {
     await prisma.listeningEntry.updateMany({
       where: { userId: req.user!.id, reply: { not: null }, replySeenAt: null },
-      data: { replySeenAt: new Date() },
+      data: { replySeenAt: new Date(), status: 'CLOSED' },
     });
     res.json({ success: true });
   }),

@@ -2,16 +2,25 @@ import React from 'react';
 import { SeasonalTheme } from '../../lib/seasonalTheme';
 import { useTranslation } from 'react-i18next'
 
+const christmasOrnaments = [
+  ['christmas-tree', 'snowflake'],
+  ['wrapped-gift', 'bell'],
+  ['snowman', 'glowing-star'],
+  ['snowflake', 'wrapped-gift'],
+] as const;
+
 interface ModuleSideDecorationsProps {
   seasonalTheme: SeasonalTheme;
   modIdx: number;
   height: number;
+  celebratingSide?: 'left' | 'right';
 }
 
 export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
   seasonalTheme,
   modIdx,
   height,
+  celebratingSide,
 }) => {
   const { t } = useTranslation()
   const variant = modIdx % 4;
@@ -181,139 +190,29 @@ export const ModuleSideDecorations: React.FC<ModuleSideDecorationsProps> = ({
   }
 
   if (seasonalTheme === 'christmas') {
+    const [leftOrnament, rightOrnament] = christmasOrnaments[variant];
     return (
-      <div aria-hidden="true" className="pointer-events-none select-none absolute inset-0 z-0 overflow-visible hidden md:block">
-        {/* Decoración Izquierda */}
-        <div
-          className="absolute -left-20 sm:-left-32 lg:-left-44 animate-[float_6.5s_ease-in-out_infinite] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
-          style={{ top: `${leftY}px` }}
-        >
-          {variant === 0 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-18 h-22 sm:w-24 sm:h-28 filter drop-shadow-[0_0_26px_rgba(16,185,129,0.75)]" viewBox="0 0 100 120" fill="none">
-                <rect x="44" y="94" width="12" height="18" rx="2" fill="#78350f" stroke="#451a03" strokeWidth="1.5" />
-                <polygon points="50,18 20,54 80,54" fill="#059669" stroke="#047857" strokeWidth="2" />
-                <polygon points="50,40 14,74 86,74" fill="#059669" stroke="#047857" strokeWidth="2" />
-                <polygon points="50,60 8,96 92,96" fill="#059669" stroke="#047857" strokeWidth="2" />
-                <polygon points="50,6 53,14 62,14 55,19 57,27 50,22 43,27 45,19 38,14 47,14" fill="#fbbf24" stroke="#f59e0b" strokeWidth="1.5" className="animate-pulse" />
-                <circle cx="36" cy="46" r="3.5" fill="#ef4444" className="animate-ping" />
-                <circle cx="64" cy="48" r="3.5" fill="#3b82f6" />
-                <circle cx="50" cy="66" r="3.5" fill="#ec4899" className="animate-ping" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {t('arbolPolar', '🎄 Árbol Polar')}
-              </span>
-            </div>
-          )}
-
-          {variant === 1 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-16 sm:w-22 sm:h-22 filter drop-shadow-[0_0_24px_rgba(251,191,36,0.75)]" viewBox="0 0 100 100" fill="none">
-                <rect x="22" y="38" width="56" height="48" rx="5" fill="#dc2626" stroke="#991b1b" strokeWidth="2" />
-                <rect x="18" y="30" width="64" height="14" rx="3" fill="#ef4444" stroke="#991b1b" strokeWidth="2" />
-                <rect x="45" y="30" width="10" height="56" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
-                <rect x="22" y="56" width="56" height="10" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
-                <ellipse cx="40" cy="24" rx="10" ry="7" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" transform="rotate(-20 40 24)" />
-                <ellipse cx="60" cy="24" rx="10" ry="7" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" transform="rotate(20 60 24)" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-                {t('regaloPro', '🎁 Regalo Pro')}
-              </span>
-            </div>
-          )}
-
-          {variant === 2 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-20 sm:w-22 sm:h-26 filter drop-shadow-[0_0_24px_rgba(186,230,253,0.75)]" viewBox="0 0 100 110" fill="none">
-                <circle cx="50" cy="74" r="28" fill="#ffffff" stroke="#bae6fd" strokeWidth="2.5" />
-                <circle cx="50" cy="38" r="20" fill="#ffffff" stroke="#bae6fd" strokeWidth="2.5" />
-                <circle cx="44" cy="34" r="2.5" fill="#0f172a" />
-                <circle cx="56" cy="34" r="2.5" fill="#0f172a" />
-                <polygon points="50,38 68,40 50,42" fill="#f97316" stroke="#c2410c" strokeWidth="1" />
-                <path d="M34 50 Q50 56 66 50 Q66 58 50 60 Q34 58 34 50 Z" fill="#dc2626" />
-                <circle cx="50" cy="66" r="2.5" fill="#0f172a" />
-                <circle cx="50" cy="78" r="2.5" fill="#0f172a" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-sky-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-sky-500/30">
-                {t('munecoNieve', '⛄ Muñeco Nieve')}
-              </span>
-            </div>
-          )}
-
-          {variant === 3 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-16 sm:w-22 sm:h-22 filter drop-shadow-[0_0_24px_rgba(250,204,21,0.8)]" viewBox="0 0 100 100" fill="none">
-                <circle cx="50" cy="50" r="32" stroke="#10b981" strokeWidth="10" strokeDasharray="8 6" fill="none" />
-                <circle cx="50" cy="50" r="32" stroke="#ef4444" strokeWidth="10" strokeDasharray="3 24" fill="none" />
-                <circle cx="50" cy="20" r="6" fill="#dc2626" />
-                <polygon points="50,20 40,8 44,22" fill="#ef4444" />
-                <polygon points="50,20 60,8 56,22" fill="#ef4444" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {t('coronaPolar', '🌿 Corona Polar')}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Decoración Derecha */}
-        <div
-          className="absolute -right-20 sm:-right-32 lg:-right-44 animate-[float_7s_ease-in-out_infinite_1.2s] [will-change:transform] opacity-95 transition-transform duration-300 hover:scale-110"
-          style={{ top: `${rightY}px` }}
-        >
-          {variant === 0 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-18 sm:w-22 sm:h-24 filter drop-shadow-[0_0_24px_rgba(239,68,68,0.75)]" viewBox="0 0 100 100" fill="none">
-                <path d="M32 85 L32 35 C32 18, 52 18, 52 32" stroke="#ffffff" strokeWidth="12" strokeLinecap="round" fill="none" />
-                <path d="M32 85 L32 35 C32 18, 52 18, 52 32" stroke="#dc2626" strokeWidth="12" strokeLinecap="round" strokeDasharray="6 8" fill="none" />
-                <circle cx="42" cy="50" r="6" fill="#fbbf24" stroke="#d97706" strokeWidth="2" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-red-400 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-red-500/30">
-                {t('bastonFestivo', '🍬 Bastón Festivo')}
-              </span>
-            </div>
-          )}
-
-          {variant === 1 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-16 sm:w-22 sm:h-22 filter drop-shadow-[0_0_24px_rgba(250,204,21,0.8)]" viewBox="0 0 100 100" fill="none">
-                <path d="M50 24 C40 24, 30 38, 28 62 C26 70, 20 74, 20 78 C20 84, 80 84, 80 78 C80 74, 74 70, 72 62 C70 38, 60 24, 50 24 Z" fill="#fbbf24" stroke="#d97706" strokeWidth="2.5" />
-                <ellipse cx="50" cy="78" rx="28" ry="6" fill="#f59e0b" stroke="#b45309" strokeWidth="2" />
-                <circle cx="50" cy="85" r="6" fill="#78350f" />
-                <circle cx="50" cy="22" r="5" fill="#ef4444" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                {t('campanas', '🔔 Campanas')}
-              </span>
-            </div>
-          )}
-
-          {variant === 2 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-16 sm:w-22 sm:h-22 filter drop-shadow-[0_0_24px_rgba(244,63,94,0.7)]" viewBox="0 0 100 100" fill="none">
-                <circle cx="50" cy="54" r="32" fill="#059669" stroke="#10b981" strokeWidth="2.5" />
-                <ellipse cx="40" cy="42" rx="10" ry="16" fill="#ffffff" opacity="0.35" transform="rotate(-30 40 42)" />
-                <rect x="42" y="16" width="16" height="8" rx="2" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5" />
-                <circle cx="50" cy="12" r="5" fill="none" stroke="#fbbf24" strokeWidth="2" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {t('esferaPolar', '❄ Esfera Polar')}
-              </span>
-            </div>
-          )}
-
-          {variant === 3 && (
-            <div className="flex flex-col items-center">
-              <svg className="w-16 h-16 sm:w-22 sm:h-22 filter drop-shadow-[0_0_26px_rgba(250,204,21,0.85)]" viewBox="0 0 100 100" fill="none">
-                <polygon points="50,10 58,35 85,35 64,52 72,78 50,62 28,78 36,52 15,35 42,35" fill="#facc15" stroke="#f59e0b" strokeWidth="2" className="animate-pulse" />
-                <circle cx="50" cy="46" r="6" fill="#ffffff" />
-              </svg>
-              <span className="text-[10px] font-black uppercase tracking-wider text-yellow-300 font-mono mt-1 bg-black/60 dark:bg-black/80 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                {t('estrellaBelen', '⭐ Estrella Belén')}
-              </span>
-            </div>
-          )}
-        </div>
+      <div aria-hidden="true" className="pointer-events-none select-none absolute inset-0 z-0 hidden overflow-visible md:block">
+        <img
+          src={`/seasonal/fluent-emoji/${leftOrnament}.png`}
+          alt=""
+          width="72"
+          height="72"
+          loading="lazy"
+          decoding="async"
+          className={`christmas-module-ornament christmas-module-ornament--left absolute -left-20 h-16 w-16 object-contain opacity-80 lg:-left-28 lg:h-[72px] lg:w-[72px]${celebratingSide === 'left' ? ' christmas-module-ornament--celebrating' : ''}`}
+          style={{ top: `${leftY}px`, '--ornament-sway-delay': `${-modIdx * 1.7}s` } as React.CSSProperties}
+        />
+        <img
+          src={`/seasonal/fluent-emoji/${rightOrnament}.png`}
+          alt=""
+          width="72"
+          height="72"
+          loading="lazy"
+          decoding="async"
+          className={`christmas-module-ornament christmas-module-ornament--right absolute -right-20 h-16 w-16 object-contain opacity-80 lg:-right-28 lg:h-[72px] lg:w-[72px]${celebratingSide === 'right' ? ' christmas-module-ornament--celebrating' : ''}`}
+          style={{ top: `${rightY}px`, '--ornament-sway-delay': `${-2 - modIdx * 2.1}s` } as React.CSSProperties}
+        />
       </div>
     );
   }

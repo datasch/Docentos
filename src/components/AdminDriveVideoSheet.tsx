@@ -1,3 +1,4 @@
+import { AdminSelect } from './AdminSelect';
 import { useEffect, useRef } from 'react';
 import { Link2, X } from 'lucide-react';
 import type { Module } from '../types';
@@ -46,12 +47,12 @@ export function AdminDriveVideoSheet({ open, onClose, onSubmit, modules, moduleI
           <form id="admin-drive-video-form" onSubmit={onSubmit} className="admin-person-sheet__scroll">
             <div className="meeting-field"><label htmlFor="admin-drive-video-url">Enlace del video</label><input id="admin-drive-video-url" type="text" placeholder="https://drive.google.com/file/d/..." value={url} onChange={(event) => onUrl(event.target.value)} required /></div>
             <div className="meeting-field"><label htmlFor="admin-drive-video-title">Título de la clase</label><input id="admin-drive-video-title" type="text" placeholder="Ej. Introducción a la arquitectura" value={title} onChange={(event) => onTitle(event.target.value)} required /></div>
-            <div className="meeting-field"><label htmlFor="admin-drive-video-module">Módulo de destino</label><select id="admin-drive-video-module" value={moduleId} onChange={(event) => onModuleId(event.target.value)} required>{modules.map((module) => <option key={module.id} value={module.id}>{module.title}</option>)}</select></div>
+            <div className="meeting-field"><label htmlFor="admin-drive-video-module">Módulo de destino</label><AdminSelect inline id="admin-drive-video-module" required value={moduleId} onChange={onModuleId} options={modules.map((module) => ({ value: module.id, label: module.title }))} /></div>
             <div className="meeting-field"><label htmlFor="admin-drive-video-duration">Duración <span className="admin-drive-sheet__optional">(opcional)</span></label><input id="admin-drive-video-duration" type="text" placeholder="20:00" value={duration} onChange={(event) => onDuration(event.target.value)} /></div>
             <p className="admin-resource-sheet__hint">El video aparecerá en el temario del curso dentro del módulo elegido.</p>
             {error && <p className="admin-resource-sheet__error" role="alert">{error}</p>}
           </form>
-          <footer className="mentee-sheet__foot mentee-sheet__foot--actions"><button type="submit" form="admin-drive-video-form" className="mentor-course-control admin-resource-sheet__primary" disabled={busy || modules.length === 0}>{busy ? 'Guardando…' : 'Guardar video'}</button></footer>
+          <footer className="mentee-sheet__foot mentee-sheet__foot--actions"><button type="submit" form="admin-drive-video-form" className="mentor-course-control mentor-course-import" disabled={busy || modules.length === 0}>{busy ? 'Guardando…' : 'Guardar video'}</button></footer>
         </div>
       </dialog>
     </div>

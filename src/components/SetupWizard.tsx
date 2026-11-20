@@ -62,8 +62,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
         
         {/* Header Badge & Title */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1a1a2e] border border-[#2d2d44] text-[#06b6d4] text-xs font-bold uppercase tracking-wider shadow-md">
-            <Sparkles className="w-4 h-4 text-[#06b6d4]" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1a1a2e] border border-[#2d2d44] text-[var(--color-brand-cyan)] text-xs font-bold uppercase tracking-wider shadow-md">
+            <Sparkles className="w-4 h-4 text-[var(--color-brand-cyan)]" />
             {t('firstRunSetupGuardDocentos', 'First Run Setup Guard • DocentOS')}
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
@@ -99,7 +99,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                   placeholder={t('ejDocentosAcademy', 'Ej. DocentOS Academy')}
                   value={appName}
                   onChange={(e) => setAppName(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4] transition-colors"
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[var(--color-brand-cyan)] transition-colors"
                 />
               </div>
             </div>
@@ -117,7 +117,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                   placeholder={t('ejJoseLuisHernandez', 'Ej. Jose Luis Hernandez')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4] transition-colors"
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[var(--color-brand-cyan)] transition-colors"
                 />
               </div>
             </div>
@@ -135,7 +135,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                   placeholder="admin@tu-academia.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4] transition-colors"
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[var(--color-brand-cyan)] transition-colors"
                 />
               </div>
             </div>
@@ -154,19 +154,19 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4] transition-colors"
+                  className="w-full bg-[#0a0a0f] border border-[#2d2d44] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[var(--color-brand-cyan)] transition-colors"
                 />
               </div>
             </div>
 
             {/* Telemetry Consent Checkbox */}
             <div className="pt-2">
-              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] cursor-pointer hover:border-[#06b6d4]/50 transition-colors">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#0a0a0f] border border-[#2d2d44] cursor-pointer hover:border-[var(--color-brand-cyan)]/50 transition-colors">
                 <input
                   type="checkbox"
                   checked={consentTelemetry}
                   onChange={(e) => setConsentTelemetry(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-[#2d2d44] bg-[#141420] text-[#06b6d4] focus:ring-[#06b6d4] accent-[#06b6d4]"
+                  className="mt-1 h-4 w-4 rounded border-[#2d2d44] bg-[#141420] text-[var(--color-brand-cyan)] focus:ring-[var(--color-brand-cyan)] accent-[var(--color-brand-cyan)]"
                 />
                 <span className="text-xs text-slate-300 leading-relaxed">
                   {t('autorizarElEnvioOpcionalDeLosDatosDe', 'Autorizar el envío opcional de los datos de instalación al webhook de telemetría configurado por el operador.')}
@@ -178,7 +178,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full btn-brand-primary py-3 px-6 text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-[#06b6d4]/20 transition-all disabled:opacity-50 mt-4"
+              className="w-full btn-brand-primary py-3 px-6 text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-brand-cyan)]/20 transition-all disabled:opacity-50 mt-4"
             >
               {isSubmitting ? (
                 <>
@@ -197,7 +197,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
           {/* Infrastructure Specs Footer */}
           <div className="pt-4 border-t border-[#2d2d44] flex items-center justify-between text-[11px] text-slate-400">
             <span className="flex items-center gap-1.5">
-              <Server className="w-3.5 h-3.5 text-[#06b6d4]" /> {t('postgresqlExpressApi', 'PostgreSQL + Express API')}
+              <Server className="w-3.5 h-3.5 text-[var(--color-brand-cyan)]" /> {t('postgresqlExpressApi', 'PostgreSQL + Express API')}
             </span>
             <span className="flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-[#a855f7]" /> {t('openSourceMitLicense', 'Open Source MIT License')}

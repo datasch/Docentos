@@ -9,7 +9,7 @@
 .academy-ui .academy-nav-wordmark { max-width: 12rem; opacity: 1; transform: none; pointer-events: auto; }
 .academy-ui .constellation-navbar { -webkit-backdrop-filter: none; }
 .academy-ui .academy-navigation {
-  display: flex;
+  display: none;
   grid-column: 1 / -1;
   grid-row: 2;
   min-width: 0;
@@ -68,7 +68,7 @@
 }
 @media (min-width: 1152px) {
   .academy-ui .academy-nav-layout { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .academy-ui .academy-navigation { grid-column: 2; grid-row: 1; }
+  .academy-ui .academy-navigation { display: flex; grid-column: 2; grid-row: 1; }
   .academy-ui .academy-nav-actions { grid-column: 3; }
   .academy-ui .academy-navigation > button { padding-inline: 0.75rem; }
   .academy-ui .academy-hero { padding-block: 3rem 2rem; }
@@ -80,3 +80,42 @@
 }
 @media (max-width: 1151px) { .academy-ui .constellation-navbar .lp-menu { max-height: calc(100dvh - 10rem); } }
 @media (prefers-reduced-motion: reduce) { .academy-ui .academy-navigation > button { transition: none; } }
+
+/* Barra inferior (móvil y tableta) */
+.academy-tabbar { display: none; }
+@media (max-width: 1151px) {
+  .academy-ui .academy-nav-layout { gap: 0 0.75rem; }
+  .academy-tabbar {
+    position: fixed; inset: auto 0 0 0; z-index: 50;
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    padding: 0.25rem max(0.5rem, env(safe-area-inset-left)) calc(0.25rem + env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-right));
+    border-top: 1px solid var(--color-line);
+    background: var(--color-surface);
+  }
+  .academy-tabbar > button {
+    display: grid; justify-items: center; align-content: center; gap: 0.25rem;
+    min-height: 3.5rem; padding: 0.375rem 0.25rem;
+    border: 0; border-radius: 0.75rem; background: transparent;
+    color: var(--color-ink-soft); font-size: 0.75rem; line-height: 1rem; font-weight: 500;
+    cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    transition: color 160ms ease-out, background-color 160ms ease-out, transform 160ms ease-out;
+  }
+  .academy-tabbar > button svg { width: 1.375rem; height: 1.375rem; }
+  .academy-tabbar > button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .academy-tabbar > button[aria-current='page'] { color: var(--color-ink); font-weight: 600; }
+  .academy-tabbar > button[aria-current='page'] svg { color: var(--color-brand-cyan); }
+  .academy-tabbar > button:active { transform: scale(0.96); }
+  .academy-tabbar > button:focus-visible { outline: 2px solid var(--color-brand-cyan); outline-offset: -2px; }
+  /* El contenido y los flotantes dejan libre la barra. */
+  .academy-experience:has(.academy-tabbar) { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  body:has(.academy-tabbar) .lp-listening-floating { bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+}
+@media (hover: hover) and (pointer: fine) { .academy-tabbar > button:hover { color: var(--color-ink); background: var(--color-raised); } }
+@media (prefers-reduced-motion: reduce) { .academy-tabbar > button { transition: none; } .academy-tabbar > button:active { transform: none; } }
+
+/* Menú de perfil: rol y acceso en una línea tranquila, sin mayúsculas ni color de acento. */
+.academy-ui .constellation-navbar .lp-menu-role { margin-top: 4px; color: var(--color-ink-soft); font-size: 0.8125rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.academy-ui .constellation-navbar .lp-menu-role strong { font-weight: 500; }
+.academy-ui .constellation-navbar .lp-menu-name { font-size: 0.9375rem; font-weight: 600; }
+.academy-ui .constellation-navbar .lp-menu-item { font-size: 0.875rem; font-weight: 500; }
+.academy-ui .constellation-navbar .lp-menu-item.is-danger { margin-top: 6px; border-top: 1px solid var(--color-line); border-radius: 0 0 var(--lp-r-sm) var(--lp-r-sm); }

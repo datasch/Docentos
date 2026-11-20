@@ -4,7 +4,7 @@ import { Check, Copy, Share2, X, MessageCircle } from 'lucide-react';
 import { courseShareUrl } from '../lib/courseSharing';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 
-export function CourseShareButton({ course, variant = 'default', iconOnly = false }: { course: { id: string; title: string; published: boolean }; variant?: 'default' | 'featured' | 'overlay'; iconOnly?: boolean }) {
+export function CourseShareButton({ course, variant = 'default', iconOnly = false }: { course: { id: string; title: string; published: boolean }; variant?: 'default' | 'featured' | 'overlay' | 'card'; iconOnly?: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -27,8 +27,8 @@ export function CourseShareButton({ course, variant = 'default', iconOnly = fals
     catch (error) { if ((error as Error).name !== 'AbortError') setMessage(t('common.shareErrorNotice', 'No se pudo compartir. Puedes copiar el enlace.')); }
   };
   return (
-    <div className="inline-flex shrink-0" onClick={e => e.stopPropagation()}>
-      <button type="button" onClick={() => { setMessage(''); setOpen(true); }} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('common.shareCourse', 'Compartir curso')}: ${course.title}`} title={t('common.shareCourse', 'Compartir curso')} className={`inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border transition-colors cursor-pointer text-xs ${iconOnly ? 'h-11 w-11 p-0' : 'px-3 py-2'} ${variant === 'featured' ? 'border-amber-600/25 bg-amber-500/5 text-amber-900 hover:border-amber-500 hover:bg-amber-500/15 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/20' : variant === 'overlay' ? 'course-share-overlay' : 'border-line bg-surface text-ink hover:border-brand-cyan'}`}>
+    <div className={variant === 'card' ? 'flex w-full' : 'inline-flex shrink-0'} onClick={e => e.stopPropagation()}>
+      <button type="button" onClick={() => { setMessage(''); setOpen(true); }} aria-haspopup="dialog" aria-expanded={open} aria-label={`${t('common.shareCourse', 'Compartir curso')}: ${course.title}`} title={t('common.shareCourse', 'Compartir curso')} className={`${variant === 'card' ? 'flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-line text-sm font-medium text-ink transition-colors cursor-pointer hover:bg-ink/5' : `inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full border transition-colors cursor-pointer text-xs ${iconOnly ? 'h-11 w-11 p-0' : 'px-3 py-2'}`} ${variant === 'card' ? '' : variant === 'featured' ? 'border-amber-600/25 bg-amber-500/5 text-amber-900 hover:border-amber-500 hover:bg-amber-500/15 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/20' : variant === 'overlay' ? 'course-share-overlay' : 'border-line bg-surface text-ink hover:border-brand-cyan'}`}>
         <Share2 className="h-4 w-4" aria-hidden /><span className={iconOnly ? 'sr-only' : undefined}>{t('common.shareCourse', 'Compartir curso')}</span>
       </button>
       <dialog ref={dialog} onClose={() => setOpen(false)} onCancel={() => setOpen(false)} onClick={e => { if (e.target === dialog.current) setOpen(false); }} aria-labelledby={headingId} className="app-dialog m-auto max-h-[calc(100dvh-1.5rem)] overflow-y-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl border border-line bg-surface p-6 text-ink shadow-2xl backdrop:bg-black/60">

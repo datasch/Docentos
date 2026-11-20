@@ -113,7 +113,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
           {!isCompleted && !canComplete ? (
             <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
           ) : (
-            <Check aria-hidden className="h-4 w-4 shrink-0 text-cyan-400" strokeWidth={isCompleted ? 3 : 2} />
+            <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" strokeWidth={isCompleted ? 3 : 2} />
           )}
           {isCompleted
             ? t('misionCompletada', 'Misión completada')

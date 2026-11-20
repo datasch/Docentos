@@ -43,7 +43,9 @@ export const createListeningSchema = z.object({
   courseId: z.string().trim().min(1).max(100).nullish(),
   subject: text(LISTENING_LIMITS.subjectMin, LISTENING_LIMITS.subjectMax, 'El asunto'),
   message: text(LISTENING_LIMITS.messageMin, LISTENING_LIMITS.messageMax, 'El mensaje'),
-  anonymous: z.boolean().default(false),
+  // Los comentarios del Buzón de Escucha alimentan el Net Promoter Score (NPS),
+  // por lo que siempre quedan vinculados al autor para seguimiento del equipo.
+  anonymous: z.boolean().optional().default(false).transform(() => false),
 });
 
 export const updateListeningSchema = z
@@ -248,9 +250,9 @@ interface EntryRow {
 }
 
 /**
- * Lo que ve el equipo. Con `anonymous` no sale ni el nombre, ni el correo, ni
- * el id de usuario: el id bastaria para cruzarlo con otras tablas y deshacer el
- * anonimato que se le prometio a la persona.
+ * Lo que ve el equipo. Al incluir evaluaciones Net Promoter Score (NPS), el
+ * equipo necesita identificar quién realiza cada comentario para dar seguimiento
+ * personalizado, incluso en registros antiguos.
  */
 export function toStaffEntry(row: EntryRow) {
   return {
@@ -262,8 +264,8 @@ export function toStaffEntry(row: EntryRow) {
     npsGroup: row.npsScore === null ? null : classifyNps(row.npsScore),
     subject: row.subject,
     message: row.message,
-    anonymous: row.anonymous,
-    author: row.anonymous || !row.user ? null : { name: row.user.name, email: row.user.email },
+    anonymous: false,
+    author: row.user ? { name: row.user.name, email: row.user.email } : null,
     courseId: row.courseId,
     courseTitle: row.course?.title ?? null,
     status: row.status,
@@ -284,7 +286,7 @@ export function toOwnEntry(row: EntryRow) {
     npsScore: row.npsScore,
     subject: row.subject,
     message: row.message,
-    anonymous: row.anonymous,
+    anonymous: false,
     courseTitle: row.course?.title ?? null,
     status: row.status,
     reply: row.reply,
@@ -320,8 +322,8 @@ const CSV_HEADER = [
   'nps_0_a_10',
   'grupo_nps',
   'estado',
-  'anonimo',
   'autor',
+  'autor_email',
   'asunto',
   'mensaje',
   'respondido_el',
@@ -340,8 +342,8 @@ export function listeningToCsv(entries: ReturnType<typeof toStaffEntry>[]): stri
       entry.npsScore,
       entry.npsGroup,
       LISTENING_STATUS_LABELS[entry.status],
-      entry.anonymous ? 'si' : 'no',
       entry.author?.name ?? '',
+      entry.author?.email ?? '',
       entry.subject,
       entry.message,
       entry.repliedAt,

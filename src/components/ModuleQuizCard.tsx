@@ -11,7 +11,8 @@ import type { QuizAttemptStatus } from '../lib/quizAttemptStatus';
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, Clock, ArrowLeft, Loader2 } from 'lucide-react';
+import { MorphingInfinity } from './loading/MorphingInfinity';
+import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, Clock, ArrowLeft } from 'lucide-react';
 import { Module, User } from '../types';
 import { getModuleQuestions, setModuleQuiz, quizzesPluginEngine, QuizQuestion } from '../plugins/QuizzesPlugin';
 import { api } from '../lib/api';
@@ -318,7 +319,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     if (!onExit) return null;
     return (
       <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-surface p-6">
-        <Loader2 aria-hidden className="h-6 w-6 animate-spin text-ink-muted" />
+        <MorphingInfinity aria-hidden="true" duration={2.4} className="h-12 w-12 text-ink" />
         <p className="text-meta text-ink-muted">{t('cargandoElExamenDelModulo', 'Cargando el examen del módulo…')}</p>
         {/* La salida acompaña también a la espera: si la carga se atasca, el
             alumno no se queda encerrado en una pantalla que gira. */}

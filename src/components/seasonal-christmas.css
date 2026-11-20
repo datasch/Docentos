@@ -1,0 +1,93 @@
+/* Seasonal treatment stays scoped to the Christmas theme and the academy shell. */
+html[data-festividad="navidad"] .academy-experience {
+  --christmas-pine: #174734;
+  --christmas-berry: #a72832;
+  --christmas-gold: #bd8232;
+}
+
+html[data-festividad="navidad"] .academy-experience .academy-button {
+  background: var(--christmas-pine);
+  color: #fff;
+}
+
+html[data-festividad="navidad"] .academy-experience .academy-button:hover {
+  background: #216348;
+}
+
+html[data-festividad="navidad"] .academy-experience .academy-button:focus-visible,
+html[data-festividad="navidad"] .academy-experience .academy-text-button:focus-visible {
+  outline-color: var(--christmas-berry);
+}
+
+/* El logo conserva su espacio y Papá Noel baja por una franja lateral. */
+html[data-festividad="navidad"] .academy-hero__brand--christmas {
+  isolation: isolate;
+  display: block;
+  height: clamp(16rem, 38vw, 27rem);
+  overflow: visible;
+}
+
+.academy-hero__brand--christmas .academy-hero__logo-stage {
+  width: calc(100% - clamp(6rem, 24%, 7.25rem));
+}
+
+.christmas-hero-scene {
+  position: absolute;
+  inset: 0 -1.5rem 0 auto;
+  width: clamp(6rem, 24%, 7.25rem);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.christmas-hero-scene__rope {
+  position: absolute;
+  top: 0;
+  left: 59%;
+  z-index: 1;
+  width: 4px;
+  height: 75%;
+  transform: scaleY(.15);
+  transform-origin: top center;
+  border-radius: 4px;
+  background: repeating-linear-gradient(135deg, #a47b48 0 3px, #6d4b2c 3px 6px);
+}
+
+.christmas-hero-scene__santa {
+  position: absolute;
+  top: 3%;
+  right: 2%;
+  z-index: 2;
+  display: block;
+  width: 96%;
+  height: auto;
+  transform: translateY(0);
+}
+
+.christmas-hero-scene__chimney {
+  position: absolute;
+  right: -2%;
+  bottom: -4%;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 767px) {
+  html[data-festividad="navidad"] .academy-hero__brand--christmas {
+    height: 16rem;
+  }
+
+  .christmas-hero-scene { right: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .christmas-hero-scene__santa { transform: none; }
+  .christmas-hero-scene__rope { transform: scaleY(.15); }
+}
+
+/* La nevada acompaña la vista sin tapar controles ni competir con el texto. */
+html[data-festividad="navidad"] .nevada-container {
+  z-index: 5;
+}
+

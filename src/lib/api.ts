@@ -507,7 +507,19 @@ export const api = {
   },
 
   // Admin Management
-  async getPublicBrand(): Promise<{ success: boolean; brandName: string; campusName: string; logoUrl: string }> {
+  async getPublicBrand(): Promise<{
+    success: boolean;
+    brandName: string;
+    campusName: string;
+    logoUrl: string;
+    festivities?: {
+      enabled: boolean;
+      mode: 'auto' | 'halloween' | 'christmas' | 'none';
+      showBanner: boolean;
+      showParticles: boolean;
+      showFestiveHats: boolean;
+    };
+  }> {
     const res = await fetch('/api/public/brand');
     if (!res.ok) throw new Error('Error al obtener la identidad de la plataforma');
     return res.json();

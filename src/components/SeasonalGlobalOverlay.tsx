@@ -7,22 +7,66 @@
 
 import React, { useState, useEffect } from 'react';
 import { getSeasonalTheme, SeasonalTheme, SEASONAL_INFO } from '../lib/seasonalTheme';
-import { X, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
+import Snowfall from 'react-snowfall';
+import './seasonal-christmas.css';
+
+/** Ramita de acebo: dos hojas y tres bayas. `mirror` la gira para que el par quede simétrico. */
+const HollySprig: React.FC<{ mirror?: boolean }> = ({ mirror = false }) => (
+  <svg aria-hidden width="44" height="22" viewBox="0 0 44 22" className="shrink-0" style={mirror ? { transform: 'scaleX(-1)' } : undefined}>
+    <path d="M22 11c-4-7-12-9-20-6 3 6 11 9 20 6z" fill="#2f9e6b" />
+    <path d="M22 11c4 7 12 9 20 6-3-6-11-9-20-6z" fill="#237a53" />
+    <circle cx="22" cy="9" r="3.2" fill="#dc2626" />
+    <circle cx="18.5" cy="12.5" r="3" fill="#ef4444" />
+    <circle cx="25.5" cy="12.5" r="3" fill="#b91c1c" />
+  </svg>
+);
+
+const snowSprites = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#f7fbf8" stroke="#779588" stroke-opacity=".42" stroke-width="1.5"/></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M12 5l-2-2m2 2 2-2m-2 16-2 2m2-2 2 2M5.9 8.5l-2.7.5m2.7-.5-.9-2.5m13.1 9.5 2.7-.5m-2.7.5.9 2.5M5.9 15.5l-.9 2.5m.9-2.5-2.7-.5m13.1-6.5.9-2.5m-.9 2.5 2.7.5" fill="none" stroke="#e9f4ef" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19M12 5l-2-2m2 2 2-2m-2 14-2 2m2-2 2 2M5 12l-2-2m2 2-2 2m14-2 2-2m-2 2 2 2" fill="none" stroke="#f4f9f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+];
 
 export const SeasonalGlobalOverlay: React.FC = () => {
-  const { t } = useTranslation()
-  const [theme, setTheme] = useState<SeasonalTheme>(getSeasonalTheme);
+  const { t } = useTranslation();
+  const { theme, showBanner, showParticles } = useSeasonalDisplay();
   const [dismissBanner, setDismissBanner] = useState(false);
+  const [snowImages, setSnowImages] = useState<HTMLImageElement[]>([]);
+  const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [narrowScreen, setNarrowScreen] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
 
   useEffect(() => {
-    const handleSeasonalChange = (e: any) => {
-      if (e.detail?.theme) setTheme(e.detail.theme);
-      else setTheme(getSeasonalTheme());
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const widthQuery = window.matchMedia('(max-width: 767px)');
+    const updateMotion = () => setReduceMotion(motionQuery.matches);
+    const updateWidth = () => setNarrowScreen(widthQuery.matches);
+    updateMotion();
+    updateWidth();
+    motionQuery.addEventListener('change', updateMotion);
+    widthQuery.addEventListener('change', updateWidth);
+    return () => {
+      motionQuery.removeEventListener('change', updateMotion);
+      widthQuery.removeEventListener('change', updateWidth);
     };
-    window.addEventListener('docentos-seasonal-change', handleSeasonalChange);
-    return () => window.removeEventListener('docentos-seasonal-change', handleSeasonalChange);
   }, []);
+
+  useEffect(() => {
+    if (theme !== 'christmas') return;
+    let active = true;
+    Promise.all(snowSprites.map((sprite) => new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = `data:image/svg+xml,${encodeURIComponent(sprite)}`;
+    }))).then((images) => {
+      if (active) setSnowImages([images[0], images[0], images[0], images[1], images[2]]);
+    }).catch(() => {
+      if (active) setSnowImages([]);
+    });
+    return () => { active = false; };
+  }, [theme]);
 
   if (theme === 'none') return null;
 
@@ -31,26 +75,23 @@ export const SeasonalGlobalOverlay: React.FC = () => {
   return (
     <>
       {/* 1. Efecto Ambiental de Fondo en TODO DocentOS (Adaptativo y optimizado para móviles) */}
-      {theme === 'christmas' && (
-        <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
-          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24 }).map((_, i) => (
-            <div
-              key={i}
-              className="copo-nieve"
-              style={{
-                left: `${(i * 3.8 + 1.2) % 100}%`,
-                animationDelay: `${(i * 0.45) % 6}s`,
-                animationDuration: `${5.0 + ((i * 1.2) % 5)}s`,
-                width: `${2.5 + (i % 3) * 1.5}px`,
-                height: `${2.5 + (i % 3) * 1.5}px`,
-                opacity: 0.35 + (i % 4) * 0.12,
-              }}
-            />
-          ))}
+      {theme === 'christmas' && !reduceMotion && (
+        <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden" aria-hidden="true">
+          <Snowfall
+            images={snowImages}
+            snowflakeCount={narrowScreen ? 14 : 30}
+            radius={[2, 6]}
+            speed={[0.35, 1.15]}
+            wind={[-0.35, 0.35]}
+            opacity={[0.3, 0.62]}
+            rotationSpeed={[-0.35, 0.35]}
+            changeFrequency={180}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+          />
         </div>
       )}
 
-      {theme === 'halloween' && (
+      {showParticles && theme === 'halloween' && (
         <div className="halloween-ambient-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
           {/* Murciélagos flotantes (solo 2 en móviles) */}
           {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 6 }).map((_, i) => (
@@ -92,55 +133,38 @@ export const SeasonalGlobalOverlay: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Banner Festivo Superior de Temporada (Discreto y Elegante) */}
+      {/* 2. Franja festiva: bastón de caramelo abajo, acebo a los lados, el mensaje al centro */}
       {!dismissBanner && (
         <aside
           role="region"
           aria-label={t('avisoDeFestividadActiva', 'Aviso de festividad activa')}
-          className="relative z-40 w-full py-1.5 px-4 text-xs font-semibold flex items-center justify-between transition-all select-none shadow-sm backdrop-blur-md"
-          style={{
-            backgroundColor:
-              theme === 'halloween'
-                ? 'rgba(35, 14, 5, 0.94)'
-                : 'rgba(15, 30, 20, 0.94)',
-            borderBottom:
-              theme === 'halloween'
-                ? '1px solid rgba(249, 115, 22, 0.35)'
-                : '1px solid rgba(16, 185, 129, 0.35)',
-            color: theme === 'halloween' ? '#fed7aa' : '#d1fae5',
-          }}
+          className="relative z-40 w-full select-none"
+          style={{ backgroundColor: theme === 'halloween' ? '#2a1608' : '#12382a', color: theme === 'halloween' ? '#fed7aa' : '#fef3c7' }}
         >
-          <div className="max-w-[1280px] w-full mx-auto flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">{info.emoji}</span>
-              <span className="font-extrabold uppercase tracking-wider text-[11px]" style={{ color: info.colorAcento }}>
-                {info.nombre}
-              </span>
-              <span className="hidden sm:inline text-[11px] opacity-90">
-                — {info.mensaje}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
-                style={{
-                  backgroundColor: `${info.colorAcento}25`,
-                  color: info.colorAcento,
-                  border: `1px solid ${info.colorAcento}40`,
-                }}
-              >
-                {t('temporadaActiva', 'Temporada Activa')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setDismissBanner(true)}
-                className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer text-white/70 hover:text-white"
-                title={t('ocultarAvisoDeFestividad', 'Ocultar aviso de festividad')}
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
+          <div className="mx-auto flex min-h-11 max-w-[1280px] items-center justify-center gap-3 px-12 py-2 text-center text-sm font-medium leading-snug">
+            {theme === 'christmas' ? <HollySprig /> : <span aria-hidden className="text-lg">{info.emoji}</span>}
+            <span>{info.mensaje}</span>
+            {theme === 'christmas' ? <HollySprig mirror /> : <span aria-hidden className="text-lg">{info.emoji}</span>}
           </div>
+          <button
+            type="button"
+            onClick={() => setDismissBanner(true)}
+            className="absolute right-2 top-1/2 grid h-11 w-11 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-current opacity-80 transition-opacity hover:opacity-100"
+            aria-label={t('ocultarAvisoDeFestividad', 'Ocultar aviso de festividad')}
+            title={t('ocultarAvisoDeFestividad', 'Ocultar aviso de festividad')}
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+          <div
+            aria-hidden
+            className="h-[3px] w-full"
+            style={{
+              backgroundImage:
+                theme === 'halloween'
+                  ? 'repeating-linear-gradient(45deg, #f97316 0 8px, #2a1608 8px 16px)'
+                  : 'repeating-linear-gradient(45deg, #dc2626 0 8px, #fef3c7 8px 16px)',
+            }}
+          />
         </aside>
       )}
     </>

@@ -151,7 +151,6 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [nps, setNps] = useState<number | null>(null);
-  const [anonymous, setAnonymous] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentNotice, setSentNotice] = useState<string | null>(null);
@@ -250,7 +249,6 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
     setSubject('');
     setMessage('');
     setNps(null);
-    setAnonymous(false);
     setError(null);
     setAttempted(false);
   };
@@ -307,7 +305,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
         courseId: courseId || null,
         subject,
         message,
-        anonymous,
+        anonymous: false,
       });
       setSentNotice(response.message);
       resetForm();
@@ -552,7 +550,12 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     </div>
                   </Step>
 
-                  <Step number={4} title={t('antesDeEnviar', 'Antes de enviar')} hint="Estas dos opciones no son obligatorias." optional>
+                  <Step
+                    number={4}
+                    title={t('antesDeEnviar', 'Antes de enviar')}
+                    hint={t('preguntaNpsOpcional', 'Esta pregunta es opcional.')}
+                    optional
+                  >
                     <div className="space-y-4">
                       <fieldset>
                         <legend className="mb-3 text-sm font-semibold text-ink">
@@ -588,34 +591,20 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                         </div>
                       </fieldset>
 
-                      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-line bg-canvas/30 p-4">
-                        <span className="flex items-start gap-3">
-                          <ShieldCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-cyan" />
-                          <span>
-                            <span className="block text-sm font-semibold text-ink">{t('enviarDeFormaAnonima', 'Enviar de forma anónima')}</span>
-                            <span className="block text-sm text-ink-muted">
-                              {t('tuNombreYCorreoNoSeMostraranAlEquipoTuSi', 'Tu nombre y correo no se mostrarán al equipo. Tú sí verás tu mensaje y la respuesta.')}
-                            </span>
+                      <div className="flex items-start gap-3 rounded-xl border border-line bg-canvas/30 p-4">
+                        <ShieldCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-cyan" />
+                        <div>
+                          <span className="block text-sm font-semibold text-ink">
+                            {t('aporteIdentificadoNps', 'Aporte identificado (NPS)')}
                           </span>
-                        </span>
-                        <span className="relative inline-flex shrink-0">
-                          <input
-                            type="checkbox"
-                            role="switch"
-                            checked={anonymous}
-                            onChange={(event) => setAnonymous(event.target.checked)}
-                            className="peer sr-only"
-                          />
-                          <span
-                            aria-hidden
-                            className="h-6 w-11 rounded-full bg-ink/20 transition-colors peer-checked:bg-brand-cyan peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-cyan"
-                          />
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"
-                          />
-                        </span>
-                      </label>
+                          <span className="block text-sm text-ink-muted">
+                            {t(
+                              'aporteIdentificadoNpsDesc',
+                              'Tu comentario y puntuación Net Promoter Score (NPS) se envían con tu nombre y correo para que el equipo pueda identificar tu caso y darte seguimiento personalizado.',
+                            )}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </Step>
                 </div>
@@ -732,7 +721,6 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                     <p className="mt-1 whitespace-pre-wrap text-xs text-ink-soft">{entry.message}</p>
                     <p className="mt-2 text-micro text-ink-faint">
                       {new Date(entry.createdAt).toLocaleString(dateLocale())}
-                      {entry.anonymous && <> · {t('anonimoParaElEquipo', 'Anónimo para el equipo')}</>}
                     </p>
 
                     {entry.reply && (

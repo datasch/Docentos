@@ -1,6 +1,6 @@
 import React from 'react';
-import { useSeasonalTheme, SeasonalTheme } from '../lib/seasonalTheme';
-import { useTranslation } from 'react-i18next'
+import { useSeasonalDisplay, SeasonalTheme } from '../lib/seasonalTheme';
+import { useTranslation } from 'react-i18next';
 
 export interface FestiveHatOverlayProps {
   /**
@@ -76,11 +76,11 @@ export const FestiveHatOverlay: React.FC<FestiveHatOverlayProps> = ({
   className = '',
   title,
 }) => {
-  const { t } = useTranslation()
-  const currentTheme = useSeasonalTheme();
+  const { t } = useTranslation();
+  const { theme: currentTheme, showFestiveHats } = useSeasonalDisplay();
   const theme = forcedTheme !== undefined ? forcedTheme : currentTheme;
 
-  if (theme === 'none') {
+  if (theme === 'none' || (forcedTheme === undefined && !showFestiveHats)) {
     return null;
   }
 

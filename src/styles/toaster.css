@@ -1,0 +1,13 @@
+/* Avisos (Sonner) con los colores de la app: superficie, línea fina y el color solo en el icono. */
+[data-sonner-toaster][data-sonner-theme][data-y-position] {
+  --normal-bg: var(--color-surface);
+  --normal-border: var(--color-line-strong, var(--color-line));
+  --normal-text: var(--color-ink);
+  --border-radius: 12px;
+  font-family: inherit;
+}
+[data-sonner-toast] { padding: 14px 16px; font-size: 14px; line-height: 20px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.28); }
+[data-sonner-toast] [data-title] { font-weight: 500; }
+[data-sonner-toast][data-type='success'] [data-icon] { color: var(--color-success-light); }
+[data-sonner-toast][data-type='error'] [data-icon] { color: var(--color-danger-light); }
+[data-sonner-toast][data-type='info'] [data-icon] { color: var(--color-ink-muted); }
