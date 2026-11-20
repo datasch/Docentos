@@ -127,7 +127,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose }) => {
         <article className="terms-paper" ref={bodyRef} aria-busy={status === 'loading'}>
           <header className="terms-paper__top">
             <div>
-              <strong>DocentOS</strong>
+              <strong>{t('docentos', 'DocentOS')}</strong>
               <span>{t('plataformaELearning', 'Plataforma e-Learning')}</span>
             </div>
             {data?.version && (

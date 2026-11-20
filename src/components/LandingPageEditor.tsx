@@ -263,8 +263,8 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
   // Form State
   const [config, setConfig] = useState<LandingConfig>({
-    heroTitle: 'Una nueva forma de aprender | con inteligencia artificial.',
-    heroSubtitle: 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.',
+    heroTitle: t('unaNuevaFormaDeAprenderConInteligencia', 'Una nueva forma de aprender | con inteligencia artificial.'),
+    heroSubtitle: t('superaLosLimitesDeLaEducacionTradicional', 'Supera los límites de la educación tradicional. DocentOS combina rutas de aprendizaje adaptativas, mentoría sintética 24/7 y evaluación cognitiva en tiempo real para acelerar tu dominio profesional.'),
     heroMediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop',
     heroCtaText: 'Explorar Cursos',
     heroCtaLink: '#courses',
@@ -272,14 +272,14 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
     heroSecondaryCtaLink: '#vip',
     featuredCourseIds: ['course-giantucchi-mastery'],
     bannerEnabled: true,
-    bannerText: '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.',
+    bannerText: t('motorDeIaOptimizadoGestionDeGuiasVocales', '🚀 Motor de IA optimizado, gestión de guías vocales e integración nativa con Google Drive.'),
     bannerLinkText: 'Ver Novedades',
     trustRating: '4.9/5',
     trustAudience: '+12,500',
     bannerLinkUrl: '#',
     benefits: [],
     testimonials: [],
-    footerText: 'Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez)',
+    footerText: t('createdAndMaintainedByGiantucchiJoseLuis', 'Created and maintained by Giantucchi (Jose Luis Hernandez Hernandez)'),
     githubUrl: 'https://github.com/giantucchi/docentos',
     discordUrl: '',
     twitterUrl: '',
@@ -908,7 +908,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           <div className="mentor-confirm__body">
             <h3 id="landing-testimonial-delete-title">{t('eliminarOpinion', 'Eliminar opinión')}</h3>
             <p>
-              Se borrará la opinión de <strong>{testimonialToDelete.name || 'esta persona'}</strong>. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.
+              {t('seBorraraLaOpinionDe', 'Se borrará la opinión de')} <strong>{testimonialToDelete.name || t('estaPersona', 'esta persona')}</strong><Trans i18nKey="estaAccionEsPermanente">. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans>
             </p>
             <div className="mentor-confirm__actions">
               <button type="button" className="mentor-course-control" onClick={() => setTestimonialToDelete(null)} disabled={deletingTestimonial}>{t('cancelar', 'Cancelar')}</button>

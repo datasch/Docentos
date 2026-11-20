@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEventHandler } from 'react';
 import { X, Check, Search, SlidersHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 
 /** Piezas comunes de las listas del admin: filtro único, chips, paginación y vista lista/tarjetas. */
 
@@ -13,13 +14,14 @@ export function AdminSearchField({ value, onChange, placeholder, label, classNam
   autoFocus?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 }) {
+  const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className={`admin-search-field ${className}`}>
       <Search aria-hidden="true" />
       <input ref={inputRef} type="search" value={value} onChange={(event) => onChange(event.target.value)} onKeyDown={onKeyDown} placeholder={placeholder} aria-label={label} autoFocus={autoFocus} />
       {value !== '' && (
-        <button type="button" className="admin-search-field__clear" aria-label="Limpiar búsqueda" title="Limpiar búsqueda" onClick={() => { onChange(''); inputRef.current?.focus(); }}>
+        <button type="button" className="admin-search-field__clear" aria-label={t('limpiarBusqueda', 'Limpiar búsqueda')} title={t('limpiarBusqueda', 'Limpiar búsqueda')} onClick={() => { onChange(''); inputRef.current?.focus(); }}>
           <X aria-hidden="true" />
         </button>
       )}
@@ -39,21 +41,22 @@ const pageList = (cur: number, total: number): Array<number | '…'> => {
 };
 
 export function Pager({ total, size, page, onPage, noun }: { total: number; size: number; page: number; onPage: (n: number) => void; noun: string }) {
+  const { t } = useTranslation()
   const pages = Math.max(1, Math.ceil(total / size));
   if (total <= size) return null;
   const from = (page - 1) * size + 1;
   const to = Math.min(total, page * size);
   return (
-    <nav className="admin-pager" aria-label={`Paginación de ${noun}`}>
-      <span className="admin-pager__range" role="status">{from}–{to} de {total} {noun}</span>
+    <nav className="admin-pager" aria-label={t('paginacionDeNoun', 'Paginación de {{noun}}', { noun })}>
+      <span className="admin-pager__range" role="status">{t('fromToDeTotalNoun', '{{from}}–{{to}} de {{total}} {{noun}}', { from, to, total, noun })}</span>
       <div className="admin-pager__pages">
-        <button type="button" className="mentor-course-control" onClick={() => onPage(page - 1)} disabled={page <= 1}>Anterior</button>
+        <button type="button" className="mentor-course-control" onClick={() => onPage(page - 1)} disabled={page <= 1}>{t('anterior', 'Anterior')}</button>
         {pageList(page, pages).map((n, i) =>
           n === '…' ? <span key={`gap${i}`} aria-hidden="true" className="admin-pager__gap">…</span> : (
-            <button key={n} type="button" className="mentor-course-control admin-pager__num" aria-current={n === page ? 'page' : undefined} aria-label={`Página ${n}`} onClick={() => onPage(n)}>{n}</button>
+            <button key={n} type="button" className="mentor-course-control admin-pager__num" aria-current={n === page ? 'page' : undefined} aria-label={t('paginaN', 'Página {{n}}', { n })} onClick={() => onPage(n)}>{n}</button>
           ),
         )}
-        <button type="button" className="mentor-course-control" onClick={() => onPage(page + 1)} disabled={page >= pages}>Siguiente</button>
+        <button type="button" className="mentor-course-control" onClick={() => onPage(page + 1)} disabled={page >= pages}>{t('siguiente', 'Siguiente')}</button>
       </div>
     </nav>
   );
@@ -65,6 +68,7 @@ export type Group = { value: string; options: Opt[]; onChange: (v: string) => vo
 
 /** Un solo filtro: botón con panel; cada grupo es de selección única y se quita volviendo a tocarlo. */
 export function FilterMenu({ groups }: { groups: Group[] }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -78,9 +82,9 @@ export function FilterMenu({ groups }: { groups: Group[] }) {
   const active = groups.filter((g) => g.value !== 'ALL').length;
   return (
     <div className="admin-filter-menu" ref={ref}>
-      <button type="button" className="admin-filter-menu__btn" aria-label={active > 0 ? `Filtros, ${active} activos` : 'Filtros'} aria-expanded={open} aria-haspopup="true" onClick={() => setOpen(!open)} data-active={active > 0 || undefined}>
+      <button type="button" className="admin-filter-menu__btn" aria-label={active > 0 ? t('filtrosActiveActivos', 'Filtros, {{active}} activos', { active }) : t('filtros', 'Filtros')} aria-expanded={open} aria-haspopup="true" onClick={() => setOpen(!open)} data-active={active > 0 || undefined}>
         <SlidersHorizontal aria-hidden="true" />
-        <span className="admin-filter-menu__label">Filtros</span>
+        <span className="admin-filter-menu__label">{t('filtros', 'Filtros')}</span>
         {active > 0 && <span className="admin-filter-menu__badge">{active}</span>}
       </button>
       {open && (
@@ -104,17 +108,18 @@ export function FilterMenu({ groups }: { groups: Group[] }) {
 }
 
 export function ActiveFilters({ chips, shown, total, noun, onClear }: { chips: Array<{ key: string; text: string; onRemove: () => void }>; shown?: number; total?: number; noun: string; onClear: () => void }) {
+  const { t } = useTranslation()
   if (chips.length === 0) return null;
   return (
     <div className="admin-chips" role="status">
       {chips.map((c) => (
-        <button key={c.key} type="button" className="admin-chip" onClick={c.onRemove} aria-label={`Quitar filtro ${c.text}`}>
+        <button key={c.key} type="button" className="admin-chip" onClick={c.onRemove} aria-label={t('quitarFiltroText', 'Quitar filtro {{text}}', { text: c.text })}>
           {c.text}
           <X aria-hidden="true" />
         </button>
       ))}
-      <button type="button" className="admin-chips__clear" onClick={onClear}>Limpiar</button>
-      {shown !== undefined && total !== undefined && <span className="admin-chips__count">{shown} de {total} {noun}</span>}
+      <button type="button" className="admin-chips__clear" onClick={onClear}>{t('limpiar', 'Limpiar')}</button>
+      {shown !== undefined && total !== undefined && <span className="admin-chips__count">{t('shownDeTotalNoun', '{{shown}} de {{total}} {{noun}}', { shown, total, noun })}</span>}
     </div>
   );
 }

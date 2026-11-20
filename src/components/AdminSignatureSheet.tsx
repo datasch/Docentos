@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Check, Copy } from 'lucide-react';
 import type { ContractSignature } from './AdminCertificationView';
+import { useTranslation } from 'react-i18next'
+import i18next from 'i18next'
 
 const STATE: Record<ContractSignature['status'], string> = { VIGENTE: 'Vigente', POR_VENCER: 'Por vencer', EXPIRADO: 'Expirado' };
 const day = (v: string) => new Date(v).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 const hour = (v: string) => new Date(v).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 const month = (v: string) => new Date(v).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-const utc = (v: string) => `${new Date(v).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`;
+const utc = (v: string) => i18next.t('valUtc', '{{val}} UTC', { val: new Date(v).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) });
 
 function Copyable({ value, label }: { value: string; label: string }) {
+  const { t } = useTranslation()
   const [done, setDone] = useState(false);
   const copy = async () => {
     try { await navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500); } catch { /* sin portapapeles: el texto sigue seleccionable */ }
@@ -16,7 +19,7 @@ function Copyable({ value, label }: { value: string; label: string }) {
   return (
     <div className="acta-copy">
       <code>{value}</code>
-      <button type="button" className="acta-copy__btn" onClick={copy} aria-label={done ? 'Copiado' : `Copiar ${label}`} title={done ? 'Copiado' : 'Copiar'}>
+      <button type="button" className="acta-copy__btn" onClick={copy} aria-label={done ? t('copiado', 'Copiado') : t('copiarLabel', 'Copiar {{label}}', { label })} title={done ? 'Copiado' : 'Copiar'}>
         {done ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
       </button>
     </div>
@@ -25,6 +28,7 @@ function Copyable({ value, label }: { value: string; label: string }) {
 
 /** Acta de firma: un documento formal sobre papel, centrado, con el texto de constancia y la evidencia. */
 export function AdminSignatureSheet({ signature, onClose }: { signature: (ContractSignature & { contractHash?: string; userAgent?: string }) | null; onClose: () => void }) {
+  const { t } = useTranslation()
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -42,61 +46,61 @@ export function AdminSignatureSheet({ signature, onClose }: { signature: (Contra
             <article className="acta-paper">
               <header className="acta-paper__top">
                 <div>
-                  <strong>DocentOS</strong>
-                  <span>Plataforma e-Learning</span>
+                  <strong>{t('docentos', 'DocentOS')}</strong>
+                  <span>{t('plataformaElearning', 'Plataforma e-Learning')}</span>
                 </div>
                 <div className="acta-paper__no">
-                  <span>Registro N.º</span>
+                  <span>{t('registroN', 'Registro N.º')}</span>
                   <b>{s.id.slice(0, 8).toUpperCase()}</b>
                 </div>
               </header>
 
               <div className="acta-paper__title">
-                <h2 id="acta-title">Acta digital de firma y consentimiento</h2>
+                <h2 id="acta-title">{t('actaDigitalDeFirmaYConsentimiento', 'Acta digital de firma y consentimiento')}</h2>
                 <span className="acta-stamp" data-state={s.status}>{STATE[s.status]}</span>
               </div>
 
               <p className="acta-paper__lead">
-                Se deja constancia de que <b>{s.userName}</b>, con correo electrónico <b>{s.userEmail}</b>, aceptó electrónicamente los términos y condiciones generales y la política de privacidad de la plataforma el <b>{day(s.signedAt)}</b>, a las <b>{hour(s.signedAt)} UTC</b>, desde la dirección IP <b className="acta-mono">{s.ipAddress}</b>.
+                {t('seDejaConstanciaDeQue', 'Se deja constancia de que')} <b>{s.userName}</b>{t('conCorreoElectronico', ', con correo electrónico')} <b>{s.userEmail}</b>{t('aceptoElectronicamenteLosTerminosY', ', aceptó electrónicamente los términos y condiciones generales y la política de privacidad de la plataforma el')} <b>{day(s.signedAt)}</b>{t('aLas', ', a las')} <b>{hour(s.signedAt)} {t('utc', 'UTC')}</b>{t('desdeLaDireccionIp', ', desde la dirección IP')} <b className="acta-mono">{s.ipAddress}</b>.
               </p>
 
               <dl className="acta-paper__data">
-                <div><dt>Vigencia del acceso</dt><dd>{month(s.startDate)} a {month(s.endDate)}</dd></div>
-                <div><dt>Custodia de datos</dt><dd>Hasta {month(s.dataRetentionUntil)}</dd></div>
-                <div><dt>Fecha y hora (UTC)</dt><dd>{utc(s.signedAt)}</dd></div>
+                <div><dt>{t('vigenciaDelAcceso', 'Vigencia del acceso')}</dt><dd>{month(s.startDate)} a {month(s.endDate)}</dd></div>
+                <div><dt>{t('custodiaDeDatos', 'Custodia de datos')}</dt><dd>{t('hasta', 'Hasta')} {month(s.dataRetentionUntil)}</dd></div>
+                <div><dt>{t('fechaYHoraUtc', 'Fecha y hora (UTC)')}</dt><dd>{utc(s.signedAt)}</dd></div>
               </dl>
 
               <section aria-labelledby="acta-consent">
-                <h3 id="acta-consent">Consentimientos aceptados</h3>
+                <h3 id="acta-consent">{t('consentimientosAceptados', 'Consentimientos aceptados')}</h3>
                 <ul className="acta-paper__checks">
-                  <li><Check aria-hidden="true" />Términos y condiciones generales</li>
-                  <li><Check aria-hidden="true" />Política de privacidad</li>
-                  <li><Check aria-hidden="true" />Custodia de datos personales y progreso</li>
+                  <li><Check aria-hidden="true" />{t('terminosYCondicionesGenerales', 'Términos y condiciones generales')}</li>
+                  <li><Check aria-hidden="true" />{t('politicaDePrivacidad', 'Política de privacidad')}</li>
+                  <li><Check aria-hidden="true" />{t('custodiaDeDatosPersonalesYProgreso', 'Custodia de datos personales y progreso')}</li>
                 </ul>
               </section>
 
               <section aria-labelledby="acta-evid">
-                <h3 id="acta-evid">Evidencia del registro</h3>
+                <h3 id="acta-evid">{t('evidenciaDelRegistro', 'Evidencia del registro')}</h3>
                 <div className="acta-paper__field">
-                  <span>Huella SHA-256 del contrato</span>
-                  {s.contractHash ? <Copyable value={s.contractHash} label="huella" /> : <p className="acta-muted">No registrada</p>}
+                  <span>{t('huellaSha256DelContrato', 'Huella SHA-256 del contrato')}</span>
+                  {s.contractHash ? <Copyable value={s.contractHash} label={t('huella', 'huella')} /> : <p className="acta-muted">{t('noRegistrada', 'No registrada')}</p>}
                 </div>
                 <div className="acta-paper__field">
-                  <span>ID de registro</span>
-                  <Copyable value={s.id} label="ID de registro" />
+                  <span>{t('idDeRegistro', 'ID de registro')}</span>
+                  <Copyable value={s.id} label={t('idDeRegistro', 'ID de registro')} />
                 </div>
                 {s.userAgent && (
                   <div className="acta-paper__field">
-                    <span>Navegador</span>
+                    <span>{t('navegador', 'Navegador')}</span>
                     <p className="acta-muted">{s.userAgent}</p>
                   </div>
                 )}
               </section>
 
-              <footer className="acta-paper__foot">Registro generado automáticamente por DocentOS.</footer>
+              <footer className="acta-paper__foot">{t('registroGeneradoAutomaticamentePor', 'Registro generado automáticamente por DocentOS.')}</footer>
             </article>
 
-            <button type="button" className="acta-modal__close" onClick={onClose} aria-label="Cerrar acta">
+            <button type="button" className="acta-modal__close" onClick={onClose} aria-label={t('cerrarActa', 'Cerrar acta')}>
               <X aria-hidden="true" />
             </button>
           </div>

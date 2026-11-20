@@ -58,6 +58,7 @@ import { COURSE_CATEGORIES } from './CourseManagerView';
 import { MENTORSHIP_CATEGORIES, TECHNICAL_CATEGORIES } from '../lib/courseCategories';
 import { Sparkles, CheckSquare, Layers } from 'lucide-react';
 import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
+import i18next from 'i18next'
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -90,7 +91,7 @@ function askedAt(value: string): string {
 /** De qué clase salió la consulta, dicho en una línea. */
 function questionOrigin(comment: MentorshipComment): string {
   const parts = [comment.courseTitle, comment.moduleTitle, comment.videoTitle].filter(Boolean);
-  return parts.length > 0 ? parts.join(' · ') : 'Clase no identificada';
+  return parts.length > 0 ? parts.join(' · ') : i18next.t('claseNoIdentificada', 'Clase no identificada');
 }
 
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
@@ -317,11 +318,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     try {
       setProcessingRequestId(requestId);
       const res = await api.approveCourseAccessRequest(requestId);
-      announce(res.message || 'Acceso aprobado exitosamente');
+      announce(res.message || t('accesoAprobadoExitosamente', 'Acceso aprobado exitosamente'));
       await Promise.all([loadAccessRequests(), loadMenteesData()]);
       onRefreshCourses();
     } catch (error: any) {
-      announce(error?.message || 'Error al aprobar solicitud');
+      announce(error?.message || t('errorAlAprobarSolicitud', 'Error al aprobar solicitud'));
     } finally {
       setProcessingRequestId(null);
     }
@@ -334,7 +335,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       announce(res.message || 'Solicitud rechazada');
       await loadAccessRequests();
     } catch (error: any) {
-      announce(error?.message || 'Error al rechazar solicitud');
+      announce(error?.message || t('errorAlRechazarSolicitud', 'Error al rechazar solicitud'));
     } finally {
       setProcessingRequestId(null);
     }
@@ -392,7 +393,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       setQnaComments(res.comments || []);
     } catch (error: any) {
       console.error('Error al cargar preguntas:', error);
-      setQnaError(error?.message || 'No se pudieron cargar las consultas.');
+      setQnaError(error?.message || t('noSePudieronCargarLasConsultas', 'No se pudieron cargar las consultas.'));
     } finally {
       setLoadingQna(false);
     }
@@ -413,7 +414,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       const res = await api.getMenteeCandidates();
       setCandidates(res.candidates || []);
     } catch (error: any) {
-      setRosterError(error?.message || 'No se pudo cargar la lista de mentees.');
+      setRosterError(error?.message || t('noSePudoCargarLaListaDeMentees', 'No se pudo cargar la lista de mentees.'));
     }
   };
 
@@ -464,27 +465,27 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       const partes = [];
       // «asignación» pierde la tilde en plural: asignaciones, no asignaciónes.
       if (res.added > 0) {
-        partes.push(res.added === 1 ? '1 asignación nueva' : `${res.added} asignaciones nuevas`);
+        partes.push(t('countAsignacionesNuevas', { defaultValue_one: '1 asignación nueva', defaultValue_other: '{{count}} asignaciones nuevas', count: res.added }));
       }
       if (res.reactivated > 0) {
-        partes.push(res.reactivated === 1 ? '1 acceso reactivado' : `${res.reactivated} accesos reactivados`);
+        partes.push(t('countAccesosReactivados', { defaultValue_one: '1 acceso reactivado', defaultValue_other: '{{count}} accesos reactivados', count: res.reactivated }));
       }
       if (res.removed > 0) {
-        partes.push(res.removed === 1 ? '1 retirada' : `${res.removed} retiradas`);
+        partes.push(t('countRetiradas', { defaultValue_one: '1 retirada', defaultValue_other: '{{count}} retiradas', count: res.removed }));
       }
-      let aviso = partes.length > 0 ? partes.join(' y ') + '.' : 'No había cambios que guardar.';
+      let aviso = partes.length > 0 ? partes.join(t('y', ' y ')) + '.' : t('noHabiaCambiosQueGuardar', 'No había cambios que guardar.');
       // El servidor descarta lo que no cumple la regla; decirlo evita que
       // alguien crea que asignó a una persona que en realidad quedó fuera.
-      if (res.ignored > 0) aviso += ` ${res.ignored} no se pudo aplicar.`;
+      if (res.ignored > 0) aviso += t('ignoredNoSePudoAplicar', '{{ignored}} no se pudo aplicar.', { ignored: res.ignored });
       // Retirar la mentoría no quita una matrícula pagada ni una dada de alta a
       // mano: si alguien sigue entrando al curso por esa vía, se dice.
       if (res.stillHaveAccess.length > 0) {
-        aviso += ` Ojo: ${res.stillHaveAccess.join(', ')} conserva el acceso por matrícula o pago.`;
+        aviso += t('ojoStillHaveAccessConservaElAccesoPor', 'Ojo: {{stillHaveAccess}} conserva el acceso por matrícula o pago.', { stillHaveAccess: res.stillHaveAccess.join(', ') });
       }
       announce(aviso);
       closeRoster();
     } catch (error: any) {
-      setRosterError(error?.message || 'No se pudo guardar el reparto.');
+      setRosterError(error?.message || t('noSePudoGuardarElReparto', 'No se pudo guardar el reparto.'));
     } finally {
       setSavingRoster(false);
     }
@@ -511,10 +512,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       const nombre = res.mentee?.name || newMenteeName.trim();
       announce(
         res.reactivated
-          ? `${nombre}: acceso reactivado, conservando su progreso.`
+          ? t('nombreAccesoReactivadoConservandoSu', '{{nombre}}: acceso reactivado, conservando su progreso.', { nombre })
           : res.existed
-          ? `${nombre} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.`
-          : `${nombre} queda asignado a tu mentoría.`,
+          ? t('nombreYaTeniaCuentaQuedaAsignadoATu', '{{nombre}} ya tenía cuenta: queda asignado a tu mentoría sin tocarle el perfil.', { nombre })
+          : t('nombreQuedaAsignadoATuMentoria', '{{nombre}} queda asignado a tu mentoría.', { nombre }),
       );
       // Si el alta se hizo desde el selector del curso, este se queda abierto
       // detras. Hay que refrescar la lista y dejar marcada a la persona: lo
@@ -536,7 +537,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       // El servidor rechaza con un motivo concreto (cuenta administrativa,
       // cuenta desactivada, permisos). Tragárselo dejaba el formulario
       // aparentemente muerto: se pulsaba «Asignar» y no ocurría nada.
-      setAssignError(error?.message || 'No se pudo asignar el mentee.');
+      setAssignError(error?.message || t('noSePudoAsignarElMentee', 'No se pudo asignar el mentee.'));
     } finally {
       setAssigningMentee(false);
     }
@@ -570,10 +571,10 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       setNewCoursePublished(false);
       setShowCreateCourseModal(false);
       setActiveTab('courses');
-      announce('Programa creado. Añádele módulos y clases desde Administración › Cursos.');
+      announce(t('programaCreadoAnadeleModulosYClasesDesde', 'Programa creado. Añádele módulos y clases desde Administración › Cursos.'));
       onRefreshCourses();
     } catch (error: any) {
-      setCreateCourseError(error?.message || 'No se pudo crear el programa.');
+      setCreateCourseError(error?.message || t('noSePudoCrearElPrograma', 'No se pudo crear el programa.'));
     } finally {
       setCreatingCourse(false);
     }
@@ -596,7 +597,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
     } catch (error: any) {
       setReplyErrorMap((prev) => ({
         ...prev,
-        [commentId]: error?.message || 'No se pudo enviar la respuesta.',
+        [commentId]: error?.message || t('noSePudoEnviarLaRespuesta', 'No se pudo enviar la respuesta.'),
       }));
     } finally {
       setReplyingId(null);
@@ -699,7 +700,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <nav aria-label="Módulos de mentoría" className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
+      <nav aria-label={t('modulosDeMentoria', 'Módulos de mentoría')} className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
         <button
           aria-current={activeTab === 'courses' ? 'page' : undefined}
           onClick={() => setActiveTab('courses')}
@@ -894,7 +895,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     </span>
                     <div className="mentor-course-card__meta">
                       <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} módulos` })}</span>
-                      <span>${course.price} USD</span>
+                      <span>{t('priceUsd', '${{price}} USD', { price: course.price })}</span>
                     </div>
                     <div className="mentor-course-card__actions">
                       <button
@@ -1106,12 +1107,12 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                             </div>
                             <div className="mentor-mentee-card__foot">
                               <span>
-                                {m.totalVideosCount > 0 ? `${m.completedVideosCount} de ${m.totalVideosCount} lecciones` : ''}
+                                {m.totalVideosCount > 0 ? t('completedVideosCountDeTotalVideosCount', '{{completedVideosCount}} de {{totalVideosCount}} lecciones', { completedVideosCount: m.completedVideosCount, totalVideosCount: m.totalVideosCount }) : ''}
                               </span>
                               <span>
                                 {m.courses.length === 0 || !m.lastActiveDate || m.lastActiveDate === '-'
                                   ? t('mentor.noActivity', 'Sin actividad')
-                                  : `Activo ${m.lastActiveDate}`}
+                                  : t('activoLastActiveDate', 'Activo {{lastActiveDate}}', { lastActiveDate: m.lastActiveDate })}
                               </span>
                             </div>
                           </div>
@@ -1406,8 +1407,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <section className="mentor-quiz-panel" aria-labelledby="mentor-quiz-title">
             <div className="mentor-section-heading">
               <div>
-                <h2 id="mentor-quiz-title">Evaluaciones</h2>
-                <p>Crea exámenes por módulo o genera una propuesta a partir del temario</p>
+                <h2 id="mentor-quiz-title">{t('evaluaciones', 'Evaluaciones')}</h2>
+                <p>{t('creaExamenesPorModuloOGeneraUnaPropuesta', 'Crea exámenes por módulo o genera una propuesta a partir del temario')}</p>
               </div>
             </div>
 
@@ -1418,11 +1419,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   type="search"
                   value={quizQuery}
                   onChange={(e) => { setQuizQuery(e.target.value); setQuizLimit(12); }}
-                  placeholder="Buscar curso"
-                  aria-label="Buscar curso"
+                  placeholder={t('buscarCurso', 'Buscar curso')}
+                  aria-label={t('buscarCurso', 'Buscar curso')}
                 />
               </label>
-              <div className="mentor-publication-filters" role="group" aria-label="Filtrar cursos">
+              <div className="mentor-publication-filters" role="group" aria-label={t('filtrarCursos', 'Filtrar cursos')}>
                 {(['all', 'without', 'complete'] as const).map((f) => (
                   <button key={f} type="button" aria-pressed={quizFilter === f} onClick={() => { setQuizFilter(f); setQuizLimit(12); }}>
                     <span>{filterLabel[f]}</span>
@@ -1433,9 +1434,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             </div>
 
             {displayCourses.length === 0 ? (
-              <p className="mentor-courses-empty" role="status">No hay cursos disponibles para gestionar evaluaciones</p>
+              <p className="mentor-courses-empty" role="status">{t('noHayCursosDisponiblesParaGestionar', 'No hay cursos disponibles para gestionar evaluaciones')}</p>
             ) : rows.length === 0 ? (
-              <p className="mentor-courses-empty" role="status">Ningún curso coincide con los filtros</p>
+              <p className="mentor-courses-empty" role="status">{t('ningunCursoCoincideConLosFiltros', 'Ningún curso coincide con los filtros')}</p>
             ) : (
               <ul className="mentor-quiz-list">
                 {rows.slice(0, quizLimit).map(({ course, modules, withExam, questions }) => {
@@ -1446,22 +1447,22 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                         <span className="mentor-quiz-card__category"><i aria-hidden="true" />{course.category}</span>
                         <span className="mentor-quiz-status" data-state={modules > 0 && withExam === modules ? 'resolved' : 'pending'}>
                           {modules > 0 && withExam === modules && <Check aria-hidden="true" />}
-                          {modules === 0 ? 'Sin módulos' : withExam === modules ? 'Completo' : 'Por completar'}
+                          {modules === 0 ? t('sinModulos', 'Sin módulos') : withExam === modules ? t('completo', 'Completo') : t('porCompletar', 'Por completar')}
                         </span>
                       </header>
                       <h3 title={stripEmoji(course.title)}>{stripEmoji(course.title)}</h3>
                       <div className="mentor-quiz-card__progress">
                         <div className="mentor-quiz-card__figure">
-                          <b>{withExam} de {modules}</b>
-                          <span>módulos con examen</span>
+                          <b>{t('withExamDeModules', '{{withExam}} de {{modules}}', { withExam, modules })}</b>
+                          <span>{t('modulosConExamen', 'módulos con examen')}</span>
                         </div>
-                        <div className="mentor-mentee-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Exámenes de ${stripEmoji(course.title)}`}>
+                        <div className="mentor-mentee-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t('examenesDeStripEmoji', 'Exámenes de {{stripEmoji}}', { stripEmoji: stripEmoji(course.title) })}>
                           <span style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="mentor-quiz-card__meta">{questions} {questions === 1 ? 'pregunta' : 'preguntas'} en total</span>
+                        <span className="mentor-quiz-card__meta">{t('countPreguntasEnTotal', { defaultValue_one: '{{count}} pregunta en total', defaultValue_other: '{{count}} preguntas en total', count: questions })}</span>
                       </div>
                       <button type="button" className="mentor-course-control" disabled={modules === 0} onClick={() => setQuizSheetCourseId(course.id)}>
-                        Ver módulos
+                        {t('verModulos', 'Ver módulos')}
                       </button>
                     </li>
                   );
@@ -1471,8 +1472,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             {rows.length > quizLimit && (
               <div className="mentor-mentee-more">
-                <span className="mentor-course-filter-result" role="status">{quizLimit} de {rows.length} cursos</span>
-                <button type="button" className="mentor-course-control" onClick={() => setQuizLimit((l) => l + 12)}>Mostrar más</button>
+                <span className="mentor-course-filter-result" role="status">{t('quizLimitDeLengthCursos', '{{quizLimit}} de {{length}} cursos', { quizLimit, length: rows.length })}</span>
+                <button type="button" className="mentor-course-control" onClick={() => setQuizLimit((l) => l + 12)}>{t('mostrarMas', 'Mostrar más')}</button>
               </div>
             )}
 
@@ -1492,7 +1493,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           currentUser={currentUser}
           onCourseCreated={(_courseId) => {
             onRefreshCourses();
-            announce('Curso generado y guardado desde YouTube');
+            announce(t('cursoGeneradoYGuardadoDesdeYoutube', 'Curso generado y guardado desde YouTube'));
             setActiveTab('courses');
           }}
           onCancel={() => setActiveTab('courses')}
@@ -1535,9 +1536,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <strong id="roster-title">
                   {rosterMode === 'course' ? rosterCourse?.title : rosterMentee?.name}
                 </strong>
-                <span>{rosterMode === 'course' ? 'Asignar mentees al curso' : 'Elegir los cursos de este mentee'}</span>
+                <span>{rosterMode === 'course' ? t('asignarMenteesAlCurso', 'Asignar mentees al curso') : t('elegirLosCursosDeEsteMentee', 'Elegir los cursos de este mentee')}</span>
               </div>
-              <button type="button" onClick={closeRoster} className="mentee-sheet__close" aria-label="Cerrar">
+              <button type="button" onClick={closeRoster} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
                 <X aria-hidden="true" />
               </button>
             </header>
@@ -1550,7 +1551,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   value={rosterQuery}
                   onChange={(e) => setRosterQuery(e.target.value)}
                   placeholder={rosterMode === 'course' ? 'Buscar mentee' : 'Buscar curso'}
-                  aria-label={rosterMode === 'course' ? 'Buscar mentee por nombre o correo' : 'Buscar curso'}
+                  aria-label={rosterMode === 'course' ? t('buscarMenteePorNombreOCorreo', 'Buscar mentee por nombre o correo') : t('buscarCurso', 'Buscar curso')}
                 />
               </label>
               {/* Unica via para incorporar a alguien que todavia no tiene
@@ -1564,7 +1565,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   }}
                   className="mentor-course-control"
                 >
-                  <Plus aria-hidden="true" /> Dar de alta
+                  <Plus aria-hidden="true" /> {t('darDeAlta', 'Dar de alta')}
                 </button>
               )}
             </div>
@@ -1584,9 +1585,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     if (filtrados.length === 0) {
                       return (
                         <p className="mentee-sheet__empty">
-                          {candidates.length === 0
-                            ? 'No hay cuentas mentee todavía. Crea una con «Dar de alta».'
-                            : 'Ningún mentee coincide con la búsqueda'}
+                          {t('ningunMenteeCoincideConLaBusqueda', { defaultValue_zero: 'No hay cuentas mentee todavía. Crea una con «Dar de alta».', defaultValue_other: 'Ningún mentee coincide con la búsqueda', count: candidates.length })}
                         </p>
                       );
                     }
@@ -1607,16 +1606,16 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                       return !q || course.title.toLowerCase().includes(q);
                     });
                     if (filtrados.length === 0) {
-                      return <p className="mentee-sheet__empty">Ningún curso coincide</p>;
+                      return <p className="mentee-sheet__empty">{t('ningunCursoCoincide', 'Ningún curso coincide')}</p>;
                     }
                     return filtrados.map((course) => (
                       <label key={course.id} className="roster-option">
                         <input type="checkbox" checked={rosterSelection.includes(course.id)} onChange={() => toggleRosterItem(course.id)} />
                         <span className="roster-option__text">
                           <strong>{course.title}</strong>
-                          <small>{course.category} · {course.modules?.length || 0} módulos</small>
+                          <small>{course.category} · {course.modules?.length || 0} {t('modulos', 'módulos')}</small>
                         </span>
-                        {!course.published && <span className="roster-option__tag">Borrador</span>}
+                        {!course.published && <span className="roster-option__tag">{t('borrador', 'Borrador')}</span>}
                       </label>
                     ));
                   })()}
@@ -1624,15 +1623,15 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <footer className="mentee-sheet__foot mentee-sheet__foot--actions">
               <span role="status" aria-live="polite">
-                {rosterSelection.length} seleccionado{rosterSelection.length === 1 ? '' : 's'}
+                {t('countSeleccionados', { defaultValue_one: '{{count}} seleccionado', defaultValue_other: '{{count}} seleccionados', count: rosterSelection.length })}
               </span>
               <div>
                 <button type="button" onClick={closeRoster} className="mentor-course-control">
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button type="button" onClick={handleSaveRoster} disabled={savingRoster} className="mentor-course-control mentor-course-import">
                   {savingRoster && <Loader2 aria-hidden="true" className="animate-spin" />}
-                  Guardar cambios
+                  {t('guardarCambios', 'Guardar cambios')}
                 </button>
               </div>
             </footer>
@@ -1643,8 +1642,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {showAssignMenteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-md space-y-4">
-            <h3 className="font-extrabold text-base text-white">Asignar Nuevo Mentee</h3>
-            <p className="text-xs text-ink-muted">Ingresa los datos del estudiante para asignarle mentoría prioritaria.</p>
+            <h3 className="font-extrabold text-base text-white">{t('asignarNuevoMentee', 'Asignar Nuevo Mentee')}</h3>
+            <p className="text-xs text-ink-muted">{t('ingresaLosDatosDelEstudiantePara', 'Ingresa los datos del estudiante para asignarle mentoría prioritaria.')}</p>
 
             {assignError && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
@@ -1654,19 +1653,19 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <form onSubmit={handleAssignMenteeSubmit} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Nombre</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('nombre', 'Nombre')}</label>
                 <input
                   type="text"
                   value={newMenteeName}
                   onChange={(e) => setNewMenteeName(e.target.value)}
-                  placeholder="Ej. Roberto Gómez"
+                  placeholder={t('ejRobertoGomez', 'Ej. Roberto Gómez')}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Correo Electrónico</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('correoElectronico', 'Correo Electrónico')}</label>
                 <input
                   type="email"
                   value={newMenteeEmail}
@@ -1680,13 +1679,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
               {/* Antes entraban siempre al primer curso publicado, fuera el
                   que fuera. Ahora se elige, y se pueden añadir más después. */}
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Curso inicial</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('cursoInicial', 'Curso inicial')}</label>
                 <select
                   value={newMenteeCourseId}
                   onChange={(e) => setNewMenteeCourseId(e.target.value)}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                 >
-                  <option value="">Primer curso publicado</option>
+                  <option value="">{t('primerCursoPublicado', 'Primer curso publicado')}</option>
                   {displayCourses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.title}
@@ -1701,7 +1700,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onClick={() => setShowAssignMenteeModal(false)}
                   className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -1709,7 +1708,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="px-4 py-2 bg-[var(--color-brand-cyan)] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {assigningMentee && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Asignar Mentee
+                  {t('asignarMentee', 'Asignar Mentee')}
                 </button>
               </div>
             </form>
@@ -1721,10 +1720,9 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {showCreateCourseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-lg space-y-4">
-            <h3 className="font-extrabold text-base text-white">Crear Nuevo Programa</h3>
+            <h3 className="font-extrabold text-base text-white">{t('crearNuevoPrograma', 'Crear Nuevo Programa')}</h3>
             <p className="text-xs text-ink-muted">
-              Se crea la ficha del programa. Los módulos y las clases se añaden después desde
-              Administración › Cursos o importando una carpeta de Google Drive.
+              {t('seCreaLaFichaDelProgramaLosModulosYLas', 'Se crea la ficha del programa. Los módulos y las clases se añaden después desde Administración › Cursos o importando una carpeta de Google Drive.')}
             </p>
 
             {createCourseError && (
@@ -1735,44 +1733,44 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
 
             <form onSubmit={handleCreateCourseSubmit} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Título del Programa</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('tituloDelPrograma', 'Título del Programa')}</label>
                 <input
                   type="text"
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
-                  placeholder="Ej. Mentoría Elite: Arquitectura Cloud"
+                  placeholder={t('ejMentoriaEliteArquitecturaCloud', 'Ej. Mentoría Elite: Arquitectura Cloud')}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Descripción</label>
+                <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('descripcion', 'Descripción')}</label>
                 <textarea
                   rows={3}
                   value={newCourseDescription}
                   onChange={(e) => setNewCourseDescription(e.target.value)}
-                  placeholder="Qué aprende el alumno y para quién es este programa."
+                  placeholder={t('queAprendeElAlumnoYParaQuienEsEste', 'Qué aprende el alumno y para quién es este programa.')}
                   className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Categoría</label>
+                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('categoria', 'Categoría')}</label>
                   <select
                     value={newCourseCategory}
                     onChange={(e) => setNewCourseCategory(e.target.value)}
                     className="w-full py-2 px-3 bg-canvas border border-line rounded-xl text-xs text-white focus:outline-none focus:border-[var(--color-brand-cyan)] cursor-pointer"
                   >
-                    <optgroup label="Modalidades de Mentoría">
+                    <optgroup label={t('modalidadesDeMentoria', 'Modalidades de Mentoría')}>
                       {MENTORSHIP_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
                       ))}
                     </optgroup>
-                    <optgroup label="Áreas Temáticas Técnicas">
+                    <optgroup label={t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas')}>
                       {TECHNICAL_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
@@ -1783,7 +1781,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">Precio (USD)</label>
+                  <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">{t('precioUsd', 'Precio (USD)')}</label>
                   <input
                     type="number"
                     min={0}
@@ -1801,7 +1799,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onChange={(e) => setNewCoursePublished(e.target.checked)}
                   className="accent-[var(--color-brand-cyan)]"
                 />
-                Publicar de inmediato (visible en el catálogo, aún sin clases)
+                {t('publicarDeInmediatoVisibleEnElCatalogo', 'Publicar de inmediato (visible en el catálogo, aún sin clases)')}
               </label>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -1810,7 +1808,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   onClick={() => setShowCreateCourseModal(false)}
                   className="px-4 py-2 bg-raised text-ink-muted text-xs font-bold rounded-xl"
                 >
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button
                   type="submit"
@@ -1818,7 +1816,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                   className="px-4 py-2 bg-gradient-to-r from-[var(--color-brand-cyan)] to-[#a855f7] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {creatingCourse ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  Crear Programa
+                  {t('crearPrograma', 'Crear Programa')}
                 </button>
               </div>
             </form>

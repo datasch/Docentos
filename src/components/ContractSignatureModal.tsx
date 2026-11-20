@@ -120,7 +120,7 @@ export const ContractSignatureModal: React.FC<ContractModalProps> = ({ contractD
         <article className="terms-paper sign-paper">
           <header className="terms-paper__top">
             <div>
-              <strong>DocentOS</strong>
+              <strong>{t('docentos', 'DocentOS')}</strong>
               <span>{t('plataformaELearning', 'Plataforma e-Learning')}</span>
             </div>
             <div className="terms-paper__no">

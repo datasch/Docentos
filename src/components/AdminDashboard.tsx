@@ -11,7 +11,7 @@
 import { useToastMessage } from '../lib/useToastMessage';
 import { AdminSelect } from './AdminSelect';
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { dateLocale } from '../i18n/format';
 import { MAX_USER_STRIKES, nextStrikes } from '../lib/moderation';
 import { Shield, Crown, UserCheck, HardDrive, MessageSquare, Plus, RefreshCw, CheckCircle2, Users, Layers, ExternalLink, Sparkles, Volume2, Play, Trash2, Award, Wand2, Loader2, Sliders, GraduationCap, BookOpen, Download, FileText, Ban, Check, XCircle, AlertTriangle, Link2, FileCheck, Eye, HeartHandshake, Palette, LayoutDashboard, List, LayoutGrid } from 'lucide-react';
@@ -37,6 +37,7 @@ import { pluginManager } from '../plugins/PluginManager';
 import { DEFAULT_LOGO_URL } from '../lib/logoConfig';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
 import { MODERN_ADMIN_MODULES, type ModernAdminModuleId } from '../lib/adminNavigation';
+import i18next from 'i18next'
 
 interface AdminDashboardProps {
   currentUser?: User;
@@ -112,7 +113,7 @@ const resourceKindLabel = (resource: CourseResource): string => {
 const resourceKindDetail = (resource: CourseResource): string => {
   if (resource.kind === 'LINK') return linkHost(resource.downloadUrl);
   const bytes = Number(resource.sizeBytes);
-  return Number.isFinite(bytes) && bytes > 0 ? (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`) : '';
+  return Number.isFinite(bytes) && bytes > 0 ? (bytes >= 1048576 ? i18next.t('valMb', '{{val}} MB', { val: (bytes / 1048576).toFixed(1) }) : i18next.t('valKb', '{{val}} KB', { val: Math.max(1, Math.round(bytes / 1024)) })) : '';
 };
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, course, onRefreshData }) => {
@@ -598,7 +599,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       await api.deleteCourseResource(resourceId);
       const deletedTitle = resourceToDelete?.title;
       setResourceToDelete(null);
-      setResSuccessMsg(deletedTitle ? `«${deletedTitle}» eliminado.` : 'Recurso eliminado.');
+      setResSuccessMsg(deletedTitle ? t('deletedTitleEliminado', '«{{deletedTitle}}» eliminado.', { deletedTitle }) : t('recursoEliminado', 'Recurso eliminado.'));
       setTimeout(() => setResSuccessMsg(''), 4000);
       refreshEverything();
     } catch (err: any) {
@@ -941,8 +942,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     (resourceKindFilter === 'ALL' || resource.kind === resourceKindFilter),
   );
   const resourceKindOptions = [
-    { value: 'FILE', label: 'Archivo', count: workResources.filter(({ resource }) => resource.kind === 'FILE').length },
-    { value: 'LINK', label: 'Enlace', count: workResources.filter(({ resource }) => resource.kind === 'LINK').length },
+    { value: 'FILE', label: t('archivo', 'Archivo'), count: workResources.filter(({ resource }) => resource.kind === 'FILE').length },
+    { value: 'LINK', label: t('enlace', 'Enlace'), count: workResources.filter(({ resource }) => resource.kind === 'LINK').length },
   ];
   const resourcePageSize = resourceView === 'list' ? 10 : 12;
   const resourcePageSafe = Math.min(resourcePage, Math.max(1, Math.ceil(filteredResources.length / resourcePageSize)));
@@ -1089,7 +1090,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
       ) : (
         <>
           {/* Admin Header v0.5 Moderna */}
-          <section className="admin-command" aria-label="Command Center">
+          <section className="admin-command" aria-label={t('commandCenter', 'Command Center')}>
           <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex min-w-0 items-center gap-4">
               <div className="relative h-14 w-14 shrink-0 overflow-visible rounded-xl border border-line bg-raised p-2.5">
@@ -1524,23 +1525,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="mentor-mentees-panel admin-people-panel">
                 <div className="mentor-section-heading">
                   <div>
-                    <h2>Cursos</h2>
-                    <p>Gestiona el catálogo y los materiales de aprendizaje.</p>
+                    <h2>{t('cursos', 'Cursos')}</h2>
+                    <p>{t('gestionaElCatalogoYLosMaterialesDe', 'Gestiona el catálogo y los materiales de aprendizaje.')}</p>
                   </div>
                 </div>
                 <div className="admin-people-top">
-                  <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
-                    <button type="button" aria-pressed="false" onClick={() => selectTab('courses')}><span>Catálogo</span><span className="mentor-publication-count">({allCourses.length})</span></button>
-                    <button type="button" aria-pressed="true"><span>Recursos</span><span className="mentor-publication-count">({catalogResourceCount})</span></button>
+                  <div className="mentor-publication-filters" role="group" aria-label={t('seccionDeCursos', 'Sección de cursos')}>
+                    <button type="button" aria-pressed="false" onClick={() => selectTab('courses')}><span>{t('catalogo', 'Catálogo')}</span><span className="mentor-publication-count">({allCourses.length})</span></button>
+                    <button type="button" aria-pressed="true"><span>{t('recursos', 'Recursos')}</span><span className="mentor-publication-count">({catalogResourceCount})</span></button>
                   </div>
-                  {activeTab === 'resources' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />Agregar recurso</button>}
-                  {activeTab === 'drive' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}><Plus size={18} aria-hidden="true" />Añadir video</button>}
-                  {activeTab === 'tts' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }} disabled={workLessonCount === 0}><Plus size={18} aria-hidden="true" />Nueva guía</button>}
+                  {activeTab === 'resources' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />{t('agregarRecurso', 'Agregar recurso')}</button>}
+                  {activeTab === 'drive' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}><Plus size={18} aria-hidden="true" />{t('anadirVideo', 'Añadir video')}</button>}
+                  {activeTab === 'tts' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }} disabled={workLessonCount === 0}><Plus size={18} aria-hidden="true" />{t('nuevaGuia', 'Nueva guía')}</button>}
                 </div>
-                <div className="admin-resources-shell__media" role="group" aria-label="Tipo de recurso">
-                  <button type="button" aria-pressed={activeTab === 'resources'} onClick={() => { setActiveTab('resources'); setMediaView('resources'); }}>Materiales</button>
-                  <button type="button" aria-pressed={activeTab === 'drive'} onClick={() => { setActiveTab('drive'); setMediaView('drive'); }}>Videos Drive</button>
-                  <button type="button" aria-pressed={activeTab === 'tts'} onClick={() => { setActiveTab('tts'); setMediaView('tts'); }}>Audio TTS</button>
+                <div className="admin-resources-shell__media" role="group" aria-label={t('tipoDeRecurso', 'Tipo de recurso')}>
+                  <button type="button" aria-pressed={activeTab === 'resources'} onClick={() => { setActiveTab('resources'); setMediaView('resources'); }}>{t('materiales', 'Materiales')}</button>
+                  <button type="button" aria-pressed={activeTab === 'drive'} onClick={() => { setActiveTab('drive'); setMediaView('drive'); }}>{t('videosDrive', 'Videos Drive')}</button>
+                  <button type="button" aria-pressed={activeTab === 'tts'} onClick={() => { setActiveTab('tts'); setMediaView('tts'); }}>{t('audioTts', 'Audio TTS')}</button>
                 </div>
                 <div className="admin-resources-shell__scope">
                   <AdminCoursePicker courses={allCourses} value={workCourseId} onChange={(courseId) => { setWorkCourseId(courseId); setResourceQuery(''); setResourceKindFilter('ALL'); setResourcePage(1); setResSuccessMsg(''); setResErrorMsg(''); }} />
@@ -1551,16 +1552,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
 
           {/* Materiales del curso */}
           {(uiVersion === 'v0.4-classic' ? activeTab === 'resources' : (mediaView === 'resources' || activeTab === 'resources')) && (
-            <section data-mentor-ui="modern" className="admin-resources" aria-label="Materiales del curso">
+            <section data-mentor-ui="modern" className="admin-resources" aria-label={t('materialesDelCurso', 'Materiales del curso')}>
               <div className="mentor-course-toolbar admin-resources__toolbar">
-                <AdminSearchField value={resourceQuery} onChange={(value) => { setResourceQuery(value); setResourcePage(1); }} placeholder="Buscar recurso" label="Buscar recurso" />
+                <AdminSearchField value={resourceQuery} onChange={(value) => { setResourceQuery(value); setResourcePage(1); }} placeholder={t('buscarRecurso', 'Buscar recurso')} label={t('buscarRecurso', 'Buscar recurso')} />
                 <FilterMenu groups={[{ value: resourceKindFilter, onChange: (value) => { setResourceKindFilter(value); setResourcePage(1); }, options: resourceKindOptions }]} />
-                {!resourceIsMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista de recursos">
-                  <button type="button" aria-pressed={resourceView === 'list'} aria-label="Vista de lista" onClick={() => { changeResourceView('list'); setResourcePage(1); }}><List aria-hidden="true" /><span>Lista</span></button>
-                  <button type="button" aria-pressed={resourceView === 'cards'} aria-label="Vista de tarjetas" onClick={() => { changeResourceView('cards'); setResourcePage(1); }}><LayoutGrid aria-hidden="true" /><span>Tarjetas</span></button>
+                {!resourceIsMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDeRecursos', 'Vista de recursos')}>
+                  <button type="button" aria-pressed={resourceView === 'list'} aria-label={t('vistaDeLista', 'Vista de lista')} onClick={() => { changeResourceView('list'); setResourcePage(1); }}><List aria-hidden="true" /><span>{t('lista', 'Lista')}</span></button>
+                  <button type="button" aria-pressed={resourceView === 'cards'} aria-label={t('vistaDeTarjetas', 'Vista de tarjetas')} onClick={() => { changeResourceView('cards'); setResourcePage(1); }}><LayoutGrid aria-hidden="true" /><span>{t('tarjetas', 'Tarjetas')}</span></button>
                 </div>}
               </div>
-              {uiVersion === 'v0.4-classic' && <div className="admin-resources__classic-add"><button type="button" className="mentor-course-control admin-resources__add" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />Agregar recurso</button></div>}
+              {uiVersion === 'v0.4-classic' && <div className="admin-resources__classic-add"><button type="button" className="mentor-course-control admin-resources__add" onClick={() => { setResErrorMsg(''); setShowResourceSheet(true); }}><Plus size={18} aria-hidden="true" />{t('agregarRecurso', 'Agregar recurso')}</button></div>}
               <ActiveFilters noun="recursos" shown={filteredResources.length} total={workResources.length} onClear={() => { setResourceQuery(''); setResourceKindFilter('ALL'); setResourcePage(1); }} chips={[
                 ...(resourceKindFilter !== 'ALL' ? [{ key: 'kind', text: resourceKindFilter === 'FILE' ? 'Archivo' : 'Enlace', onRemove: () => { setResourceKindFilter('ALL'); setResourcePage(1); } }] : []),
                 ...(resourceQuery.trim() ? [{ key: 'query', text: `«${resourceQuery.trim()}»`, onRemove: () => { setResourceQuery(''); setResourcePage(1); } }] : []),
@@ -1577,28 +1578,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                             <span className="admin-tts__kind" data-kind={resource.kind} title={resourceKindDetail(resource) || undefined}>{resourceKindLabel(resource)}</span>
                             {resource.description && <div className="admin-tts__where"><p>{resource.description}</p></div>}
                           </div>
-                          <div className="admin-tts__meta"><div className="admin-tts__meta-text"><span>{moduleTitle || 'General del curso'}</span></div></div>
+                          <div className="admin-tts__meta"><div className="admin-tts__meta-text"><span>{moduleTitle || t('generalDelCurso', 'General del curso')}</span></div></div>
                         </div>
                         <div className="admin-tts__actions">
-                          <a className="admin-resources__open" href={resource.downloadUrl} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${resource.title} en otra pestaña`}>Abrir<ExternalLink aria-hidden="true" /></a>
-                          <button type="button" className="mentor-course-control admin-resources__delete" data-danger="true" onClick={() => { setResErrorMsg(''); setResourceToDelete(resource); }} aria-haspopup="dialog" aria-label={`Eliminar ${resource.title}`}><Trash2 aria-hidden="true" />Eliminar</button>
+                          <a className="admin-resources__open" href={resource.downloadUrl} target="_blank" rel="noopener noreferrer" aria-label={t('abrirTitleEnOtraPestana', 'Abrir {{title}} en otra pestaña', { title: resource.title })}>{t('abrir', 'Abrir')}<ExternalLink aria-hidden="true" /></a>
+                          <button type="button" className="mentor-course-control admin-resources__delete" data-danger="true" onClick={() => { setResErrorMsg(''); setResourceToDelete(resource); }} aria-haspopup="dialog" aria-label={t('eliminarTitle', 'Eliminar {{title}}', { title: resource.title })}><Trash2 aria-hidden="true" />{t('eliminar', 'Eliminar')}</button>
                         </div>
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : (
-                <div className="admin-resources__empty"><FileText size={28} aria-hidden="true" /><p>{workResources.length ? 'Nada coincide con la búsqueda o los filtros' : 'Este curso todavía no tiene recursos'}</p><span>{workResources.length ? 'Prueba otra búsqueda o limpia los filtros.' : 'Agrega el primer material para compartirlo con tus estudiantes.'}</span>{workResources.length === 0 && <button type="button" className="mentor-course-control admin-resources__add" onClick={() => setShowResourceSheet(true)}>Agregar recurso</button>}</div>
+                <div className="admin-resources__empty"><FileText size={28} aria-hidden="true" /><p>{workResources.length ? t('nadaCoincideConLaBusquedaOLosFiltros', 'Nada coincide con la búsqueda o los filtros') : t('esteCursoTodaviaNoTieneRecursos', 'Este curso todavía no tiene recursos')}</p><span>{workResources.length ? t('pruebaOtraBusquedaOLimpiaLosFiltros', 'Prueba otra búsqueda o limpia los filtros.') : t('agregaElPrimerMaterialParaCompartirloCon', 'Agrega el primer material para compartirlo con tus estudiantes.')}</span>{workResources.length === 0 && <button type="button" className="mentor-course-control admin-resources__add" onClick={() => setShowResourceSheet(true)}>{t('agregarRecurso', 'Agregar recurso')}</button>}</div>
               )}
               <Pager total={filteredResources.length} size={resourcePageSize} page={resourcePageSafe} onPage={setResourcePage} noun="recursos" />
               <dialog ref={resourceConfirmRef} className="mentor-confirm admin-resource-confirm" aria-labelledby="admin-resource-delete-title" aria-describedby="admin-resource-delete-description" onCancel={(event) => { event.preventDefault(); if (!deletingResource) setResourceToDelete(null); }} onClick={(event) => { if (event.target === event.currentTarget && !deletingResource) setResourceToDelete(null); }}>
                 {resourceToDelete && <div className="mentor-confirm__body">
-                  <h3 id="admin-resource-delete-title" className="admin-confirm-title"><AlertTriangle aria-hidden="true" />Eliminar recurso</h3>
-                  <p id="admin-resource-delete-description">Vas a eliminar <strong>{resourceToDelete.title}</strong>. Los estudiantes de este curso perderán el acceso. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</p>
-                  {resErrorMsg && <p role="alert" className="admin-confirm-error"><strong>{resErrorMsg}</strong> Inténtalo de nuevo.</p>}
+                  <h3 id="admin-resource-delete-title" className="admin-confirm-title"><AlertTriangle aria-hidden="true" />{t('eliminarRecurso', 'Eliminar recurso')}</h3>
+                  <p id="admin-resource-delete-description">{t('vasAEliminar', 'Vas a eliminar')} <strong>{resourceToDelete.title}</strong><Trans i18nKey="losEstudiantesDeEsteCursoPerderanEl">. Los estudiantes de este curso perderán el acceso. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans></p>
+                  {resErrorMsg && <p role="alert" className="admin-confirm-error"><strong>{resErrorMsg}</strong> {t('intentaloDeNuevo', 'Inténtalo de nuevo.')}</p>}
                   <div className="mentor-confirm__actions">
-                    <button type="button" className="mentor-course-control" onClick={() => setResourceToDelete(null)} disabled={deletingResource}>Cancelar</button>
-                    <button type="button" className="mentor-course-control" data-danger="true" onClick={() => handleDeleteResource(resourceToDelete.id)} disabled={deletingResource} aria-busy={deletingResource}>{deletingResource ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}Eliminar recurso</button>
+                    <button type="button" className="mentor-course-control" onClick={() => setResourceToDelete(null)} disabled={deletingResource}>{t('cancelar', 'Cancelar')}</button>
+                    <button type="button" className="mentor-course-control" data-danger="true" onClick={() => handleDeleteResource(resourceToDelete.id)} disabled={deletingResource} aria-busy={deletingResource}>{deletingResource ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}{t('eliminarRecurso', 'Eliminar recurso')}</button>
                   </div>
                 </div>}
               </dialog>
@@ -1611,40 +1612,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <section data-mentor-ui="modern" className="admin-drive" aria-labelledby="admin-drive-title">
               <div className="admin-drive__head">
                 <div>
-                  <h3 id="admin-drive-title">Biblioteca de Drive</h3>
-                  <p>Elige un módulo y enlaza los videos que formarán parte del temario.</p>
+                  <h3 id="admin-drive-title">{t('bibliotecaDeDrive', 'Biblioteca de Drive')}</h3>
+                  <p>{t('eligeUnModuloYEnlazaLosVideosQueFormaran', 'Elige un módulo y enlaza los videos que formarán parte del temario.')}</p>
                 </div>
                 <label className="admin-drive__destination" htmlFor="admin-drive-module">
-                  <span>Módulo de destino</span>
-                  <AdminSelect id="admin-drive-module" value={selectedModuleId} onChange={(v) => { setSelectedModuleId(v); setDriveLinkFilter('ALL'); setDrivePage(1); }} disabled={workModules.length === 0} placeholder="Sin módulos" options={workModules.map((module) => ({ value: module.id, label: module.title }))} />
+                  <span>{t('moduloDeDestino', 'Módulo de destino')}</span>
+                  <AdminSelect id="admin-drive-module" value={selectedModuleId} onChange={(v) => { setSelectedModuleId(v); setDriveLinkFilter('ALL'); setDrivePage(1); }} disabled={workModules.length === 0} placeholder={t('sinModulos', 'Sin módulos')} options={workModules.map((module) => ({ value: module.id, label: module.title }))} />
                 </label>
               </div>
 
-              {workModules.length === 0 && <div className="admin-drive__empty" role="status"><Layers aria-hidden="true" /><strong>Este curso aún no tiene módulos</strong><span>Crea uno en el catálogo para poder asignarle videos.</span><button type="button" onClick={() => selectTab('courses')}>Ir al catálogo</button></div>}
-              {driveIsDemo && <p className="admin-drive__demo"><AlertTriangle aria-hidden="true" /><span>Drive no está conectado. Esta lista es una demostración; puedes añadir un video real mediante su enlace.</span></p>}
+              {workModules.length === 0 && <div className="admin-drive__empty" role="status"><Layers aria-hidden="true" /><strong>{t('esteCursoAunNoTieneModulos', 'Este curso aún no tiene módulos')}</strong><span>{t('creaUnoEnElCatalogoParaPoderAsignarle', 'Crea uno en el catálogo para poder asignarle videos.')}</span><button type="button" onClick={() => selectTab('courses')}>{t('irAlCatalogo', 'Ir al catálogo')}</button></div>}
+              {driveIsDemo && <p className="admin-drive__demo"><AlertTriangle aria-hidden="true" /><span>{t('driveNoEstaConectadoEstaListaEsUna', 'Drive no está conectado. Esta lista es una demostración; puedes añadir un video real mediante su enlace.')}</span></p>}
 
               <div className="mentor-course-toolbar admin-resources__toolbar admin-drive__toolbar">
-                <AdminSearchField value={searchQuery} onChange={setSearchQuery} placeholder="Buscar video en Drive" label="Buscar video en Drive" />
+                <AdminSearchField value={searchQuery} onChange={setSearchQuery} placeholder={t('buscarVideoEnDrive', 'Buscar video en Drive')} label={t('buscarVideoEnDrive', 'Buscar video en Drive')} />
                 <FilterMenu groups={[{ value: driveLinkFilter, onChange: (value) => { setDriveLinkFilter(value); setDrivePage(1); }, options: [
-                  { value: 'unlinked', label: 'Sin enlazar', count: driveVideos.filter((video) => !workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id)).length },
-                  { value: 'linked', label: 'En este módulo', count: driveVideos.filter((video) => workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id)).length },
+                  { value: 'unlinked', label: t('sinEnlazar', 'Sin enlazar'), count: driveVideos.filter((video) => !workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id)).length },
+                  { value: 'linked', label: t('enEsteModulo', 'En este módulo'), count: driveVideos.filter((video) => workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id)).length },
                 ] }]} />
-                {!driveIsMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista de videos"><button type="button" aria-pressed={driveView === 'list'} aria-label="Vista de lista" onClick={() => { changeDriveView('list'); setDrivePage(1); }}><List aria-hidden="true" /><span>Lista</span></button><button type="button" aria-pressed={driveView === 'cards'} aria-label="Vista de tarjetas" onClick={() => { changeDriveView('cards'); setDrivePage(1); }}><LayoutGrid aria-hidden="true" /><span>Tarjetas</span></button></div>}
+                {!driveIsMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDeVideos', 'Vista de videos')}><button type="button" aria-pressed={driveView === 'list'} aria-label={t('vistaDeLista', 'Vista de lista')} onClick={() => { changeDriveView('list'); setDrivePage(1); }}><List aria-hidden="true" /><span>{t('lista', 'Lista')}</span></button><button type="button" aria-pressed={driveView === 'cards'} aria-label={t('vistaDeTarjetas', 'Vista de tarjetas')} onClick={() => { changeDriveView('cards'); setDrivePage(1); }}><LayoutGrid aria-hidden="true" /><span>{t('tarjetas', 'Tarjetas')}</span></button></div>}
               </div>
 
-              <ActiveFilters noun="videos" shown={visibleDriveVideos.length} total={driveVideos.length} onClear={() => { setDriveLinkFilter('ALL'); setDrivePage(1); }} chips={driveLinkFilter === 'ALL' ? [] : [{ key: 'linked', text: driveLinkFilter === 'linked' ? 'En este módulo' : 'Sin enlazar', onRemove: () => { setDriveLinkFilter('ALL'); setDrivePage(1); } }]} />
-              {!loadingDrive && driveVideos.length > 0 && <p className="admin-drive__count">{visibleDriveVideos.length} {visibleDriveVideos.length === 1 ? 'video' : 'videos'} en la carpeta</p>}
+              <ActiveFilters noun="videos" shown={visibleDriveVideos.length} total={driveVideos.length} onClear={() => { setDriveLinkFilter('ALL'); setDrivePage(1); }} chips={driveLinkFilter === 'ALL' ? [] : [{ key: 'linked', text: driveLinkFilter === 'linked' ? t('enEsteModulo', 'En este módulo') : t('sinEnlazar', 'Sin enlazar'), onRemove: () => { setDriveLinkFilter('ALL'); setDrivePage(1); } }]} />
+              {!loadingDrive && driveVideos.length > 0 && <p className="admin-drive__count">{t('countVideosEnLaCarpeta', { defaultValue_one: '{{count}} video en la carpeta', defaultValue_other: '{{count}} videos en la carpeta', count: visibleDriveVideos.length })}</p>}
 
-              {loadingDrive ? <div className="admin-drive__grid" data-view="cards" role="status" aria-label="Cargando videos">{[0, 1, 2].map((index) => <div key={index} className="admin-drive__skeleton" />)}</div> : visibleDriveVideos.length === 0 ? (
-                <div className="admin-drive__empty" role="status"><HardDrive aria-hidden="true" /><strong>{driveVideos.length ? 'No hay videos con ese filtro' : 'No encontramos videos en la carpeta'}</strong><span>{driveVideos.length ? 'Prueba otra opción de filtro.' : 'Busca por otro nombre o añade el video con su enlace.'}</span><button type="button" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}>Añadir por enlace</button></div>
+              {loadingDrive ? <div className="admin-drive__grid" data-view="cards" role="status" aria-label={t('cargandoVideos', 'Cargando videos')}>{[0, 1, 2].map((index) => <div key={index} className="admin-drive__skeleton" />)}</div> : visibleDriveVideos.length === 0 ? (
+                <div className="admin-drive__empty" role="status"><HardDrive aria-hidden="true" /><strong>{driveVideos.length ? t('noHayVideosConEseFiltro', 'No hay videos con ese filtro') : t('noEncontramosVideosEnLaCarpeta', 'No encontramos videos en la carpeta')}</strong><span>{driveVideos.length ? t('pruebaOtraOpcionDeFiltro', 'Prueba otra opción de filtro.') : t('buscaPorOtroNombreOAnadeElVideoConSu', 'Busca por otro nombre o añade el video con su enlace.')}</span><button type="button" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}>{t('anadirPorEnlace', 'Añadir por enlace')}</button></div>
               ) : (
                 <div className="admin-drive__grid" data-view={driveView}>
                   {pagedDriveVideos.map((video) => {
                     const linkedHere = Boolean(workModules.find((module) => module.id === selectedModuleId)?.videos.some((item) => item.driveFileId === video.id));
                     return <article key={video.id} className="admin-drive__card" data-view={driveView} aria-labelledby={`admin-drive-video-${video.id}`}>
                       <div className="admin-drive__poster">{video.thumbnailLink ? <img src={video.thumbnailLink} alt="" loading="lazy" /> : <Play aria-hidden="true" />}{video.duration && <span className="admin-drive__duration">{video.duration}</span>}</div>
-                      <div className="admin-drive__card-body"><span className="admin-drive__source">Video de Drive</span><h4 id={`admin-drive-video-${video.id}`} title={video.name}>{video.name}</h4><span className="admin-drive__state" data-linked={linkedHere}>{linkedHere ? 'En este módulo' : 'Disponible para enlazar'}</span></div>
-                      <div className="admin-drive__card-actions">{video.webViewLink && <a href={video.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={`Ver ${video.name} en Drive`}>Ver en Drive<ExternalLink aria-hidden="true" /></a>}<button type="button" onClick={() => handleLinkDriveVideo(video)} disabled={driveIsDemo || linkedHere || linkingVideo?.id === video.id || workModules.length === 0} aria-busy={linkingVideo?.id === video.id}>{linkingVideo?.id === video.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : linkedHere ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}{linkedHere ? 'Enlazado' : 'Enlazar'}</button></div>
+                      <div className="admin-drive__card-body"><span className="admin-drive__source">{t('videoDeDrive', 'Video de Drive')}</span><h4 id={`admin-drive-video-${video.id}`} title={video.name}>{video.name}</h4><span className="admin-drive__state" data-linked={linkedHere}>{linkedHere ? t('enEsteModulo', 'En este módulo') : t('disponibleParaEnlazar', 'Disponible para enlazar')}</span></div>
+                      <div className="admin-drive__card-actions">{video.webViewLink && <a href={video.webViewLink} target="_blank" rel="noopener noreferrer" aria-label={t('verNameEnDrive', 'Ver {{name}} en Drive', { name: video.name })}>{t('verEnDrive', 'Ver en Drive')}<ExternalLink aria-hidden="true" /></a>}<button type="button" onClick={() => handleLinkDriveVideo(video)} disabled={driveIsDemo || linkedHere || linkingVideo?.id === video.id || workModules.length === 0} aria-busy={linkingVideo?.id === video.id}>{linkingVideo?.id === video.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : linkedHere ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}{linkedHere ? t('enlazado', 'Enlazado') : t('enlazar', 'Enlazar')}</button></div>
                     </article>;
                   })}
                 </div>
@@ -1702,14 +1703,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="mentor-mentees-panel admin-people-panel">
                 <div className="mentor-section-heading">
                   <div>
-                    <h2>Portal</h2>
-                    <p>Edita la portada pública y atiende el buzón de escucha.</p>
+                    <h2>{t('portal', 'Portal')}</h2>
+                    <p>{t('editaLaPortadaPublicaYAtiendeElBuzonDe', 'Edita la portada pública y atiende el buzón de escucha.')}</p>
                   </div>
                 </div>
                 <div className="admin-people-top">
-                  <div className="mentor-publication-filters" role="group" aria-label="Sección del portal">
-                    <button type="button" aria-pressed={activeTab === 'landing' || portalView === 'landing'} onClick={() => { setActiveTab('landing'); setPortalView('landing'); }}><span>Portada</span></button>
-                    <button type="button" aria-pressed={activeTab === 'listening' || portalView === 'listening'} onClick={() => { setActiveTab('listening'); setPortalView('listening'); }}><span>Escucha</span></button>
+                  <div className="mentor-publication-filters" role="group" aria-label={t('seccionDelPortal', 'Sección del portal')}>
+                    <button type="button" aria-pressed={activeTab === 'landing' || portalView === 'landing'} onClick={() => { setActiveTab('landing'); setPortalView('landing'); }}><span>{t('portada', 'Portada')}</span></button>
+                    <button type="button" aria-pressed={activeTab === 'listening' || portalView === 'listening'} onClick={() => { setActiveTab('listening'); setPortalView('listening'); }}><span>{t('escucha', 'Escucha')}</span></button>
                   </div>
                   <div ref={setPortalActionsSlot} className="admin-courses-actions" />
                 </div>

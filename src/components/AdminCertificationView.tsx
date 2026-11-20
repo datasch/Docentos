@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { List, LayoutGrid, Award, FileCheck, Eye, ShieldAlert, Ban } from 'lucide-react';
 import type { CertificateRecord } from '../types';
 import { AdminSearchField, FilterMenu, ActiveFilters, Pager, useListView } from './AdminListKit';
+import { useTranslation, Trans } from 'react-i18next'
 
 export interface ContractSignature {
   id: string;
@@ -30,6 +31,7 @@ interface Props {
 
 /** Certificación: certificados emitidos y auditoría de contratos, con el sistema de Usuarios. */
 export function AdminCertificationView({ section, onSection, certificates, signatures, onRevoke, onViewSignature }: Props) {
+  const { t } = useTranslation()
   const { isMobile, view, change } = useListView('admin-cert-view');
   const size = view === 'list' ? 10 : 12;
 
@@ -82,14 +84,14 @@ export function AdminCertificationView({ section, onSection, certificates, signa
   };
 
   const toggle = !isMobile && (
-    <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista">
+    <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vista', 'Vista')}>
       <button type="button" aria-pressed={view === 'list'} onClick={() => { change('list'); setPage(1); }}>
         <List aria-hidden="true" />
-        <span>Lista</span>
+        <span>{t('lista', 'Lista')}</span>
       </button>
       <button type="button" aria-pressed={view === 'cards'} onClick={() => { change('cards'); setPage(1); }}>
         <LayoutGrid aria-hidden="true" />
-        <span>Tarjetas</span>
+        <span>{t('tarjetas', 'Tarjetas')}</span>
       </button>
     </div>
   );
@@ -99,30 +101,30 @@ export function AdminCertificationView({ section, onSection, certificates, signa
       <div className="mentor-mentees-panel admin-people-panel">
         <div className="mentor-section-heading">
           <div>
-            <h2 id="admin-cert-title">Certificación</h2>
+            <h2 id="admin-cert-title">{t('certificacion', 'Certificación')}</h2>
             <p>
               {isCert
-                ? 'Certificados emitidos a los graduados, con código de verificación pública.'
-                : 'Evidencia de los contratos y consentimientos firmados por cada usuario.'}
+                ? t('certificadosEmitidosALosGraduadosCon', 'Certificados emitidos a los graduados, con código de verificación pública.')
+                : t('evidenciaDeLosContratosYConsentimientos', 'Evidencia de los contratos y consentimientos firmados por cada usuario.')}
             </p>
           </div>
         </div>
 
         <div className="admin-people-top">
-          <div className="mentor-publication-filters" role="group" aria-label="Sección de certificación">
+          <div className="mentor-publication-filters" role="group" aria-label={t('seccionDeCertificacion', 'Sección de certificación')}>
             <button type="button" aria-pressed={isCert} onClick={() => onSection('certificates')}>
-              <span>Certificados</span>
+              <span>{t('certificados', 'Certificados')}</span>
               <span className="mentor-publication-count">({certificates.length})</span>
             </button>
             <button type="button" aria-pressed={!isCert} onClick={() => onSection('contracts')}>
-              <span>Contratos</span>
+              <span>{t('contratos', 'Contratos')}</span>
               <span className="mentor-publication-count">({signatures.length})</span>
             </button>
           </div>
         </div>
 
         <div className="mentor-course-toolbar">
-          <AdminSearchField value={query} onChange={(value) => reset(() => setQuery(value))} placeholder={isCert ? 'Buscar por graduado, curso o código' : 'Buscar por usuario, correo o IP'} label={isCert ? 'Buscar certificado' : 'Buscar contrato'} />
+          <AdminSearchField value={query} onChange={(value) => reset(() => setQuery(value))} placeholder={isCert ? t('buscarPorGraduadoCursoOCodigo', 'Buscar por graduado, curso o código') : t('buscarPorUsuarioCorreoOIp', 'Buscar por usuario, correo o IP')} label={isCert ? 'Buscar certificado' : 'Buscar contrato'} />
           <FilterMenu groups={[{ value: state, onChange: (v) => reset(() => setState(v)), options: isCert ? certOpts : sigOpts }]} />
           {toggle}
         </div>
@@ -141,14 +143,14 @@ export function AdminCertificationView({ section, onSection, certificates, signa
         {list.length === 0 ? (
           <p className="mentor-courses-empty" role="status">
             {total === 0
-              ? (isCert ? 'Todavía no se han emitido certificados.' : 'Todavía no hay contratos firmados.')
-              : 'Nada coincide con el filtro.'}
+              ? (isCert ? t('todaviaNoSeHanEmitidoCertificados', 'Todavía no se han emitido certificados.') : t('todaviaNoHayContratosFirmados', 'Todavía no hay contratos firmados.'))
+              : t('nadaCoincideConElFiltro', 'Nada coincide con el filtro.')}
           </p>
         ) : isCert ? (
           <div className="admin-people-list admin-cert-list" data-view={view}>
             {view === 'list' && (
               <div className="admin-people-head" aria-hidden="true">
-                <span>Graduado</span><span>Curso</span><span>Código</span><span>Emisión</span><span>Estado</span><span />
+                <span>{t('graduado', 'Graduado')}</span><span>{t('curso', 'Curso')}</span><span>{t('codigo', 'Código')}</span><span>{t('emision', 'Emisión')}</span><span>{t('estado', 'Estado')}</span><span />
               </div>
             )}
             <ul className="mentor-mentee-grid" data-view={view}>
@@ -166,10 +168,10 @@ export function AdminCertificationView({ section, onSection, certificates, signa
                     <p className="admin-enroll-card__course" title={c.courseTitle}>{c.courseTitle}</p>
                     <code className="admin-cert-code" title={c.verificationCode}>{c.verificationCode}</code>
                     <p className="admin-people-card__meta">{date(c.issuedAt)}</p>
-                    <span className="mentor-mentee-status" data-state={revoked ? 'REVOKED' : 'active'} title={c.revocationReason || undefined}>{revoked ? 'Revocado' : 'Válido'}</span>
+                    <span className="mentor-mentee-status" data-state={revoked ? 'REVOKED' : 'active'} title={c.revocationReason || undefined}>{revoked ? t('revocado', 'Revocado') : t('valido', 'Válido')}</span>
                     <button type="button" className="mentor-course-control" data-danger="true" disabled={revoked} onClick={() => setTarget(c)} aria-haspopup="dialog">
                       <Ban aria-hidden="true" />
-                      Revocar
+                      {t('revocar', 'Revocar')}
                     </button>
                   </li>
                 );
@@ -180,7 +182,7 @@ export function AdminCertificationView({ section, onSection, certificates, signa
           <div className="admin-people-list admin-contract-list" data-view={view}>
             {view === 'list' && (
               <div className="admin-people-head" aria-hidden="true">
-                <span>Usuario</span><span>Firma</span><span>Vigencia</span><span>IP</span><span>Estado</span><span />
+                <span>{t('usuario', 'Usuario')}</span><span>{t('firma', 'Firma')}</span><span>{t('vigencia', 'Vigencia')}</span><span>{t('ip', 'IP')}</span><span>{t('estado', 'Estado')}</span><span />
               </div>
             )}
             <ul className="mentor-mentee-grid" data-view={view}>
@@ -198,7 +200,7 @@ export function AdminCertificationView({ section, onSection, certificates, signa
                   <code className="admin-cert-code">{s.ipAddress}</code>
                   <span className="mentor-mentee-status" data-state={s.status}>{SIG_STATE[s.status]}</span>
                   <button type="button" className="mentor-course-control" onClick={() => onViewSignature(s)}>
-                    <Eye aria-hidden="true" /> Ver acta
+                    <Eye aria-hidden="true" /> {t('verActa', 'Ver acta')}
                   </button>
                 </li>
               ))}
@@ -219,20 +221,20 @@ export function AdminCertificationView({ section, onSection, certificates, signa
             <div className="mentor-confirm__body">
               <h3 id="admin-cert-revoke-title" className="admin-confirm-title">
                 <ShieldAlert aria-hidden="true" />
-                Revocar certificado
+                {t('revocarCertificado', 'Revocar certificado')}
               </h3>
               <p>
-                El certificado <strong>{target.verificationCode}</strong> de <strong>{target.recipientName}</strong> dejará de ser válido en la verificación pública. La revocación es <strong className="mentor-confirm__permanent">permanente</strong>.
+                {t('elCertificado', 'El certificado')} <strong>{target.verificationCode}</strong> {t('de', 'de')} <strong>{target.recipientName}</strong> <Trans i18nKey="dejaraDeSerValidoEnLaVerificacionPublica">dejará de ser válido en la verificación pública. La revocación es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans>
               </p>
               <div className="meeting-field">
-                <label htmlFor="cert-revoke-reason">Motivo de la revocación</label>
-                <input id="cert-revoke-reason" type="text" required aria-required="true" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explica por qué se revoca este certificado" autoComplete="off" />
+                <label htmlFor="cert-revoke-reason">{t('motivoDeLaRevocacion', 'Motivo de la revocación')}</label>
+                <input id="cert-revoke-reason" type="text" required aria-required="true" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('explicaPorQueSeRevocaEsteCertificado', 'Explica por qué se revoca este certificado')} autoComplete="off" />
               </div>
               <div className="mentor-confirm__actions">
-                <button type="button" className="mentor-course-control" onClick={() => setTarget(null)} disabled={busy}>Cancelar</button>
+                <button type="button" className="mentor-course-control" onClick={() => setTarget(null)} disabled={busy}>{t('cancelar', 'Cancelar')}</button>
                 <button type="button" className="mentor-course-control" data-danger="true" onClick={confirmRevoke} disabled={busy || !reason.trim()} aria-busy={busy}>
                   <Ban aria-hidden="true" />
-                  Revocar certificado
+                  {t('revocarCertificado', 'Revocar certificado')}
                 </button>
               </div>
             </div>

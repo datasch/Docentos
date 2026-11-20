@@ -22,6 +22,7 @@ import { CourseCategoryFilter } from '../../components/CourseCategoryFilter';
 import {
   isStandardCategory,
 } from '../../lib/courseCategories';
+import i18next from 'i18next'
 
 interface ConstellationCourseCatalogProps {
   courses: Course[];
@@ -60,13 +61,13 @@ function getResponsiveCoverProps(rawUrl: string, variant: 'featured' | 'card') {
     return {
       src: buildVariant(600, 72),
       srcSet: `${buildVariant(400, 70)} 400w, ${buildVariant(600, 72)} 600w, ${buildVariant(800, 74)} 800w`,
-      sizes: '(max-width: 640px) 92vw, (max-width: 1024px) 90vw, 520px',
+      sizes: i18next.t('maxwidth640px92vwMaxwidth1024px90vw520px', '(max-width: 640px) 92vw, (max-width: 1024px) 90vw, 520px'),
     };
   }
   return {
     src: buildVariant(400, 70),
     srcSet: `${buildVariant(360, 68)} 360w, ${buildVariant(420, 70)} 420w, ${buildVariant(600, 72)} 600w`,
-    sizes: '(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px',
+    sizes: i18next.t('maxwidth768px92vwMaxwidth1024px45vw393px', '(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px'),
   };
 }
 

@@ -69,6 +69,7 @@ import {
   TECHNICAL_CATEGORIES,
   STANDARD_COURSE_CATEGORIES,
 } from '../lib/courseCategories';
+import { useTranslation, Trans } from 'react-i18next'
 
 export const COURSE_CATEGORIES = STANDARD_COURSE_CATEGORIES;
 
@@ -103,6 +104,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   disableAnimation = false,
   onOpenResources,
 }) => {
+  const { t } = useTranslation()
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -219,7 +221,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       );
       setAvailableMentors(mentorUsers);
     } catch (err: any) {
-      setCourseMentorsNotice(err?.message || 'Error al cargar mentores');
+      setCourseMentorsNotice(err?.message || t('errorAlCargarMentores', 'Error al cargar mentores'));
     } finally {
       setLoadingCourseMentors(false);
     }
@@ -238,13 +240,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     try {
       const res = await api.setAdminCourseMentors(mentorModalCourse.id, assignedMentorIds);
       setAssignedMentorIds(res.mentorIds || []);
-      setCourseMentorsNotice('Mentores asignados correctamente al curso');
+      setCourseMentorsNotice(t('mentoresAsignadosCorrectamenteAlCurso', 'Mentores asignados correctamente al curso'));
       setTimeout(() => {
         setMentorModalCourse(null);
         setCourseMentorsNotice(null);
       }, 1000);
     } catch (err: any) {
-      setCourseMentorsNotice(err?.message || 'Error al guardar mentores del curso');
+      setCourseMentorsNotice(err?.message || t('errorAlGuardarMentoresDelCurso', 'Error al guardar mentores del curso'));
     } finally {
       setSavingCourseMentors(false);
     }
@@ -320,7 +322,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
   const handleGenerateCover = async () => {
     if (!form.title.trim()) {
-      alert('Escribe primero el título del curso para generar una portada temática con IA.');
+      alert(t('escribePrimeroElTituloDelCursoPara', 'Escribe primero el título del curso para generar una portada temática con IA.'));
       return;
     }
     setGeneratingCover(true);
@@ -332,10 +334,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       });
       if (res.success && res.coverImage) {
         setForm((prev) => ({ ...prev, coverImage: res.coverImage }));
-        flash('Portada generada con IA + logo del plugin de personalización.');
+        flash(t('portadaGeneradaConIaLogoDelPluginDe', 'Portada generada con IA + logo del plugin de personalización.'));
       }
     } catch (err: any) {
-      alert(err.message || 'No se pudo generar la portada con IA');
+      alert(err.message || t('noSePudoGenerarLaPortadaConIa', 'No se pudo generar la portada con IA'));
     } finally {
       setGeneratingCover(false);
     }
@@ -349,15 +351,15 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     try {
       if (editingCourseId) {
         await api.updateCourse(editingCourseId, form);
-        flash('Curso actualizado correctamente.');
+        flash(t('cursoActualizadoCorrectamente', 'Curso actualizado correctamente.'));
       } else {
         await api.createCourse(form);
-        flash('Curso creado correctamente.');
+        flash(t('cursoCreadoCorrectamente', 'Curso creado correctamente.'));
       }
       resetForm();
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al guardar el curso');
+      alert(err.message || t('errorAlGuardarElCurso', 'Error al guardar el curso'));
     } finally {
       setSavingCourse(false);
     }
@@ -367,10 +369,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     setBusyId(course.id);
     try {
       await api.updateCourse(course.id, { published: !course.published });
-      flash(course.published ? 'Curso pasado a borrador.' : 'Curso publicado.');
+      flash(course.published ? t('cursoPasadoABorrador', 'Curso pasado a borrador.') : t('cursoPublicado', 'Curso publicado.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al cambiar la publicación');
+      alert(err.message || t('errorAlCambiarLaPublicacion', 'Error al cambiar la publicación'));
     } finally {
       setBusyId(null);
     }
@@ -381,9 +383,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'course',
       id: course.id,
       title: course.title,
-      warningText: `Se borrarán sus ${course.modules.length} módulo(s), ${countVideos(course)} video(s) y recursos vinculados.${
-        course.published ? ' Está publicado: los alumnos perderán el acceso.' : ''
-      }`,
+      warningText: t('seBorraranSusLengthModulosCountVideos', 'Se borrarán sus {{length}} módulo(s), {{countVideos}} video(s) y recursos vinculados.{{val}}', { length: course.modules.length, countVideos: countVideos(course), val: course.published ? ' Está publicado: los alumnos perderán el acceso.' : '' }),
     });
   };
 
@@ -392,10 +392,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     try {
       await api.createModule(courseId, { title: newModuleTitle.trim() });
       setNewModuleTitle('');
-      flash('Módulo agregado.');
+      flash(t('moduloAgregado', 'Módulo agregado.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al crear el módulo');
+      alert(err.message || t('errorAlCrearElModulo', 'Error al crear el módulo'));
     }
   };
 
@@ -405,10 +405,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       await api.updateModule(moduleId, { title: editingModuleTitle.trim() });
       setEditingModuleId(null);
       setEditingModuleTitle('');
-      flash('Módulo actualizado.');
+      flash(t('moduloActualizado', 'Módulo actualizado.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al renombrar el módulo');
+      alert(err.message || t('errorAlRenombrarElModulo', 'Error al renombrar el módulo'));
     }
   };
 
@@ -417,7 +417,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'module',
       id: module.id,
       title: module.title,
-      warningText: `Se eliminará el módulo con sus ${module.videos.length} video(s).`,
+      warningText: t('seEliminaraElModuloConSusLengthVideos', 'Se eliminará el módulo con sus {{length}} video(s).', { length: module.videos.length }),
     });
   };
 
@@ -432,7 +432,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       await api.updateModule(target.id, { order: current.order });
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al reordenar los módulos');
+      alert(err.message || t('errorAlReordenarLosModulos', 'Error al reordenar los módulos'));
     }
   };
 
@@ -455,11 +455,11 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       setDriveResults(res.videos || []);
       setDriveIsDemo(Boolean(res.isDemo));
       if (!res.videos || res.videos.length === 0) {
-        setDriveError('Sin resultados en Google Drive para esa búsqueda.');
+        setDriveError(t('sinResultadosEnGoogleDriveParaEsa', 'Sin resultados en Google Drive para esa búsqueda.'));
       }
     } catch (err: any) {
       setDriveResults([]);
-      setDriveError(err.message || 'No se pudo consultar Google Drive.');
+      setDriveError(err.message || t('noSePudoConsultarGoogleDrive', 'No se pudo consultar Google Drive.'));
     } finally {
       setDriveLoading(false);
     }
@@ -486,10 +486,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       });
       resetVideoForm();
       setVideoModuleId(null);
-      flash('Video agregado al módulo.');
+      flash(t('videoAgregadoAlModulo', 'Video agregado al módulo.'));
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al agregar el video');
+      alert(err.message || t('errorAlAgregarElVideo', 'Error al agregar el video'));
     }
   };
 
@@ -503,7 +503,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       await api.updateVideo(target.id, { order: current.order });
       await refreshAll();
     } catch (err: any) {
-      alert(err.message || 'Error al reordenar los videos');
+      alert(err.message || t('errorAlReordenarLosVideos', 'Error al reordenar los videos'));
     }
   };
 
@@ -512,7 +512,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       type: 'video',
       id: video.id,
       title: video.title,
-      warningText: 'Se eliminará esta misión/lección de video del módulo.',
+      warningText: t('seEliminaraEstaMisionleccionDeVideoDel', 'Se eliminará esta misión/lección de video del módulo.'),
     });
   };
 
@@ -524,13 +524,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         setBusyId(deleteTarget.id);
         await api.deleteCourse(deleteTarget.id, force);
         if (editingCourseId === deleteTarget.id) resetForm();
-        flash(force ? 'Curso forzado y eliminado por completo.' : 'Curso eliminado.');
+        flash(force ? t('cursoForzadoYEliminadoPorCompleto', 'Curso forzado y eliminado por completo.') : t('cursoEliminado', 'Curso eliminado.'));
       } else if (deleteTarget.type === 'module') {
         await api.deleteModule(deleteTarget.id, force);
-        flash(force ? 'Módulo forzado y eliminado.' : 'Módulo eliminado.');
+        flash(force ? t('moduloForzadoYEliminado', 'Módulo forzado y eliminado.') : t('moduloEliminado', 'Módulo eliminado.'));
       } else if (deleteTarget.type === 'video') {
         await api.deleteVideo(deleteTarget.id, force);
-        flash(force ? 'Video forzado y eliminado.' : 'Video eliminado.');
+        flash(force ? t('videoForzadoYEliminado', 'Video forzado y eliminado.') : t('videoEliminado', 'Video eliminado.'));
       }
       setDeleteTarget(null);
       await refreshAll();
@@ -539,7 +539,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         prev
           ? {
               ...prev,
-              error: err.message || 'Error al eliminar.',
+              error: err.message || t('errorAlEliminar', 'Error al eliminar.'),
               canForce: true,
             }
           : null,
@@ -591,7 +591,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const clearCourseFilters = () => { setCourseQuery(''); setStatusFilter('ALL'); setAccessFilter('ALL'); setPriceFilter('ALL'); setCatFilter('ALL'); resetPage(); };
   const courseChips = [
     ...(statusFilter !== 'ALL' ? [{ key: 'st', text: statusFilter === 'published' ? 'Publicado' : 'Borrador', onRemove: () => { setStatusFilter('ALL'); resetPage(); } }] : []),
-    ...(accessFilter !== 'ALL' ? [{ key: 'ac', text: accessFilter === 'members' ? 'Acceso para miembros' : 'Solo asignados', onRemove: () => { setAccessFilter('ALL'); resetPage(); } }] : []),
+    ...(accessFilter !== 'ALL' ? [{ key: 'ac', text: accessFilter === 'members' ? t('accesoParaMiembros', 'Acceso para miembros') : t('soloAsignados', 'Solo asignados'), onRemove: () => { setAccessFilter('ALL'); resetPage(); } }] : []),
     ...(priceFilter !== 'ALL' ? [{ key: 'pr', text: priceFilter === 'free' ? 'Gratuito' : 'De pago', onRemove: () => { setPriceFilter('ALL'); resetPage(); } }] : []),
     ...(catFilter !== 'ALL' ? [{ key: 'ct', text: catFilter, onRemove: () => { setCatFilter('ALL'); resetPage(); } }] : []),
     ...(q ? [{ key: 'q', text: `«${courseQuery.trim()}»`, onRemove: () => { setCourseQuery(''); resetPage(); } }] : []),
@@ -603,20 +603,20 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       {/* Cabecera: crear curso (manual, YouTube o Drive) */}
       <div className="mentor-section-heading">
         <div>
-          <h2 id="admin-courses-title">Cursos</h2>
-          <p>Crea, publica y organiza el temario de cada curso.</p>
+          <h2 id="admin-courses-title">{t('cursos', 'Cursos')}</h2>
+          <p>{t('creaPublicaYOrganizaElTemarioDeCadaCurso', 'Crea, publica y organiza el temario de cada curso.')}</p>
         </div>
       </div>
 
       <div className="admin-people-top">
         {onOpenResources ? (
-          <div className="mentor-publication-filters" role="group" aria-label="Sección de cursos">
+          <div className="mentor-publication-filters" role="group" aria-label={t('seccionDeCursos', 'Sección de cursos')}>
             <button type="button" aria-pressed="true">
-              <span>Catálogo</span>
+              <span>{t('catalogo', 'Catálogo')}</span>
               <span className="mentor-publication-count">({courses.length})</span>
             </button>
             <button type="button" aria-pressed="false" onClick={() => onOpenResources()}>
-              <span>Recursos</span>
+              <span>{t('recursos', 'Recursos')}</span>
               <span className="mentor-publication-count">({resourceCount})</span>
             </button>
           </div>
@@ -624,7 +624,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
         <div className="admin-courses-actions">
           <button type="button" className="mentor-course-control admin-primary-action" onClick={openNewCourse}>
             <Plus aria-hidden="true" />
-            Nuevo curso
+            {t('nuevoCurso', 'Nuevo curso')}
           </button>
           <button
             type="button"
@@ -633,7 +633,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             onClick={() => setCreationTab(creationTab === 'youtube' ? 'manual' : 'youtube')}
           >
             <Youtube aria-hidden="true" />
-            Desde YouTube con IA
+            {t('desdeYoutubeConIa', 'Desde YouTube con IA')}
           </button>
           <button
             type="button"
@@ -642,7 +642,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             onClick={() => setCreationTab(creationTab === 'drive' ? 'manual' : 'drive')}
           >
             <HardDrive aria-hidden="true" />
-            Desde Google Drive
+            {t('desdeGoogleDrive', 'Desde Google Drive')}
           </button>
         </div>
       </div>
@@ -652,7 +652,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <YouTubeCourseBuilder
             currentUser={currentUser}
             onCourseCreated={() => {
-              flash('¡Curso creado exitosamente con IA desde YouTube!');
+              flash(t('cursoCreadoExitosamenteConIaDesdeYoutube', '¡Curso creado exitosamente con IA desde YouTube!'));
               refreshAll();
               setCreationTab('manual');
             }}
@@ -679,10 +679,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <header className="mentee-sheet__head">
             <span className="mentee-sheet__icon" aria-hidden="true"><BookOpen /></span>
             <div className="mentor-mentee-id">
-              <strong id="admin-course-form-title">{editingCourseId ? 'Editar curso' : 'Nuevo curso'}</strong>
-              <span>{editingCourseId ? 'Cambia los datos y guarda.' : 'Los cursos nuevos quedan en borrador hasta publicarlos.'}</span>
+              <strong id="admin-course-form-title">{editingCourseId ? t('editarCurso', 'Editar curso') : t('nuevoCurso', 'Nuevo curso')}</strong>
+              <span>{editingCourseId ? t('cambiaLosDatosYGuarda', 'Cambia los datos y guarda.') : t('losCursosNuevosQuedanEnBorradorHasta', 'Los cursos nuevos quedan en borrador hasta publicarlos.')}</span>
             </div>
-            <button type="button" onClick={resetForm} className="mentee-sheet__close" aria-label="Cerrar">
+            <button type="button" onClick={resetForm} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
               <X aria-hidden="true" />
             </button>
           </header>
@@ -692,18 +692,18 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <form id="admin-course-form" onSubmit={handleSubmitCourse} className="admin-course-form">
             <div className="admin-course-fields">
             <div className="meeting-field">
-              <label htmlFor="admin-course-title">Título del curso</label>
+              <label htmlFor="admin-course-title">{t('tituloDelCurso', 'Título del curso')}</label>
               <input
                 id="admin-course-title"
                 type="text"
-                placeholder="Ej. Arquitectura Cloud Avanzada"
+                placeholder={t('ejArquitecturaCloudAvanzada', 'Ej. Arquitectura Cloud Avanzada')}
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 required
               />
             </div>
             <div className="meeting-field">
-              <label htmlFor="admin-course-category">Categoría</label>
+              <label htmlFor="admin-course-category">{t('categoria', 'Categoría')}</label>
               <AdminSelect
                 inline
                 id="admin-course-category"
@@ -711,24 +711,24 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onChange={(v) => setForm({ ...form, category: v })}
                 options={[
                   ...(form.category && !COURSE_CATEGORIES.includes(form.category as any) ? [{ value: form.category, label: form.category }] : []),
-                  ...MENTORSHIP_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: 'Modalidades de Mentoría' })),
-                  ...TECHNICAL_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: 'Áreas Temáticas Técnicas' })),
+                  ...MENTORSHIP_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: t('modalidadesDeMentoria', 'Modalidades de Mentoría') })),
+                  ...TECHNICAL_CATEGORIES.map((cat) => ({ value: cat, label: cat, group: t('areasTematicasTecnicas', 'Áreas Temáticas Técnicas') })),
                 ]}
               />
             </div>
             <div className="meeting-field">
-              <label htmlFor="admin-course-description">Descripción</label>
+              <label htmlFor="admin-course-description">{t('descripcion', 'Descripción')}</label>
               <textarea
                 id="admin-course-description"
                 rows={3}
-                placeholder="Qué aprenderá el estudiante en este programa."
+                placeholder={t('queAprenderaElEstudianteEnEstePrograma', 'Qué aprenderá el estudiante en este programa.')}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
             <div className="meeting-field__row">
               <div className="meeting-field">
-                <label htmlFor="admin-course-price">Precio</label>
+                <label htmlFor="admin-course-price">{t('precio', 'Precio')}</label>
                 <input
                   id="admin-course-price"
                   type="number"
@@ -739,12 +739,12 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 />
               </div>
               <div className="meeting-field">
-                <label htmlFor="admin-course-currency">Moneda</label>
+                <label htmlFor="admin-course-currency">{t('moneda', 'Moneda')}</label>
                 <AdminSelect inline id="admin-course-currency" value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={['USD', 'EUR', 'MXN', 'COP', 'ARS'].map((c) => ({ value: c, label: c }))} />
               </div>
             </div>
             <div className="meeting-field">
-              <label htmlFor="admin-course-cover">URL de la portada</label>
+              <label htmlFor="admin-course-cover">{t('urlDeLaPortada', 'URL de la portada')}</label>
               <input
                 id="admin-course-cover"
                 type="text"
@@ -755,7 +755,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
                 aria-describedby="admin-course-cover-hint"
               />
-              <small id="admin-course-cover-hint" className="admin-sheet-note">Pega una URL o genera una portada con IA. Puedes dejarla vacía.</small>
+              <small id="admin-course-cover-hint" className="admin-sheet-note">{t('pegaUnaUrlOGeneraUnaPortadaConIaPuedes', 'Pega una URL o genera una portada con IA. Puedes dejarla vacía.')}</small>
               <div className="admin-course-cover-tools">
                 <button
                   type="button"
@@ -764,16 +764,16 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                   disabled={generatingCover}
                 >
                   {generatingCover ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
-                  {generatingCover ? 'Generando…' : 'Generar con IA'}
+                  {generatingCover ? t('generando', 'Generando…') : t('generarConIa', 'Generar con IA')}
                 </button>
                 {form.coverImage && (
                   <button type="button" className="mentor-course-control" onClick={() => setForm({ ...form, coverImage: '' })}>
                     <X aria-hidden="true" />
-                    Quitar
+                    {t('quitar', 'Quitar')}
                   </button>
                 )}
               </div>
-              {form.coverImage && <img src={form.coverImage} alt="Vista previa de la portada" className="admin-course-cover-preview" />}
+              {form.coverImage && <img src={form.coverImage} alt={t('vistaPreviaDeLaPortada', 'Vista previa de la portada')} className="admin-course-cover-preview" />}
             </div>
 
             <label className="admin-course-check">
@@ -783,8 +783,8 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onChange={(e) => setForm({ ...form, sequentialUnlock: e.target.checked })}
               />
               <span>
-                <strong>Progresión secuencial</strong>
-                <small>El alumno abre el Módulo 1 y desbloquea cada módulo al terminar el anterior.</small>
+                <strong>{t('progresionSecuencial', 'Progresión secuencial')}</strong>
+                <small>{t('elAlumnoAbreElModulo1YDesbloqueaCada', 'El alumno abre el Módulo 1 y desbloquea cada módulo al terminar el anterior.')}</small>
               </span>
             </label>
             <label className="admin-course-check">
@@ -794,8 +794,8 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onChange={(e) => setForm({ ...form, openToAllRegistered: e.target.checked })}
               />
               <span>
-                <strong>Acceso para miembros</strong>
-                <small>Mentees y personal de la academia. El resto necesita compra o asignación.</small>
+                <strong>{t('accesoParaMiembros', 'Acceso para miembros')}</strong>
+                <small>{t('menteesYPersonalDeLaAcademiaElResto', 'Mentees y personal de la academia. El resto necesita compra o asignación.')}</small>
               </span>
             </label>
             <label className="admin-course-check">
@@ -805,8 +805,8 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onChange={(e) => setForm({ ...form, published: e.target.checked })}
               />
               <span>
-                <strong>Publicar al guardar</strong>
-                <small>Visible en el catálogo desde ahora.</small>
+                <strong>{t('publicarAlGuardar', 'Publicar al guardar')}</strong>
+                <small>{t('visibleEnElCatalogoDesdeAhora', 'Visible en el catálogo desde ahora.')}</small>
               </span>
             </label>
 
@@ -817,9 +817,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <div className="mentee-sheet__foot admin-course-form__foot">
             <button type="submit" form="admin-course-form" disabled={savingCourse} className="mentor-course-control mentor-course-import admin-course-form__submit">
               {savingCourse ? <Loader2 aria-hidden="true" className="animate-spin" /> : editingCourseId ? <Save aria-hidden="true" /> : <Plus aria-hidden="true" />}
-              {editingCourseId ? 'Guardar cambios' : 'Crear curso'}
+              {editingCourseId ? t('guardarCambios', 'Guardar cambios') : t('crearCurso', 'Crear curso')}
             </button>
-            <button type="button" className="mentor-course-control admin-course-form__cancel" onClick={resetForm}>Cancelar</button>
+            <button type="button" className="mentor-course-control admin-course-form__cancel" onClick={resetForm}>{t('cancelar', 'Cancelar')}</button>
             {editingCourseId && (
               <button
                 type="button"
@@ -832,7 +832,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 }}
               >
                 <Trash2 aria-hidden="true" />
-                Eliminar curso
+                {t('eliminarCurso', 'Eliminar curso')}
               </button>
             )}
           </div>
@@ -842,32 +842,32 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
       {/* Catálogo */}
       <div className="mentor-course-toolbar">
-        <AdminSearchField value={courseQuery} onChange={(value) => { setCourseQuery(value); resetPage(); }} placeholder="Buscar curso" label="Buscar curso" />
+        <AdminSearchField value={courseQuery} onChange={(value) => { setCourseQuery(value); resetPage(); }} placeholder={t('buscarCurso', 'Buscar curso')} label={t('buscarCurso', 'Buscar curso')} />
         <FilterMenu
           groups={[
             { value: statusFilter, onChange: (v) => { setStatusFilter(v as typeof statusFilter); resetPage(); }, options: [
-              { value: 'published', label: 'Publicado', count: countWith({ status: 'published' }) },
-              { value: 'draft', label: 'Borrador', count: countWith({ status: 'draft' }) },
+              { value: 'published', label: t('publicado', 'Publicado'), count: countWith({ status: 'published' }) },
+              { value: 'draft', label: t('borrador', 'Borrador'), count: countWith({ status: 'draft' }) },
             ] },
             { value: accessFilter, onChange: (v) => { setAccessFilter(v as typeof accessFilter); resetPage(); }, options: [
-              { value: 'members', label: 'Acceso para miembros', count: countWith({ access: 'members' }) },
-              { value: 'assigned', label: 'Solo asignados', count: countWith({ access: 'assigned' }) },
+              { value: 'members', label: t('accesoParaMiembros', 'Acceso para miembros'), count: countWith({ access: 'members' }) },
+              { value: 'assigned', label: t('soloAsignados', 'Solo asignados'), count: countWith({ access: 'assigned' }) },
             ] },
             { value: priceFilter, onChange: (v) => { setPriceFilter(v as typeof priceFilter); resetPage(); }, options: [
-              { value: 'free', label: 'Gratuito', count: countWith({ price: 'free' }) },
-              { value: 'paid', label: 'De pago', count: countWith({ price: 'paid' }) },
+              { value: 'free', label: t('gratuito', 'Gratuito'), count: countWith({ price: 'free' }) },
+              { value: 'paid', label: t('dePago', 'De pago'), count: countWith({ price: 'paid' }) },
             ] },
             ...(categories.length > 1 ? [{ value: catFilter, onChange: (v: string) => { setCatFilter(v); resetPage(); }, options: categories.map((c) => ({ value: c, label: c, count: countWith({ cat: c }) })) }] : []),
           ]}
         />
-        {!isMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista del catálogo">
+        {!isMobile && <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDelCatalogo', 'Vista del catálogo')}>
           <button type="button" aria-pressed={viewMode === 'list'} onClick={() => { changeViewMode('list'); resetPage(); }}>
             <List aria-hidden="true" />
-            <span>Lista</span>
+            <span>{t('lista', 'Lista')}</span>
           </button>
           <button type="button" aria-pressed={viewMode === 'cards'} onClick={() => { changeViewMode('cards'); resetPage(); }}>
             <LayoutGrid aria-hidden="true" />
-            <span>Tarjetas</span>
+            <span>{t('tarjetas', 'Tarjetas')}</span>
           </button>
         </div>}
       </div>
@@ -876,16 +876,16 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
       <div>
         {loading && courses.length === 0 ? (
-          <PageLoader label="Cargando cursos…" />
+          <PageLoader label={t('cargandoCursos', 'Cargando cursos…')} />
         ) : courses.length === 0 ? (
           <div className="mentor-courses-empty">
             <BookOpen aria-hidden="true" />
-            <p>Todavía no hay cursos. Crea el primero con «Nuevo curso».</p>
+            <p>{t('todaviaNoHayCursosCreaElPrimeroConNuevo', 'Todavía no hay cursos. Crea el primero con «Nuevo curso».')}</p>
           </div>
         ) : visibleCourses.length === 0 ? (
           <div className="mentor-courses-empty">
             <BookOpen aria-hidden="true" />
-            <p>Ningún curso coincide con la búsqueda.</p>
+            <p>{t('ningunCursoCoincideConLaBusqueda', 'Ningún curso coincide con la búsqueda.')}</p>
           </div>
         ) : (
           <div className="admin-courses-list mentor-courses-grid" data-view={viewMode}>
@@ -910,7 +910,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                     <div className="mentor-course-card__header">
                       <span className="mentor-course-card__category">{course.category}</span>
                       <span className="mentor-course-card__status" data-published={course.published}>
-                        {course.published ? 'Publicado' : 'Borrador'}
+                        {course.published ? t('publicado', 'Publicado') : t('borrador', 'Borrador')}
                       </span>
                     </div>
 
@@ -920,14 +920,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                     </div>
 
                     <div className="admin-course-card__facts">
-                      {onOpenResources && <button type="button" className="admin-course-card__resources" onClick={() => onOpenResources(course.id)} aria-label={`Ver recursos de ${course.title}`}><FileText aria-hidden="true" /><span>{(course.resources?.length || 0) + modules.reduce((count, module) => count + (module.resources?.length || 0), 0)} recursos</span><ArrowUpRight aria-hidden="true" /></button>}
+                      {onOpenResources && <button type="button" className="admin-course-card__resources" onClick={() => onOpenResources(course.id)} aria-label={t('verRecursosDeTitle', 'Ver recursos de {{title}}', { title: course.title })}><FileText aria-hidden="true" /><span>{(course.resources?.length || 0) + modules.reduce((count, module) => count + (module.resources?.length || 0), 0)} {t('recursos2', 'recursos')}</span><ArrowUpRight aria-hidden="true" /></button>}
                       <span className="mentor-course-access-label" data-access={course.openToAllRegistered ? 'members' : 'assigned'}>
                         {course.openToAllRegistered ? <LockKeyholeOpen aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}
-                        {course.openToAllRegistered ? 'Acceso para miembros' : 'Solo asignados'}
+                        {course.openToAllRegistered ? t('accesoParaMiembros', 'Acceso para miembros') : t('soloAsignados', 'Solo asignados')}
                       </span>
                       <div className="mentor-course-card__meta">
-                        <span>{modules.length} {modules.length === 1 ? 'módulo' : 'módulos'} · {countVideos(course)} {countVideos(course) === 1 ? 'video' : 'videos'}{course.sequentialUnlock ? ' · Secuencial' : ''}</span>
-                        <span>{course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : 'Gratuito'}</span>
+                        <span>{t('countModulos', { defaultValue_one: '{{count}} módulo ·', defaultValue_other: '{{count}} módulos ·', count: modules.length })} {countVideos(course)} {countVideos(course) === 1 ? t('video', 'video') : t('videos', 'videos')}{course.sequentialUnlock ? t('secuencial', ' · Secuencial') : ''}</span>
+                        <span>{course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : t('gratuito', 'Gratuito')}</span>
                       </div>
                     </div>
                   </div>
@@ -938,26 +938,26 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       onClick={() => handleOpenCourseMentors(course)}
                       className="mentor-course-control"
                       aria-haspopup="dialog"
-                      aria-label={`Gestionar mentores de ${course.title}`}
+                      aria-label={t('gestionarMentoresDeTitle', 'Gestionar mentores de {{title}}', { title: course.title })}
                     >
-                      <UsersRound aria-hidden="true" /> <span>Mentores</span>
+                      <UsersRound aria-hidden="true" /> <span>{t('mentores', 'Mentores')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setTemarioCourseId(course.id)}
                       className="mentor-course-control"
                       aria-haspopup="dialog"
-                      aria-label={`Temario de ${course.title}`}
+                      aria-label={t('temarioDeTitle', 'Temario de {{title}}', { title: course.title })}
                     >
-                      <Layers aria-hidden="true" /> <span>Temario</span>
+                      <Layers aria-hidden="true" /> <span>{t('temario', 'Temario')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => startEditing(course)}
                       className="mentor-course-control"
-                      aria-label={`Editar ${course.title}`}
+                      aria-label={t('editarTitle', 'Editar {{title}}', { title: course.title })}
                     >
-                      <Pencil aria-hidden="true" /> <span>Editar</span>
+                      <Pencil aria-hidden="true" /> <span>{t('editar', 'Editar')}</span>
                     </button>
                     <button
                       type="button"
@@ -965,7 +965,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       disabled={busyId === course.id}
                       aria-busy={busyId === course.id}
                       className={`mentor-course-control admin-course-card__publish ${course.published ? '' : 'mentor-course-publish'}`}
-                      aria-label={`${course.published ? 'Pasar a borrador' : 'Publicar en catálogo'}: ${course.title}`}
+                      aria-label={`${course.published ? t('pasarABorrador', 'Pasar a borrador') : t('publicarEnCatalogo', 'Publicar en catálogo')}: ${course.title}`}
                     >
                       {busyId === course.id ? (
                         <Loader2 aria-hidden="true" className="animate-spin" />
@@ -974,7 +974,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                       ) : (
                         <BookOpen aria-hidden="true" />
                       )}
-                      <span>{course.published ? 'Pasar a borrador' : 'Publicar'}</span>
+                      <span>{course.published ? t('pasarABorrador', 'Pasar a borrador') : t('publicar', 'Publicar')}</span>
                     </button>
                   </div>
 
@@ -1012,24 +1012,24 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <div className="mentor-confirm__body">
             <h3 id="admin-delete-title" className="admin-confirm-title">
               <AlertTriangle aria-hidden="true" />
-              {deleteTarget.type === 'course' ? 'Eliminar curso' : deleteTarget.type === 'module' ? 'Eliminar módulo' : 'Eliminar video'}
+              {deleteTarget.type === 'course' ? t('eliminarCurso', 'Eliminar curso') : deleteTarget.type === 'module' ? t('eliminarModulo', 'Eliminar módulo') : t('eliminarVideo', 'Eliminar video')}
             </h3>
             <p>
-              Vas a eliminar <strong>{deleteTarget.title}</strong>. {deleteTarget.warningText} Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.
+              {t('vasAEliminar', 'Vas a eliminar')} <strong>{deleteTarget.title}</strong><Trans i18nKey="warningTextEstaAccionEsPermanente">. {{ warningText: deleteTarget.warningText }} Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans>
             </p>
             {deleteTarget.error && (
               <p role="alert" className="admin-confirm-error">
                 <strong>{deleteTarget.error}</strong>{' '}
                 {deleteTarget.type === 'course'
-                  ? 'El curso tiene pagos, matrículas, certificados o progreso de alumnos. Eliminarlo de todos modos borra todos esos registros.'
+                  ? t('elCursoTienePagosMatriculasCertificadosO', 'El curso tiene pagos, matrículas, certificados o progreso de alumnos. Eliminarlo de todos modos borra todos esos registros.')
                   : deleteTarget.type === 'module'
-                  ? 'El módulo tiene intentos de examen o progreso de alumnos. Eliminarlo de todos modos borra esos datos.'
-                  : 'Esta lección tiene progreso o notas de alumnos. Eliminarla de todos modos borra ese progreso.'}
+                  ? t('elModuloTieneIntentosDeExamenOProgresoDe', 'El módulo tiene intentos de examen o progreso de alumnos. Eliminarlo de todos modos borra esos datos.')
+                  : t('estaLeccionTieneProgresoONotasDeAlumnos', 'Esta lección tiene progreso o notas de alumnos. Eliminarla de todos modos borra ese progreso.')}
               </p>
             )}
             <div className="mentor-confirm__actions">
               <button type="button" className="mentor-course-control" disabled={isDeleting} onClick={() => setDeleteTarget(null)}>
-                Cancelar
+                {t('cancelar', 'Cancelar')}
               </button>
               <button
                 type="button"
@@ -1040,8 +1040,8 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
               >
                 {isDeleting ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Trash2 aria-hidden="true" />}
                 {deleteTarget.error
-                  ? 'Eliminar de todos modos'
-                  : deleteTarget.type === 'course' ? 'Eliminar curso' : deleteTarget.type === 'module' ? 'Eliminar módulo' : 'Eliminar video'}
+                  ? t('eliminarDeTodosModos', 'Eliminar de todos modos')
+                  : deleteTarget.type === 'course' ? t('eliminarCurso', 'Eliminar curso') : deleteTarget.type === 'module' ? t('eliminarModulo', 'Eliminar módulo') : t('eliminarVideo', 'Eliminar video')}
               </button>
             </div>
           </div>
@@ -1059,14 +1059,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <div className="mentor-confirm__body">
             <h3 id="admin-unpublish-title" className="admin-confirm-title">
               <EyeOff aria-hidden="true" />
-              Pasar a borrador
+              {t('pasarABorrador', 'Pasar a borrador')}
             </h3>
             <p>
-              <strong>{unpublishTarget.title}</strong> dejará de aparecer en el catálogo y los alumnos no podrán abrirlo hasta que lo publiques de nuevo.
+              <strong>{unpublishTarget.title}</strong> {t('dejaraDeAparecerEnElCatalogoYLosAlumnos', 'dejará de aparecer en el catálogo y los alumnos no podrán abrirlo hasta que lo publiques de nuevo.')}
             </p>
             <div className="mentor-confirm__actions">
               <button type="button" className="mentor-course-control" onClick={() => setUnpublishTarget(null)}>
-                Cancelar
+                {t('cancelar', 'Cancelar')}
               </button>
               <button
                 type="button"
@@ -1075,7 +1075,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                 onClick={() => { const c = unpublishTarget; setUnpublishTarget(null); handleTogglePublished(c); }}
               >
                 <EyeOff aria-hidden="true" />
-                Pasar a borrador
+                {t('pasarABorrador', 'Pasar a borrador')}
               </button>
             </div>
           </div>
@@ -1094,23 +1094,23 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <header className="mentee-sheet__head">
             <span className="mentee-sheet__icon" aria-hidden="true"><UsersRound /></span>
             <div className="mentor-mentee-id">
-              <strong id="admin-course-mentors-title">Mentores del curso</strong>
+              <strong id="admin-course-mentors-title">{t('mentoresDelCurso', 'Mentores del curso')}</strong>
               <span>{mentorModalCourse?.title}</span>
             </div>
-            <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentee-sheet__close" aria-label="Cerrar">
+            <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
               <X aria-hidden="true" />
             </button>
           </header>
           <div className="admin-course-sheet">
             <div className="admin-course-sheet__scroll">
-              <p className="admin-sheet-note">Elige qué mentores pueden gestionar alumnos, tutorías y evaluaciones en este curso.</p>
+              <p className="admin-sheet-note">{t('eligeQueMentoresPuedenGestionarAlumnos', 'Elige qué mentores pueden gestionar alumnos, tutorías y evaluaciones en este curso.')}</p>
               {courseMentorsNotice && (
                 <p className="admin-sheet-note" role="status"><CheckCircle2 aria-hidden="true" /> {courseMentorsNotice}</p>
               )}
               {loadingCourseMentors ? (
-                <p className="admin-sheet-note"><Loader2 aria-hidden="true" className="animate-spin" /> Cargando mentores…</p>
+                <p className="admin-sheet-note"><Loader2 aria-hidden="true" className="animate-spin" /> {t('cargandoMentores', 'Cargando mentores…')}</p>
               ) : availableMentors.length === 0 ? (
-                <p className="admin-sheet-note">No hay usuarios con rol Mentor o Administrador registrados.</p>
+                <p className="admin-sheet-note">{t('noHayUsuariosConRolMentorOAdministrador', 'No hay usuarios con rol Mentor o Administrador registrados.')}</p>
               ) : (
                 availableMentors.map((m) => (
                   <label key={m.id} className="admin-course-check">
@@ -1126,9 +1126,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             <div className="mentee-sheet__foot admin-course-form__foot">
               <button type="button" disabled={savingCourseMentors || loadingCourseMentors} onClick={handleSaveCourseMentors} className="mentor-course-control mentor-course-import admin-course-form__submit">
                 {savingCourseMentors ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
-                Guardar mentores ({assignedMentorIds.length})
+                {t('guardarMentoresLength', 'Guardar mentores ({{length}})', { length: assignedMentorIds.length })}
               </button>
-              <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentor-course-control admin-course-form__cancel">Cancelar</button>
+              <button type="button" disabled={savingCourseMentors} onClick={() => setMentorModalCourse(null)} className="mentor-course-control admin-course-form__cancel">{t('cancelar', 'Cancelar')}</button>
             </div>
           </div>
         </div>
@@ -1146,10 +1146,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
           <header className="mentee-sheet__head">
             <span className="mentee-sheet__icon" aria-hidden="true"><Layers /></span>
             <div className="mentor-mentee-id">
-              <strong id="admin-course-temario-title">Temario</strong>
+              <strong id="admin-course-temario-title">{t('temario', 'Temario')}</strong>
               <span>{temarioCourse?.title}</span>
             </div>
-            <button type="button" onClick={() => setTemarioCourseId(null)} className="mentee-sheet__close" aria-label="Cerrar">
+            <button type="button" onClick={() => setTemarioCourseId(null)} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
               <X aria-hidden="true" />
             </button>
           </header>
@@ -1161,22 +1161,22 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 <div className="tmr">
                 <div className="tmr-add">
                   <div className="meeting-field">
-                    <label htmlFor="tmr-new-module">Nuevo módulo</label>
+                    <label htmlFor="tmr-new-module">{t('nuevoModulo', 'Nuevo módulo')}</label>
                     <input
                       id="tmr-new-module"
                       type="text"
-                      placeholder="Título del módulo"
+                      placeholder={t('tituloDelModulo', 'Título del módulo')}
                       value={newModuleTitle}
                       onChange={(e) => setNewModuleTitle(e.target.value)}
                     />
                   </div>
                   <button type="button" onClick={() => handleCreateModule(course.id)} className="mentor-course-control mentor-course-publish">
-                    <Plus aria-hidden="true" /> <span>Agregar módulo</span>
+                    <Plus aria-hidden="true" /> <span>{t('agregarModulo', 'Agregar módulo')}</span>
                   </button>
                 </div>
 
                 {modules.length === 0 ? (
-                  <p className="admin-sheet-note">Este curso todavía no tiene módulos.</p>
+                  <p className="admin-sheet-note">{t('esteCursoTodaviaNoTieneModulos', 'Este curso todavía no tiene módulos.')}</p>
                 ) : (
                   modules.map((module, moduleIndex) => {
                     const videos = [...module.videos].sort((a, b) => a.order - b.order);
@@ -1187,7 +1187,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         {editingModuleId === module.id ? (
                           <div className="tmr-rename">
                             <div className="meeting-field">
-                              <label htmlFor={`tmr-rename-${module.id}`}>Título del módulo</label>
+                              <label htmlFor={`tmr-rename-${module.id}`}>{t('tituloDelModulo', 'Título del módulo')}</label>
                               <input
                                 id={`tmr-rename-${module.id}`}
                                 type="text"
@@ -1197,10 +1197,10 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                               />
                             </div>
                             <button type="button" onClick={() => handleRenameModule(module.id)} className="mentor-course-control mentor-course-publish">
-                              <Save aria-hidden="true" /> <span>Guardar</span>
+                              <Save aria-hidden="true" /> <span>{t('guardar', 'Guardar')}</span>
                             </button>
                             <button type="button" onClick={() => setEditingModuleId(null)} className="mentor-course-control">
-                              <X aria-hidden="true" /> <span>Cancelar</span>
+                              <X aria-hidden="true" /> <span>{t('cancelar', 'Cancelar')}</span>
                             </button>
                           </div>
                         ) : (
@@ -1208,33 +1208,33 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                             <button type="button" className="tmr-module__head" aria-expanded={isOpen} onClick={() => toggleModule(module.id)}>
                               <ChevronRight aria-hidden="true" />
                               <h4>{module.order}. {module.title}</h4>
-                              <span>{videos.length} {videos.length === 1 ? 'video' : 'videos'}</span>
+                              <span>{videos.length} {videos.length === 1 ? t('video', 'video') : t('videos', 'videos')}</span>
                             </button>
                             {isOpen && <div className="tmr-actions">
                               <span className="tmr-actions__icons">
                               <span className="tmr-group">
-                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, -1)} disabled={moduleIndex === 0} aria-label={`Subir módulo ${module.title}`} title="Subir">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, -1)} disabled={moduleIndex === 0} aria-label={t('subirModuloTitle', 'Subir módulo {{title}}', { title: module.title })} title={t('subir', 'Subir')}>
                                 <ChevronUp aria-hidden="true" />
                               </button>
-                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, 1)} disabled={moduleIndex === modules.length - 1} aria-label={`Bajar módulo ${module.title}`} title="Bajar">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveModule(modules, moduleIndex, 1)} disabled={moduleIndex === modules.length - 1} aria-label={t('bajarModuloTitle', 'Bajar módulo {{title}}', { title: module.title })} title={t('bajar', 'Bajar')}>
                                 <ChevronDown aria-hidden="true" />
                               </button>
                               </span>
                               <span className="tmr-group">
-                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => { setEditingModuleId(module.id); setEditingModuleTitle(module.title); }} aria-label={`Renombrar módulo ${module.title}`} title="Renombrar">
+                              <button type="button" className="mentor-course-control tmr-icon" onClick={() => { setEditingModuleId(module.id); setEditingModuleTitle(module.title); }} aria-label={t('renombrarModuloTitle', 'Renombrar módulo {{title}}', { title: module.title })} title={t('renombrar', 'Renombrar')}>
                                 <Pencil aria-hidden="true" />
                               </button>
-                              <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteModule(module)} aria-label={`Eliminar módulo ${module.title}`} title="Eliminar módulo">
+                              <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteModule(module)} aria-label={t('eliminarModuloTitle', 'Eliminar módulo {{title}}', { title: module.title })} title={t('eliminarModulo', 'Eliminar módulo')}>
                                 <Trash2 aria-hidden="true" />
                               </button>
                               </span>
                               </span>
                               <span className="tmr-actions__main">
                               <button type="button" className="mentor-course-control" onClick={() => setQuizModule(module)}>
-                                <Sparkles aria-hidden="true" /> <span>Examen IA</span>
+                                <Sparkles aria-hidden="true" /> <span>{t('examenIa', 'Examen IA')}</span>
                               </button>
                               <button type="button" className="mentor-course-control" aria-expanded={videoModuleId === module.id} onClick={() => { resetVideoForm(); setVideoModuleId(videoModuleId === module.id ? null : module.id); }}>
-                                <Plus aria-hidden="true" /> <span>Agregar video</span>
+                                <Plus aria-hidden="true" /> <span>{t('agregarVideo', 'Agregar video')}</span>
                               </button>
                               </span>
                             </div>}
@@ -1245,23 +1245,23 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         {isOpen && videoModuleId === module.id && (
                           <form onSubmit={(e) => handleCreateVideo(e, module.id)} className="tmr-form">
                             <div className="meeting-field">
-                              <label htmlFor={`tmr-vt-${module.id}`}>Título del video</label>
+                              <label htmlFor={`tmr-vt-${module.id}`}>{t('tituloDelVideo', 'Título del video')}</label>
                               <input id={`tmr-vt-${module.id}`} type="text" value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} required />
                             </div>
                             <div className="meeting-field">
-                              <label htmlFor={`tmr-vd-${module.id}`}>Duración</label>
+                              <label htmlFor={`tmr-vd-${module.id}`}>{t('duracion', 'Duración')}</label>
                               <input id={`tmr-vd-${module.id}`} type="text" placeholder="20:00" value={videoDuration} onChange={(e) => setVideoDuration(e.target.value)} />
                             </div>
                             <div className="meeting-field">
-                              <label htmlFor={`tmr-vg-${module.id}`}>Archivo de Google Drive</label>
+                              <label htmlFor={`tmr-vg-${module.id}`}>{t('archivoDeGoogleDrive', 'Archivo de Google Drive')}</label>
                               <div className="tmr-inline">
-                                <input id={`tmr-vg-${module.id}`} type="text" placeholder="Pega el enlace de Drive o su ID" value={videoDriveId} onChange={(e) => setVideoDriveId(e.target.value)} />
+                                <input id={`tmr-vg-${module.id}`} type="text" placeholder={t('pegaElEnlaceDeDriveOSuId', 'Pega el enlace de Drive o su ID')} value={videoDriveId} onChange={(e) => setVideoDriveId(e.target.value)} />
                                 <button
                                   type="button"
                                   className="mentor-course-control tmr-icon"
                                   aria-expanded={driveOpen}
-                                  aria-label="Buscar en Google Drive"
-                                  title="Buscar en Google Drive"
+                                  aria-label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')}
+                                  title={t('buscarEnGoogleDrive', 'Buscar en Google Drive')}
                                   onClick={() => {
                                     const opening = !driveOpen;
                                     setDriveOpen(opening);
@@ -1277,17 +1277,17 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                             {driveOpen && (
                               <div className="tmr-drive">
                                 <div className="tmr-inline">
-                                  <AdminSearchField className="tmr-drive-search" value={driveQuery} onChange={(value) => { setDriveQuery(value); if (!value && driveQuery) searchDrive(''); }} placeholder="Buscar por nombre en Google Drive…" label="Buscar en Google Drive" onKeyDown={(e) => {
+                                  <AdminSearchField className="tmr-drive-search" value={driveQuery} onChange={(value) => { setDriveQuery(value); if (!value && driveQuery) searchDrive(''); }} placeholder={t('buscarPorNombreEnGoogleDrive', 'Buscar por nombre en Google Drive…')} label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')} onKeyDown={(e) => {
                                     if (e.key === 'Enter') { e.preventDefault(); searchDrive(); }
                                   }} />
-                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => searchDrive()} disabled={driveLoading} aria-label="Buscar">
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => searchDrive()} disabled={driveLoading} aria-label={t('buscar', 'Buscar')}>
                                     {driveLoading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
                                   </button>
                                 </div>
 
                                 {driveIsDemo && (
                                   <p className="tmr-warn">
-                                    Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.
+                                    {t('googleDriveNoEstaConfiguradoEstos', 'Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.')}
                                   </p>
                                 )}
                                 {driveError && <p className="tmr-warn">{driveError}</p>}
@@ -1302,23 +1302,23 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                       )}
                                       <span className="tmr-drive__text">
                                         <strong>{file.name}</strong>
-                                        <small>{file.duration || 'sin duración'} · {file.id.slice(0, 14)}…</small>
+                                        <small>{file.duration || t('sinDuracion', 'sin duración')} · {file.id.slice(0, 14)}…</small>
                                       </span>
                                       {videoDriveId === file.id && <Link2 aria-hidden="true" />}
                                     </button>
                                   ))}
                                   {!driveLoading && driveResults.length === 0 && !driveError && (
-                                    <p className="admin-sheet-note">Busca un video para enlazarlo.</p>
+                                    <p className="admin-sheet-note">{t('buscaUnVideoParaEnlazarlo', 'Busca un video para enlazarlo.')}</p>
                                   )}
                                 </div>
                               </div>
                             )}
 
                             <p className="admin-sheet-note">
-                              {videoDriveId ? `Enlazado a Drive: ${videoDriveId}` : 'Sin archivo de Drive: se generará un enlace de marcador.'}
+                              {videoDriveId ? t('enlazadoADriveVideoDriveId', 'Enlazado a Drive: {{videoDriveId}}', { videoDriveId }) : t('sinArchivoDeDriveSeGeneraraUnEnlaceDe', 'Sin archivo de Drive: se generará un enlace de marcador.')}
                             </p>
                             <button type="submit" className="mentor-course-control mentor-course-publish">
-                              <Save aria-hidden="true" /> <span>Guardar video</span>
+                              <Save aria-hidden="true" /> <span>{t('guardarVideo', 'Guardar video')}</span>
                             </button>
                           </form>
                         )}
@@ -1335,14 +1335,14 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                 </span>
                                 <span className="tmr-video__actions">
                                   <span className="tmr-group">
-                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, -1)} disabled={videoIndex === 0} aria-label={`Subir ${video.title}`} title="Subir">
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, -1)} disabled={videoIndex === 0} aria-label={t('subirTitle', 'Subir {{title}}', { title: video.title })} title={t('subir', 'Subir')}>
                                     <ChevronUp aria-hidden="true" />
                                   </button>
-                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, 1)} disabled={videoIndex === videos.length - 1} aria-label={`Bajar ${video.title}`} title="Bajar">
+                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => handleMoveVideo(videos, videoIndex, 1)} disabled={videoIndex === videos.length - 1} aria-label={t('bajarTitle', 'Bajar {{title}}', { title: video.title })} title={t('bajar', 'Bajar')}>
                                     <ChevronDown aria-hidden="true" />
                                   </button>
                                   </span>
-                                  <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteVideo(video)} aria-label={`Eliminar ${video.title}`} title="Eliminar video">
+                                  <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteVideo(video)} aria-label={t('eliminarTitle', 'Eliminar {{title}}', { title: video.title })} title={t('eliminarVideo', 'Eliminar video')}>
                                     <Trash2 aria-hidden="true" />
                                   </button>
                                 </span>

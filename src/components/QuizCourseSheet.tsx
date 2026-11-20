@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Search, Check } from 'lucide-react';
 import type { Course, Module, QuizQuestion } from '../types';
 import { stripEmoji } from '../lib/stripEmoji';
+import { useTranslation } from 'react-i18next'
 
 const SEARCH_FROM = 8;
 
@@ -13,6 +14,7 @@ export function QuizCourseSheet({ course, questionsOf, onClose, onOpenEditor }: 
   onClose: () => void;
   onOpenEditor: (module: Module) => void;
 }) {
+  const { t } = useTranslation()
   const ref = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
 
@@ -42,9 +44,9 @@ export function QuizCourseSheet({ course, questionsOf, onClose, onOpenEditor }: 
           <header className="mentee-sheet__head mentee-sheet__head--plain">
             <div className="mentor-mentee-id">
               <strong id="quiz-sheet-title">{stripEmoji(course.title)}</strong>
-              <span>{withExam} de {modules.length} módulos con examen</span>
+              <span>{t('withExamDeLengthModulosConExamen', '{{withExam}} de {{length}} módulos con examen', { withExam, length: modules.length })}</span>
             </div>
-            <button type="button" className="mentee-sheet__close" onClick={onClose} aria-label="Cerrar">
+            <button type="button" className="mentee-sheet__close" onClick={onClose} aria-label={t('cerrar', 'Cerrar')}>
               <X aria-hidden="true" />
             </button>
           </header>
@@ -56,15 +58,15 @@ export function QuizCourseSheet({ course, questionsOf, onClose, onOpenEditor }: 
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar módulo"
-                aria-label="Buscar módulo"
+                placeholder={t('buscarModulo', 'Buscar módulo')}
+                aria-label={t('buscarModulo', 'Buscar módulo')}
               />
             </label>
           )}
 
           <ul className="mentee-sheet__list quiz-modules">
-            {modules.length === 0 && <li className="mentee-sheet__empty">Este curso aún no tiene módulos</li>}
-            {modules.length > 0 && shown.length === 0 && <li className="mentee-sheet__empty">Ningún módulo coincide</li>}
+            {modules.length === 0 && <li className="mentee-sheet__empty">{t('esteCursoAunNoTieneModulos', 'Este curso aún no tiene módulos')}</li>}
+            {modules.length > 0 && shown.length === 0 && <li className="mentee-sheet__empty">{t('ningunModuloCoincide', 'Ningún módulo coincide')}</li>}
             {shown.map((m) => {
               const count = questionsOf(m.id).length;
               return (
@@ -73,20 +75,20 @@ export function QuizCourseSheet({ course, questionsOf, onClose, onOpenEditor }: 
                     <span className="quiz-module__title">{stripEmoji(m.title)}</span>
                     <span className="mentor-mentee-status" data-state={count > 0 ? 'graduated' : 'active'}>
                       {count > 0 && <Check aria-hidden="true" />}
-                      {count > 0 ? 'Con examen' : 'Sin examen'}
+                      {count > 0 ? t('conExamen', 'Con examen') : t('sinExamen', 'Sin examen')}
                     </span>
                   </div>
                   <div className="quiz-module__meta">
-                    <span>Módulo {m.order}</span>
-                    <span>{m.videos?.length || 0} {(m.videos?.length || 0) === 1 ? 'clase' : 'clases'}</span>
-                    <span>{count > 0 ? `${count} ${count === 1 ? 'pregunta' : 'preguntas'}` : 'Sin preguntas'}</span>
+                    <span>{t('moduloOrder', 'Módulo {{order}}', { order: m.order })}</span>
+                    <span>{m.videos?.length || 0} {(m.videos?.length || 0) === 1 ? t('clase', 'clase') : t('clases', 'clases')}</span>
+                    <span>{count > 0 ? t('countPreguntas', { defaultValue_one: '{{count}} pregunta', defaultValue_other: '{{count}} preguntas', count: count }) : t('sinPreguntas', 'Sin preguntas')}</span>
                   </div>
                   <button
                     type="button"
                     className={`mentor-course-control${count > 0 ? '' : ' mentor-course-import'}`}
                     onClick={() => onOpenEditor(m)}
                   >
-                    {count > 0 ? 'Editar examen' : 'Crear examen'}
+                    {count > 0 ? t('editarExamen', 'Editar examen') : t('crearExamen', 'Crear examen')}
                   </button>
                 </li>
               );

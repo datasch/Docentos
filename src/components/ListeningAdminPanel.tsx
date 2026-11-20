@@ -390,7 +390,7 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
                 <span className="admin-listening__status" data-status={entry.status}>{LISTENING_STATUS_LABELS[entry.status]}</span>
                 <div className="admin-listening__nps-badge" data-group={entry.npsGroup ?? 'NONE'} title={t('npsDeEstaPersona', 'NPS de esta persona (0 a 10)')}>
                   <strong>{entry.npsScore ?? '—'}</strong>
-                  <span>{entry.npsScore === null ? t('sinNps', 'Sin NPS') : `NPS · ${npsGroupLabel(entry.npsGroup)}`}</span>
+                  <span>{entry.npsScore === null ? t('sinNps', 'Sin NPS') : t('npsNpsGroupLabel', 'NPS · {{npsGroupLabel}}', { npsGroupLabel: npsGroupLabel(entry.npsGroup) })}</span>
                 </div>
               </header>
 

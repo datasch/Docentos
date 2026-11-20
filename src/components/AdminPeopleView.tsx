@@ -6,6 +6,7 @@ import { X, Plus, List, LayoutGrid, BookOpen, Check, SlidersHorizontal, Triangle
 import type { User, UserRole, CourseEnrollmentRecord } from '../types';
 import { avatarSrc } from '../lib/avatar.js';
 import { AdminSearchField, FilterMenu, ActiveFilters, Pager } from './AdminListKit';
+import { useTranslation } from 'react-i18next'
 
 const ROLES: Array<{ value: UserRole; label: string }> = [
   { value: 'ADMIN', label: 'Administrador' },
@@ -46,6 +47,7 @@ interface Props {
 
 /** Directorio de personas: tarjetas como en Mentoría; rol y moderación en una hoja lateral. */
 export function AdminPeopleView({ users, enrollments, loading, roleError, section, onSection, onEnrollmentStatus, onNewEnrollment, onEnrollUser, onUpdateRole, onModerate, onHistory, onMentorCourses }: Props) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('ALL');
   const [page, setPage] = useState(1);
@@ -104,10 +106,10 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
     setBusy(false);
     setConfirm(null);
     const n = kind === 'unstrike' ? nextStrikes(u.strikes || 0, 'remove_strike') : nextStrikes(u.strikes || 0, 'add_strike');
-    setDone(!ok ? 'No se pudo aplicar el cambio. Inténtalo de nuevo.'
-      : kind === 'strike' ? `Strike agregado: ahora tiene ${n}.`
-      : kind === 'unstrike' ? `Strike quitado: ahora tiene ${n}.`
-      : u.isActive === false ? 'Cuenta reactivada.' : 'Cuenta suspendida.');
+    setDone(!ok ? t('noSePudoAplicarElCambioIntentaloDeNuevo', 'No se pudo aplicar el cambio. Inténtalo de nuevo.')
+      : kind === 'strike' ? t('strikeAgregadoAhoraTieneN', 'Strike agregado: ahora tiene {{n}}.', { n })
+      : kind === 'unstrike' ? t('strikeQuitadoAhoraTieneN', 'Strike quitado: ahora tiene {{n}}.', { n })
+      : u.isActive === false ? t('cuentaReactivada', 'Cuenta reactivada.') : t('cuentaSuspendida', 'Cuenta suspendida.'));
   };
 
   const activeCourses = (u: User) =>
@@ -120,7 +122,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
   // Cada contador respeta los otros filtros: el número es lo que verás al elegir esa opción.
   const roleCount = (v: string) => users.filter((u) => matchQ(u) && matchAcct(u, acct) && matchRole(u, v)).length;
   const acctCount = (v: string) => users.filter((u) => matchQ(u) && matchRole(u, role) && matchAcct(u, v)).length;
-  const roleOptions = [{ value: 'ALL', label: 'Todos' }, ...ROLES.filter((r) => users.some((u) => u.role === r.value))];
+  const roleOptions = [{ value: 'ALL', label: t('todos', 'Todos') }, ...ROLES.filter((r) => users.some((u) => u.role === r.value))];
   const visible = users.filter((u) => matchQ(u) && matchRole(u, role) && matchAcct(u, acct));
   const clearFilters = () => { setRole('ALL'); setAcct('ALL'); setQuery(''); setPage(1); };
 
@@ -128,7 +130,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
   const matchEQ = (e: CourseEnrollmentRecord) => !eq || [e.userName, e.userEmail, e.courseTitle].some((t) => (t || '').toLowerCase().includes(eq));
   const enrCount = (v: string) => enrollments.filter((e) => matchEQ(e) && (enrSource === 'ALL' || e.source === enrSource) && (v === 'ALL' || e.status === v)).length;
   const srcCount = (v: string) => enrollments.filter((e) => matchEQ(e) && (enrStatus === 'ALL' || e.status === enrStatus) && (v === 'ALL' || e.source === v)).length;
-  const srcOptions = [{ value: 'ALL', label: 'Todos' }, ...(Object.keys(ENR_SOURCE) as Array<CourseEnrollmentRecord['source']>).filter((k) => enrollments.some((e) => e.source === k)).map((k) => ({ value: k, label: ENR_SOURCE[k] }))];
+  const srcOptions = [{ value: 'ALL', label: t('todos', 'Todos') }, ...(Object.keys(ENR_SOURCE) as Array<CourseEnrollmentRecord['source']>).filter((k) => enrollments.some((e) => e.source === k)).map((k) => ({ value: k, label: ENR_SOURCE[k] }))];
   const enrVisible = enrollments.filter((e) => matchEQ(e) && (enrStatus === 'ALL' || e.status === enrStatus) && (enrSource === 'ALL' || e.source === enrSource));
   const clearEnr = () => { setEnrStatus('ALL'); setEnrSource('ALL'); setEnrQuery(''); setEnrPage(1); };
 
@@ -165,30 +167,30 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
       <div className="mentor-mentees-panel admin-people-panel">
         <div className="mentor-section-heading">
           <div>
-            <h2 id="admin-people-title">Usuarios</h2>
+            <h2 id="admin-people-title">{t('usuarios', 'Usuarios')}</h2>
             <p>
               {section === 'directory'
-                ? 'Cuentas registradas en la plataforma: rol, estado y moderación.'
-                : 'Acceso de cada usuario a los cursos: estado, origen y fecha de alta.'}
+                ? t('cuentasRegistradasEnLaPlataformaRol', 'Cuentas registradas en la plataforma: rol, estado y moderación.')
+                : t('accesoDeCadaUsuarioALosCursosEstado', 'Acceso de cada usuario a los cursos: estado, origen y fecha de alta.')}
             </p>
           </div>
         </div>
 
         <div className="admin-people-top">
-          <div className="mentor-publication-filters" role="group" aria-label="Sección de usuarios">
+          <div className="mentor-publication-filters" role="group" aria-label={t('seccionDeUsuarios', 'Sección de usuarios')}>
             <button type="button" aria-pressed={section === 'directory'} onClick={() => onSection('directory')}>
-              <span>Directorio</span>
+              <span>{t('directorio', 'Directorio')}</span>
               <span className="mentor-publication-count">({users.length})</span>
             </button>
             <button type="button" aria-pressed={section === 'enrollments'} onClick={() => onSection('enrollments')}>
-              <span>Matrículas</span>
+              <span>{t('matriculas', 'Matrículas')}</span>
               <span className="mentor-publication-count">({enrollments.length})</span>
             </button>
           </div>
           <div className="admin-courses-actions">
             <button type="button" className="mentor-course-control admin-primary-action" onClick={onNewEnrollment}>
               <Plus aria-hidden="true" />
-              Nueva matrícula
+              {t('nuevaMatricula', 'Nueva matrícula')}
             </button>
           </div>
         </div>
@@ -196,20 +198,20 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
         {section === 'directory' ? (
           <>
             <div className="mentor-course-toolbar">
-              <AdminSearchField value={query} onChange={(value) => { setQuery(value); setPage(1); }} placeholder="Buscar por nombre o correo" label="Buscar usuario" />
+              <AdminSearchField value={query} onChange={(value) => { setQuery(value); setPage(1); }} placeholder={t('buscarPorNombreOCorreo', 'Buscar por nombre o correo')} label={t('buscarUsuario', 'Buscar usuario')} />
               <FilterMenu groups={[
                 { value: role, onChange: (v) => { setRole(v); setPage(1); }, options: roleOptions.filter((o) => o.value !== 'ALL').map((o) => ({ ...o, count: roleCount(o.value) })) },
                 { value: acct, onChange: (v) => { setAcct(v); setPage(1); }, options: ACCT_FILTERS.filter((o) => o.value !== 'ALL').map((o) => ({ ...o, count: acctCount(o.value) })) },
               ]} />
               {!isMobile && (
-                <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista de usuarios">
+                <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDeUsuarios', 'Vista de usuarios')}>
                   <button type="button" aria-pressed={view === 'list'} onClick={() => changeView('list')}>
                     <List aria-hidden="true" />
-                    <span>Lista</span>
+                    <span>{t('lista', 'Lista')}</span>
                   </button>
                   <button type="button" aria-pressed={view === 'cards'} onClick={() => changeView('cards')}>
                     <LayoutGrid aria-hidden="true" />
-                    <span>Tarjetas</span>
+                    <span>{t('tarjetas', 'Tarjetas')}</span>
                   </button>
                 </div>
               )}
@@ -225,16 +227,16 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
             )}
 
             {users.length === 0 && loading ? (
-              <PageLoader label="Cargando usuarios…" />
+              <PageLoader label={t('cargandoUsuarios', 'Cargando usuarios…')} />
             ) : visible.length === 0 ? (
               <p className="mentor-courses-empty" role="status">
-                {users.length === 0 ? (loading ? 'Cargando usuarios…' : 'Todavía no hay usuarios registrados.') : 'Nadie coincide con el filtro.'}
+                {users.length === 0 ? (loading ? t('cargandoUsuarios', 'Cargando usuarios…') : t('todaviaNoHayUsuariosRegistrados', 'Todavía no hay usuarios registrados.')) : t('nadieCoincideConElFiltro', 'Nadie coincide con el filtro.')}
               </p>
             ) : (
               <div className="admin-people-list" data-view={view}>
               {view === 'list' && (
                 <div className="admin-people-head" aria-hidden="true">
-                  <span>Usuario</span><span>Rol</span><span>Estado</span><span>Cursos</span><span>Strikes</span><span />
+                  <span>{t('usuario', 'Usuario')}</span><span>{t('rol', 'Rol')}</span><span>{t('estado', 'Estado')}</span><span>{t('cursos', 'Cursos')}</span><span>{t('strikes', 'Strikes')}</span><span />
                 </div>
               )}
               <ul className="mentor-mentee-grid" data-view={view}>
@@ -253,14 +255,14 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                       </div>
                       <div className="admin-people-card__facts">
                         <span className="admin-people-role" data-role={u.role}>{roleLabel(u.role)}</span>
-                        <span className="mentor-mentee-status" data-state={suspended ? 'suspended' : 'active'}>{suspended ? 'Suspendido' : 'Activo'}</span>
+                        <span className="mentor-mentee-status" data-state={suspended ? 'suspended' : 'active'}>{suspended ? t('suspendido', 'Suspendido') : t('activo', 'Activo')}</span>
                       </div>
                       <dl className="admin-people-stats">
-                        <div><dt>Cursos</dt><dd>{courses}</dd></div>
-                        <div><dt>Strikes</dt><dd>{strikes}</dd></div>
+                        <div><dt>{t('cursos', 'Cursos')}</dt><dd>{courses}</dd></div>
+                        <div><dt>{t('strikes', 'Strikes')}</dt><dd>{strikes}</dd></div>
                       </dl>
-                      <button type="button" className="mentor-course-control" onClick={() => setSheetId(u.id)} aria-haspopup="dialog" aria-label={`Gestionar a ${u.name}`}>
-                        Gestionar
+                      <button type="button" className="mentor-course-control" onClick={() => setSheetId(u.id)} aria-haspopup="dialog" aria-label={t('gestionarAName', 'Gestionar a {{name}}', { name: u.name })}>
+                        {t('gestionar', 'Gestionar')}
                       </button>
                     </li>
                   );
@@ -274,20 +276,20 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
         ) : (
           <>
             <div className="mentor-course-toolbar">
-              <AdminSearchField value={enrQuery} onChange={(value) => { setEnrQuery(value); setEnrPage(1); }} placeholder="Buscar usuario o curso" label="Buscar matrícula" />
+              <AdminSearchField value={enrQuery} onChange={(value) => { setEnrQuery(value); setEnrPage(1); }} placeholder={t('buscarUsuarioOCurso', 'Buscar usuario o curso')} label={t('buscarMatricula', 'Buscar matrícula')} />
               <FilterMenu groups={[
                 { value: enrStatus, onChange: (v) => { setEnrStatus(v); setEnrPage(1); }, options: ENR_FILTERS.filter((o) => o.value !== 'ALL').map((o) => ({ ...o, count: enrCount(o.value) })) },
                 { value: enrSource, onChange: (v) => { setEnrSource(v); setEnrPage(1); }, options: srcOptions.filter((o) => o.value !== 'ALL').map((o) => ({ ...o, count: srcCount(o.value) })) },
               ]} />
               {!isMobile && (
-                <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label="Vista de usuarios">
+                <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('vistaDeUsuarios', 'Vista de usuarios')}>
                   <button type="button" aria-pressed={view === 'list'} onClick={() => changeView('list')}>
                     <List aria-hidden="true" />
-                    <span>Lista</span>
+                    <span>{t('lista', 'Lista')}</span>
                   </button>
                   <button type="button" aria-pressed={view === 'cards'} onClick={() => changeView('cards')}>
                     <LayoutGrid aria-hidden="true" />
-                    <span>Tarjetas</span>
+                    <span>{t('tarjetas', 'Tarjetas')}</span>
                   </button>
                 </div>
               )}
@@ -297,13 +299,13 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
 
             {enrVisible.length === 0 ? (
               <p className="mentor-courses-empty" role="status">
-                {enrollments.length === 0 ? 'Todavía no hay matrículas.' : 'Ninguna matrícula coincide con el filtro.'}
+                {t('ningunaMatriculaCoincideConElFiltro', { defaultValue_zero: 'Todavía no hay matrículas.', defaultValue_other: 'Ninguna matrícula coincide con el filtro.', count: enrollments.length })}
               </p>
             ) : (
               <div className="admin-people-list admin-enroll-list" data-view={view}>
               {view === 'list' && (
                 <div className="admin-people-head" aria-hidden="true">
-                  <span>Usuario</span><span>Curso</span><span>Estado</span><span>Fecha y origen</span><span />
+                  <span>{t('usuario', 'Usuario')}</span><span>{t('curso', 'Curso')}</span><span>{t('estado', 'Estado')}</span><span>{t('fechaYOrigen', 'Fecha y origen')}</span><span />
                 </div>
               )}
               <ul className="mentor-mentee-grid" data-view={view}>
@@ -324,8 +326,8 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                         {new Date(e.createdAt).toLocaleDateString('es-ES')} · {ENR_SOURCE[e.source]}
                       </p>
                       <div className="admin-enroll-card__actions">
-                        <button type="button" className="mentor-course-control" disabled={e.status === 'ACTIVE'} onClick={() => onEnrollmentStatus(e.id, 'ACTIVE')}><Check aria-hidden="true" />Activar</button>
-                        <button type="button" className="mentor-course-control" data-danger="true" disabled={e.status === 'REVOKED'} onClick={() => setRevokeTarget(e)} aria-haspopup="dialog"><Ban aria-hidden="true" />Revocar</button>
+                        <button type="button" className="mentor-course-control" disabled={e.status === 'ACTIVE'} onClick={() => onEnrollmentStatus(e.id, 'ACTIVE')}><Check aria-hidden="true" />{t('activar', 'Activar')}</button>
+                        <button type="button" className="mentor-course-control" data-danger="true" disabled={e.status === 'REVOKED'} onClick={() => setRevokeTarget(e)} aria-haspopup="dialog"><Ban aria-hidden="true" />{t('revocar', 'Revocar')}</button>
                       </div>
                     </li>
                   );
@@ -348,13 +350,13 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
             <div className="mentor-confirm__body">
               <h3 id="admin-revoke-title" className="admin-confirm-title">
                 <ShieldAlert aria-hidden="true" />
-                Revocar matrícula
+                {t('revocarMatricula', 'Revocar matrícula')}
               </h3>
               <p>
-                <strong>{revokeTarget.userName || revokeTarget.userEmail}</strong> perderá el acceso a <strong>{revokeTarget.courseTitle || 'este curso'}</strong>. Podrás volver a activarla cuando quieras.
+                <strong>{revokeTarget.userName || revokeTarget.userEmail}</strong> {t('perderaElAccesoA', 'perderá el acceso a')} <strong>{revokeTarget.courseTitle || t('esteCurso', 'este curso')}</strong>{t('podrasVolverAActivarlaCuandoQuieras', '. Podrás volver a activarla cuando quieras.')}
               </p>
               <div className="mentor-confirm__actions">
-                <button type="button" className="mentor-course-control" onClick={() => setRevokeTarget(null)}>Cancelar</button>
+                <button type="button" className="mentor-course-control" onClick={() => setRevokeTarget(null)}>{t('cancelar', 'Cancelar')}</button>
                 <button
                   type="button"
                   className="mentor-course-control"
@@ -362,7 +364,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                   onClick={() => { const t = revokeTarget; setRevokeTarget(null); onEnrollmentStatus(t.id, 'REVOKED'); }}
                 >
                   <Ban aria-hidden="true" />
-                  Revocar matrícula
+                  {t('revocarMatricula', 'Revocar matrícula')}
                 </button>
               </div>
             </div>
@@ -384,14 +386,14 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                   <strong id="admin-person-title">{sheetUser.name}</strong>
                   <span>{sheetUser.email}</span>
                 </div>
-                <button type="button" className="mentee-sheet__close" onClick={() => setSheetId(null)} aria-label="Cerrar">
+                <button type="button" className="mentee-sheet__close" onClick={() => setSheetId(null)} aria-label={t('cerrar', 'Cerrar')}>
                   <X aria-hidden="true" />
                 </button>
               </header>
 
               <div className="admin-person-sheet__scroll">
                 <div className="meeting-field">
-                  <label htmlFor="admin-person-role">Rol</label>
+                  <label htmlFor="admin-person-role">{t('rol', 'Rol')}</label>
                   <AdminSelect inline id="admin-person-role" value={sheetUser.role} onChange={(v) => onUpdateRole(sheetUser.id, v as UserRole)} options={ROLES.map((r) => ({ value: r.value, label: r.label }))} />
                 </div>
                 {roleError && <p role="alert" className="admin-people-error"><TriangleAlert aria-hidden="true" />{roleError}</p>}
@@ -400,36 +402,36 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                   <header className="admin-critical__head">
                     <ShieldAlert aria-hidden="true" />
                     <div>
-                      <h3 id="admin-critical-title">Acciones críticas</h3>
-                      <p>Afectan el acceso de esta persona a la plataforma y piden confirmación.</p>
+                      <h3 id="admin-critical-title">{t('accionesCriticas', 'Acciones críticas')}</h3>
+                      <p>{t('afectanElAccesoDeEstaPersonaALa', 'Afectan el acceso de esta persona a la plataforma y piden confirmación.')}</p>
                     </div>
                   </header>
                   {confirm ? (
-                    <div className="admin-critical__confirm" role="group" aria-label="Confirmar acción">
+                    <div className="admin-critical__confirm" role="group" aria-label={t('confirmarAccion', 'Confirmar acción')}>
                       <p>
                         {confirm === 'strike'
-                          ? `¿Dar un strike a ${sheetUser.name}? Pasará de ${sheetUser.strikes || 0} a ${nextStrikes(sheetUser.strikes || 0, 'add_strike')}.${nextStrikes(sheetUser.strikes || 0, 'add_strike') >= MAX_USER_STRIKES ? ` Con ${MAX_USER_STRIKES} strikes la cuenta se suspende sola.` : ''}`
+                          ? t('darUnStrikeANamePasaraDeStrikesANext', '¿Dar un strike a {{name}}? Pasará de {{strikes}} a {{nextStrikes}}.{{val}}', { name: sheetUser.name, strikes: sheetUser.strikes || 0, nextStrikes: nextStrikes(sheetUser.strikes || 0, 'add_strike'), val: nextStrikes(sheetUser.strikes || 0, 'add_strike') >= MAX_USER_STRIKES ? ` Con ${MAX_USER_STRIKES} strikes la cuenta se suspende sola.` : '' })
                           : confirm === 'unstrike'
-                            ? `¿Quitar un strike a ${sheetUser.name}? Pasará de ${sheetUser.strikes || 0} a ${nextStrikes(sheetUser.strikes || 0, 'remove_strike')}.`
+                            ? t('quitarUnStrikeANamePasaraDeStrikesANext', '¿Quitar un strike a {{name}}? Pasará de {{strikes}} a {{nextStrikes}}.', { name: sheetUser.name, strikes: sheetUser.strikes || 0, nextStrikes: nextStrikes(sheetUser.strikes || 0, 'remove_strike') })
                           : sheetUser.isActive === false
-                            ? `¿Reactivar la cuenta de ${sheetUser.name}? Recuperará el acceso.`
-                            : `¿Suspender la cuenta de ${sheetUser.name}? Perderá el acceso hasta que la reactives.`}
+                            ? t('reactivarLaCuentaDeNameRecuperaraEl', '¿Reactivar la cuenta de {{name}}? Recuperará el acceso.', { name: sheetUser.name })
+                            : t('suspenderLaCuentaDeNamePerderaElAcceso', '¿Suspender la cuenta de {{name}}? Perderá el acceso hasta que la reactives.', { name: sheetUser.name })}
                       </p>
                       <div className="admin-people-card__actions">
-                        <button type="button" className="mentor-course-control" onClick={() => setConfirm(null)} disabled={busy}>Cancelar</button>
+                        <button type="button" className="mentor-course-control" onClick={() => setConfirm(null)} disabled={busy}>{t('cancelar', 'Cancelar')}</button>
                         <button type="button" className="mentor-course-control admin-critical__go" data-tone={confirm === 'strike' ? 'warn' : confirm === 'unstrike' ? 'ok' : sheetUser.isActive === false ? 'ok' : 'danger'} onClick={() => runCritical(sheetUser)} disabled={busy} aria-busy={busy}>
                           {busy && <Loader2 aria-hidden="true" className="animate-spin" />}
-                          {confirm === 'strike' ? 'Confirmar strike' : confirm === 'unstrike' ? 'Confirmar quitar strike' : sheetUser.isActive === false ? 'Confirmar reactivación' : 'Confirmar suspensión'}
+                          {confirm === 'strike' ? t('confirmarStrike', 'Confirmar strike') : confirm === 'unstrike' ? t('confirmarQuitarStrike', 'Confirmar quitar strike') : sheetUser.isActive === false ? t('confirmarReactivacion', 'Confirmar reactivación') : t('confirmarSuspension', 'Confirmar suspensión')}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="admin-people-card__actions">
-                      <button type="button" className="mentor-course-control" data-tone="warn" onClick={() => { setDone(''); setConfirm('strike'); }} disabled={(sheetUser.strikes || 0) >= MAX_USER_STRIKES} title={(sheetUser.strikes || 0) >= MAX_USER_STRIKES ? `Ya tiene el máximo de ${MAX_USER_STRIKES} strikes` : undefined}>Dar un strike</button>
-                      <button type="button" className="mentor-course-control" onClick={() => { setDone(''); setConfirm('unstrike'); }} disabled={(sheetUser.strikes || 0) <= 0}>Quitar un strike</button>
-                      <button type="button" className="mentor-course-control" onClick={() => onHistory(sheetUser)}>Ver historial</button>
+                      <button type="button" className="mentor-course-control" data-tone="warn" onClick={() => { setDone(''); setConfirm('strike'); }} disabled={(sheetUser.strikes || 0) >= MAX_USER_STRIKES} title={(sheetUser.strikes || 0) >= MAX_USER_STRIKES ? t('yaTieneElMaximoDeMaxUserStrikesStrikes', 'Ya tiene el máximo de {{MAX_USER_STRIKES}} strikes', { MAX_USER_STRIKES }) : undefined}>{t('darUnStrike', 'Dar un strike')}</button>
+                      <button type="button" className="mentor-course-control" onClick={() => { setDone(''); setConfirm('unstrike'); }} disabled={(sheetUser.strikes || 0) <= 0}>{t('quitarUnStrike', 'Quitar un strike')}</button>
+                      <button type="button" className="mentor-course-control" onClick={() => onHistory(sheetUser)}>{t('verHistorial', 'Ver historial')}</button>
                       <button type="button" className="mentor-course-control" data-tone={sheetUser.isActive === false ? 'ok' : 'danger'} onClick={() => { setDone(''); setConfirm('suspend'); }}>
-                        {sheetUser.isActive === false ? 'Reactivar cuenta' : 'Suspender cuenta'}
+                        {sheetUser.isActive === false ? t('reactivarCuenta', 'Reactivar cuenta') : t('suspenderCuenta', 'Suspender cuenta')}
                       </button>
                     </div>
                   )}
@@ -440,11 +442,11 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
               <footer className="mentee-sheet__foot mentee-sheet__foot--actions">
                 {sheetUser.role === 'MENTOR' && (
                   <button type="button" className="mentor-course-control" onClick={() => { setSheetId(null); onMentorCourses(sheetUser); }}>
-                    <BookOpen aria-hidden="true" /> Cursos a cargo
+                    <BookOpen aria-hidden="true" /> {t('cursosACargo', 'Cursos a cargo')}
                   </button>
                 )}
                 <button type="button" className="mentor-course-control mentor-course-import" onClick={() => onEnrollUser(sheetUser.id)}>
-                  <Plus aria-hidden="true" /> Matricular
+                  <Plus aria-hidden="true" /> {t('matricular', 'Matricular')}
                 </button>
               </footer>
             </div>

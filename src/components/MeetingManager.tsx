@@ -44,6 +44,7 @@ import {
 } from '../plugins/LiveMeetingsPlugin';
 import { pluginManager } from '../plugins/PluginManager';
 import { stripEmoji } from '../lib/stripEmoji';
+import { useTranslation, Trans } from 'react-i18next'
 
 interface MeetingManagerProps {
   currentUser: User;
@@ -56,6 +57,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   courses,
   onRefreshCourses,
 }) => {
+  const { t } = useTranslation()
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filterType, setFilterType] = useState<'ALL' | 'LIVE' | 'SYNC' | 'ASYNC'>('ALL');
@@ -176,17 +178,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   const handleGenerateJitsiUrl = () => {
     const newUrl = generateJitsiMeetingUrl();
     setFormUrl(newUrl);
-    flashNotice('Sala Jitsi generada automáticamente');
+    flashNotice(t('salaJitsiGeneradaAutomaticamente', 'Sala Jitsi generada automáticamente'));
   };
 
   const handleSaveMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripEmoji(formTitle)) {
-      setModalError('El título de la clase es obligatorio');
+      setModalError(t('elTituloDeLaClaseEsObligatorio', 'El título de la clase es obligatorio'));
       return;
     }
     if (!formUrl.trim()) {
-      setModalError('La URL de la reunión o clase es obligatoria');
+      setModalError(t('laUrlDeLaReunionOClaseEsObligatoria', 'La URL de la reunión o clase es obligatoria'));
       return;
     }
 
@@ -209,7 +211,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         });
         if (res.meeting) {
           setMeetings((prev) => prev.map((m) => (m.id === res.meeting.id ? res.meeting : m)));
-          flashNotice('Clase actualizada correctamente');
+          flashNotice(t('claseActualizadaCorrectamente', 'Clase actualizada correctamente'));
           setIsModalOpen(false);
         }
       } else {
@@ -226,12 +228,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         });
         if (res.meeting) {
           setMeetings((prev) => [res.meeting, ...prev]);
-          flashNotice('Nueva clase programada con éxito');
+          flashNotice(t('nuevaClaseProgramadaConExito', 'Nueva clase programada con éxito'));
           setIsModalOpen(false);
         }
       }
     } catch (err: any) {
-      setModalError(err.message || 'Error al guardar la reunión');
+      setModalError(err.message || t('errorAlGuardarLaReunion', 'Error al guardar la reunión'));
     } finally {
       setSaving(false);
     }
@@ -244,12 +246,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         setMeetings((prev) => prev.map((m) => (m.id === res.meeting.id ? res.meeting : m)));
         flashNotice(
           res.meeting.isLive
-            ? `Transmisión en vivo iniciada: "${stripEmoji(meeting.title)}"`
-            : `Transmisión finalizada: "${stripEmoji(meeting.title)}"`
+            ? t('transmisionEnVivoIniciadaStripEmoji', 'Transmisión en vivo iniciada: "{{stripEmoji}}"', { stripEmoji: stripEmoji(meeting.title) })
+            : t('transmisionFinalizadaStripEmoji', 'Transmisión finalizada: "{{stripEmoji}}"', { stripEmoji: stripEmoji(meeting.title) })
         );
       }
     } catch (err: any) {
-      flashNotice(err.message || 'Error al cambiar estado de la transmisión');
+      flashNotice(err.message || t('errorAlCambiarEstadoDeLaTransmision', 'Error al cambiar estado de la transmisión'));
     }
   };
 
@@ -259,7 +261,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       setMeetings((prev) => prev.filter((m) => m.id !== meeting.id));
       flashNotice('Clase eliminada');
     } catch (err: any) {
-      flashNotice(err.message || 'Error al eliminar la clase');
+      flashNotice(err.message || t('errorAlEliminarLaClase', 'Error al eliminar la clase'));
     } finally {
       setDeleteTarget(null);
     }
@@ -269,10 +271,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
     try {
       await navigator.clipboard.writeText(meeting.meetingUrl);
       setCopiedId(meeting.id);
-      flashNotice('Enlace copiado al portapapeles');
+      flashNotice(t('enlaceCopiadoAlPortapapeles', 'Enlace copiado al portapapeles'));
       setTimeout(() => setCopiedId(null), 2500);
     } catch {
-      flashNotice('No se pudo copiar automáticamente el enlace');
+      flashNotice(t('noSePudoCopiarAutomaticamenteElEnlace', 'No se pudo copiar automáticamente el enlace'));
     }
   };
 
@@ -351,31 +353,31 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
   };
 
   const filterOptions = [
-    { id: 'ALL', label: 'Todas', count: meetings.length },
-    { id: 'LIVE', label: 'En vivo', count: liveCount },
-    { id: 'SYNC', label: 'Sesiones', count: syncCount },
-    { id: 'ASYNC', label: 'Grabaciones', count: asyncCount },
+    { id: 'ALL', label: t('todas', 'Todas'), count: meetings.length },
+    { id: 'LIVE', label: t('enVivo', 'En vivo'), count: liveCount },
+    { id: 'SYNC', label: t('sesiones', 'Sesiones'), count: syncCount },
+    { id: 'ASYNC', label: t('grabaciones', 'Grabaciones'), count: asyncCount },
   ] as const;
 
   return (
     <section className="mentor-meetings-panel" aria-labelledby="mentor-meetings-title">
       <div className="mentor-section-heading">
         <div>
-          <h2 id="mentor-meetings-title">Clases en vivo</h2>
-          <p>Programa sesiones, comparte la sala y publica las grabaciones</p>
+          <h2 id="mentor-meetings-title">{t('clasesEnVivo', 'Clases en vivo')}</h2>
+          <p>{t('programaSesionesComparteLaSalaYPublica', 'Programa sesiones, comparte la sala y publica las grabaciones')}</p>
         </div>
         <div className="mentor-meetings-actions">
           <button type="button" className="mentor-course-control mentor-course-import" onClick={openCreateModal}>
             <Plus aria-hidden="true" />
-            Programar clase
+            {t('programarClase', 'Programar clase')}
           </button>
           <button
             type="button"
             className="mentor-course-control mentor-icon-control"
             onClick={loadMeetings}
             disabled={loading}
-            aria-label="Actualizar clases"
-            title="Actualizar clases"
+            aria-label={t('actualizarClases', 'Actualizar clases')}
+            title={t('actualizarClases', 'Actualizar clases')}
           >
             <RefreshCw aria-hidden="true" className={loading ? 'animate-spin' : ''} />
           </button>
@@ -390,8 +392,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar clase"
-            aria-label="Buscar clase"
+            placeholder={t('buscarClase', 'Buscar clase')}
+            aria-label={t('buscarClase', 'Buscar clase')}
           />
         </label>
         {courses.length > 1 && (
@@ -399,15 +401,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             className="mentor-meetings-select"
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
-            aria-label="Filtrar por curso"
+            aria-label={t('filtrarPorCurso', 'Filtrar por curso')}
           >
-            <option value="ALL">Todos los cursos</option>
+            <option value="ALL">{t('todosLosCursos', 'Todos los cursos')}</option>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>{stripEmoji(c.title)}</option>
             ))}
           </select>
         )}
-        <div className="mentor-publication-filters" data-options="4" role="group" aria-label="Filtrar clases">
+        <div className="mentor-publication-filters" data-options="4" role="group" aria-label={t('filtrarClases', 'Filtrar clases')}>
           {filterOptions.map((o) => (
             <button key={o.id} type="button" aria-pressed={filterType === o.id} onClick={() => setFilterType(o.id)}>
               <span>{o.label}</span>
@@ -418,15 +420,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       </div>
 
       {loading && meetings.length === 0 ? (
-        <PageLoader label="Cargando clases" />
+        <PageLoader label={t('cargandoClases', 'Cargando clases')} />
       ) : filteredMeetings.length === 0 ? (
         <div className="mentor-courses-empty" role="status">
           <Video aria-hidden="true" />
-          <p>{meetings.length === 0 ? 'Aún no hay clases programadas' : 'Ninguna clase coincide con los filtros'}</p>
+          <p>{t('ningunaClaseCoincideConLosFiltros', { defaultValue_zero: 'Aún no hay clases programadas', defaultValue_other: 'Ninguna clase coincide con los filtros', count: meetings.length })}</p>
           {meetings.length === 0 && (
             <button type="button" className="mentor-course-control mentor-course-import" onClick={openCreateModal}>
               <Plus aria-hidden="true" />
-              Programar clase
+              {t('programarClase', 'Programar clase')}
             </button>
           )}
         </div>
@@ -451,7 +453,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     <span>{whenLabel(meeting.scheduledAt)}</span>
                   </div>
                   <span className="mentor-meeting-status" data-state={state}>
-                    {state === 'live' ? 'En vivo ahora' : state === 'recording' ? 'Disponible' : state === 'ended' ? 'Finalizada' : 'Programada'}
+                    {state === 'live' ? t('enVivoAhora', 'En vivo ahora') : state === 'recording' ? t('disponible', 'Disponible') : state === 'ended' ? t('finalizada', 'Finalizada') : t('programada', 'Programada')}
                   </span>
                 </header>
 
@@ -464,8 +466,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                   >
                     <i aria-hidden="true" />
                     <span>
-                      <strong>{stripEmoji(meeting.courseTitle) || 'Sin curso asignado'}</strong>
-                      <small>{stripEmoji(meeting.moduleTitle) || (meeting.courseTitle ? 'Todo el curso' : '')}</small>
+                      <strong>{stripEmoji(meeting.courseTitle) || t('sinCursoAsignado', 'Sin curso asignado')}</strong>
+                      <small>{stripEmoji(meeting.moduleTitle) || (meeting.courseTitle ? t('todoElCurso', 'Todo el curso') : '')}</small>
                     </span>
                   </p>
                   <h3 title={stripEmoji(meeting.title)}>{stripEmoji(meeting.title)}</h3>
@@ -473,7 +475,7 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 </div>
 
                 <div className="mentor-meeting-card__meta">
-                  <span><Clock aria-hidden="true" />{state === 'recording' ? 'Bajo demanda' : info.relativeLabel}</span>
+                  <span><Clock aria-hidden="true" />{state === 'recording' ? t('bajoDemanda', 'Bajo demanda') : info.relativeLabel}</span>
                   {meeting.hostName && <span><UsersRound aria-hidden="true" />{meeting.hostName}</span>}
                 </div>
 
@@ -482,15 +484,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     <>
                       <a className="mentor-course-control mentor-course-import mentor-span-2" href={meeting.meetingUrl} target="_blank" rel="noopener noreferrer">
                         <Video aria-hidden="true" />
-                        Unirse a la clase
+                        {t('unirseALaClase', 'Unirse a la clase')}
                       </a>
                       <button type="button" className="mentor-course-control" onClick={() => handleCopyLink(meeting)}>
                         {copiedId === meeting.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                        {copiedId === meeting.id ? 'Copiado' : 'Copiar enlace'}
+                        {copiedId === meeting.id ? t('copiado', 'Copiado') : t('copiarEnlace', 'Copiar enlace')}
                       </button>
                       <button type="button" className="mentor-course-control" onClick={() => handleToggleLive(meeting)}>
                         <Square aria-hidden="true" />
-                        Terminar clase
+                        {t('terminarClase', 'Terminar clase')}
                       </button>
                     </>
                   )}
@@ -498,15 +500,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                     <>
                       <button type="button" className="mentor-course-control mentor-course-import mentor-span-2" onClick={() => handleToggleLive(meeting)}>
                         <Play aria-hidden="true" />
-                        Iniciar clase en vivo
+                        {t('iniciarClaseEnVivo', 'Iniciar clase en vivo')}
                       </button>
                       <a className="mentor-course-control" href={meeting.meetingUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink aria-hidden="true" />
-                        Abrir sala
+                        {t('abrirSala', 'Abrir sala')}
                       </a>
                       <button type="button" className="mentor-course-control" onClick={() => handleCopyLink(meeting)}>
                         {copiedId === meeting.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                        {copiedId === meeting.id ? 'Copiado' : 'Copiar enlace'}
+                        {copiedId === meeting.id ? t('copiado', 'Copiado') : t('copiarEnlace', 'Copiar enlace')}
                       </button>
                     </>
                   )}
@@ -519,11 +521,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                         rel="noopener noreferrer"
                       >
                         {state === 'recording' ? <CirclePlay aria-hidden="true" /> : <ExternalLink aria-hidden="true" />}
-                        {state === 'recording' || meeting.recordingUrl ? 'Ver grabación' : 'Abrir sala'}
+                        {state === 'recording' || meeting.recordingUrl ? t('verGrabacion', 'Ver grabación') : t('abrirSala', 'Abrir sala')}
                       </a>
                       <button type="button" className="mentor-course-control mentor-span-2" onClick={() => handleCopyLink(meeting)}>
                         {copiedId === meeting.id ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                        {copiedId === meeting.id ? 'Copiado' : 'Copiar enlace'}
+                        {copiedId === meeting.id ? t('copiado', 'Copiado') : t('copiarEnlace', 'Copiar enlace')}
                       </button>
                     </>
                   )}
@@ -532,11 +534,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 <footer className="mentor-meeting-card__foot">
                   <button type="button" className="mentor-course-control" onClick={() => openEditModal(meeting)}>
                     <Pencil aria-hidden="true" />
-                    Editar
+                    {t('editar', 'Editar')}
                   </button>
                   <button type="button" className="mentor-course-control" data-danger="true" onClick={() => setDeleteTarget(meeting)}>
                     <Trash2 aria-hidden="true" />
-                    Eliminar
+                    {t('eliminar', 'Eliminar')}
                   </button>
                 </footer>
               </li>
@@ -545,12 +547,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
         </ul>
 
         {filteredMeetings.length > 1 && (
-          <div className="mentor-meetings-carousel" role="group" aria-label="Desplazar clases">
-            <button type="button" className="mentor-course-control mentor-icon-control" onClick={() => goToSlide(-1)} disabled={slide <= 0} aria-label="Clase anterior">
+          <div className="mentor-meetings-carousel" role="group" aria-label={t('desplazarClases', 'Desplazar clases')}>
+            <button type="button" className="mentor-course-control mentor-icon-control" onClick={() => goToSlide(-1)} disabled={slide <= 0} aria-label={t('claseAnterior', 'Clase anterior')}>
               <ChevronLeft aria-hidden="true" />
             </button>
-            <span role="status" aria-live="polite">{Math.min(slide + 1, Math.min(filteredMeetings.length, meetingLimit))} de {Math.min(filteredMeetings.length, meetingLimit)}</span>
-            <button type="button" className="mentor-course-control mentor-icon-control" onClick={() => goToSlide(1)} disabled={slide >= Math.min(filteredMeetings.length, meetingLimit) - 1} aria-label="Clase siguiente">
+            <span role="status" aria-live="polite">{t('slideDeLength', '{{slide}} de {{length}}', { slide: Math.min(slide + 1, Math.min(filteredMeetings.length, meetingLimit)), length: Math.min(filteredMeetings.length, meetingLimit) })}</span>
+            <button type="button" className="mentor-course-control mentor-icon-control" onClick={() => goToSlide(1)} disabled={slide >= Math.min(filteredMeetings.length, meetingLimit) - 1} aria-label={t('claseSiguiente', 'Clase siguiente')}>
               <ChevronRight aria-hidden="true" />
             </button>
           </div>
@@ -558,8 +560,8 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
 
         {filteredMeetings.length > meetingLimit && (
           <div className="mentor-mentee-more">
-            <span className="mentor-course-filter-result" role="status">{meetingLimit} de {filteredMeetings.length} clases</span>
-            <button type="button" className="mentor-course-control" onClick={() => setMeetingLimit((l) => l + 12)}>Mostrar más</button>
+            <span className="mentor-course-filter-result" role="status">{t('meetingLimitDeLengthClases', '{{meetingLimit}} de {{length}} clases', { meetingLimit, length: filteredMeetings.length })}</span>
+            <button type="button" className="mentor-course-control" onClick={() => setMeetingLimit((l) => l + 12)}>{t('mostrarMas', 'Mostrar más')}</button>
           </div>
         )}
         </>
@@ -576,10 +578,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
           <form className="mentee-sheet__body" onSubmit={handleSaveMeeting}>
             <header className="mentee-sheet__head mentee-sheet__head--plain">
               <div className="mentor-mentee-id">
-                <strong id="meeting-form-title">{editingMeeting ? 'Editar clase' : 'Programar clase'}</strong>
-                <span>Tipo de sesión, enlace y fecha</span>
+                <strong id="meeting-form-title">{editingMeeting ? t('editarClase', 'Editar clase') : t('programarClase', 'Programar clase')}</strong>
+                <span>{t('tipoDeSesionEnlaceYFecha', 'Tipo de sesión, enlace y fecha')}</span>
               </div>
-              <button type="button" className="mentee-sheet__close" onClick={() => setIsModalOpen(false)} aria-label="Cerrar">
+              <button type="button" className="mentee-sheet__close" onClick={() => setIsModalOpen(false)} aria-label={t('cerrar', 'Cerrar')}>
                 <X aria-hidden="true" />
               </button>
             </header>
@@ -592,10 +594,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               )}
 
               <label className="meeting-field">
-                <span>Título</span>
+                <span>{t('titulo', 'Título')}</span>
                 <input
                   type="text"
-                  placeholder="Ej: Masterclass de arquitectura limpia"
+                  placeholder={t('ejMasterclassDeArquitecturaLimpia', 'Ej: Masterclass de arquitectura limpia')}
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   required
@@ -603,12 +605,12 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               </label>
 
               <fieldset className="meeting-field">
-                <legend>Tipo de clase</legend>
-                <div className="meeting-types" role="radiogroup" aria-label="Tipo de clase">
+                <legend>{t('tipoDeClase', 'Tipo de clase')}</legend>
+                <div className="meeting-types" role="radiogroup" aria-label={t('tipoDeClase', 'Tipo de clase')}>
                   {([
-                    { id: 'jitsi', label: 'Jitsi Meet', hint: 'Sala al instante' },
-                    { id: 'meet', label: 'Google Meet', hint: 'Tu enlace' },
-                    { id: 'async_record', label: 'Grabación', hint: 'Video previo' },
+                    { id: 'jitsi', label: t('jitsiMeet', 'Jitsi Meet'), hint: t('salaAlInstante', 'Sala al instante') },
+                    { id: 'meet', label: t('googleMeet', 'Google Meet'), hint: t('tuEnlace', 'Tu enlace') },
+                    { id: 'async_record', label: t('grabacion', 'Grabación'), hint: t('videoPrevio', 'Video previo') },
                   ] as const).map((option) => (
                     <button
                       key={option.id}
@@ -639,11 +641,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               <div className="meeting-field">
                 <div className="meeting-field__row">
                   <label htmlFor="meeting-url">
-                    {formType === 'jitsi' ? 'Enlace de la sala' : formType === 'meet' ? 'Enlace de Google Meet' : 'Enlace de la grabación'}
+                    {formType === 'jitsi' ? t('enlaceDeLaSala', 'Enlace de la sala') : formType === 'meet' ? t('enlaceDeGoogleMeet', 'Enlace de Google Meet') : t('enlaceDeLaGrabacion', 'Enlace de la grabación')}
                   </label>
                   {formType === 'jitsi' && (
                     <button type="button" className="meeting-field__link" onClick={handleGenerateJitsiUrl}>
-                      Generar sala nueva
+                      {t('generarSalaNueva', 'Generar sala nueva')}
                     </button>
                   )}
                 </div>
@@ -663,15 +665,15 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 />
                 <small>
                   {formType === 'jitsi'
-                    ? 'Los alumnos entran desde el navegador, sin instalar nada.'
+                    ? t('losAlumnosEntranDesdeElNavegadorSin', 'Los alumnos entran desde el navegador, sin instalar nada.')
                     : formType === 'meet'
-                      ? 'Pega el enlace creado desde tu cuenta de Google.'
-                      : 'YouTube, Vimeo o Drive. Se reproduce dentro de la plataforma.'}
+                      ? t('pegaElEnlaceCreadoDesdeTuCuentaDeGoogle', 'Pega el enlace creado desde tu cuenta de Google.')
+                      : t('youtubeVimeoODriveSeReproduceDentroDeLa', 'YouTube, Vimeo o Drive. Se reproduce dentro de la plataforma.')}
                 </small>
               </div>
 
               <label className="meeting-field">
-                <span>Fecha y hora</span>
+                <span>{t('fechaYHora', 'Fecha y hora')}</span>
                 <input type="datetime-local" value={formScheduledAt} onChange={(e) => setFormScheduledAt(e.target.value)} />
               </label>
 
@@ -679,19 +681,19 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
                 <label className="roster-option">
                   <input type="checkbox" checked={formIsLive} onChange={(e) => setFormIsLive(e.target.checked)} />
                   <span className="roster-option__text">
-                    <strong>Transmitir en vivo ahora</strong>
-                    <small>Los alumnos verán la clase como activa</small>
+                    <strong>{t('transmitirEnVivoAhora', 'Transmitir en vivo ahora')}</strong>
+                    <small>{t('losAlumnosVeranLaClaseComoActiva', 'Los alumnos verán la clase como activa')}</small>
                   </span>
                 </label>
               )}
 
               <label className="meeting-field">
-                <span>Curso</span>
+                <span>{t('curso', 'Curso')}</span>
                 <select
                   value={formCourseId}
                   onChange={(e) => { setFormCourseId(e.target.value); setFormModuleId(''); }}
                 >
-                  <option value="">Sin curso asignado</option>
+                  <option value="">{t('sinCursoAsignado', 'Sin curso asignado')}</option>
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>{stripEmoji(c.title)}</option>
                   ))}
@@ -699,13 +701,13 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               </label>
 
               <label className="meeting-field">
-                <span>Módulo <em>(opcional)</em></span>
+                <span><Trans i18nKey="moduloOpcional">Módulo <em>(opcional)</em></Trans></span>
                 <select
                   value={formModuleId}
                   onChange={(e) => setFormModuleId(e.target.value)}
                   disabled={!selectedCourse || selectedCourse.modules.length === 0}
                 >
-                  <option value="">Todo el curso</option>
+                  <option value="">{t('todoElCurso', 'Todo el curso')}</option>
                   {selectedCourse?.modules.map((m) => (
                     <option key={m.id} value={m.id}>{stripEmoji(m.title)}</option>
                   ))}
@@ -713,10 +715,10 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
               </label>
 
               <label className="meeting-field">
-                <span>Descripción <em>(opcional)</em></span>
+                <span><Trans i18nKey="descripcionOpcional">Descripción <em>(opcional)</em></Trans></span>
                 <textarea
                   rows={3}
-                  placeholder="Temas que se tratarán en la sesión"
+                  placeholder={t('temasQueSeTrataranEnLaSesion', 'Temas que se tratarán en la sesión')}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                 />
@@ -726,11 +728,11 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
             <footer className="mentee-sheet__foot mentee-sheet__foot--actions">
               <div>
                 <button type="button" className="mentor-course-control" onClick={() => setIsModalOpen(false)}>
-                  Cancelar
+                  {t('cancelar', 'Cancelar')}
                 </button>
                 <button type="submit" className="mentor-course-control mentor-course-import" disabled={saving}>
                   {saving && <RefreshCw aria-hidden="true" className="animate-spin" />}
-                  {editingMeeting ? 'Guardar cambios' : 'Crear clase'}
+                  {editingMeeting ? t('guardarCambios', 'Guardar cambios') : t('crearClase', 'Crear clase')}
                 </button>
               </div>
             </footer>
@@ -747,17 +749,17 @@ export const MeetingManager: React.FC<MeetingManagerProps> = ({
       >
         {deleteTarget && (
           <div className="mentor-confirm__body">
-            <h3 id="meeting-delete-title">Eliminar clase</h3>
+            <h3 id="meeting-delete-title">{t('eliminarClase', 'Eliminar clase')}</h3>
             <p>
-              Vas a eliminar <strong>{stripEmoji(deleteTarget.title)}</strong>. Los alumnos dejarán de verla. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.
+              {t('vasAEliminar', 'Vas a eliminar')} <strong>{stripEmoji(deleteTarget.title)}</strong><Trans i18nKey="losAlumnosDejaranDeVerlaEstaAccionEs">. Los alumnos dejarán de verla. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans>
             </p>
             <div className="mentor-confirm__actions">
               <button type="button" className="mentor-course-control" onClick={() => setDeleteTarget(null)}>
-                Cancelar
+                {t('cancelar', 'Cancelar')}
               </button>
               <button type="button" className="mentor-course-control" data-danger="true" onClick={() => handleDeleteMeeting(deleteTarget)}>
                 <Trash2 aria-hidden="true" />
-                Eliminar
+                {t('eliminar', 'Eliminar')}
               </button>
             </div>
           </div>

@@ -79,7 +79,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
         <article className="terms-paper">
           <header className="terms-paper__top">
             <div>
-              <strong>DocentOS</strong>
+              <strong>{t('docentos', 'DocentOS')}</strong>
               <span>{t('plataformaELearning', 'Plataforma e-Learning')}</span>
             </div>
           </header>
@@ -126,7 +126,7 @@ export const CertificateVerifyModal: React.FC<CertificateVerifyModalProps> = ({
                       <defs><path id="verify-seal-ring" d="M38 38 m-27 0 a27 27 0 1 1 54 0 a27 27 0 1 1 -54 0" /></defs>
                       <circle cx="38" cy="38" r="35" fill="none" stroke="currentColor" strokeWidth="2" />
                       <circle cx="38" cy="38" r="21" fill="none" stroke="currentColor" strokeWidth="1" />
-                      <text fontSize="6.4" fontWeight="700" letterSpacing="1.6" fill="currentColor"><textPath href="#verify-seal-ring">DOCENTOS · CERTIFICADO VERIFICADO · </textPath></text>
+                      <text fontSize="6.4" fontWeight="700" letterSpacing="1.6" fill="currentColor"><textPath href="#verify-seal-ring">{t('docentosCertificadoVerificado', 'DOCENTOS · CERTIFICADO VERIFICADO ·')} </textPath></text>
                       <path d="M28 38.5l7 7 13-14" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>

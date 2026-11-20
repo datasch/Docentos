@@ -88,7 +88,7 @@ export function MenteeCoursesDialog({ mentee, onClose, onEdit }: {
                     <span style={{ width: `${c.courseProgress}%` }} />
                   </div>
                   <div className="mentor-mentee-course__meta">
-                    <span>{c.completedVideosCount} de {c.totalVideosCount} lecciones</span>
+                    <span>{t('completedVideosCountDeTotalVideosCount', '{{completedVideosCount}} de {{totalVideosCount}} lecciones', { completedVideosCount: c.completedVideosCount, totalVideosCount: c.totalVideosCount })}</span>
                     <b>{c.courseProgress}%</b>
                   </div>
                 </li>

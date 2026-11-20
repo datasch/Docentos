@@ -23,6 +23,7 @@ import { Module, QuizQuestion } from '../types';
 import { api } from '../lib/api';
 import { setModuleQuiz, getModuleQuestions } from '../plugins/QuizzesPlugin';
 import { useBodyScrollLock } from '../lib/useBodyScrollLock';
+import { useTranslation, Trans } from 'react-i18next'
 
 function normalizeText(str: string): string {
   return (str || '')
@@ -104,6 +105,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const { t } = useTranslation()
   useBodyScrollLock(isOpen);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -141,7 +143,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       }
     }
     setQuestions(updated);
-    setSuccessMessage(`Se corrigieron ${count} ${count === 1 ? 'respuesta' : 'respuestas'} para que coincidan con su explicación.`);
+    setSuccessMessage(t('seCorrigieronCountRespuestasParaQue', { defaultValue_one: 'Se corrigieron {{count}} respuesta para que coincidan con su explicación.', defaultValue_other: 'Se corrigieron {{count}} respuestas para que coincidan con su explicación.', count: count }));
   };
 
   useEffect(() => {
@@ -229,10 +231,10 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       const res = await api.generateModuleQuiz(module.id, 4);
       if (res.success && res.questions) {
         setQuestions(res.questions);
-        setSuccessMessage('Examen generado con IA. Revisa las preguntas y guarda los cambios.');
+        setSuccessMessage(t('examenGeneradoConIaRevisaLasPreguntasY', 'Examen generado con IA. Revisa las preguntas y guarda los cambios.'));
       }
     } catch (err: any) {
-      setError(err.message || 'No se pudo generar el examen con IA.');
+      setError(err.message || t('noSePudoGenerarElExamenConIa', 'No se pudo generar el examen con IA.'));
     } finally {
       setGeneratingAi(false);
     }
@@ -244,7 +246,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       const q = validQuestions[i];
       const filledOptions = q.options.filter((o) => o.trim().length > 0);
       if (filledOptions.length < 2) {
-        setError(`La pregunta #${i + 1} debe tener al menos 2 opciones de respuesta rellenas.`);
+        setError(t('laPreguntaIDebeTenerAlMenos2OpcionesDe', 'La pregunta #{{i}} debe tener al menos 2 opciones de respuesta rellenas.', { i: i + 1 }));
         return;
       }
     }
@@ -263,7 +265,7 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Error al guardar la evaluación.');
+      setError(err.message || t('errorAlGuardarLaEvaluacion', 'Error al guardar la evaluación.'));
     } finally {
       setSaving(false);
     }
@@ -275,10 +277,10 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       await api.deleteModuleQuiz(module.id);
       setModuleQuiz(module.id, []);
       setQuestions([]);
-      setSuccessMessage('Evaluación eliminada del módulo.');
+      setSuccessMessage(t('evaluacionEliminadaDelModulo', 'Evaluación eliminada del módulo.'));
       if (onSaved) onSaved([]);
     } catch (err: any) {
-      setError(err.message || 'Error al eliminar');
+      setError(err.message || t('errorAlEliminar2', 'Error al eliminar'));
     } finally {
       setSaving(false);
       setConfirmAll(false);
@@ -298,10 +300,10 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
       <div className="mentee-sheet__body mentee-sheet__body--tools">
         <header className="mentee-sheet__head mentee-sheet__head--plain">
           <div className="mentor-mentee-id">
-            <strong id="quiz-editor-title">Examen del módulo</strong>
+            <strong id="quiz-editor-title">{t('examenDelModulo', 'Examen del módulo')}</strong>
             <span>{module.title}</span>
           </div>
-          <button type="button" className="mentee-sheet__close" onClick={onClose} disabled={saving} aria-label="Cerrar">
+          <button type="button" className="mentee-sheet__close" onClick={onClose} disabled={saving} aria-label={t('cerrar', 'Cerrar')}>
             <X aria-hidden="true" />
           </button>
         </header>
@@ -310,11 +312,11 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
           <div className="quiz-tools__actions">
             <button type="button" className="mentor-course-control" onClick={handleGenerateWithAi} disabled={generatingAi || saving}>
               {generatingAi ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
-              {generatingAi ? 'Generando examen' : 'Generar con IA'}
+              {generatingAi ? t('generandoExamen', 'Generando examen') : t('generarConIa', 'Generar con IA')}
             </button>
             <button type="button" className="mentor-course-control" onClick={handleAddQuestion} disabled={generatingAi || saving}>
               <Plus aria-hidden="true" />
-              Añadir pregunta
+              {t('anadirPregunta', 'Añadir pregunta')}
             </button>
             {mismatches.length > 0 && (
               <button
@@ -322,14 +324,14 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                 className="mentor-course-control"
                 onClick={handleReconcileAllMismatches}
                 disabled={generatingAi || saving}
-                title="Alinear las respuestas marcadas con su explicación"
+                title={t('alinearLasRespuestasMarcadasConSu', 'Alinear las respuestas marcadas con su explicación')}
               >
-                Corregir respuestas ({mismatches.length})
+                {t('corregirRespuestasLength', 'Corregir respuestas ({{length}})', { length: mismatches.length })}
               </button>
             )}
           </div>
           <span className="quiz-tools__count">
-            {questions.length} {questions.length === 1 ? 'pregunta' : 'preguntas'}
+            {questions.length} {questions.length === 1 ? t('pregunta', 'pregunta') : t('preguntas', 'preguntas')}
           </span>
         </div>
 
@@ -347,20 +349,20 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
 
           {loading ? (
             <p className="mentee-sheet__empty" role="status">
-              <Loader2 aria-hidden="true" className="animate-spin" /> Cargando examen
+              <Loader2 aria-hidden="true" className="animate-spin" /> {t('cargandoExamen', 'Cargando examen')}
             </p>
           ) : questions.length === 0 ? (
             <div className="quiz-empty">
-              <h3>Este módulo aún no tiene examen</h3>
-              <p>Genera una propuesta a partir del temario o escribe las preguntas tú mismo.</p>
+              <h3>{t('esteModuloAunNoTieneExamen', 'Este módulo aún no tiene examen')}</h3>
+              <p>{t('generaUnaPropuestaAPartirDelTemarioO', 'Genera una propuesta a partir del temario o escribe las preguntas tú mismo.')}</p>
               <div>
                 <button type="button" className="mentor-course-control mentor-course-import" onClick={handleGenerateWithAi} disabled={generatingAi}>
                   {generatingAi ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Sparkles aria-hidden="true" />}
-                  Generar con IA
+                  {t('generarConIa', 'Generar con IA')}
                 </button>
                 <button type="button" className="mentor-course-control" onClick={handleAddQuestion}>
                   <Plus aria-hidden="true" />
-                  Crear manualmente
+                  {t('crearManualmente', 'Crear manualmente')}
                 </button>
               </div>
             </div>
@@ -368,35 +370,35 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
             questions.map((q, qIdx) => {
               const mismatchIdx = detectQuestionMismatch(q);
               return (
-                <section key={q.id || qIdx} className="quiz-question" aria-label={`Pregunta ${qIdx + 1}`}>
+                <section key={q.id || qIdx} className="quiz-question" aria-label={t('preguntaQIdx', 'Pregunta {{qIdx}}', { qIdx: qIdx + 1 })}>
                   <header className="quiz-question__head">
-                    <strong>Pregunta {qIdx + 1}</strong>
+                    <strong>{t('pregunta2', 'Pregunta')} {qIdx + 1}</strong>
                     <div className="quiz-question__actions">
-                      <button type="button" onClick={() => handleMoveQuestion(qIdx, -1)} disabled={qIdx === 0} aria-label="Subir pregunta" title="Subir">
+                      <button type="button" onClick={() => handleMoveQuestion(qIdx, -1)} disabled={qIdx === 0} aria-label={t('subirPregunta', 'Subir pregunta')} title={t('subir', 'Subir')}>
                         <ChevronUp aria-hidden="true" />
                       </button>
-                      <button type="button" onClick={() => handleMoveQuestion(qIdx, 1)} disabled={qIdx === questions.length - 1} aria-label="Bajar pregunta" title="Bajar">
+                      <button type="button" onClick={() => handleMoveQuestion(qIdx, 1)} disabled={qIdx === questions.length - 1} aria-label={t('bajarPregunta', 'Bajar pregunta')} title={t('bajar', 'Bajar')}>
                         <ChevronDown aria-hidden="true" />
                       </button>
-                      <button type="button" data-danger="true" onClick={() => handleDeleteQuestion(qIdx)} aria-label="Eliminar pregunta" title="Eliminar pregunta">
+                      <button type="button" data-danger="true" onClick={() => handleDeleteQuestion(qIdx)} aria-label={t('eliminarPregunta', 'Eliminar pregunta')} title={t('eliminarPregunta', 'Eliminar pregunta')}>
                         <Trash2 aria-hidden="true" />
                       </button>
                     </div>
                   </header>
 
                   <label className="meeting-field">
-                    <span>Enunciado</span>
+                    <span>{t('enunciado', 'Enunciado')}</span>
                     <textarea
                       rows={2}
                       value={q.text}
                       onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
-                      placeholder="Ej: ¿Cuál es el concepto central de esta lección?"
+                      placeholder={t('ejCualEsElConceptoCentralDeEstaLeccion', 'Ej: ¿Cuál es el concepto central de esta lección?')}
                     />
                   </label>
 
                   <fieldset className="quiz-field">
-                    <legend>Respuestas <em>(marca la correcta)</em></legend>
-                    <div className="quiz-options" role="radiogroup" aria-label={`Respuestas de la pregunta ${qIdx + 1}`}>
+                    <legend><Trans i18nKey="respuestasMarcaLaCorrecta">Respuestas <em>(marca la correcta)</em></Trans></legend>
+                    <div className="quiz-options" role="radiogroup" aria-label={t('respuestasDeLaPreguntaQIdx', 'Respuestas de la pregunta {{qIdx}}', { qIdx: qIdx + 1 })}>
                       {q.options.map((opt, optIdx) => {
                         const isCorrect = q.correctIndex === optIdx;
                         return (
@@ -406,15 +408,15 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                               name={`correct-${q.id || qIdx}`}
                               checked={isCorrect}
                               onChange={() => handleSetCorrectIndex(qIdx, optIdx)}
-                              aria-label={`Marcar la opción ${String.fromCharCode(65 + optIdx)} como correcta`}
+                              aria-label={t('marcarLaOpcionValComoCorrecta', 'Marcar la opción {{val}} como correcta', { val: String.fromCharCode(65 + optIdx) })}
                             />
                             <span className="quiz-option__letter" aria-hidden="true">{String.fromCharCode(65 + optIdx)}</span>
                             <textarea
                               rows={1}
                               value={opt}
                               onChange={(e) => handleUpdateOption(qIdx, optIdx, e.target.value)}
-                              placeholder={`Opción ${String.fromCharCode(65 + optIdx)}`}
-                              aria-label={`Texto de la opción ${String.fromCharCode(65 + optIdx)}`}
+                              placeholder={t('opcionVal', 'Opción {{val}}', { val: String.fromCharCode(65 + optIdx) })}
+                              aria-label={t('textoDeLaOpcionVal', 'Texto de la opción {{val}}', { val: String.fromCharCode(65 + optIdx) })}
                             />
                           </label>
                         );
@@ -425,21 +427,21 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
                   {mismatchIdx !== null && (
                     <div className="quiz-mismatch" role="note">
                       <p>
-                        La explicación parece describir la <strong>opción {String.fromCharCode(65 + mismatchIdx)}</strong> y no la {String.fromCharCode(65 + q.correctIndex)}, que es la marcada.
+                        {t('laExplicacionPareceDescribirLa', 'La explicación parece describir la')} <strong>{t('opcion', 'opción')} {String.fromCharCode(65 + mismatchIdx)}</strong> {t('yNoLa', 'y no la')} {String.fromCharCode(65 + q.correctIndex)}{t('queEsLaMarcada', ', que es la marcada.')}
                       </p>
                       <button type="button" className="mentor-course-control" onClick={() => handleSetCorrectIndex(qIdx, mismatchIdx)}>
-                        Marcar la opción {String.fromCharCode(65 + mismatchIdx)}
+                        {t('marcarLaOpcion', 'Marcar la opción')} {String.fromCharCode(65 + mismatchIdx)}
                       </button>
                     </div>
                   )}
 
                   <label className="meeting-field">
-                    <span>Explicación <em>(se muestra al calificar)</em></span>
+                    <span><Trans i18nKey="explicacionSeMuestraAlCalificar">Explicación <em>(se muestra al calificar)</em></Trans></span>
                     <textarea
                       rows={2}
                       value={q.explanation}
                       onChange={(e) => handleUpdateExplanation(qIdx, e.target.value)}
-                      placeholder="Explica por qué esa respuesta es la correcta"
+                      placeholder={t('explicaPorQueEsaRespuestaEsLaCorrecta', 'Explica por qué esa respuesta es la correcta')}
                     />
                   </label>
                 </section>
@@ -453,15 +455,15 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
             {questions.length > 0 && (
               <button type="button" className="mentor-course-control quiz-foot__danger" data-danger="true" onClick={() => setConfirmAll(true)} disabled={saving}>
                 <Trash2 aria-hidden="true" />
-                Eliminar todo
+                {t('eliminarTodo', 'Eliminar todo')}
               </button>
             )}
             <button type="button" className="mentor-course-control" onClick={onClose} disabled={saving}>
-              Cancelar
+              {t('cancelar', 'Cancelar')}
             </button>
             <button type="button" className="mentor-course-control mentor-course-import" onClick={handleSaveQuiz} disabled={saving || questions.length === 0}>
               {saving && <Loader2 aria-hidden="true" className="animate-spin" />}
-              {saving ? 'Guardando' : 'Guardar evaluación'}
+              {saving ? t('guardando2', 'Guardando') : t('guardarEvaluacion', 'Guardar evaluación')}
             </button>
           </div>
         </footer>
@@ -475,13 +477,13 @@ export const QuizManagerModal: React.FC<QuizManagerModalProps> = ({
         >
           {confirmAll && (
             <div className="mentor-confirm__body">
-              <h3 id="quiz-delete-title">Eliminar el examen</h3>
-              <p>Se borrarán las {questions.length} preguntas de <strong>{module.title}</strong>. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</p>
+              <h3 id="quiz-delete-title">{t('eliminarElExamen', 'Eliminar el examen')}</h3>
+              <p>{t('seBorraranLasLengthPreguntasDe', 'Se borrarán las {{length}} preguntas de', { length: questions.length })} <strong>{module.title}</strong><Trans i18nKey="estaAccionEsPermanente">. Esta acción es <strong className="mentor-confirm__permanent">permanente</strong>.</Trans></p>
               <div className="mentor-confirm__actions">
-                <button type="button" className="mentor-course-control" onClick={() => setConfirmAll(false)}>Cancelar</button>
+                <button type="button" className="mentor-course-control" onClick={() => setConfirmAll(false)}>{t('cancelar', 'Cancelar')}</button>
                 <button type="button" className="mentor-course-control" data-danger="true" onClick={handleDeleteAll}>
                   <Trash2 aria-hidden="true" />
-                  Eliminar
+                  {t('eliminar', 'Eliminar')}
                 </button>
               </div>
             </div>
