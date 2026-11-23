@@ -12,9 +12,11 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AcademiaPlugin } from '../types';
+import { AdminSelect, type AdminSelectOption } from './AdminSelect';
 import { SignaturePad } from './SignaturePad';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
 import { DEFAULT_LOGO_URL } from '../lib/logoConfig';
+import { LANGUAGES } from '../i18n/languages';
 import type { ColorTheme } from '../lib/themeApplicator';
 import type { CustomizerConfig } from '../lib/customizerConfig';
 
@@ -135,6 +137,26 @@ const LogoPicker: React.FC<{
 const Chips: React.FC<{ items: string[]; onPick: (value: string) => void }> = ({ items, onPick }) => (
   <div className="admin-plugin-sheet__chips">{items.map((item) => <button key={item} type="button" onClick={() => onPick(item)}>{item}</button>)}</div>
 );
+
+/** Opciones cerradas para campos de configuración de plugins que no deben editarse como texto libre. */
+function getPluginSelectOptions(
+  pluginId: string,
+  key: string,
+  t: (key: string, fallback: string) => string,
+): AdminSelectOption[] | null {
+  if (pluginId === 'seasonal-festivities' && key === 'mode') {
+    return [
+      { value: 'auto', label: t('festividadModoAutoTitulo', 'Automático (Calendario)') },
+      { value: 'christmas', label: t('festividadModoNavidadTitulo', 'Forzar Navidad') },
+      { value: 'halloween', label: t('festividadModoHalloweenTitulo', 'Forzar Halloween') },
+      { value: 'none', label: t('festividadModoNingunoTitulo', 'Apagar Festividades') },
+    ];
+  }
+  if (pluginId === 'youtube-ai-builder' && key === 'defaultLanguage') {
+    return LANGUAGES.map((lang) => ({ value: lang.code, label: `${lang.flag} ${lang.label}` }));
+  }
+  return null;
+}
 
 export const PluginConfigSheet: React.FC<Props> = ({
   plugin, title, form, setForm, dirty, saving, fieldLabels, onPreviewCustomizer, onSave, onCancel, downloadingSample, onDownloadSample,
@@ -378,12 +400,22 @@ export const PluginConfigSheet: React.FC<Props> = ({
                 <div className="admin-plugin-sheet__grid">
                   {genericKeys.filter((key) => typeof form[key] !== 'boolean').map((key) => {
                     const value = form[key];
+                    const selectOptions = plugin ? getPluginSelectOptions(plugin.id, key, t) : null;
                     return (
                       <Field key={key} id={`plugin-field-${key}`} label={fieldLabels[key] || humanize(key)}>
-                        <input
-                          id={`plugin-field-${key}`} type={typeof value === 'number' ? 'number' : 'text'} value={value !== undefined ? value : ''}
-                          onChange={(event) => set({ [key]: typeof value === 'number' ? Number(event.target.value) : event.target.value })}
-                        />
+                        {selectOptions ? (
+                          <AdminSelect
+                            id={`plugin-field-${key}`}
+                            value={String(value ?? selectOptions[0]?.value ?? '')}
+                            onChange={(next) => set({ [key]: next })}
+                            options={selectOptions}
+                          />
+                        ) : (
+                          <input
+                            id={`plugin-field-${key}`} type={typeof value === 'number' ? 'number' : 'text'} value={value !== undefined ? value : ''}
+                            onChange={(event) => set({ [key]: typeof value === 'number' ? Number(event.target.value) : event.target.value })}
+                          />
+                        )}
                       </Field>
                     );
                   })}

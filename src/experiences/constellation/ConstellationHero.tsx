@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useRef } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { ArrowRight, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../types';
@@ -6,8 +6,6 @@ import { formatFirstName } from '../../lib/avatar';
 import { greetingForThisVisit } from '../../lib/dailyGreeting';
 import { DEFAULT_LOGO_URL, usePlatformBrand } from '../../lib/logoConfig';
 import { landingTarget, useLandingConfig } from '../../lib/landingConfig';
-import { useSeasonalTheme } from '../../lib/seasonalTheme';
-import { ChristmasHeroSanta } from './ChristmasHeroSanta';
 
 const BrandAnimation = lazy(() => import('./ConstellationCanvas').then(module => ({ default: module.ConstellationCanvas })));
 
@@ -26,8 +24,6 @@ export const ConstellationHero: React.FC<ConstellationHeroProps> = ({
   const { logoUrl } = usePlatformBrand();
   const greeting = currentUser ? greetingForThisVisit(currentUser.id) : null;
   const custom = useLandingConfig();
-  const seasonalTheme = useSeasonalTheme();
-  const heroRef = useRef<HTMLElement>(null);
   const goCta = () => {
     const target = landingTarget(custom.heroCtaLink);
     if (target.kind === 'external') window.open(target.url, '_blank', 'noopener,noreferrer');
@@ -36,7 +32,7 @@ export const ConstellationHero: React.FC<ConstellationHeroProps> = ({
   };
   const firstName = currentUser ? formatFirstName(currentUser.name) : '';
   return (
-    <section className="academy-hero" ref={heroRef}>
+    <section className="academy-hero">
       <div className="academy-container">
         <div className="academy-hero__layout">
           <div className="academy-hero__copy">
@@ -64,13 +60,12 @@ export const ConstellationHero: React.FC<ConstellationHeroProps> = ({
               </p>
             </div>
           </div>
-          <div className={`academy-hero__brand${seasonalTheme === 'christmas' ? ' academy-hero__brand--christmas' : ''}`} aria-hidden="true">
+          <div className="academy-hero__brand" aria-hidden="true">
             {showInlineBrand && (
               <Suspense fallback={<img src={logoUrl || DEFAULT_LOGO_URL} alt="" className="academy-hero__brand-fallback" />}>
-                <BrandAnimation fullScreen={false} className={seasonalTheme === 'christmas' ? 'academy-hero__logo-stage' : ''} />
+                <BrandAnimation fullScreen={false} />
               </Suspense>
             )}
-            {seasonalTheme === 'christmas' && <ChristmasHeroSanta heroRef={heroRef} />}
           </div>
         </div>
       </div>

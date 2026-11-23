@@ -12,6 +12,16 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.0.1] - 2026-11-23
+
+### Changed
+
+- **Configuración de plugins con listas desplegables.** En Admin → Sistema → Plugins, los campos con opciones cerradas (como el modo de festividad en *Festividades y Ambientación Estacional* y el idioma por defecto en *AI YouTube Course Builder*) pasan a mostrarse como selectores desplegables en lugar de campos de texto libre, y la lista se abre superpuesta sin desplazar el resto de los ajustes.
+
+### Removed
+
+- **Escena de Papá Noel y chimenea en la portada navideña.** Se retiró la decoración lateral en la hero principal para mantener despejado el emblema de la plataforma.
+
 ## [2.0.0] - 2026-11-20
 
 **Incluye una migración aditiva:** crea la tabla `ModerationEvent` (historial de moderación). No toca datos existentes y se aplica sola al arrancar.
