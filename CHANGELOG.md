@@ -12,6 +12,30 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.0.2] - 2026-11-25
+
+**Incluye una migración aditiva:** añade la columna opcional `videoId` (con índice y clave foránea) a la tabla `CourseResource`, para asignar un recurso a una lección. No toca datos existentes y se aplica sola al arrancar.
+
+### Added
+
+- **Recursos por lección.** En Admin → Cursos → Recursos, al crear un recurso se puede asignar a una lección concreta. El alumno ve en cada lección sus propios materiales; el material general del módulo y del curso queda recogido en un bloque plegable aparte, y ya no aparecen los de otros módulos. Si se borra una lección, sus recursos vuelven a su módulo en lugar de perderse.
+- **Asignación automática al importar desde Google Drive.** Un archivo con el mismo nombre que un video (`03 Clase.mp4` y `03 Clase.pdf`) se asigna solo a esa lección. Los recursos que ya existían no se mueven solos: `npx tsx scripts/assign-resources-to-lessons.ts` muestra qué asignaría y, con `--apply`, lo guarda; los que no tengan pareja se asignan a mano.
+- **Transición entre modo claro y oscuro.** El tema nuevo se revela como un círculo que nace en el botón, en lugar de cambiar de golpe. Con «reducir movimiento» solo hay un fundido corto.
+
+### Changed
+
+- **Las lecciones se completan solas.** En los últimos 10 segundos del video aparece una cuenta regresiva y, al terminar, la lección se marca como completada sin pulsar nada. Sigue exigiéndose haber visto el 90 % sin adelantar, y en la última lección de un módulo con examen no se completa hasta aprobarlo.
+- **Una lección completada ya no se puede desmarcar.** El servidor rechaza la petición (`PROGRESS_LOCKED`); solo un administrador puede reiniciar el progreso.
+- **Panel de recursos del visor.** Tiene altura limitada y su propio scroll sin barra visible, para que no haya doble scroll con la página.
+- **Modo claro más legible.** Se subió el contraste de los textos atenuados del visor, de los chips de rol en Usuarios y de la insignia de notificaciones, y del botón bloqueado «Ver video para completar». La página ya no arranca con un fogonazo negro para quien usa modo claro.
+- **Rediseño de detalles.** Estados vacíos de «Mi aprendizaje» como tarjeta, filas del temario de Admin en azul muy claro y menú «Filtros» de Admin con estados de hover y activo discretos.
+
+### Fixed
+
+- **Precio en la gestión de cursos de mentoría.** Se veía el texto `<3>USD</3>` literal; ahora se muestra con la moneda real del curso, o «Gratuito».
+- **Botón de reproducir invisible en modo claro.** El ícono de «Ver lección» tenía el mismo color que el fondo del botón.
+- **Menú «Filtros» de Admin en modo claro.** Cada opción aparecía como un botón con borde y la activa como un bloque pesado, por una regla global del tema claro.
+
 ## [2.0.1] - 2026-11-23
 
 ### Changed
