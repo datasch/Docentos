@@ -227,8 +227,11 @@
   margin: 0;
 }
 [data-mentor-ui='modern'] .admin-course-form__foot .admin-course-form__submit,
-[data-mentor-ui='modern'] .admin-course-form__foot .admin-course-form__cancel:last-child,
-[data-mentor-ui='modern'] .admin-course-form__foot .mentor-course-control[data-danger='true'] {
+[data-mentor-ui='modern'] .admin-course-form__foot .admin-course-form__cancel,
+[data-mentor-ui='modern'] .admin-course-form__foot .mentor-course-control[data-danger='true'],
+/* Dentro de una hoja lateral, `.mentee-sheet .mentor-course-import` fija `grid-column: auto` y dejaba el botón principal a medias. */
+[data-mentor-ui='modern'] .mentee-sheet .admin-course-form__foot .admin-course-form__submit,
+[data-mentor-ui='modern'] .mentee-sheet .admin-course-form__foot .admin-course-form__cancel {
   grid-column: 1 / -1;
 }
 /* «Pasar a borrador»: mismo borde que los otros botones de la tarjeta */
@@ -827,3 +830,6 @@
 
 /* Drive comparte la barra de Materiales y sus puntos de adaptación. */
 [data-mentor-ui='modern'].admin-drive { container: resource-library / inline-size; }
+
+/* Tema claro: estas pestañas ya marcan la selección con la raya inferior; sin borde de caja. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-resources-shell__media button[aria-pressed] { border-color: transparent !important; }

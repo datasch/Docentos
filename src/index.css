@@ -612,6 +612,10 @@ html.mode-light .bg-brand-cyan {
 html.mode-light [class*="bg-brand-cyan/"]:not(.theme-dot) {
   background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
 }
+/* Los botones con acento no llevan fondo tintado: queda el borde y la letra. */
+html.mode-light button[class*="bg-brand-cyan/"]:not(.theme-dot) {
+  background-color: transparent !important;
+}
 html.mode-light [class*="ring-brand-cyan"] {
   --tw-ring-color: rgba(var(--brand-accent-rgb), 0.35) !important;
 }
@@ -1336,15 +1340,17 @@ body[data-color-mode="light"],
 /* Conmutadores (aria-pressed): Lección completada, vista de cuadrícula/lista…
    El pulsado sigue el acento elegido; antes era violeta fijo con cualquier
    acento. Acento sobre su tinte: 5,1:1 o más con los cuatro acentos. */
+/* Tema claro: lo seleccionado se marca con el borde y la letra del acento, sin
+   fondo tintado; lo no seleccionado no lleva borde ni fondo. */
 [data-color-mode="light"] button[aria-pressed="true"] {
-  background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
-  border: 1px solid rgba(var(--brand-accent-rgb), 0.35) !important;
+  background-color: transparent !important;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.5) !important;
   color: var(--color-brand-cyan) !important;
   font-weight: 600 !important;
 }
 [data-color-mode="light"] button[aria-pressed="false"] {
-  background-color: var(--color-surface) !important;
-  border: 1px solid var(--hielo-border-soft) !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
   color: var(--color-ink-soft) !important;
 }
 
@@ -1353,7 +1359,7 @@ body[data-color-mode="light"],
    fuera: son enlaces, no botones con fondo. */
 [data-color-mode="light"] button[title*="Matricular"],
 [data-color-mode="light"] button.text-brand-cyan:not(.hover\:underline) {
-  background-color: rgba(var(--brand-accent-rgb), 0.1) !important;
+  background-color: transparent !important;
   border: 1px solid rgba(var(--brand-accent-rgb), 0.35) !important;
   color: var(--color-brand-cyan) !important;
   font-weight: 700 !important;
@@ -1363,13 +1369,13 @@ body[data-color-mode="light"],
 }
 [data-color-mode="light"] button[title*="Matricular"]:hover,
 [data-color-mode="light"] button.text-brand-cyan:not(.hover\:underline):hover {
-  background-color: rgba(var(--brand-accent-rgb), 0.16) !important;
-  border-color: rgba(var(--brand-accent-rgb), 0.55) !important;
+  background-color: transparent !important;
+  border-color: rgba(var(--brand-accent-rgb), 0.6) !important;
   color: var(--color-brand-cyan) !important;
 }
 
 [data-color-mode="light"] button[title*="Strike"] {
-  background-color: rgba(152, 69, 6, 0.1) !important;
+  background-color: transparent !important;
   border: 1px solid rgba(152, 69, 6, 0.3) !important;
   color: #984506 !important;
   font-weight: 700 !important;

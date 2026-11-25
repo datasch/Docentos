@@ -10,7 +10,7 @@ const { prisma } = await import('../server/prisma.js');
 const { createUserSession } = await import('../server/authService.js');
 const { config } = await import('../server/config.js');
 
-test('una lección completada no se puede desmarcar, salvo por administración', async () => {
+test('una lección completada no se desmarca ni se reescribe, para nadie', async () => {
   const suffix = Date.now().toString();
   // El guard de instalación inicial exige un administrador antes de configurar la instancia.
   const admin = await prisma.user.create({ data: { email: `lock-admin-${suffix}@example.invalid`, name: 'Admin', role: 'ADMIN' } });
@@ -42,9 +42,18 @@ test('una lección completada no se puede desmarcar, salvo por administración',
     assert.equal(undo.data.code, 'PROGRESS_LOCKED');
     assert.equal(await prisma.userProgress.count({ where: { userId: learner.id, videoId: video.id } }), 1);
 
+    // Completar de nuevo no escribe nada: la fecha de completado no cambia.
+    const before = await prisma.userProgress.findFirstOrThrow({ where: { userId: learner.id, videoId: video.id } });
+    assert.equal((await post(learner.id, { videoId: video.id, completed: true })).status, 200);
+    const after = await prisma.userProgress.findFirstOrThrow({ where: { userId: learner.id, videoId: video.id } });
+    assert.equal(after.completedAt.getTime(), before.completedAt.getTime());
+
+    // Ni siquiera administración puede desmarcar su propio progreso.
     assert.equal((await post(admin.id, { videoId: video.id, completed: true })).status, 200);
-    assert.equal((await post(admin.id, { videoId: video.id, completed: false })).status, 200);
-    assert.equal(await prisma.userProgress.count({ where: { userId: admin.id, videoId: video.id } }), 0);
+    const adminUndo = await post(admin.id, { videoId: video.id, completed: false });
+    assert.equal(adminUndo.status, 403);
+    assert.equal(adminUndo.data.code, 'PROGRESS_LOCKED');
+    assert.equal(await prisma.userProgress.count({ where: { userId: admin.id, videoId: video.id } }), 1);
   } finally {
     await prisma.course.delete({ where: { id: course.id } }).catch(() => {});
     await prisma.user.deleteMany({ where: { id: { in: [learner.id, admin.id] } } }).catch(() => {});

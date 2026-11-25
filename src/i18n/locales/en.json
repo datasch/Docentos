@@ -3115,8 +3115,12 @@
   "seCorrigieronCountRespuestasParaQue_many": "{{count}} answers were corrected to match their explanation.",
   "misionCompletadaBloqueada": "Mission completed: your progress is saved and cannot be unmarked.",
   "titleCompletadaNoSeDesmarca": "{{title}}: completed",
-  "lessonAutoCompleteIn": "Completes in {{seconds}} s",
+  "lessonAutoCompleteIn": "Completing in {{seconds}} s",
   "lessonAutoCompleteShort": "{{seconds}} s",
   "asignarALeccion": "Assign to lesson (optional)",
-  "materialGeneralDelModulo": "General module material"
+  "materialGeneralDelModulo": "General module material",
+  "lessonAutoCompleteHint": "When the video ends, the mission completes itself and you move on to the next lesson.",
+  "errorAlAsignarRecurso": "Error assigning the resource to the lesson",
+  "leccionDelRecursoTitle": "Lesson for “{{title}}”",
+  "sinLeccionAsignada": "No lesson assigned"
 }

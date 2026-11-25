@@ -3115,8 +3115,12 @@
   "maxwidth768px92vwMaxwidth1024px45vw393px": "(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px",
   "misionCompletadaBloqueada": "Mission terminée : votre progression est enregistrée et ne peut pas être décochée.",
   "titleCompletadaNoSeDesmarca": "{{title}} : terminée",
-  "lessonAutoCompleteIn": "Terminée dans {{seconds}} s",
+  "lessonAutoCompleteIn": "Fin dans {{seconds}} s",
   "lessonAutoCompleteShort": "{{seconds}} s",
   "asignarALeccion": "Associer à une leçon (facultatif)",
-  "materialGeneralDelModulo": "Supports généraux du module"
+  "materialGeneralDelModulo": "Supports généraux du module",
+  "lessonAutoCompleteHint": "À la fin de la vidéo, la mission se termine toute seule et vous passez à la leçon suivante.",
+  "errorAlAsignarRecurso": "Erreur lors de l'association du support à la leçon",
+  "leccionDelRecursoTitle": "Leçon de « {{title}} »",
+  "sinLeccionAsignada": "Aucune leçon associée"
 }

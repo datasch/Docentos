@@ -3115,8 +3115,12 @@
   "maxwidth768px92vwMaxwidth1024px45vw393px": "(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px",
   "misionCompletadaBloqueada": "Missione completata: i progressi sono salvati e non si possono deselezionare.",
   "titleCompletadaNoSeDesmarca": "{{title}}: completata",
-  "lessonAutoCompleteIn": "Si completa tra {{seconds}} s",
+  "lessonAutoCompleteIn": "Completamento tra {{seconds}} s",
   "lessonAutoCompleteShort": "{{seconds}} s",
   "asignarALeccion": "Assegna a una lezione (facoltativo)",
-  "materialGeneralDelModulo": "Materiale generale del modulo"
+  "materialGeneralDelModulo": "Materiale generale del modulo",
+  "lessonAutoCompleteHint": "Al termine del video la missione si completa da sola e passi alla lezione successiva.",
+  "errorAlAsignarRecurso": "Errore nell’assegnare la risorsa alla lezione",
+  "leccionDelRecursoTitle": "Lezione di «{{title}}»",
+  "sinLeccionAsignada": "Nessuna lezione assegnata"
 }

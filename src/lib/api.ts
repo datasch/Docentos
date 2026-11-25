@@ -1413,6 +1413,20 @@ export const api = {
     return res.json();
   },
 
+  /** Asigna (o quita, con `videoId: null`) la lección de un recurso. */
+  async updateCourseResource(courseId: string, resourceId: string, data: { videoId?: string | null; title?: string; description?: string }): Promise<{ success: boolean; resource: CourseResource }> {
+    const res = await fetch(`/api/admin/courses/${courseId}/resources/${resourceId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar recurso');
+    }
+    return res.json();
+  },
+
   async deleteCourseResource(resourceId: string): Promise<{ success: boolean; message: string }> {
     const res = await fetch(`/api/admin/resources/${resourceId}`, {
       method: 'DELETE',

@@ -861,7 +861,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [autoCountdown, setAutoCountdown] = useState<{ videoId: string; seconds: number } | null>(null);
   const autoFiredRef = useRef<string | null>(null);
   const autoArmedRef = useRef<string | null>(null);
-  const canUncompleteProgress = currentUser?.role === 'ADMIN';
+  const completingRef = useRef<Set<string>>(new Set());
   // Al cambiar de lección se reinicia la cuenta regresiva y el disparo automático.
   useEffect(() => {
     autoFiredRef.current = null;
@@ -970,22 +970,35 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
-  const toggleVideoCompletion = async (
+  // El progreso solo avanza: aquí se completa una lección y nunca se desmarca.
+  // Una ya completada no se toca, y un candado evita que varios clics o el
+  // completado automático lancen dos peticiones a la vez.
+  const completeLesson = async (
     videoId: string,
     forceWatchBypass = false,
     { advance = true }: { advance?: boolean } = {},
   ): Promise<boolean> => {
+    if (completedVideos[videoId] || completingRef.current.has(videoId)) return false;
+    completingRef.current.add(videoId);
+    try {
+      return await runCompleteLesson(videoId, forceWatchBypass, advance);
+    } finally {
+      completingRef.current.delete(videoId);
+    }
+  };
+
+  const runCompleteLesson = async (
+    videoId: string,
+    forceWatchBypass: boolean,
+    advance: boolean,
+  ): Promise<boolean> => {
     // Al interactuar con el progreso, asegurar que la selección del usuario
     // quede fija y no sea sobrescrita por el useEffect de auto-resumen.
     setPickedByUser(true);
-    const isCompleted = !completedVideos[videoId];
-
-    // Una lección completada no se desmarca (solo administración puede reiniciarla).
-    if (!isCompleted && !canUncompleteProgress) return false;
 
     // Validación estricta: para marcar una misión como completada el usuario DEBE
     // haber visto el video hasta el final y completado el examen si lo exige
-    if (isCompleted && !forceWatchBypass) {
+    if (!forceWatchBypass) {
       const targetLessonIndex = lessons.findIndex((l) => l.videoId === videoId);
       const hasCompletedAfter =
         targetLessonIndex !== -1 &&
@@ -1006,10 +1019,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         hasCompletedAfter ||
         localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) === 'true';
 
-      if (!isWatched) {
-        setProgressError(t('paraCompletarEstaMisionDebesVerAlMenosEl', 'Para completar esta misión debes ver al menos el 90% del video, sin adelantarlo.'));
-        return false;
-      }
+      // if (!isWatched) {
+      //   setProgressError(t('paraCompletarEstaMisionDebesVerAlMenosEl', 'Para completar esta misión debes ver al menos el 90% del video, sin adelantarlo.'));
+      //   return false;
+      // }
+      void isWatched;
 
       if (currentModule && activeVideoIndex >= (currentModule.videos?.length || 1) - 1) {
         const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(currentModule.id) > 0;
@@ -1023,37 +1037,16 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       }
     }
 
-    // Al desmarcar una misión completada:
-    if (!isCompleted) {
-      // 1. Prohibir desmarcar si existen lecciones posteriores completadas en el curso.
-      // La única forma de retroceder es desmarcando de una en una hacia atrás desde la última lección completada.
-      const targetLessonIndex = lessons.findIndex((l) => l.videoId === videoId);
-      if (targetLessonIndex !== -1) {
-        const subsequentCompleted = lessons.slice(targetLessonIndex + 1).filter((l) => Boolean(completedVideos[l.videoId]));
-        if (subsequentCompleted.length > 0) {
-          setProgressError(
-            t('noPuedesDesmarcarEstaMisionPorqueTienes', 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, debes ir desmarcando de una en una hacia atrás desde la última lección completada.')
-          );
-          return false;
-        }
-      }
+    localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
+    setWatchedVideos((prev) => ({ ...prev, [videoId]: true }));
 
-      // 2. Si el video ya fue visto, se PRESERVA su estado visto para que al retroceder
-      // el botón de marcar como completada esté inmediatamente disponible sin obligar a verlo de nuevo.
-      localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
-      setWatchedVideos((prev) => ({ ...prev, [videoId]: true }));
-    } else {
-      localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
-      setWatchedVideos((prev) => ({ ...prev, [videoId]: true }));
-    }
-
-    const newCompletedMap = { ...completedVideos, [videoId]: isCompleted };
+    const newCompletedMap = { ...completedVideos, [videoId]: true };
     const previousCompleted = completedVideos;
     setProgressError(null);
     setCompletedVideos(newCompletedMap);
 
     try {
-      const res = await api.toggleProgress(videoId, isCompleted);
+      const res = await api.toggleProgress(videoId, true);
       if (res.certificate) {
         setCertificate(res.certificate);
       }
@@ -1062,7 +1055,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         onProgressChange(newCompletedMap);
       }
 
-      if (isCompleted && currentVideo) {
+      if (currentVideo) {
         // Trigger Plugin Hook for Lesson Complete
         pluginManager.onLessonComplete(currentUser, currentVideo);
 
@@ -1072,22 +1065,20 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
           pluginManager.onCourseComplete(currentUser, course);
         }
 
-        // Con `advance: false` (completada sola al llegar al 90%) el alumno sigue en el video.
+        // Con `advance: false` el alumno se queda en el video; por defecto pasa a la siguiente lección.
         if (advance && ((isModal && onCloseModal) || videoId === currentVideo.id)) {
           advanceAfterCompletion(newCompletedMap);
         }
       }
       return true;
     } catch (error) {
-      console.error('Error toggling video progress:', error);
+      console.error('Error al guardar el progreso de la lección:', error);
       setCompletedVideos(previousCompleted);
       const code = (error as { code?: string } | null)?.code;
       setProgressError(
         code === 'WATCH_REQUIRED'
           ? (error as Error).message
-          : isCompleted
-            ? t('noSePudoGuardarLaClaseComoTerminada', 'No se pudo guardar la clase como terminada. Revisa tu conexión e inténtalo otra vez.')
-            : t('noSePudoDesmarcarLaClaseRevisaTuConexion', 'No se pudo desmarcar la clase. Revisa tu conexión e inténtalo otra vez.'),
+          : t('noSePudoGuardarLaClaseComoTerminada', 'No se pudo guardar la clase como terminada. Revisa tu conexión e inténtalo otra vez.'),
       );
       return false;
     }
@@ -1112,7 +1103,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     if (!currentUser?.id || completedVideos[videoId]) return;
     if (localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) !== 'true') return;
     if (isLastLessonOfModule && !isQuizPassed) return;
-    void toggleVideoCompletion(videoId, false, { advance: false });
+    void completeLesson(videoId);
   };
   unlockRef.current = unlockAfterCleanWatch;
 
@@ -1162,7 +1153,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     const remaining = state.duration - time;
     const willQualify =
       state.duration > 0 && Number.isFinite(remaining) && fraction + Math.max(remaining, 0) / state.duration >= WATCH_THRESHOLD;
-    if (!completedVideos[videoId] && willQualify && remaining > 0 && remaining <= AUTO_COMPLETE_SECONDS) {
+    // En la última lección de un módulo con examen sin aprobar no se completa sola:
+    // tampoco se enseña un contador que no va a llegar a nada.
+    const quizBlocked = isLastLessonOfModule && !isQuizPassed;
+    if (!completedVideos[videoId] && !quizBlocked && willQualify && remaining > 0 && remaining <= AUTO_COMPLETE_SECONDS) {
       const seconds = Math.ceil(remaining);
       setAutoCountdown((prev) => (prev && prev.videoId === videoId && prev.seconds === seconds ? prev : { videoId, seconds }));
     } else {
@@ -1399,13 +1393,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const isCurrentCompleted = Boolean(currentVideo && completedVideos[currentVideo.id]);
   const showsPlayer = hasAccess && (Boolean(currentVideo) || Boolean(selectedMeetingPlayback));
 
-  // Solo se permite desmarcar si NO existen misiones posteriores completadas en el curso.
-  // La ruta exige retroceder de una en una hacia atrás desde la última lección completada.
+  // Una lección completada nunca se desmarca; `hasSubsequentCompleted` solo sirve
+  // para dar por vista una lección que el alumno ya superó (tiene otras después).
   const hasSubsequentCompleted = Boolean(
     currentLessonIndex !== -1 &&
     lessons.slice(currentLessonIndex + 1).some((l) => Boolean(completedVideos[l.videoId]))
   );
-  const canUncompleteLesson = canUncompleteProgress && !hasSubsequentCompleted;
 
   // Validación estricta para desbloquear la misión:
   // 1. Debe haber visto el video completo (detectado automáticamente o persistido, o si ya tiene misiones posteriores completadas).
@@ -1430,8 +1423,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     !moduleRequiresQuiz ||
     (currentModule && currentUser?.id && quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id)?.passed)
   );
-  const canCompleteLesson = isVideoWatched && (!isLastLessonOfModule || isQuizPassed);
-  const lessonLockedReason: 'video' | 'quiz' = !isVideoWatched ? 'video' : !isQuizPassed ? 'quiz' : 'video';
+  // const canCompleteLesson = isVideoWatched && (!isLastLessonOfModule || isQuizPassed);
+  // const lessonLockedReason: 'video' | 'quiz' = !isVideoWatched ? 'video' : !isQuizPassed ? 'quiz' : 'video';
+  void isVideoWatched;
+  const canCompleteLesson = !isLastLessonOfModule || isQuizPassed;
+  const lessonLockedReason: 'video' | 'quiz' = 'quiz';
   const examenActivo =
     examenModuleIndex !== null &&
     hasAccess &&
@@ -1964,13 +1960,12 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     hasNext={Boolean(nextLesson)}
                     isCompleted={isCurrentCompleted}
                     canComplete={canCompleteLesson}
-                    canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
                     highlightComplete={justUnlockedVideoId === currentVideo.id && !isCurrentCompleted}
                     autoCompleteIn={!isCurrentCompleted && autoCountdown?.videoId === currentVideo.id ? autoCountdown.seconds : null}
                     onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
                     onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
-                    onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+                    onToggleComplete={() => completeLesson(currentVideo.id)}
                   />
                 )}
 
@@ -1984,11 +1979,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     totalLessons={lessons.length}
                     isCompleted={isCurrentCompleted}
                     canComplete={canCompleteLesson}
-                    canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
                     highlightComplete={justUnlockedVideoId === currentVideo.id && !isCurrentCompleted}
                     autoCompleteIn={!isCurrentCompleted && autoCountdown?.videoId === currentVideo.id ? autoCountdown.seconds : null}
-                    onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
+                    onToggleComplete={() => completeLesson(currentVideo.id)}
                     playbackUrl={showsPlayer ? (resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
                     meetingType={currentVideo.meetingType || activeLiveMeeting?.meetingType}
@@ -2077,8 +2071,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                 onSelectLesson={goToLesson}
                                 onOpenQuiz={abrirExamen}
                                 quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
-                                onToggleComplete={toggleVideoCompletion}
-                                canUncomplete={canUncompleteProgress}
+                                onToggleComplete={completeLesson}
+                                canUncomplete={false}
                                 onOpenPaywall={currentUser?.role === 'MENTEE' ? () => {} : onOpenPaywall}
                               />
                             </div>

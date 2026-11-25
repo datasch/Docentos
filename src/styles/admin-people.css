@@ -118,7 +118,12 @@
 [data-mentor-ui='modern'] .admin-people-role[data-role='VIP'] { --role: #e879f9; }
 [data-mentor-ui='modern'] .admin-people-role[data-role='EXTERNAL'] { --role: #a8a29e; }
 /* Tema claro: los tonos pastel pensados para fondo oscuro no llegan a 4.5:1; el texto toma más del color de lectura. */
-[data-color-mode='light'] [data-mentor-ui='modern'] .admin-people-role { color: color-mix(in srgb, var(--role) 32%, var(--mentor-text)); }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-people-role {
+  color: color-mix(in srgb, var(--role) 22%, var(--mentor-text));
+  border-color: color-mix(in srgb, var(--role) 65%, transparent);
+  background: color-mix(in srgb, var(--role) 16%, #ffffff);
+  font-weight: 500;
+}
 
 /* Estados: punto de color solo para lo que está bien; el resto, neutro (nada que parezca un error). */
 [data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-status {
@@ -684,3 +689,14 @@
 [data-mentor-ui='modern'] .admin-people-top .admin-courses-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; }
 [data-mentor-ui='modern'] .admin-people-top .admin-courses-actions .mentor-course-control:not(.admin-primary-action) { min-height: 44px; }
 @media (max-width: 639px) { [data-mentor-ui='modern'] .admin-people-top > button.admin-primary-action, [data-mentor-ui='modern'] .admin-people-top .admin-courses-actions { width: 100%; margin-left: 0; } [data-mentor-ui='modern'] .admin-people-top .admin-courses-actions > * { flex: 1 1 auto; } }
+
+/* Tema claro · Gestionar usuario: panel de acciones críticas y botones con más contraste. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical { background: #f6f9fd; border-color: #c9d8e5; }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical__head svg,
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical__head p,
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical__done { color: #3f5366; }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control { background: #ffffff; border-color: #a6b8c7; color: #16283a; }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control:disabled { opacity: 1; background: #eef3f8; border-color: #d3e0ec; color: #5f7283; }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='warn']:not(:disabled) { color: #92400e; border-color: rgb(180 83 9 / 0.6); }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger']:not(:disabled) { color: #b91c1c; border-color: rgb(185 28 28 / 0.55); }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok']:not(:disabled) { color: #166534; border-color: rgb(22 101 52 / 0.5); }

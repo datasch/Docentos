@@ -43,7 +43,11 @@ const sizeLabel = (bytes?: string | null) => {
 export interface ResourceGroups {
   /** Material de la lección que se está viendo. */
   lesson: CourseResource[];
-  /** Material del módulo sin lección asignada, y el general del curso. */
+  /**
+   * Material sin lección asignada. Para no repetirlo en todas las clases, solo
+   * sale en la primera lección de su módulo (el del módulo) o del curso (el del
+   * curso), hasta que administración lo asigne a una lección concreta.
+   */
   general: CourseResource[];
 }
 
@@ -52,11 +56,18 @@ export interface ResourceGroups {
  * otras lecciones no se muestran: cada clase enseña solo los suyos.
  */
 export function groupResources(course: Course, activeModuleIndex: number, activeVideoId?: string | null): ResourceGroups {
-  const current = (course.modules || [])[activeModuleIndex];
+  const modules = course.modules || [];
+  const current = modules[activeModuleIndex];
   const own = current?.resources || [];
+  const firstOfModule = Boolean(activeVideoId && current?.videos?.[0]?.id === activeVideoId);
+  const firstModuleWithLessons = modules.findIndex((module) => (module.videos || []).length > 0);
+  const firstOfCourse = firstOfModule && firstModuleWithLessons === activeModuleIndex;
   return {
     lesson: activeVideoId ? own.filter((resource) => resource.videoId === activeVideoId) : [],
-    general: [...own.filter((resource) => !resource.videoId), ...(course.resources || [])],
+    general: [
+      ...(firstOfModule ? own.filter((resource) => !resource.videoId) : []),
+      ...(firstOfCourse ? course.resources || [] : []),
+    ],
   };
 }
 

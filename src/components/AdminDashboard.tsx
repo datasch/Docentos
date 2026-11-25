@@ -595,6 +595,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     }
   };
 
+  const handleAssignResourceLesson = async (resource: CourseResource, videoId: string) => {
+    setResErrorMsg('');
+    try {
+      await api.updateCourseResource(workCourse.id, resource.id, { videoId: videoId || null });
+      refreshEverything();
+    } catch (err: any) {
+      setResErrorMsg(err.message || t('errorAlAsignarRecurso', 'Error al asignar el recurso a la lección'));
+    }
+  };
+
   const handleDeleteResource = async (resourceId: string) => {
     setDeletingResource(true);
     setResErrorMsg('');
@@ -1587,6 +1597,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                           <div className="admin-tts__meta"><div className="admin-tts__meta-text"><span>{moduleTitle || t('generalDelCurso', 'General del curso')}</span></div></div>
                         </div>
                         <div className="admin-tts__actions">
+                          <AdminSelect
+                            className="w-full min-w-0 sm:w-56"
+                            ariaLabel={t('leccionDelRecursoTitle', 'Lección de «{{title}}»', { title: resource.title })}
+                            value={resource.videoId || ''}
+                            onChange={(value) => handleAssignResourceLesson(resource, value)}
+                            options={[
+                              { value: '', label: t('sinLeccionAsignada', 'Sin lección asignada') },
+                              ...workModules.flatMap((module) => (module.videos || []).map((video) => ({ value: video.id, label: video.title, group: module.title }))),
+                            ]}
+                          />
                           <a className="admin-resources__open" href={resource.downloadUrl} target="_blank" rel="noopener noreferrer" aria-label={t('abrirTitleEnOtraPestana', 'Abrir {{title}} en otra pestaña', { title: resource.title })}>{t('abrir', 'Abrir')}<ExternalLink aria-hidden="true" /></a>
                           <button type="button" className="mentor-course-control admin-resources__delete" data-danger="true" onClick={() => { setResErrorMsg(''); setResourceToDelete(resource); }} aria-haspopup="dialog" aria-label={t('eliminarTitle', 'Eliminar {{title}}', { title: resource.title })}><Trash2 aria-hidden="true" />{t('eliminar', 'Eliminar')}</button>
                         </div>

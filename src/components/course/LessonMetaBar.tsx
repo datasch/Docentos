@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronLeft, ChevronRight, PlaySquare, Lock, Unlock } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, PlaySquare, Lock, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
 
 interface LessonMetaBarProps {
@@ -11,7 +11,6 @@ interface LessonMetaBarProps {
   totalLessons: number;
   isCompleted: boolean;
   canComplete?: boolean;
-  canUncomplete?: boolean;
   lockedReason?: 'video' | 'quiz';
   onToggleComplete: () => void;
   playbackUrl?: string;
@@ -43,7 +42,6 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   totalLessons,
   isCompleted,
   canComplete = true,
-  canUncomplete = true,
   lockedReason = 'video',
   onToggleComplete,
   playbackUrl,
@@ -84,57 +82,56 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
       </p>
     </div>
 
-    {/* Botón estricto de completar o desmarcar misión */}
+    {/* Completar la misión: el contador de los últimos segundos va dentro del mismo botón. */}
     <div className="hidden shrink-0 flex-col items-end gap-1.5 lg:flex">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onToggleComplete}
-          disabled={(!isCompleted && !canComplete) || (isCompleted && !canUncomplete)}
-          aria-pressed={isCompleted}
-          title={
-            !isCompleted && !canComplete
-              ? lockedReason === 'quiz'
-                ? t('debesAprobarElExamenDelModuloParaPoder', 'Debes aprobar el examen del módulo para poder completar esta misión')
-                : t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
-              : isCompleted
-                ? !canUncomplete
-                  ? t('misionCompletadaBloqueada', 'Misión completada: el avance queda guardado y no se puede desmarcar.')
-                  : t('desmarcarMisionCompletada', 'Desmarcar misión completada')
-                : t('marcarMisionComoCompletada', 'Marcar misión como completada')
-          }
-          className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium transition-all ${
-            isCompleted
-              ? !canUncomplete
-                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 cursor-default shadow-sm'
-                : 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 cursor-pointer shadow-sm'
+      {isCompleted ? (
+        <div role="status" className="lesson-done-badge" title={t('misionCompletadaBloqueada', 'Misión completada: el avance queda guardado y no se puede desmarcar.')}>
+          <span aria-hidden className="lesson-done-badge__check"><Check className="h-3 w-3" strokeWidth={3.5} /></span>
+          {t('misionCompletada', 'Misión completada')}
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={onToggleComplete}
+            disabled={!canComplete}
+            title={
+              autoCompleteIn !== null
+                ? t('lessonAutoCompleteHint', 'Al terminar el video, la misión se completa sola y pasas a la siguiente lección.')
+                : !canComplete
+                  ? lockedReason === 'quiz'
+                    ? t('debesAprobarElExamenDelModuloParaPoder', 'Debes aprobar el examen del módulo para poder completar esta misión')
+                    : t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
+                  : t('marcarMisionComoCompletada', 'Marcar misión como completada')
+            }
+            className={`${highlightComplete && canComplete ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium tabular-nums transition-all ${
+              autoCompleteIn !== null
+                ? 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-300 dark:border-line cursor-progress'
+                : !canComplete
+                  ? 'bg-slate-100 dark:bg-raised/40 text-slate-600 dark:text-ink-muted border border-slate-300 dark:border-line/60 cursor-not-allowed'
+                  : 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-200 dark:border-line hover:bg-slate-200/80 dark:hover:bg-line cursor-pointer shadow-sm'
+            }`}
+          >
+            {autoCompleteIn !== null ? (
+              <Timer aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" />
+            ) : !canComplete ? (
+              <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
+            ) : (
+              <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" strokeWidth={2} />
+            )}
+            {autoCompleteIn !== null
+              ? t('lessonAutoCompleteIn', 'Completando en {{seconds}} s', { seconds: autoCompleteIn })
               : !canComplete
-                ? 'bg-slate-100 dark:bg-raised/40 text-slate-600 dark:text-ink-muted border border-slate-300 dark:border-line/60 cursor-not-allowed'
-                : 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-200 dark:border-line hover:bg-slate-200/80 dark:hover:bg-line cursor-pointer shadow-sm'
-          }`}
-        >
-          {!isCompleted && !canComplete ? (
-            <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
-          ) : (
-            <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" strokeWidth={isCompleted ? 3 : 2} />
+                ? lockedReason === 'quiz'
+                  ? t('aprobarExamenParaCompletar', 'Aprobar examen para completar')
+                  : t('verVideoParaCompletar', 'Ver video para completar')
+                : t('marcarComoCompletado', 'Marcar como completado')}
+          </button>
+          {highlightComplete && canComplete && autoCompleteIn === null && (
+            <span role="status" className="sr-only">{t('yaPuedesMarcarEstaLeccionComoCompletada', 'Ya puedes marcar esta lección como completada.')}</span>
           )}
-          {isCompleted
-            ? t('misionCompletada', 'Misión completada')
-            : !canComplete
-              ? lockedReason === 'quiz'
-                ? t('aprobarExamenParaCompletar', 'Aprobar examen para completar')
-                : t('verVideoParaCompletar', 'Ver video para completar')
-              : t('marcarComoCompletado', 'Marcar como completado')}
-        </button>
-        {autoCompleteIn !== null && !isCompleted && (
-          <span role="status" className="text-meta font-medium tabular-nums text-ink-soft">
-            {t('lessonAutoCompleteIn', 'Se completará en {{seconds}} s', { seconds: autoCompleteIn })}
-          </span>
-        )}
-        {highlightComplete && canComplete && !isCompleted && autoCompleteIn === null && (
-          <span role="status" className="sr-only">{t('yaPuedesMarcarEstaLeccionComoCompletada', 'Ya puedes marcar esta lección como completada.')}</span>
-        )}
-      </div>
+        </>
+      )}
     </div>
   </div>
 )
@@ -147,7 +144,6 @@ interface MobileLessonBarProps {
   hasNext: boolean;
   isCompleted: boolean;
   canComplete?: boolean;
-  canUncomplete?: boolean;
   lockedReason?: 'video' | 'quiz';
   onPrevious: () => void;
   onNext: () => void;
@@ -171,7 +167,6 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
   hasNext,
   isCompleted,
   canComplete = true,
-  canUncomplete = true,
   lockedReason = 'video',
   onPrevious,
   onNext,
@@ -206,45 +201,47 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       <ChevronRight aria-hidden className="h-4 w-4 shrink-0" />
     </button>
 
-    <button
-      type="button"
-      onClick={onToggleComplete}
-      disabled={(!isCompleted && !canComplete) || (isCompleted && !canUncomplete)}
-      aria-pressed={isCompleted}
-      title={
-        isCompleted && !canUncomplete
-          ? t('misionCompletadaBloqueada', 'Misión completada: el avance queda guardado y no se puede desmarcar.')
-          : !isCompleted && !canComplete && lockedReason !== 'quiz'
+    {isCompleted ? (
+      <div role="status" className="lesson-done-badge lesson-done-badge--compact" title={t('misionCompletadaBloqueada', 'Misión completada: el avance queda guardado y no se puede desmarcar.')}>
+        <span aria-hidden className="lesson-done-badge__check"><Check className="h-3 w-3" strokeWidth={3.5} /></span>
+        {t('hecha', 'Hecha')}
+      </div>
+    ) : (
+      <button
+        type="button"
+        onClick={onToggleComplete}
+        disabled={!canComplete}
+        title={
+          !canComplete && lockedReason !== 'quiz'
             ? t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
             : undefined
-      }
-      className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold transition-colors ${
-        isCompleted
-          ? !canUncomplete
-            ? 'text-purple-700 dark:text-purple-300 cursor-default'
-            : 'text-purple-700 dark:text-purple-300'
-          : !canComplete
-            ? 'text-slate-600 dark:text-ink-muted cursor-not-allowed'
-            : 'text-slate-800 dark:text-ink-soft'
-      }`}
-    >
-      {!isCompleted && !canComplete ? (
-        <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-      ) : (
-        <Check aria-hidden className="h-4 w-4 shrink-0" strokeWidth={isCompleted ? 3 : 2} />
-      )}
-      <span className="truncate">
-        {isCompleted
-          ? t('hecha', 'Hecha')
-          : !canComplete
-            ? lockedReason === 'quiz'
-              ? t('examen', 'Examen')
-              : t('verVideo', 'Ver video')
-            : autoCompleteIn !== null
-              ? t('lessonAutoCompleteShort', '{{seconds}} s', { seconds: autoCompleteIn })
+        }
+        className={`${highlightComplete && canComplete ? 'lesson-complete-ready ' : ''}flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold tabular-nums transition-colors ${
+          autoCompleteIn !== null
+            ? 'text-slate-900 dark:text-ink cursor-progress'
+            : !canComplete
+              ? 'text-slate-600 dark:text-ink-muted cursor-not-allowed'
+              : 'text-slate-800 dark:text-ink-soft'
+        }`}
+      >
+        {autoCompleteIn !== null ? (
+          <Timer aria-hidden className="h-4 w-4 shrink-0" />
+        ) : !canComplete ? (
+          <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+        ) : (
+          <Check aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} />
+        )}
+        <span className="truncate">
+          {autoCompleteIn !== null
+            ? t('lessonAutoCompleteShort', '{{seconds}} s', { seconds: autoCompleteIn })
+            : !canComplete
+              ? lockedReason === 'quiz'
+                ? t('examen', 'Examen')
+                : t('verVideo', 'Ver video')
               : t('completar', 'Completar')}
-      </span>
-    </button>
+        </span>
+      </button>
+    )}
   </div>
 )
 };

@@ -926,11 +926,11 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           onClick={handleTimelineScrub}
           onMouseMove={handleTimelineMouseMove}
           onMouseLeave={handleTimelineMouseLeave}
-          className="group/timeline relative mb-3 h-2 w-full cursor-pointer rounded-full bg-white/15 transition-all hover:h-2.5"
+          className="group/timeline relative mb-3 h-2 w-full cursor-pointer rounded-full bg-[rgb(255_255_255/0.22)] transition-all hover:h-2.5"
         >
           {/* Buffer precargado */}
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-white/25 transition-all duration-300"
+            className="absolute inset-y-0 left-0 rounded-full bg-[rgb(255_255_255/0.3)] transition-all duration-300"
             style={{ width: `${bufferedPercent}%` }}
           />
 
@@ -965,12 +965,12 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               type="button"
               onClick={togglePlay}
               aria-label={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-cyan text-on-brand shadow-sm transition hover:brightness-110 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {isPlaying ? (
-                <Pause className="h-4 w-4 fill-white" />
+                <Pause className="h-4 w-4 fill-current" />
               ) : (
-                <Play className="h-4 w-4 fill-white ml-0.5" />
+                <Play className="h-4 w-4 fill-current ml-0.5" />
               )}
             </button>
 
@@ -1020,7 +1020,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
                   value={isMuted ? 0 : volume}
                   onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
                   aria-label={t('controlDeslizanteDeVolumen', 'Control deslizante de volumen')}
-                  className="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-white/20 accent-brand-cyan"
+                  className="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-[rgb(255_255_255/0.25)] accent-brand-cyan"
                 />
               </div>
             </div>

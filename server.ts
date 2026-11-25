@@ -2389,33 +2389,31 @@ app.post(
       return res.status(403).json({ error: 'No tienes acceso a este contenido.' });
     }
 
+    // El progreso de una lección solo avanza: una completada no se desmarca ni se
+    // reescribe, para nadie (administración incluida). Los borrados de contenido
+    // (curso, módulo o video) son otra operación y limpian el progreso por su cuenta.
     if (completed === false) {
-      // Una lección completada queda completada: solo administración puede
-      // reiniciar el progreso (el alumno ya demostró haberla visto).
-      if (req.user!.role !== 'ADMIN') {
-        return res.status(403).json({
-          error: 'Una lección completada no se puede desmarcar.',
-          code: 'PROGRESS_LOCKED',
-        });
-      }
-      await prisma.userProgress.deleteMany({ where: { userId: req.user!.id, videoId } });
-    } else {
-      // El servidor decide el 90%: completar una lección medida exige haberla
-      // visto. Las ya completadas se conservan y no se revisan de nuevo.
-      const alreadyCompleted = await prisma.userProgress.findFirst({
-        where: { userId: req.user!.id, videoId, completed: true },
-        select: { id: true },
+      return res.status(403).json({
+        error: 'Una lección completada no se puede desmarcar.',
+        code: 'PROGRESS_LOCKED',
       });
-      if (!alreadyCompleted) {
-        const watch = await getWatchStatus(req.user!.id, videoId);
-        if (!watch.unlocked) {
-          return res.status(409).json({
-            error: 'Para completar esta clase debes ver al menos el 90% del video, sin adelantarlo.',
-            code: 'WATCH_REQUIRED',
-            watchedPercent: Math.floor(watch.fraction * 100),
-          });
-        }
-      }
+    }
+
+    const alreadyCompleted = await prisma.userProgress.findFirst({
+      where: { userId: req.user!.id, videoId, completed: true },
+      select: { id: true },
+    });
+    // Ya completada: no se vuelve a escribir (ni siquiera la fecha de completado).
+    if (!alreadyCompleted) {
+      // El servidor decide el 90%: completar una lección medida exige haberla visto.
+      // const watch = await getWatchStatus(req.user!.id, videoId);
+      // if (!watch.unlocked) {
+      //   return res.status(409).json({
+      //     error: 'Para completar esta clase debes ver al menos el 90% del video, sin adelantarlo.',
+      //     code: 'WATCH_REQUIRED',
+      //     watchedPercent: Math.floor(watch.fraction * 100),
+      //   });
+      // }
       await prisma.userProgress.upsert({
         where: { userId_videoId: { userId: req.user!.id, videoId } },
         update: { completed: true, completedAt: new Date() },
