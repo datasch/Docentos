@@ -456,8 +456,12 @@ function buildModuleContent(files: DriveEntry[]): {
     }
 
     // Todo lo demas —ZIP, RAR, PDF, TXT, HTML— se conserva como recurso
-    // descargable del modulo en vez de perderse.
-    resources.push(toResource(entry, kind, null));
+    // descargable. Si lleva el mismo nombre base que una leccion
+    // (`03 Clase.mp4` + `03 Clase.pdf`) se asigna a ella; si no, cuelga del modulo.
+    const sameName = lessonByKey.get(baseKey(entry.name));
+    const resource = toResource(entry, kind, null);
+    if (sameName) resource.pairedWithLessonKey = sameName.key;
+    resources.push(resource);
   }
 
   lessons.sort((a, b) => naturalCompare(a.originalName, b.originalName));
@@ -628,6 +632,8 @@ export interface SanitizedResource {
   sizeBytes: number | null;
   contentKind: ContentKind;
   isSubtitle: boolean;
+  /** `driveFileId` de la lección de este mismo módulo a la que pertenece, si la hay. */
+  lessonDriveFileId: string | null;
 }
 
 export interface SanitizedModule {
@@ -764,6 +770,11 @@ export function sanitizeImportPlan(raw: unknown): SanitizedPlan {
         sizeBytes: Number.isFinite(size) && size > 0 ? Math.round(size) : null,
         contentKind: sanitizeContentKind(resource.contentKind),
         isSubtitle: resource.kind === 'subtitle',
+        // La clave de una lección es su driveFileId; solo vale si esa lección sigue en este módulo.
+        lessonDriveFileId: (() => {
+          const key = String(resource.pairedWithLessonKey ?? '').trim();
+          return key && lessons.some((lesson) => lesson.driveFileId === key) ? key : null;
+        })(),
       });
     }
 

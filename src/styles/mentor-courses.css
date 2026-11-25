@@ -1,7 +1,7 @@
 /* Gestión de cursos: pulido local con unslop de Damir Sokolovsky
    (@heydamir, CC BY 4.0). Solo afecta al contenido de esta pestaña. */
 [data-mentor-ui='modern'] :is(.mentor-courses-panel, .mentor-mentees-panel, .mentor-qna-panel, .mentor-meetings-panel, .mentor-quiz-panel, .mentor-youtube-panel) {
-  --course-line: color-mix(in srgb, var(--mentor-text) 10%, transparent);
+  --course-line: var(--hielo-course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent));
   --course-ease: cubic-bezier(0.22, 1, 0.36, 1);
   display: grid;
   min-width: 0;

@@ -59,6 +59,7 @@ import { MENTORSHIP_CATEGORIES, TECHNICAL_CATEGORIES } from '../lib/courseCatego
 import { Sparkles, CheckSquare, Layers } from 'lucide-react';
 import { YouTubeCourseBuilder } from './YouTubeCourseBuilder';
 import i18next from 'i18next'
+import { formatPrice } from '../i18n/format';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -895,7 +896,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                     </span>
                     <div className="mentor-course-card__meta">
                       <span>{t('mentor.modulesCount', { count: course.modules?.length || 0, defaultValue: `${course.modules?.length || 0} módulos` })}</span>
-                      <span>{t('priceUsd', '${{price}} USD', { price: course.price })}</span>
+                      <span>{course.price > 0 ? `${formatPrice(course.price, course.currency)} ${(course.currency || 'USD').toUpperCase()}` : t('gratuito', 'Gratuito')}</span>
                     </div>
                     <div className="mentor-course-card__actions">
                       <button

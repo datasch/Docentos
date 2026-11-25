@@ -117,6 +117,8 @@
 [data-mentor-ui='modern'] .admin-people-role[data-role='PUBLIC_USER'] { --role: #94a3b8; }
 [data-mentor-ui='modern'] .admin-people-role[data-role='VIP'] { --role: #e879f9; }
 [data-mentor-ui='modern'] .admin-people-role[data-role='EXTERNAL'] { --role: #a8a29e; }
+/* Tema claro: los tonos pastel pensados para fondo oscuro no llegan a 4.5:1; el texto toma más del color de lectura. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-people-role { color: color-mix(in srgb, var(--role) 32%, var(--mentor-text)); }
 
 /* Estados: punto de color solo para lo que está bien; el resto, neutro (nada que parezca un error). */
 [data-mentor-ui='modern'] .admin-people-panel .mentor-mentee-status {
@@ -391,8 +393,37 @@
 [data-mentor-ui='modern'] .admin-filter-menu__group button svg { width: 16px; height: 16px; opacity: 0; }
 [data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed='true'] svg { opacity: 1; }
 [data-mentor-ui='modern'] .admin-filter-menu__count { color: var(--mentor-muted); font-variant-numeric: tabular-nums; }
+/* Las reglas globales del tema claro (`button[aria-pressed]`, con !important) pintan borde y fondo
+   en cualquier botón con ese atributo. Aquí se reafirman con más especificidad: la opción es una
+   fila plana; hover y activa se distinguen con un tinte del color de lectura, igual en claro y oscuro. */
+[data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed] {
+  border: 0 !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--mentor-text) !important;
+  font-weight: 400;
+  transition: background-color 120ms var(--course-ease);
+}
+[data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--mentor-text) 10%, transparent) !important;
+  font-weight: 600;
+}
+[data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed]:focus-visible {
+  outline: 2px solid var(--mentor-text);
+  outline-offset: -2px;
+}
 @media (hover: hover) and (pointer: fine) {
-  [data-mentor-ui='modern'] .admin-filter-menu__group button:hover { background: var(--mentor-surface); }
+  [data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed]:hover { background: color-mix(in srgb, var(--mentor-text) 7%, transparent) !important; }
+  [data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed='true']:hover { background: color-mix(in srgb, var(--mentor-text) 13%, transparent) !important; }
+}
+/* Tema claro: panel y estados en azul muy claro (mismo tono que las lecciones del temario), sin el gris azulado intenso. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-filter-menu__panel { background: #f6f9fd; border-color: #d3e0ec; box-shadow: 0 8px 24px rgb(22 40 58 / 0.12); }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-filter-menu__group + .admin-filter-menu__group { border-top-color: #dde8f2; }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed='true'] { background: #e6eff8 !important; }
+@media (hover: hover) and (pointer: fine) {
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed]:hover { background: #edf3fa !important; }
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-filter-menu__group button[aria-pressed='true']:hover { background: #e0ebf6 !important; }
 }
 @media (max-width: 1023px) {
   [data-mentor-ui='modern'] .admin-people-panel .mentor-course-toolbar .admin-filter-menu { flex: 0 0 auto; }

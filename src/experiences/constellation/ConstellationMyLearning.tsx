@@ -154,7 +154,7 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
 
       {!user ? (
         <div className="academy-learning-empty">
-          <LogIn size={28} aria-hidden="true" />
+          <LogIn size={22} aria-hidden="true" />
           <h2>{t('myLearning.emptyAccountTitle', 'Tu aprendizaje empieza con tu cuenta')}</h2>
           <p>{t('myLearning.emptyAccountDesc', 'Inicia sesión para consultar tus cursos y tu progreso.')}</p>
           <button type="button" className="academy-button" onClick={onLogin}>{t('myLearning.loginAction', 'Iniciar sesión')}</button>
@@ -171,7 +171,7 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
           )}
           {available.length === 0 ? (
             <div className="academy-learning-empty">
-              <BookOpen size={28} aria-hidden="true" />
+              <BookOpen size={22} aria-hidden="true" />
               <h2>{t('myLearning.noCoursesTitle', 'Aún no tienes cursos disponibles')}</h2>
               <p>{t('myLearning.noCoursesDesc', 'Cuando se confirme tu acceso, encontrarás aquí tus cursos.')}</p>
               <button type="button" className="academy-button" onClick={onBrowse}>{t('hero.exploreCourses', 'Explorar cursos')}</button>

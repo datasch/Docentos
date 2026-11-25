@@ -3,3 +3,6 @@
 .page-loader p { margin: 0; font-size: 14px; line-height: 20px; }
 .page-loader--screen { min-height: 100vh; border: 0; border-radius: 0; background: #07070b; color: #94a3b8; }
 .page-loader--screen svg { width: 72px; height: 72px; color: #fff; }
+/* Modo claro "Hielo": la pantalla de arranque era negro fijo. Texto 5,1:1 sobre el fondo. */
+[data-color-mode='light'] .page-loader--screen { background: #e4edf3; color: #4f6273; }
+[data-color-mode='light'] .page-loader--screen svg { color: #16283a; }

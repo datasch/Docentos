@@ -415,18 +415,18 @@ export default function App() {
       privateRouteStatus === 'unavailable' ? 'unavailable' : 'unauthorized',
     );
     return (
-      <div className="min-h-screen bg-[#09090b] text-[#f4f4f5] flex items-center justify-center px-5">
-        <main className="w-full max-w-2xl rounded-[20px] border border-white/10 bg-[#121214] px-8 py-12 text-center shadow-[0_16px_48px_rgba(0,0,0,0.24)] sm:px-16 sm:py-16">
-          <p className="text-sm font-medium text-[#a5a5af]">{t('docentos', 'DocentOS')}</p>
+      <div className="min-h-screen bg-canvas text-ink flex items-center justify-center px-5">
+        <main className="w-full max-w-2xl rounded-[20px] border border-line bg-surface px-8 py-12 text-center shadow-[0_16px_48px_rgba(22,40,58,0.14)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.24)] sm:px-16 sm:py-16">
+          <p className="text-sm font-medium text-ink-muted">{t('docentos', 'DocentOS')}</p>
           <div
             aria-hidden="true"
             className="mx-auto my-7 h-8 w-32 -rotate-[8deg] rounded-[50%] border border-brand-cyan/55"
           />
-          <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-[#f4f4f5]">
+          <p className="-mt-[4.5rem] text-[clamp(5.5rem,18vw,9rem)] font-medium leading-[0.9] tracking-[-0.03em] text-ink">
             404
           </p>
           <h1 className="mt-6 text-[clamp(1.5rem,4vw,2rem)] font-medium">{privateView.title}</h1>
-          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[#a5a5af]">{privateView.description}</p>
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-ink-muted">{privateView.description}</p>
           <button
             type="button"
             onClick={() => {
@@ -436,7 +436,7 @@ export default function App() {
                 navigateTo('landing');
               }
             }}
-            className="mt-7 rounded-[10px] border border-white/10 bg-[#f4f4f5] px-[18px] py-3 text-sm font-medium text-[#09090b] transition-colors hover:border-brand-cyan hover:bg-brand-cyan/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-cyan"
+            className="mt-7 rounded-[10px] border border-line bg-ink px-[18px] py-3 text-sm font-medium text-canvas transition-colors hover:border-brand-cyan hover:bg-surface hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-cyan"
           >
             {privateRouteStatus === 'unavailable' ? t('reintentar', 'Reintentar') : t('volverAlInicio', 'Volver al inicio')}
           </button>
@@ -446,7 +446,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col selection:bg-[var(--color-brand-cyan)] selection:text-[#050505] font-sans">
+    <div className="min-h-screen bg-canvas dark:bg-[#07070b] text-ink dark:text-white flex flex-col selection:bg-[var(--color-brand-cyan)] selection:text-[var(--color-on-brand)] font-sans">
       {connectionNotice && (
         <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           <p>{connectionNotice}</p>
@@ -560,7 +560,7 @@ export default function App() {
 
         {showPaywallModal && currentUser && course && currentUser.role !== 'MENTEE' && (
           <div
-            className="fixed inset-0 z-50 bg-[#07070b]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in overscroll-contain"
+            className="fixed inset-0 z-50 bg-ink/60 dark:bg-[#07070b]/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in overscroll-contain"
             onWheel={(e) => e.stopPropagation()}
           >
             <div className="relative max-w-4xl w-full">

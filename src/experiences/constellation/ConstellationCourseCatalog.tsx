@@ -197,7 +197,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
             </div>
 
             <div className="flex min-w-0 flex-col justify-center px-5 pb-6 sm:px-8 sm:pb-8 lg:order-1 lg:p-12">
-              <span className="inline-flex w-fit items-center gap-2 rounded-full bg-brand-cyan px-3 py-1.5 text-xs font-semibold text-on-brand">
+              <span className="featured-badge inline-flex w-fit items-center gap-2 rounded-full bg-brand-cyan px-3 py-1.5 text-xs font-semibold text-on-brand">
                 <Flame aria-hidden className="lp-streak-flame h-4 w-4 shrink-0" />
                 {t('catalog.featuredProgram', 'Programa destacado')}
               </span>
@@ -290,7 +290,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
             <div role="group" aria-label={t('catalog.viewMode', 'Vista de los cursos')} className="hidden md:flex items-center gap-1 p-1 bg-surface border border-line rounded-xl shrink-0 self-start lg:self-auto">
             <button
               onClick={() => setViewMode('grid')}
-              className={`flex h-11 w-11 items-center justify-center rounded-lg transition-all cursor-pointer ${
+              className={`flex h-11 w-11 items-center justify-center rounded-lg transition-[color,background-color,box-shadow] cursor-pointer ${
                 viewMode === 'grid'
                   ? 'bg-surface text-ink shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'
@@ -303,7 +303,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`flex h-11 w-11 items-center justify-center rounded-lg transition-all cursor-pointer ${
+              className={`flex h-11 w-11 items-center justify-center rounded-lg transition-[color,background-color,box-shadow] cursor-pointer ${
                 viewMode === 'list'
                   ? 'bg-surface text-ink shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:text-white/40 dark:hover:text-white'

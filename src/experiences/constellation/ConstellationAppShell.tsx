@@ -272,7 +272,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
 
 
   return (
-    <div className="academy-experience min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col font-sans selection:bg-[var(--color-brand-cyan)] selection:text-[#050505] relative overflow-x-clip w-full max-w-full">
+    <div className="academy-experience min-h-screen bg-canvas dark:bg-[#07070b] text-ink dark:text-white flex flex-col font-sans selection:bg-[var(--color-brand-cyan)] selection:text-[var(--color-on-brand)] relative overflow-x-clip w-full max-w-full">
       
 
       {/* Ambientación Festiva Global de DocentOS (Halloween & Navidad) */}
@@ -324,7 +324,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
       {/* Resplandor ambiental atmosférico cósmico de fondo */}
       <div
         aria-hidden="true"
-        className="fixed top-20 left-1/2 -translate-x-1/2 w-[340px] sm:w-[600px] h-[340px] sm:h-[600px] rounded-full blur-[120px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#a855f7] to-[var(--color-brand-cyan)]"
+        className="hidden dark:block fixed top-20 left-1/2 -translate-x-1/2 w-[340px] sm:w-[600px] h-[340px] sm:h-[600px] rounded-full blur-[120px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#a855f7] to-[var(--color-brand-cyan)]"
       />
 
       {/* Lienzo 3D de Constelación Neural: visible en inicio, catálogo y mi aprendizaje */}

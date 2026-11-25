@@ -282,6 +282,7 @@ function serializeResource(resource: any) {
     id: resource.id,
     courseId: resource.courseId,
     moduleId: resource.moduleId,
+    videoId: resource.videoId ?? null,
     title: resource.title,
     description: resource.description,
     kind: resource.kind,

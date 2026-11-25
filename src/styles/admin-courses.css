@@ -420,6 +420,8 @@
   background: var(--mentor-raised);
 }
 [data-mentor-ui='modern'] .tmr-video > svg { color: var(--mentor-muted); }
+/* Tema claro: las lecciones del temario van con un azul muy claro, no con el gris azulado del resto de superficies. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .tmr-video { background: #f6f9fd; border-color: #d3e0ec; }
 [data-mentor-ui='modern'] .tmr-video__text {
   display: grid;
   min-width: 0;
@@ -583,7 +585,7 @@
 
 
 /* Recursos: biblioteca a ancho completo, misma lectura de filas y hoja lateral que Usuarios. */
-[data-mentor-ui='modern'].admin-resources { --course-line: color-mix(in srgb, var(--mentor-text) 10%, transparent); --course-ease: cubic-bezier(0.22, 1, 0.36, 1); display: grid; gap: 16px; min-width: 0; color: var(--mentor-text); }
+[data-mentor-ui='modern'].admin-resources { --course-line: var(--hielo-course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent)); --course-ease: cubic-bezier(0.22, 1, 0.36, 1); display: grid; gap: 16px; min-width: 0; color: var(--mentor-text); }
 [data-mentor-ui='modern'] .admin-resources__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 [data-mentor-ui='modern'] .admin-resources__toolbar p { margin: 0; color: var(--mentor-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 [data-mentor-ui='modern'] .admin-resources__add { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--mentor-text); border-radius: 8px; background: var(--mentor-text); color: var(--mentor-bg); font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
@@ -611,7 +613,7 @@
 @media (max-width: 520px) { [data-mentor-ui='modern'] .admin-resources__toolbar { align-items: flex-start; flex-direction: column; } [data-mentor-ui='modern'] .admin-resources__add { width: 100%; } }
 
 /* Recursos follows the same heading, section switcher and working toolbar as Usuarios and Certificación. */
-[data-mentor-ui='modern'].admin-resources-shell .mentor-mentees-panel { --course-line: color-mix(in srgb, var(--mentor-text) 10%, transparent); display: grid; gap: 24px; }
+[data-mentor-ui='modern'].admin-resources-shell .mentor-mentees-panel { --course-line: var(--hielo-course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent)); display: grid; gap: 24px; }
 [data-mentor-ui='modern'].admin-resources-shell .mentor-section-heading h2 { margin: 0; font-size: 28px; font-weight: 500; line-height: 1.25; letter-spacing: -.02em; }
 [data-mentor-ui='modern'].admin-resources-shell .mentor-section-heading p { margin: 8px 0 0; color: var(--mentor-muted); font-size: 14px; line-height: 20px; }
 [data-mentor-ui='modern'].admin-resources-shell .mentor-publication-filters { display: flex; flex-wrap: wrap; max-width: 100%; padding: 4px; border: 1px solid var(--course-line); border-radius: 10px; background: var(--mentor-surface); }
@@ -742,7 +744,7 @@
 @media (prefers-reduced-motion: reduce) { [data-mentor-ui='modern'] .admin-course-card__resources svg:last-child { transition: none; } }
 
 /* Videos Drive comparte la estructura de biblioteca del módulo Cursos. */
-[data-mentor-ui='modern'].admin-drive { --course-line: color-mix(in srgb, var(--mentor-text) 10%, transparent); --course-ease: cubic-bezier(0.22, 1, 0.36, 1); display: grid; gap: 20px; min-width: 0; color: var(--mentor-text); }
+[data-mentor-ui='modern'].admin-drive { --course-line: var(--hielo-course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent)); --course-ease: cubic-bezier(0.22, 1, 0.36, 1); display: grid; gap: 20px; min-width: 0; color: var(--mentor-text); }
 [data-mentor-ui='modern'] .admin-drive__head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 24px; }
 [data-mentor-ui='modern'] .admin-drive__head h3 { margin: 0; color: var(--mentor-text); font-size: 20px; font-weight: 500; line-height: 28px; letter-spacing: -.02em; }
 [data-mentor-ui='modern'] .admin-drive__head p { margin: 4px 0 0; color: var(--mentor-muted); font-size: 14px; line-height: 20px; }

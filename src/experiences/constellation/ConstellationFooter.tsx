@@ -48,7 +48,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
           {/* Columna Izquierda: Logo, Nombre y Motto de DocentOS */}
           <div className="lg:col-span-5 flex flex-col items-start gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible">
+              <span className="footer-logo-frame w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible">
                 {logoUrl ? (
                   <img
                     src={logoUrl === DEFAULT_LOGO_URL ? '/logo-64.avif' : logoUrl}
@@ -118,7 +118,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
                 </a>
               )}
             </div>
-            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label={t('footer.backToTop', 'Volver arriba')} title={t('footer.backToTop', 'Volver arriba')} className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-brand-cyan hover:text-brand-cyan dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-brand-cyan">
+            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label={t('footer.backToTop', 'Volver arriba')} title={t('footer.backToTop', 'Volver arriba')} className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink-muted transition-colors hover:border-brand-cyan hover:text-brand-cyan dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-brand-cyan">
               <ArrowUp aria-hidden className="h-4 w-4" />
             </button>
           </nav>

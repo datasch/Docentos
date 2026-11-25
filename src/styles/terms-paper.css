@@ -149,3 +149,16 @@
 
 .verify-valid-head { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; }
 .verify-seal { flex: none; color: #2f6f46; opacity: .85; transform: rotate(-10deg); }
+
+/* Modo claro "Hielo": la misma hoja (serif, filetes, sello) sobre papel azul
+   glaciar en vez de crema, y sin blanco puro en el lector ni en los campos.
+   Tinta #16283a sobre el papel: 13,7:1; tinta suave #3f5366: 7,4:1. */
+[data-color-mode='light'] .terms-paper {
+  --paper: #eff5f9; --ink: #16283a; --ink-body: #263a4e; --ink-soft: #3f5366; --rule: #bccbd7;
+  --paper-sheet: #f4f8fb;
+  box-shadow: 0 24px 60px rgb(22 40 58 / 0.28);
+}
+[data-color-mode='light'] :is(.sign-paper__reader, .terms-paper__hash, .verify-form input) { background: var(--paper-sheet); }
+[data-color-mode='light'] .sign-paper__reader.is-unread::after { background: linear-gradient(to bottom, transparent, var(--paper-sheet)); }
+[data-color-mode='light'] .terms-overlay { background: rgb(22 40 58 / 0.55); }
+@media (hover: hover) and (pointer: fine) { [data-color-mode='light'] .terms-paper__ok:hover { background: #0e1c2a; } }

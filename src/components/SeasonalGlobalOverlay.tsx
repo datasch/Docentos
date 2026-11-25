@@ -138,7 +138,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
         <aside
           role="region"
           aria-label={t('avisoDeFestividadActiva', 'Aviso de festividad activa')}
-          className="relative z-40 w-full select-none"
+          className="seasonal-banner relative z-40 w-full select-none"
           style={{ backgroundColor: theme === 'halloween' ? '#2a1608' : '#12382a', color: theme === 'halloween' ? '#fed7aa' : '#fef3c7' }}
         >
           <div className="mx-auto flex min-h-11 max-w-[1280px] items-center justify-center gap-3 px-12 py-2 text-center text-sm font-medium leading-snug">
@@ -157,7 +157,7 @@ export const SeasonalGlobalOverlay: React.FC = () => {
           </button>
           <div
             aria-hidden
-            className="h-[3px] w-full"
+            className="seasonal-banner__stripe h-[3px] w-full"
             style={{
               backgroundImage:
                 theme === 'halloween'

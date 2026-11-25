@@ -886,7 +886,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
   const isCourseCompleted = isOrbAtFinalDestination && allQuizzesPassed;
 
   return (
-    <div className="academy-study-path camino-cosmico-fondo relative w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white font-sans select-none overflow-x-clip pb-44 pt-6">
+    <div className="academy-study-path camino-cosmico-fondo relative w-full min-h-screen bg-canvas dark:bg-[#07070b] text-ink dark:text-white font-sans select-none overflow-x-clip pb-44 pt-6">
       
       {/* 1. Astro Celestial / Sol Luminoso Radiante (de TalentHuman) */}
       <div 
@@ -901,11 +901,11 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
       />
       <div 
         aria-hidden="true"
-        className="absolute top-1/4 left-1/4 w-[min(500px,75vw)] h-[min(500px,75vw)] bg-purple-600/10 rounded-full blur-3xl pointer-events-none z-0"
+        className="hidden dark:block absolute top-1/4 left-1/4 w-[min(500px,75vw)] h-[min(500px,75vw)] bg-purple-600/10 rounded-full blur-3xl pointer-events-none z-0"
       />
       <div 
         aria-hidden="true"
-        className="absolute top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none z-0"
+        className="hidden dark:block absolute top-2/3 right-1/4 w-[min(450px,75vw)] h-[min(450px,75vw)] bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none z-0"
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6">

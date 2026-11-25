@@ -3,6 +3,8 @@
  * Permite cambiar en caliente los colores de acento y la densidad de datos de toda la plataforma.
  */
 
+import { runThemeTransition } from './themeTransition';
+
 export type ColorTheme = 'cyan' | 'violet' | 'emerald' | 'amber';
 export type Density = 'comfortable' | 'compact';
 export type ColorMode = 'light' | 'dark';
@@ -55,11 +57,14 @@ const STORAGE_THEME_KEY = 'docentos_color_theme';
 const STORAGE_DENSITY_KEY = 'docentos_density';
 const STORAGE_COLOR_MODE_KEY = 'docentos_color_mode';
 
+// Acentos del modo claro "Hielo": el mismo tono que el original, más profundo,
+// para pasar de 5:1 incluso sobre la superficie más oscura (#dae5ed). Deben
+// coincidir con el bloque "ACENTOS DEL MODO CLARO" de index.css.
 const LIGHT_ACCENTS: Record<ColorTheme, [string, string, string]> = {
-  cyan: ['#0e7490', '#1d4ed8', '#6b21a8'],
-  violet: ['#7e22ce', '#4338ca', '#6d28d9'],
-  emerald: ['#047857', '#0e7490', '#0f766e'],
-  amber: ['#b45309', '#b45309', '#b45309'],
+  cyan: ['#0b6075', '#1d4ed8', '#6b21a8'],
+  violet: ['#6a2bd0', '#4338ca', '#6d28d9'],
+  emerald: ['#03654a', '#0b6075', '#0d5f59'],
+  amber: ['#984506', '#984506', '#984506'],
 };
 
 /** El cian era el valor de fábrica, no una elección: quien lo tenía guardado pasa al ámbar. */
@@ -189,10 +194,22 @@ export function setColorMode(mode: ColorMode): ColorMode {
   return mode;
 }
 
+/**
+ * Modo al que va una transición que aún no ha aplicado el cambio. La animación
+ * aplica el tema un fotograma después del clic; sin esto, una segunda pulsación
+ * rápida leería el modo viejo y no alternaría.
+ */
+let pendingColorMode: ColorMode | null = null;
+
 export function toggleColorMode(): ColorMode {
-  const current = getCurrentColorMode();
+  const current = pendingColorMode ?? getCurrentColorMode();
   const next: ColorMode = current === 'dark' ? 'light' : 'dark';
-  return setColorMode(next);
+  pendingColorMode = next;
+  runThemeTransition(() => {
+    setColorMode(next);
+    if (pendingColorMode === next) pendingColorMode = null;
+  });
+  return next;
 }
 
 export function initSavedTheme() {

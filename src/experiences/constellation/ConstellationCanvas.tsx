@@ -1048,7 +1048,7 @@ export const ConstellationCanvas: React.FC<{
         />
         <canvas
           ref={canvasRef}
-          className="w-full h-full block"
+          className="constellation-canvas constellation-canvas--full w-full h-full block"
           style={{ touchAction: 'none' }}
         />
       </div>
@@ -1059,7 +1059,7 @@ export const ConstellationCanvas: React.FC<{
     <div className={`relative w-full h-full flex items-center justify-center select-none pointer-events-none ${className}`}>
       <canvas
         ref={canvasRef}
-        className="w-full h-full block cursor-crosshair"
+        className="constellation-canvas constellation-canvas--inline w-full h-full block cursor-crosshair"
         style={{ touchAction: 'pan-y' }}
       />
     </div>

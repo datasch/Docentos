@@ -97,8 +97,10 @@
 }
 .academy-hero__availability { margin-top: 1.25rem; color: var(--color-ink-soft); font-size: 0.8125rem; }
 
-.academy-experience .academy-catalog h2,
-.academy-experience .academy-testimonials h2,
+/* Los diálogos (compartir curso, opinión) viven dentro de estas secciones: su
+   título no es un encabezado de sección y conserva su propio tamaño. */
+.academy-experience .academy-catalog h2:not(dialog h2),
+.academy-experience .academy-testimonials h2:not(dialog h2),
 .academy-section-title {
   font-size: clamp(1.75rem, 3.5vw, 2.75rem);
   font-weight: 600;

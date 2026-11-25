@@ -15,10 +15,13 @@ interface Props {
   onPrivateUrl: (value: string) => void;
   moduleId: string;
   onModuleId: (value: string) => void;
+  /** Lección dentro del módulo elegido; vacío = material general del módulo. */
+  videoId: string;
+  onVideoId: (value: string) => void;
   error: string;
 }
 
-export function AdminResourceSheet({ open, onClose, onSubmit, modules, title, onTitle, privateUrl, onPrivateUrl, moduleId, onModuleId, error }: Props) {
+export function AdminResourceSheet({ open, onClose, onSubmit, modules, title, onTitle, privateUrl, onPrivateUrl, moduleId, onModuleId, videoId, onVideoId, error }: Props) {
   const { t } = useTranslation()
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -47,6 +50,9 @@ export function AdminResourceSheet({ open, onClose, onSubmit, modules, title, on
             <div className="meeting-field"><label htmlFor="resource-title">{t('tituloDelRecurso', 'Título del recurso')}</label><input id="resource-title" type="text" placeholder={t('ejGuiaDeArquitecturapdf', 'Ej. Guía de Arquitectura.pdf')} value={title} onChange={(event) => onTitle(event.target.value)} required /></div>
             <div className="meeting-field"><label htmlFor="resource-url">{t('urlPrivadaDelArchivo', 'URL privada del archivo')}</label><input id="resource-url" type="url" placeholder="https://drive.google.com/..." value={privateUrl} onChange={(event) => onPrivateUrl(event.target.value)} required /></div>
             <div className="meeting-field"><label htmlFor="resource-module">{t('asignarAModulo', 'Asignar a módulo')}</label><AdminSelect inline id="resource-module" value={moduleId} onChange={onModuleId} options={[{ value: '', label: t('generalDelCurso', 'General del curso') }, ...modules.map((module) => ({ value: module.id, label: module.title }))]} /></div>
+            {moduleId && (modules.find((module) => module.id === moduleId)?.videos?.length ?? 0) > 0 && (
+              <div className="meeting-field"><label htmlFor="resource-lesson">{t('asignarALeccion', 'Asignar a lección (opcional)')}</label><AdminSelect inline id="resource-lesson" value={videoId} onChange={onVideoId} options={[{ value: '', label: t('materialGeneralDelModulo', 'Material general del módulo') }, ...(modules.find((module) => module.id === moduleId)?.videos || []).map((video) => ({ value: video.id, label: video.title }))]} /></div>
+            )}
             <p className="admin-resource-sheet__hint">{t('elEnlaceSeEntregaSoloAQuienesTienen', 'El enlace se entrega solo a quienes tienen acceso al curso.')}</p>
             {error && <p role="alert" className="admin-resource-sheet__error">{error}</p>}
           </form>

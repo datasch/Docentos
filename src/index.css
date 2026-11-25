@@ -140,8 +140,8 @@
   html[data-color-mode="light"],
   html[data-color-mode="light"] body,
   html[data-color-mode="light"] #root {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #e4edf3;
+    color: #16283a;
     color-scheme: light;
   }
 
@@ -528,6 +528,142 @@ body.theme-cyan {
 }
 
 /* ==========================================================================
+   ACENTOS DEL MODO CLARO "HIELO"
+   Los bloques de arriba fijan el acento brillante con !important en los dos
+   modos; sobre fondo claro eso deja, por ejemplo, texto blanco sobre ámbar
+   #fbbf24 (1,7:1). Aquí cada acento conserva su tono pero más profundo: todos
+   pasan de 5:1 incluso sobre la superficie más oscura (#dae5ed), y el texto
+   blanco encima de ellos supera 6,5:1. Los botones van en color sólido en vez
+   de degradado para no cansar la vista.
+   `html.mode-light.theme-x` y `body.mode-light.theme-x` ganan por
+   especificidad a `:root.theme-x` y `body.theme-x`.
+   ========================================================================== */
+html.mode-light.theme-cyan,
+body.mode-light.theme-cyan {
+  --color-brand-cyan: #0b6075 !important;
+  --color-brand-blue: #1d4ed8 !important;
+  --color-brand-purple: #6b21a8 !important;
+  --brand-cyan: #0b6075 !important;
+  --brand-blue: #1d4ed8 !important;
+  --brand-purple: #6b21a8 !important;
+  --brand-accent-rgb: 11, 96, 117 !important;
+  --lp-cyan: #0b6075 !important;
+  --lp-accent: #0b6075 !important;
+  --lp-accent-soft: #1d4ed8 !important;
+  --lp-gradient: linear-gradient(135deg, #0b6075 0%, #1d4ed8 100%) !important;
+}
+html.mode-light.theme-violet,
+body.mode-light.theme-violet {
+  --color-brand-cyan: #6a2bd0 !important;
+  --color-brand-blue: #4338ca !important;
+  --color-brand-purple: #6d28d9 !important;
+  --brand-cyan: #6a2bd0 !important;
+  --brand-blue: #4338ca !important;
+  --brand-purple: #6d28d9 !important;
+  --brand-accent-rgb: 106, 43, 208 !important;
+  --lp-cyan: #6a2bd0 !important;
+  --lp-accent: #6a2bd0 !important;
+  --lp-accent-soft: #4338ca !important;
+  --lp-gradient: linear-gradient(135deg, #6a2bd0 0%, #4338ca 100%) !important;
+}
+html.mode-light.theme-emerald,
+body.mode-light.theme-emerald {
+  --color-brand-cyan: #03654a !important;
+  --color-brand-blue: #0b6075 !important;
+  --color-brand-purple: #0d5f59 !important;
+  --brand-cyan: #03654a !important;
+  --brand-blue: #0b6075 !important;
+  --brand-purple: #0d5f59 !important;
+  --brand-accent-rgb: 3, 101, 74 !important;
+  --lp-cyan: #03654a !important;
+  --lp-accent: #03654a !important;
+  --lp-accent-soft: #0d5f59 !important;
+  --lp-gradient: linear-gradient(135deg, #03654a 0%, #0d5f59 100%) !important;
+}
+html.mode-light.theme-amber,
+body.mode-light.theme-amber {
+  --color-brand-cyan: #984506 !important;
+  --color-brand-blue: #984506 !important;
+  --color-brand-purple: #984506 !important;
+  --brand-cyan: #984506 !important;
+  --brand-blue: #984506 !important;
+  --brand-purple: #984506 !important;
+  --brand-accent-rgb: 152, 69, 6 !important;
+  --lp-cyan: #984506 !important;
+  --lp-accent: #984506 !important;
+  --lp-accent-soft: #984506 !important;
+  --lp-gradient: linear-gradient(135deg, #984506 0%, #984506 100%) !important;
+}
+/* Utilidades de acento: leen el token, así sirven para los cuatro acentos. */
+html.mode-light [class*="text-brand-cyan"],
+html.mode-light .lp-tone-cyan {
+  color: var(--color-brand-cyan) !important;
+}
+html.mode-light [class*="border-brand-cyan"] {
+  border-color: rgba(var(--brand-accent-rgb), 0.45) !important;
+}
+html.mode-light [class*="hover:border-brand-cyan"]:hover {
+  border-color: rgba(var(--brand-accent-rgb), 0.75) !important;
+}
+html.mode-light .bg-brand-cyan {
+  background-color: var(--color-brand-cyan) !important;
+  color: #ffffff !important;
+}
+html.mode-light [class*="bg-brand-cyan/"]:not(.theme-dot) {
+  background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
+}
+html.mode-light [class*="ring-brand-cyan"] {
+  --tw-ring-color: rgba(var(--brand-accent-rgb), 0.35) !important;
+}
+html.mode-light .btn-brand-primary,
+html.mode-light .bg-brand-gradient {
+  background: var(--color-brand-cyan) !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+}
+html.mode-light .text-brand-gradient {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--color-brand-cyan) !important;
+}
+
+/* Tonos de estado de la portada (landing.css) en versión Hielo: los
+   originales (#10b981, #f59e0b, #fb923c) no llegan a AA sobre fondo claro.
+   Verde 6,1:1 · estrellas 3,9:1 (gráfico, mínimo 3:1) · aviso 6,7:1.
+   Van en los mismos elementos donde landing.css define las variables. */
+[data-color-mode="light"] :is(.lp-root, .lp-header, .lp-listening-floating-btn) {
+  --lp-green: #116a33;
+  --lp-gold: #a86f1a;
+}
+[data-color-mode="light"] .lp-tone-warn { color: #9a3412; }
+
+/* Programa destacado: el borde que gira sigue el acento elegido (antes era
+   dorado fijo con cualquier acento) y sin el halo ámbar que late encima. */
+html.mode-light .catalog-featured-glow {
+  animation: none;
+  box-shadow: 0 8px 24px rgb(22 40 58 / 0.06);
+}
+html.mode-light .catalog-featured-glow::before {
+  background: conic-gradient(from var(--catalog-fire-angle, 0deg),
+    rgba(var(--brand-accent-rgb), 0.12),
+    rgba(var(--brand-accent-rgb), 0.45) 18%,
+    rgba(var(--brand-accent-rgb), 0.85) 30%,
+    rgba(var(--brand-accent-rgb), 0.45) 40%,
+    rgba(var(--brand-accent-rgb), 0.12) 58%,
+    rgba(var(--brand-accent-rgb), 0.7) 72%,
+    rgba(var(--brand-accent-rgb), 0.45) 82%,
+    rgba(var(--brand-accent-rgb), 0.12));
+}
+/* La llama late sin el brillo naranja, que sobre el acento oscuro ensucia. */
+html.mode-light .lp-streak-flame {
+  animation-name: hieloFlamePulse;
+}
+@keyframes hieloFlamePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+/* ==========================================================================
    MODO DENSIDAD COMPACTA (Plugin docentos-customizer)
    ========================================================================== */
 .density-compact {
@@ -590,69 +726,79 @@ body.theme-cyan {
 html[data-color-mode="light"],
 body[data-color-mode="light"],
 .mode-light {
+  /* Paleta "Hielo": azul glaciar, sin blanco puro ni negro puro, para leer
+     durante horas. Bordes en tres tonos visibles sobre tarjeta (#eff5f9):
+     suave 1,5:1 · normal 1,85:1 · fuerte 2,3:1. */
+  --hielo-border-soft: #bccbd7;
+  --hielo-border: #a6b8c7;
+  --hielo-border-strong: #8ea3b5;
+  /* Borde de los paneles de mentor y admin (--course-line). Allí era el color
+     del texto al 10 %, 1,2:1 sobre Hielo; en oscuro se conserva el original. */
+  --hielo-course-line: var(--hielo-border);
+
   /* Tokens de Superficie Orgánica (Calibración Off-white y Tarjetas Flotantes) */
-  --color-canvas: #f8fafc;
-  --color-surface: #ffffff;
-  --color-raised: #f1f5f9;
-  --color-elevated: #ffffff;
-  --color-card: #ffffff;
+  --color-canvas: #e4edf3;
+  --color-surface: #eff5f9;
+  --color-raised: #dae5ed;
+  --color-elevated: #eff5f9;
+  --color-card: #eff5f9;
 
   /* Líneas finas y de luz natural, nunca trazos negros toscos */
-  --color-line: rgba(15, 23, 42, 0.08);
-  --color-line-strong: rgba(15, 23, 42, 0.16);
+  --color-line: var(--hielo-border);
+  --color-line-strong: var(--hielo-border-strong);
 
   /* Tipografía Grafito & Tinta Natural de Alto Contraste AAA */
-  --color-ink: #0f172a;
+  --color-ink: #16283a;
   --color-on-brand: #ffffff;
-  --color-ink-soft: #1e293b;
-  --color-ink-muted: #475569;
-  --color-ink-faint: #64748b;
+  --color-ink-soft: #263a4e;
+  --color-ink-muted: #3f5366;
+  --color-ink-faint: #4f6273;
 
   /* Colores de Marca y Estados adaptados para contraste nítido en modo claro */
-  --color-brand-cyan: #b45309;
-  --color-brand-blue: #b45309;
-  --color-brand-violet: #7c3aed;
-  --color-brand-violet-light: #6d28d9;
-  --color-brand-purple: #b45309;
+  --color-brand-cyan: #984506;
+  --color-brand-blue: #984506;
+  --color-brand-violet: #6a2bd0;
+  --color-brand-violet-light: #6a2bd0;
+  --color-brand-purple: #984506;
   --color-brand-magenta: #be185d;
   --color-brand-orange: #c2410c;
-  --color-brand-yellow: #b45309;
+  --color-brand-yellow: #984506;
 
   --color-danger: #dc2626;
   --color-danger-light: #b91c1c;
   --color-success: #16a34a;
-  --color-success-light: #15803d;
+  --color-success-light: #116a33;
   --color-warning: #d97706;
-  --color-warning-light: #b45309;
+  --color-warning-light: #984506;
 
-  --color-dark-bg: #f8fafc;
-  --color-dark-surface: #ffffff;
-  --color-dark-elevated: #f1f5f9;
-  --color-dark-border: rgba(15, 23, 42, 0.08);
+  --color-dark-bg: #e4edf3;
+  --color-dark-surface: #eff5f9;
+  --color-dark-elevated: #dae5ed;
+  --color-dark-border: var(--hielo-border);
 
-  --bg-main: #f8fafc;
-  --bg-surface: #ffffff;
-  --bg-elevated: #f1f5f9;
-  --border-giantucchi: rgba(15, 23, 42, 0.08);
-  --text-primary: #0f172a;
+  --bg-main: #e4edf3;
+  --bg-surface: #eff5f9;
+  --bg-elevated: #dae5ed;
+  --border-giantucchi: var(--hielo-border);
+  --text-primary: #16283a;
 
   /* Variables Landing Page / Navbar */
-  --lp-bg-main: #f8fafc;
-  --lp-bg-surface: #ffffff;
-  --lp-bg-elevated: #f1f5f9;
-  --lp-bg-card: #ffffff;
-  --lp-bg-card-hover: #ffffff;
-  --lp-text-strong: #0f172a;
-  --lp-text-primary: #0f172a;
-  --lp-text-secondary: #334155;
-  --lp-text-muted: #64748b;
-  --lp-border: rgba(15, 23, 42, 0.08);
+  --lp-bg-main: #e4edf3;
+  --lp-bg-surface: #eff5f9;
+  --lp-bg-elevated: #dae5ed;
+  --lp-bg-card: #eff5f9;
+  --lp-bg-card-hover: #eff5f9;
+  --lp-text-strong: #16283a;
+  --lp-text-primary: #16283a;
+  --lp-text-secondary: #33485c;
+  --lp-text-muted: #4f6273;
+  --lp-border: var(--hielo-border);
 }
 
 /* Lienzo Global en Modo Claro */
 [data-color-mode="light"] {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #e4edf3;
+  color: #16283a;
 }
 
 /* Superficie de Canvas de Fondo */
@@ -680,149 +826,149 @@ body[data-color-mode="light"],
 [data-color-mode="light"] [class*="bg-\[\#0a0a12"],
 [data-color-mode="light"] [class*="bg-\[\#0c121e"],
 [data-color-mode="light"] [class*="bg-\[\#0d131f"] {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: #e4edf3 !important;
+  color: #16283a !important;
 }
 
 /* ==========================================================================
    DOCENTOS UI LAB MODAL (SELECTOR DE INTERFACES MULTI-EXPERIENCIA)
    ========================================================================== */
 [data-color-mode="light"] .ui-lab-modal {
-  background-color: #ffffff !important;
-  border-color: rgba(15, 23, 42, 0.12) !important;
-  color: #0f172a !important;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  background-color: #eff5f9 !important;
+  border-color: var(--hielo-border) !important;
+  color: #16283a !important;
+  box-shadow: 0 25px 50px -12px rgba(22, 40, 58, 0.25) !important;
 }
 
 [data-color-mode="light"] .ui-lab-header {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  background: linear-gradient(135deg, #e4edf3 0%, #dae5ed 100%) !important;
+  border-bottom: 1px solid var(--hielo-border) !important;
 }
 
 [data-color-mode="light"] .ui-lab-header h2 {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] .ui-lab-header p {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] .ui-lab-card {
-  background-color: #ffffff !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  background-color: #eff5f9 !important;
+  border-color: var(--hielo-border) !important;
+  box-shadow: 0 1px 3px rgba(22, 40, 58, 0.04) !important;
 }
 
 [data-color-mode="light"] .ui-lab-card:hover {
-  background-color: #f8fafc !important;
-  border-color: rgba(15, 23, 42, 0.2) !important;
+  background-color: #e4edf3 !important;
+  border-color: var(--hielo-border-strong) !important;
 }
 
 [data-color-mode="light"] .ui-lab-card--active {
-  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%) !important;
+  background: linear-gradient(180deg, rgba(3, 101, 74, 0.1) 0%, #eff5f9 100%) !important;
   border-color: #22c55e !important;
   box-shadow: 0 4px 14px -2px rgba(34, 197, 94, 0.15) !important;
 }
 
 [data-color-mode="light"] .ui-lab-card h3 {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] .ui-lab-card p {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] .ui-lab-footer {
-  background-color: #f8fafc !important;
-  border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
-  color: #64748b !important;
+  background-color: #e4edf3 !important;
+  border-top: 1px solid var(--hielo-border) !important;
+  color: #4f6273 !important;
 }
 
 /* Barra de Navegación Kinetic / Experiencias en Modo Claro */
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"],
 [data-color-mode="light"] header.sticky[class*="bg-\[\#06060a"],
 [data-color-mode="light"] header.sticky[class*="bg-\[\#020504"] {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  background: rgba(239, 245, 249, 0.92) !important;
+  border-bottom: 1px solid var(--hielo-border) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-[#07080f]"],
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-\[\#07080f"] {
-  background-color: #ffffff !important;
+  background-color: #eff5f9 !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-white,
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-slate-100,
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-slate-300 {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] .text-slate-400 {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-white\/[0.02]"],
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] div[class*="bg-white\/[0.03]"],
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] button[class*="bg-white\/[0.04]"],
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] button[class*="bg-white\/[0.08]"] {
-  background-color: #ffffff !important;
-  border: 1px solid rgba(15, 23, 42, 0.1) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
-  color: #334155 !important;
+  background-color: #eff5f9 !important;
+  border: 1px solid var(--hielo-border) !important;
+  box-shadow: 0 1px 2px rgba(22, 40, 58, 0.04) !important;
+  color: #33485c !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] nav button {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] nav button:hover {
-  color: #0f172a !important;
-  background-color: rgba(15, 23, 42, 0.04) !important;
+  color: #16283a !important;
+  background-color: rgba(22, 40, 58, 0.04) !important;
 }
 
 [data-color-mode="light"] header.sticky[class*="bg-\[\#07080f"] nav button[class*="bg-white/10"] {
-  background-color: #ffffff !important;
-  color: #0e7490 !important;
+  background-color: #eff5f9 !important;
+  color: #0b6075 !important;
   border-color: rgba(14, 116, 144, 0.3) !important;
   box-shadow: 0 1px 3px rgba(14, 116, 144, 0.08) !important;
 }
 
 /* Tarjetas de Secciones Maestras en AdminDashboard */
 [data-color-mode="light"] .admin-master-card {
-  background-color: #ffffff !important;
-  border: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 14px -2px rgba(15, 23, 42, 0.05) !important;
+  background-color: #eff5f9 !important;
+  border: 1px solid var(--hielo-border) !important;
+  box-shadow: 0 1px 3px rgba(22, 40, 58, 0.04), 0 4px 14px -2px rgba(22, 40, 58, 0.05) !important;
 }
 
 [data-color-mode="light"] .admin-master-card:hover {
-  background-color: #ffffff !important;
+  background-color: #eff5f9 !important;
   border-color: rgba(6, 182, 212, 0.4) !important;
-  box-shadow: 0 6px 20px -2px rgba(15, 23, 42, 0.08), 0 0 18px rgba(6, 182, 212, 0.1) !important;
+  box-shadow: 0 6px 20px -2px rgba(22, 40, 58, 0.08), 0 0 18px rgba(6, 182, 212, 0.1) !important;
   transform: translateY(-2px);
 }
 
 [data-color-mode="light"] .admin-master-card.admin-master-card--active,
 [data-color-mode="light"] .admin-master-card[class*="border-cyan-400"] {
-  background-color: #ffffff !important;
+  background-color: #eff5f9 !important;
   border-color: #06b6d4 !important;
   box-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.2), 0 0 0 1px #06b6d4 !important;
 }
 
 [data-color-mode="light"] .admin-master-card .text-white {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] .admin-master-card .text-slate-400 {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] .admin-master-card span[class*="bg-black"] {
-  background-color: #f1f5f9 !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
-  color: #334155 !important;
+  background-color: #dae5ed !important;
+  border-color: var(--hielo-border) !important;
+  color: #33485c !important;
 }
 
 /* Tarjetas y Contenedores Principales: Blanco Puro con Sombra Multicapa Suave */
@@ -841,20 +987,20 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .bg-slate-950:not(.badge-dark *),
 [data-color-mode="light"] [class*="bg-slate-900"]:not(.btn-brand-primary *):not([class*="bg-brand-"] *):not([class*="bg-gradient-"]),
 [data-color-mode="light"] [class*="bg-slate-950"]:not(.btn-brand-primary *) {
-  background-color: #ffffff !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.06) !important;
+  background-color: #eff5f9 !important;
+  border-color: var(--hielo-border) !important;
+  box-shadow: 0 1px 3px 0 rgba(22, 40, 58, 0.04), 0 8px 24px -4px rgba(22, 40, 58, 0.06) !important;
 }
 
 [data-color-mode="light"] [class*="border-white\/"] {
-  border-color: rgba(15, 23, 42, 0.08) !important;
+  border-color: var(--hielo-border) !important;
 }
 
 /* Superficies Interiores Elevadas, Cajones y Pestañas */
 [data-color-mode="light"] [class*="bg-slate-950\/"],
 [data-color-mode="light"] [class*="bg-slate-900\/"] {
-  background-color: #f1f5f9 !important;
-  border-color: rgba(15, 23, 42, 0.06) !important;
+  background-color: #dae5ed !important;
+  border-color: var(--hielo-border-soft) !important;
 }
 
 [data-color-mode="light"] .bg-\[\#1a1a2e\],
@@ -862,14 +1008,14 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .bg-\[\#20202c\],
 [data-color-mode="light"] .bg-\[\#232338\],
 [data-color-mode="light"] .bg-\[\#2d2d44\] {
-  background-color: #f8fafc !important;
-  border-color: rgba(15, 23, 42, 0.08) !important;
+  background-color: #e4edf3 !important;
+  border-color: var(--hielo-border) !important;
 }
 
 /* Paneles del Reproductor y Contenedores con Pestañas */
 [data-color-mode="light"] section:has([role="tablist"]),
 [data-color-mode="light"] .bg-surface {
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 18px -4px rgba(15, 23, 42, 0.05) !important;
+  box-shadow: 0 1px 3px rgba(22, 40, 58, 0.04), 0 6px 18px -4px rgba(22, 40, 58, 0.05) !important;
 }
 
 /* Bordes Sutiles Hairline */
@@ -882,7 +1028,7 @@ body[data-color-mode="light"],
 [data-color-mode="light"] [class*="border-slate-700"],
 [data-color-mode="light"] .border-white\/5,
 [data-color-mode="light"] .border-white\/10 {
-  border-color: rgba(15, 23, 42, 0.08) !important;
+  border-color: var(--hielo-border) !important;
 }
 
 /* ==========================================================================
@@ -891,16 +1037,16 @@ body[data-color-mode="light"],
 
 /* Textos Generales */
 [data-color-mode="light"] .text-ink {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 [data-color-mode="light"] .text-ink-soft {
-  color: #1e293b !important;
+  color: #263a4e !important;
 }
 [data-color-mode="light"] .text-ink-muted {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 [data-color-mode="light"] .text-ink-faint {
-  color: #64748b !important;
+  color: #4f6273 !important;
 }
 
 /* Textos de Marca y Estados: Tonos Joya Profundos (Jewel-Tone High Contrast) */
@@ -909,11 +1055,11 @@ body[data-color-mode="light"],
   font-weight: 600 !important;
 }
 [data-color-mode="light"] .text-success-light {
-  color: #15803d !important;
+  color: #116a33 !important;
   font-weight: 600 !important;
 }
 [data-color-mode="light"] .text-warning-light {
-  color: #b45309 !important;
+  color: #984506 !important;
   font-weight: 600 !important;
 }
 [data-color-mode="light"] .text-danger-light {
@@ -922,12 +1068,12 @@ body[data-color-mode="light"],
 }
 [data-color-mode="light"] .text-brand-yellow,
 [data-color-mode="light"] .text-\[\#eab308\] {
-  color: #b45309 !important;
+  color: #984506 !important;
   font-weight: 600 !important;
 }
 [data-color-mode="light"] .text-brand-cyan,
 [data-color-mode="light"] .text-\[\#06b6d4\] {
-  color: #0e7490 !important;
+  color: #0b6075 !important;
   font-weight: 600 !important;
 }
 [data-color-mode="light"] .text-brand-purple,
@@ -953,7 +1099,7 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .text-white\/90,
 [data-color-mode="light"] .text-white\/80,
 [data-color-mode="light"] .text-white\/70 {
-  color: #1e293b !important;
+  color: #263a4e !important;
 }
 
 [data-color-mode="light"] .text-slate-400,
@@ -961,11 +1107,49 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .text-zinc-400,
 [data-color-mode="light"] .text-white\/60,
 [data-color-mode="light"] .text-white\/50 {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] .text-slate-500 {
-  color: #64748b !important;
+  color: #4f6273 !important;
+}
+
+/* Paleta Hielo para las utilidades de Tailwind que los componentes usan
+   directamente en modo claro: la tinta sigue los tokens y ningún fondo
+   queda en blanco puro. */
+[data-color-mode="light"] :is(.text-slate-900, .text-slate-800, .text-gray-900) {
+  color: var(--color-ink) !important;
+}
+[data-color-mode="light"] :is(.text-slate-700, .text-slate-600, .text-gray-700, .text-gray-600) {
+  color: var(--color-ink-soft) !important;
+}
+[data-color-mode="light"] .bg-white {
+  background-color: var(--color-surface) !important;
+}
+[data-color-mode="light"] [class*=" bg-white/"],
+[data-color-mode="light"] [class^="bg-white/"] {
+  background-color: rgba(239, 245, 249, 0.6) !important;
+}
+[data-color-mode="light"] .bg-slate-50 {
+  background-color: var(--color-canvas) !important;
+}
+[data-color-mode="light"] :is(.bg-slate-100, .hover\:bg-slate-100:hover) {
+  background-color: var(--color-raised) !important;
+}
+[data-color-mode="light"] :is(.bg-slate-200, .hover\:bg-slate-200:hover) {
+  background-color: var(--color-elevated) !important;
+}
+
+/* Bordes de Tailwind usados directamente en modo claro (tarjetas, paneles,
+   separadores de sección). Sin esto quedan casi invisibles sobre Hielo. */
+[data-color-mode="light"] :is(.border-slate-200, .border-slate-300, .border-gray-200, .border-gray-300,
+  [class*=" border-slate-200/"], [class^="border-slate-200/"],
+  [class*=" border-slate-300/"], [class^="border-slate-300/"]) {
+  border-color: var(--hielo-border) !important;
+}
+[data-color-mode="light"] :is(.border-slate-100, .border-gray-100,
+  [class*=" border-slate-100/"], [class^="border-slate-100/"]) {
+  border-color: var(--hielo-border-soft) !important;
 }
 
 /* Text-white contextual: sólo permanece blanco dentro de botones con fondo sólido o gradientes de acción */
@@ -979,43 +1163,43 @@ body[data-color-mode="light"],
 
 /* Banner de Evaluación / Examen del Módulo en CourseViewer */
 [data-color-mode="light"] [class*="from-purple-950"] {
-  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%) !important;
-  border-color: #d8b4fe !important;
+  background: linear-gradient(135deg, rgba(106, 43, 208, 0.08) 0%, rgba(106, 43, 208, 0.12) 100%) !important;
+  border-color: rgba(106, 43, 208, 0.35) !important;
   box-shadow: 0 4px 20px rgba(147, 51, 234, 0.08) !important;
 }
 [data-color-mode="light"] [class*="from-purple-950"] h4 {
   color: #581c87 !important;
 }
 [data-color-mode="light"] [class*="from-purple-950"] p {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 [data-color-mode="light"] [class*="from-purple-950"] strong {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 [data-color-mode="light"] [class*="from-purple-950"] .bg-purple-500\/30 {
-  background-color: #ede9fe !important;
-  border-color: #c4b5fd !important;
+  background-color: rgba(106, 43, 208, 0.14) !important;
+  border-color: rgba(106, 43, 208, 0.4) !important;
   color: #6b21a8 !important;
 }
 
 /* Banner de Grabación Asincrónica en CourseViewer */
 [data-color-mode="light"] .bg-\[\#0a1210\] {
-  background-color: #f0fdf4 !important;
-  border-color: #bbf7d0 !important;
+  background-color: rgba(3, 101, 74, 0.1) !important;
+  border-color: rgba(3, 101, 74, 0.3) !important;
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08) !important;
 }
 
 /* Banner de Advertencia en MentorDashboard */
 [data-color-mode="light"] [class*="from-red-950"] {
-  background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%) !important;
-  border-color: #fecaca !important;
+  background: linear-gradient(135deg, rgba(185, 28, 28, 0.08) 0%, rgba(185, 28, 28, 0.08) 100%) !important;
+  border-color: rgba(185, 28, 28, 0.28) !important;
   box-shadow: 0 4px 16px rgba(239, 68, 68, 0.06) !important;
 }
 [data-color-mode="light"] [class*="from-red-950"] h4 {
   color: #991b1b !important;
 }
 [data-color-mode="light"] [class*="from-red-950"] p {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 /* ==========================================================================
@@ -1026,8 +1210,8 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .bg-\[\#a855f7\]\/20,
 [data-color-mode="light"] .bg-purple-500\/10,
 [data-color-mode="light"] .bg-purple-500\/20 {
-  background-color: #faf5ff !important;
-  border: 1px solid #e9d5ff !important;
+  background-color: rgba(106, 43, 208, 0.08) !important;
+  border: 1px solid rgba(106, 43, 208, 0.28) !important;
 }
 [data-color-mode="light"] .text-\[\#a855f7\],
 [data-color-mode="light"] .text-purple-400 {
@@ -1039,21 +1223,22 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .bg-brand-cyan\/20,
 [data-color-mode="light"] .bg-cyan-500\/10,
 [data-color-mode="light"] .bg-cyan-500\/20 {
-  background-color: #ecfeff !important;
-  border: 1px solid #a5f3fc !important;
+  background-color: rgba(11, 96, 117, 0.1) !important;
+  border: 1px solid rgba(11, 96, 117, 0.35) !important;
 }
 
 /* Rol Mentee / Estados Activo / Graduado: Fondo Menta Suave + Verde Bosque */
 [data-color-mode="light"] .bg-success\/20,
 [data-color-mode="light"] .bg-emerald-500\/10,
 [data-color-mode="light"] .bg-emerald-500\/20 {
-  background-color: #f0fdf4 !important;
-  border: 1px solid #bbf7d0 !important;
+  background-color: rgba(3, 101, 74, 0.1) !important;
+  border: 1px solid rgba(3, 101, 74, 0.3) !important;
 }
 [data-color-mode="light"] .text-success,
+[data-color-mode="light"] .text-emerald-300,
 [data-color-mode="light"] .text-emerald-400,
 [data-color-mode="light"] .text-emerald-500 {
-  color: #15803d !important;
+  color: #116a33 !important;
   font-weight: 700 !important;
 }
 
@@ -1061,21 +1246,21 @@ body[data-color-mode="light"],
 [data-color-mode="light"] .bg-warning\/20,
 [data-color-mode="light"] .bg-amber-500\/10,
 [data-color-mode="light"] .bg-amber-500\/20 {
-  background-color: #fffbeb !important;
-  border: 1px solid #fde68a !important;
+  background-color: rgba(152, 69, 6, 0.1) !important;
+  border: 1px solid rgba(152, 69, 6, 0.3) !important;
 }
 [data-color-mode="light"] .text-warning,
 [data-color-mode="light"] .text-amber-300,
 [data-color-mode="light"] .text-amber-400 {
-  color: #b45309 !important;
+  color: #984506 !important;
   font-weight: 700 !important;
 }
 
 /* Suspensión / Error: Fondo Rosa Pálido + Carmesí */
 [data-color-mode="light"] .bg-red-500\/10,
 [data-color-mode="light"] .bg-red-500\/20 {
-  background-color: #fef2f2 !important;
-  border: 1px solid #fecaca !important;
+  background-color: rgba(185, 28, 28, 0.08) !important;
+  border: 1px solid rgba(185, 28, 28, 0.28) !important;
 }
 [data-color-mode="light"] .text-red-400,
 [data-color-mode="light"] .text-red-500 {
@@ -1086,9 +1271,9 @@ body[data-color-mode="light"],
 /* Insignias Neutras (Cursos en 0, Estado Inicial, Externos) */
 [data-color-mode="light"] .bg-slate-800,
 [data-color-mode="light"] [class*="bg-slate-800"] {
-  background-color: #f1f5f9 !important;
-  border: 1px solid #e2e8f0 !important;
-  color: #475569 !important;
+  background-color: #dae5ed !important;
+  border: 1px solid #c8d6e1 !important;
+  color: #3f5366 !important;
   font-weight: 600 !important;
 }
 
@@ -1096,20 +1281,20 @@ body[data-color-mode="light"],
    TABLAS EJECUTIVAS: CONTENEDOR CON RELIEVE Y FILAS PULIDAS
    ========================================================================== */
 [data-color-mode="light"] .overflow-x-auto.rounded-xl {
-  background-color: #ffffff !important;
-  border: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  background-color: #eff5f9 !important;
+  border: 1px solid var(--hielo-border) !important;
+  box-shadow: 0 1px 3px rgba(22, 40, 58, 0.04) !important;
 }
 
 [data-color-mode="light"] thead,
 [data-color-mode="light"] thead.bg-\[\#0a0a0f\] {
-  background-color: #f8fafc !important;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  background-color: #e4edf3 !important;
+  border-bottom: 1px solid var(--hielo-border) !important;
 }
 
 [data-color-mode="light"] thead th,
 [data-color-mode="light"] thead .text-slate-400 {
-  color: #64748b !important;
+  color: #4f6273 !important;
   font-weight: 700 !important;
   font-size: 0.72rem !important;
   letter-spacing: 0.05em !important;
@@ -1117,89 +1302,91 @@ body[data-color-mode="light"],
 }
 
 [data-color-mode="light"] tbody tr {
-  background-color: #ffffff !important;
+  background-color: #eff5f9 !important;
   transition: background-color 0.15s ease !important;
 }
 
 [data-color-mode="light"] tbody tr:hover,
 [data-color-mode="light"] tr.hover\:bg-\[\#1a1a2e\]:hover {
-  background-color: #f8fafc !important;
+  background-color: #e4edf3 !important;
 }
 
 [data-color-mode="light"] .divide-\[\#2d2d44\] > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgba(15, 23, 42, 0.06) !important;
+  border-color: var(--hielo-border-soft) !important;
 }
 
 [data-color-mode="light"] td {
-  color: #1e293b !important;
+  color: #263a4e !important;
   font-size: 0.82rem !important;
 }
 
 [data-color-mode="light"] td .text-white {
-  color: #0f172a !important;
+  color: #16283a !important;
   font-weight: 600 !important;
 }
 
 [data-color-mode="light"] td .font-mono.text-slate-400 {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 /* ==========================================================================
    BOTONES Y CONTROLES TÁCTILES
    ========================================================================== */
 
-/* Botón Lección Completada en LessonMetaBar */
+/* Conmutadores (aria-pressed): Lección completada, vista de cuadrícula/lista…
+   El pulsado sigue el acento elegido; antes era violeta fijo con cualquier
+   acento. Acento sobre su tinte: 5,1:1 o más con los cuatro acentos. */
 [data-color-mode="light"] button[aria-pressed="true"] {
-  background-color: #faf5ff !important;
-  border: 1px solid #e9d5ff !important;
-  color: #6d28d9 !important;
+  background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.35) !important;
+  color: var(--color-brand-cyan) !important;
   font-weight: 600 !important;
 }
 [data-color-mode="light"] button[aria-pressed="false"] {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #334155 !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--hielo-border-soft) !important;
+  color: var(--color-ink-soft) !important;
 }
 
-/* Botones de Acción de Tabla */
+/* Botones de Acción de Tabla. Siguen el acento elegido. Los enlaces de texto
+   con clase text-brand-cyan (como «Ver más», que se subrayan al pasar) quedan
+   fuera: son enlaces, no botones con fondo. */
 [data-color-mode="light"] button[title*="Matricular"],
-[data-color-mode="light"] button.text-brand-cyan {
-  background-color: #ecfeff !important;
-  border: 1px solid #a5f3fc !important;
-  color: #0e7490 !important;
+[data-color-mode="light"] button.text-brand-cyan:not(.hover\:underline) {
+  background-color: rgba(var(--brand-accent-rgb), 0.1) !important;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.35) !important;
+  color: var(--color-brand-cyan) !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
-  box-shadow: 0 1px 2px rgba(14, 116, 144, 0.05) !important;
-  transition: all 0.15s ease !important;
+  box-shadow: none !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease !important;
 }
 [data-color-mode="light"] button[title*="Matricular"]:hover,
-[data-color-mode="light"] button.text-brand-cyan:hover {
-  background-color: #cffafe !important;
-  border-color: #67e8f9 !important;
-  color: #0891b2 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 5px rgba(14, 116, 144, 0.1) !important;
+[data-color-mode="light"] button.text-brand-cyan:not(.hover\:underline):hover {
+  background-color: rgba(var(--brand-accent-rgb), 0.16) !important;
+  border-color: rgba(var(--brand-accent-rgb), 0.55) !important;
+  color: var(--color-brand-cyan) !important;
 }
 
 [data-color-mode="light"] button[title*="Strike"] {
-  background-color: #fffbeb !important;
-  border: 1px solid #fde68a !important;
-  color: #b45309 !important;
+  background-color: rgba(152, 69, 6, 0.1) !important;
+  border: 1px solid rgba(152, 69, 6, 0.3) !important;
+  color: #984506 !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
   box-shadow: 0 1px 2px rgba(180, 83, 9, 0.05) !important;
   transition: all 0.15s ease !important;
 }
 [data-color-mode="light"] button[title*="Strike"]:hover {
-  background-color: #fef3c7 !important;
-  border-color: #fcd34d !important;
+  background-color: rgba(152, 69, 6, 0.16) !important;
+  border-color: rgba(152, 69, 6, 0.45) !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 2px 5px rgba(180, 83, 9, 0.1) !important;
 }
 
 [data-color-mode="light"] button[title*="Suspender"] {
-  background-color: #fef2f2 !important;
-  border: 1px solid #fecaca !important;
+  background-color: rgba(185, 28, 28, 0.08) !important;
+  border: 1px solid rgba(185, 28, 28, 0.28) !important;
   color: #b91c1c !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
@@ -1207,8 +1394,8 @@ body[data-color-mode="light"],
   transition: all 0.15s ease !important;
 }
 [data-color-mode="light"] button[title*="Suspender"]:hover {
-  background-color: #fee2e2 !important;
-  border-color: #fca5a5 !important;
+  background-color: rgba(185, 28, 28, 0.14) !important;
+  border-color: rgba(185, 28, 28, 0.4) !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 2px 5px rgba(185, 28, 28, 0.1) !important;
 }
@@ -1228,41 +1415,83 @@ body[data-color-mode="light"],
 [data-color-mode="light"] textarea[class*="bg-slate-"],
 [data-color-mode="light"] input:not(.academy-compound-input)[class*="bg-canvas"],
 [data-color-mode="light"] textarea[class*="bg-canvas"] {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #0f172a !important;
+  background-color: #eff5f9 !important;
+  border: 1px solid var(--hielo-border) !important;
+  color: #16283a !important;
   border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  box-shadow: 0 1px 2px rgba(22, 40, 58, 0.04) !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
-[data-color-mode="light"] select option {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
+/* Buscadores del panel de mentoría: el cuadro lo dibuja la etiqueta que los
+   envuelve y el input va sin borde ni fondo (así es en modo oscuro). La regla
+   global de arriba le ponía un segundo borde en claro: cuadro dentro de cuadro. */
+[data-color-mode="light"] [data-mentor-ui="modern"] .mentor-mentee-search input {
+  border: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
+/* Buscador de cursos del editor de portada (Admin → Portal → Cursos): era una
+   píldora negra fija (#0a0a0f, texto blanco) también en modo claro. */
+[data-color-mode="light"] .landing-featured-search {
+  border-color: var(--hielo-border);
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+[data-color-mode="light"] .landing-featured-search input { color: var(--color-ink); }
+[data-color-mode="light"] .landing-featured-search input::placeholder { color: #566a7c; }
+[data-color-mode="light"] .landing-featured-search .admin-search-field__clear {
+  border-color: var(--hielo-border);
+  background: var(--color-raised);
+  color: var(--color-ink);
+}
+[data-color-mode="light"] .landing-featured-search .admin-search-field__clear:hover { border-color: var(--hielo-border-strong); }
+
+/* Marcas dibujadas sobre el acento en los paneles de mentoría (casillas,
+   botones de opción, número del paso activo). Eran un oscuro fijo (#071317):
+   sobre el acento profundo del modo claro quedaban en 2,9:1. En blanco, 6,5:1
+   o más con los cuatro acentos. */
+[data-color-mode="light"] [data-mentor-ui="modern"] .mentee-sheet .roster-option input[type="checkbox"]::before,
+[data-color-mode="light"] [data-mentor-ui="modern"] .mentor-youtube-panel :is(.yt-video__pick, .yt-check) input[type="checkbox"]::before {
+  border-color: #ffffff;
+}
+[data-color-mode="light"] [data-mentor-ui="modern"] .mentee-sheet .quiz-option input[type="radio"]::before {
+  background: #ffffff;
+}
+[data-color-mode="light"] [data-mentor-ui="modern"] .mentor-youtube-panel .yt-steps li[data-state="current"] .yt-steps__dot {
+  color: #ffffff;
+}
+
+[data-color-mode="light"] select option {
+  background-color: #eff5f9 !important;
+  color: #16283a !important;
+}
+
+/* Placeholder Hielo: 5,1:1 sobre tarjeta y 4,7:1 sobre el fondo (antes
+   #94a3b8, 2,3:1), y claramente más suave que el texto escrito (#16283a). */
 [data-color-mode="light"] input::placeholder,
 [data-color-mode="light"] textarea::placeholder,
 [data-color-mode="light"] input[class*="bg-slate-"]::placeholder,
 [data-color-mode="light"] textarea[class*="bg-slate-"]::placeholder {
-  color: #94a3b8 !important;
+  color: #566a7c !important;
 }
 
 /* Modales y Overlays en Modo Claro */
 [data-color-mode="light"] .fixed.inset-0.bg-\[\#0a0a0f\]\/85,
 [data-color-mode="light"] .fixed.inset-0.bg-black\/70,
 [data-color-mode="light"] .fixed.inset-0.bg-black\/80 {
-  background-color: rgba(15, 23, 42, 0.45) !important;
+  background-color: rgba(22, 40, 58, 0.45) !important;
   backdrop-filter: blur(8px) !important;
 }
 
 /* Interacciones hover en Modo Claro */
 [data-color-mode="light"] .hover\:text-white:hover {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] .hover\:bg-slate-900:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #dae5ed !important;
 }
 
 /* Mantener botones primarios vivos con texto blanco */
@@ -1458,7 +1687,7 @@ body[data-color-mode="light"],
 
 [data-color-mode="light"] .btn-constellation-ghost,
 .mode-light .btn-constellation-ghost {
-  color: #0f172a;
+  color: #16283a;
 }
 
 .btn-constellation-ghost:hover {
@@ -1621,3 +1850,160 @@ html[data-festividad="navidad"] .selection\:bg-\[\#06b6d4\]::selection {
 [data-color-mode="light"] .app-media-surface .text-white { color: #ffffff !important; }
 [data-color-mode="light"] .app-media-surface :is(.text-zinc-300, .text-slate-300) { color: #d4d4d8 !important; }
 [data-color-mode="light"] .app-media-surface :is(.text-zinc-400, .text-slate-400) { color: #a1a1aa !important; }
+
+/* ==========================================================================
+   TRANSICIÓN AL CAMBIAR DE MODO (src/lib/themeTransition.ts)
+
+   Revelado circular con borde difuminado que nace en el botón. La View
+   Transitions API congela una imagen de cada tema; aquí se quita el fundido
+   por defecto y se anima una máscara sobre la imagen nueva (--vt-reveal crece
+   desde 0 hasta cubrir la esquina más lejana). Al final de la máscara el
+   degradado pasa de opaco a transparente en --vt-feather píxeles: ese es el
+   borde suave.
+   ========================================================================== */
+@property --vt-reveal {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+html.theme-reveal::view-transition-old(root),
+html.theme-reveal::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html.theme-reveal::view-transition-old(root) { z-index: 1; }
+html.theme-reveal::view-transition-new(root) {
+  z-index: 2;
+  -webkit-mask-image: radial-gradient(circle at var(--vt-x, 100%) var(--vt-y, 0px), #000 calc(var(--vt-reveal) - var(--vt-feather, 180px)), transparent var(--vt-reveal));
+  mask-image: radial-gradient(circle at var(--vt-x, 100%) var(--vt-y, 0px), #000 calc(var(--vt-reveal) - var(--vt-feather, 180px)), transparent var(--vt-reveal));
+}
+
+/* El botón se captura aparte: cambia primero y de él sale la onda. */
+html.theme-reveal .theme-toggle-btn { view-transition-name: theme-toggle; }
+html.theme-reveal::view-transition-old(theme-toggle),
+html.theme-reveal::view-transition-new(theme-toggle) {
+  animation-duration: 260ms;
+  animation-timing-function: ease-out;
+}
+
+/* La G (el canvas de triángulos) se captura aparte para que no se pare al pulsar.
+   Dentro de la imagen del tema, la zona sin revelar es una foto fija y al pulsar
+   los triángulos se quedaban quietos ~150 ms (medido en píxeles; el bucle de
+   dibujo no se detenía, lo que se congelaba era lo que se ve). Como grupo propio,
+   su imagen nueva es EN VIVO: se oculta la vieja y los triángulos siguen
+   moviéndose sin pausa (mayor pausa visible: 150 ms → 21 ms). Dos nombres
+   porque son dos variantes del componente (pantalla completa en escritorio,
+   incrustada en el hero en móvil) y nunca coinciden, pero un nombre repetido
+   anularía la transición entera.
+
+   Un grupo con nombre se pinta SIEMPRE por encima de la imagen principal, así que
+   la G se montaba sobre la barra de navegación, las tarjetas, el banner y el botón
+   del buzón; en la página real va por detrás de todo eso. `--vt-g-clip` (lo calcula
+   themeTransition.ts) es un recorte con una ventana por cada bloque opaco de la
+   interfaz, y devuelve a la G a su sitio. */
+html.theme-reveal .constellation-canvas--full { view-transition-name: brand-g; }
+html.theme-reveal .constellation-canvas--inline { view-transition-name: brand-g-inline; }
+html.theme-reveal::view-transition-group(brand-g),
+html.theme-reveal::view-transition-group(brand-g-inline) { animation: none; clip-path: var(--vt-g-clip, none); }
+html.theme-reveal::view-transition-old(brand-g),
+html.theme-reveal::view-transition-new(brand-g),
+html.theme-reveal::view-transition-old(brand-g-inline),
+html.theme-reveal::view-transition-new(brand-g-inline) { animation: none; mix-blend-mode: normal; }
+html.theme-reveal::view-transition-old(brand-g),
+html.theme-reveal::view-transition-old(brand-g-inline) { opacity: 0; }
+
+/* Movimiento reducido: sin desplazamiento, solo un fundido corto que suaviza el salto de brillo. */
+html.theme-crossfade::view-transition-group(root) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+}
+
+/* Sin View Transitions (Firefox): fundido de colores de 0,4 s mientras dura el cambio. */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition-property: background-color, color, border-color, fill, stroke, box-shadow !important;
+  transition-duration: 400ms !important;
+  transition-timing-function: ease !important;
+  transition-delay: 0s !important;
+}
+html.theme-fade-short,
+html.theme-fade-short *,
+html.theme-fade-short *::before,
+html.theme-fade-short *::after { transition-duration: 160ms !important; }
+
+/* Icono del botón: sol y luna siempre presentes; se muestra uno según el modo
+   de la página y se cruzan girando. Va ligado al atributo de <html>, no al
+   estado de React, para que se anime también sin View Transitions. */
+.theme-toggle-icon { position: relative; display: grid; place-items: center; width: 1rem; height: 1rem; }
+.theme-toggle-icon > svg {
+  grid-area: 1 / 1;
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Oscuro: se ve el sol, porque el botón lleva a claro. */
+:root:not([data-color-mode='light']) .theme-toggle-icon__moon { opacity: 0; transform: rotate(-80deg) scale(0.4); }
+/* Claro: se ve la luna, porque el botón lleva a oscuro. */
+:root[data-color-mode='light'] .theme-toggle-icon__sun { opacity: 0; transform: rotate(80deg) scale(0.4); }
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-icon > svg { transition: opacity 120ms linear; }
+  :root:not([data-color-mode='light']) .theme-toggle-icon__moon,
+  :root[data-color-mode='light'] .theme-toggle-icon__sun { transform: none; }
+}
+
+/* ── Pulido visual del tema claro (Hielo): un solo acento, menos peso y quietud ──
+   Todo va bajo html.mode-light, así que el modo oscuro no cambia. */
+
+/* Un solo acento: los botones de la academia usan el acento elegido, no el verde de Navidad. */
+html.mode-light[data-festividad="navidad"] .academy-experience .academy-button {
+  background: var(--color-brand-cyan);
+  color: var(--color-on-brand);
+}
+html.mode-light[data-festividad="navidad"] .academy-experience .academy-button:hover {
+  background: var(--color-brand-blue);
+}
+html.mode-light[data-festividad="navidad"] .academy-experience .academy-button:focus-visible,
+html.mode-light[data-festividad="navidad"] .academy-experience .academy-text-button:focus-visible {
+  outline-color: var(--color-brand-cyan);
+}
+
+/* Banner de festividad claro: superficie Hielo con tinta, en vez de la franja casi negra. */
+html.mode-light .seasonal-banner {
+  background-color: var(--color-raised) !important;
+  color: var(--color-ink) !important;
+  border-bottom: 1px solid var(--hielo-border-soft);
+}
+html.mode-light .seasonal-banner__stripe {
+  height: 2px;
+  opacity: 0.55;
+}
+
+/* El destello del gorro queda quieto: es lo único que latía sin parar. */
+html.mode-light .festive-hat-twinkle { animation: none; }
+
+/* Logo del pie: marco plano, sin el degradado cian-violeta-rosa. */
+html.mode-light .footer-logo-frame {
+  background: var(--hielo-border) !important;
+}
+
+/* Programa destacado: borde neutro, etiqueta en tinte suave y aro de la portada sin ámbar. */
+html.mode-light .catalog-featured-glow { border-color: var(--hielo-border) !important; }
+html.mode-light .catalog-featured-glow:hover { border-color: var(--hielo-border-strong) !important; }
+html.mode-light .catalog-featured-glow img { --tw-ring-color: var(--hielo-border) !important; }
+html.mode-light .catalog-featured-glow .featured-badge.bg-brand-cyan {
+  background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
+  color: var(--color-brand-cyan) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--brand-accent-rgb), 0.3);
+}
+
+/* Iconos de «Un entorno pensado para aprender»: tinta secundaria, el acento queda para la acción. */
+html.mode-light .academy-method__item > svg { color: var(--color-ink-soft); }
+
+/* Navegación: el enlace activo en 600 y sin ensanchar el texto (los demás no se mueven). */
+html.mode-light .academy-ui .academy-navigation > button[aria-current='page'] { font-weight: 600; }
+html.mode-light .academy-ui .academy-hero__title,
+html.mode-light .lp-hero-title { font-weight: 600; }
+
+/* Filtros del catálogo: misma altura de control (44 px). */
+html.mode-light .academy-ui .course-category-filter > summary { min-height: 2.75rem; height: 2.75rem; box-sizing: border-box; }

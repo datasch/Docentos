@@ -79,6 +79,8 @@ export interface CourseResource {
   id: string;
   courseId: string;
   moduleId?: string | null;
+  /** Lección a la que pertenece; sin ella el recurso es del módulo o del curso. */
+  videoId?: string | null;
   title: string;
   description?: string | null;
   kind: 'FILE' | 'LINK';

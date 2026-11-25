@@ -189,7 +189,11 @@
     "syncSessionsSubtitle": "Sessões ao vivo e aulas gravadas sob demanda do curso.",
     "noSessionsScheduled": "Nenhuma sessão agendada ainda",
     "mentorWillSchedule": "Seu mentor agendará aulas síncronas e gravações neste espaço.",
-    "generalSessions": "Sessões Gerais do Curso"
+    "generalSessions": "Sessões Gerais do Curso",
+    "resourcesEmptyLesson": "Esta aula ainda não tem materiais. Quando forem adicionados, aparecerão aqui.",
+    "resourcesThisLesson": "Esta aula",
+    "resourcesNoneForLesson": "Esta aula não tem materiais próprios.",
+    "resourcesGeneral": "Material geral do módulo e do curso"
   },
   "paywall": {
     "menteeTag": "Conta Mentee • Sem Cobrança",
@@ -3108,5 +3112,11 @@
   "eliminarElExamen": "Excluir a prova",
   "seBorraranLasLengthPreguntasDe": "As {{length}} perguntas de",
   "maxwidth640px92vwMaxwidth1024px90vw520px": "(max-width: 640px) 92vw, (max-width: 1024px) 90vw, 520px",
-  "maxwidth768px92vwMaxwidth1024px45vw393px": "(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px"
+  "maxwidth768px92vwMaxwidth1024px45vw393px": "(max-width: 768px) 92vw, (max-width: 1024px) 45vw, 393px",
+  "misionCompletadaBloqueada": "Missão concluída: o progresso fica salvo e não pode ser desmarcado.",
+  "titleCompletadaNoSeDesmarca": "{{title}}: concluída",
+  "lessonAutoCompleteIn": "Será concluída em {{seconds}} s",
+  "lessonAutoCompleteShort": "{{seconds}} s",
+  "asignarALeccion": "Atribuir à aula (opcional)",
+  "materialGeneralDelModulo": "Material geral do módulo"
 }

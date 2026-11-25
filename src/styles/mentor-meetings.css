@@ -565,7 +565,7 @@
 
 /* Confirmación de eliminar. */
 [data-mentor-ui='modern'] .mentor-confirm {
-  --course-line: color-mix(in srgb, var(--mentor-text) 10%, transparent);
+  --course-line: var(--hielo-course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent));
   --course-ease: cubic-bezier(0.22, 1, 0.36, 1);
   width: min(420px, calc(100vw - 32px));
   max-width: none;

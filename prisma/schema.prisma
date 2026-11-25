@@ -427,6 +427,7 @@ model VideoDriveLink {
   progress    UserProgress[]
   videoNotes  VideoNote[]
   watches     VideoWatch[]
+  resources   CourseResource[]
   /// Duración real del medio en segundos, para exigir el 90% visto.
   /// El campo `duration` es texto libre ('20:00' por defecto) y no sirve.
   mediaDurationSeconds Int?
@@ -505,6 +506,10 @@ model CourseResource {
   course         Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   moduleId       String?
   module         Module?       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  /// Lección a la que pertenece. Sin ella el recurso es del módulo (o del curso
+  /// si tampoco hay módulo). Si la lección se borra, el recurso vuelve al módulo.
+  videoId        String?
+  video          VideoDriveLink? @relation(fields: [videoId], references: [id], onDelete: SetNull)
   title          String
   description    String?
   kind           ResourceKind  @default(FILE)
@@ -519,6 +524,7 @@ model CourseResource {
 
   @@index([courseId, order])
   @@index([moduleId, order])
+  @@index([videoId])
   @@index([externalFileId])
 }
 

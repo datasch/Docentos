@@ -32,18 +32,18 @@ body.academy-ui {
 
 :root[data-color-mode='light'],
 body.academy-ui[data-color-mode='light'] {
-  --color-canvas: #f5f7fb;
-  --color-surface: #ffffff;
-  --color-raised: #edf1f7;
-  --color-elevated: #e5ebf4;
-  --color-card: #ffffff;
-  --color-line: #d8e0ed;
-  --color-line-strong: #a1afc5;
-  --color-ink: #182235;
-  --color-ink-soft: #47576e;
-  --color-ink-muted: #526079;
-  --color-ink-faint: #64748b;
-  --academy-panel-shadow: 0 24px 64px rgb(24 34 53 / 14%);
+  --color-canvas: #e4edf3;
+  --color-surface: #eff5f9;
+  --color-raised: #dae5ed;
+  --color-elevated: #d2dfe9;
+  --color-card: #eff5f9;
+  --color-line: var(--hielo-border, #a6b8c7);
+  --color-line-strong: var(--hielo-border-strong, #8ea3b5);
+  --color-ink: #16283a;
+  --color-ink-soft: #2f4256;
+  --color-ink-muted: #3f5366;
+  --color-ink-faint: #4f6273;
+  --academy-panel-shadow: 0 24px 64px rgb(22 40 58 / 12%);
   color-scheme: light;
 }
 :root[data-color-mode='dark'] { color-scheme: dark; }
@@ -1060,3 +1060,7 @@ body.academy-ui {
 .player-loading-overlay--rebuffer {
   animation-delay: 500ms;
 }
+
+/* Scroll interno sin barra visible: se sigue pudiendo desplazar con rueda, tacto y teclado. */
+.scroll-invisible { scrollbar-width: none; -ms-overflow-style: none; }
+.scroll-invisible::-webkit-scrollbar { display: none; }

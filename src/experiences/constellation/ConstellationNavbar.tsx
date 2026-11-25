@@ -149,9 +149,11 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
     setLangOpen(false);
   };
 
+  // El estado del botón se actualiza con el evento `docentos-theme-change`, que se
+  // dispara cuando el tema ya cambió: así la imagen "vieja" de la transición no
+  // llega con el icono ya cambiado.
   const handleToggleTheme = () => {
-    const next = toggleColorMode();
-    setColorModeState(next);
+    toggleColorMode();
   };
 
   const isStaff = currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR');
@@ -260,7 +262,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           <div className="lp-menu-anchor" ref={langRef}>
             <button
               type="button"
-              className="flex items-center justify-center gap-1.5 min-h-11 min-w-11 px-2 sm:px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white text-xs transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+              className="flex items-center justify-center gap-1.5 min-h-11 min-w-11 px-2 sm:px-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-white/70 hover:text-slate-900 dark:hover:text-white text-xs transition-colors border border-slate-200 dark:border-white/[0.06] cursor-pointer"
               onClick={() => {
                 setLangOpen((open) => !open);
                 setProfileOpen(false);
@@ -300,13 +302,13 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           <button
             onClick={handleToggleTheme}
             title={colorMode === 'dark' ? t('nav.themeLight', 'Modo Blanco / Claro') : t('nav.themeDark', 'Modo Oscuro')}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+            className="theme-toggle-btn inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/[0.06] cursor-pointer"
           >
-            {colorMode === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-slate-700" />
-            )}
+            {/* Los dos iconos están siempre; el CSS muestra uno según el modo de la página y los rota al cambiar. */}
+            <span className="theme-toggle-icon" aria-hidden="true">
+              <Sun className="theme-toggle-icon__sun w-4 h-4 text-amber-400" />
+              <Moon className="theme-toggle-icon__moon w-4 h-4 text-slate-700" />
+            </span>
           </button>
 
           {/* Perfil de usuario con menú desplegable (matching diseño oficial DocentOS) */}
@@ -314,7 +316,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
             <div className="lp-menu-anchor" ref={profileRef}>
               <button
                 type="button"
-                className="lp-user-profile flex min-h-11 items-center gap-1.5 p-0.5 rounded-full hover:opacity-90 transition-all cursor-pointer border-0 bg-transparent"
+                className="lp-user-profile flex min-h-11 items-center gap-1.5 p-0.5 rounded-full hover:opacity-90 transition-opacity cursor-pointer border-0 bg-transparent"
                 onClick={() => {
                   setProfileOpen((prev) => !prev);
                   setLangOpen(false);

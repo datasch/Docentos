@@ -306,7 +306,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
 
   if (loadingCourse) {
     return (
-      <div className="constellation-viewer-root w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
+      <div className="constellation-viewer-root w-full min-h-screen bg-canvas dark:bg-[#07070b] text-ink dark:text-white flex flex-col items-center justify-center p-6 select-none relative overflow-hidden">
         {/* Nebulosas de fondo */}
         <div className="absolute top-1/3 left-1/3 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-brand-cyan/15 rounded-full blur-3xl pointer-events-none" />
@@ -330,7 +330,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   }
 
   return (
-    <div className="constellation-viewer-root w-full min-h-screen bg-[#f8fafc] dark:bg-[#07070b] text-slate-900 dark:text-white">
+    <div className="constellation-viewer-root w-full min-h-screen bg-canvas dark:bg-[#07070b] text-ink dark:text-white">
       {/* Barra superior de contexto en Constellation */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 pb-2 flex flex-wrap items-center justify-between gap-4">
         <div className="flex w-full min-w-0 flex-1 items-center gap-2">
@@ -352,7 +352,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
             onClick={handleOpenActiveLesson}
             className="academy-button min-h-11 shrink-0 whitespace-nowrap"
           >
-            <Play className="w-3.5 h-3.5 fill-current text-brand-cyan" />
+            <Play aria-hidden className="w-3.5 h-3.5 fill-current" />
             <span>{t('viewer.viewLesson', 'Ver lección')}</span>
           </button>
           <CourseShareButton course={course} />

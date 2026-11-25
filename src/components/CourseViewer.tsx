@@ -79,13 +79,16 @@ import { CoursePanel, PanelTabId } from './course/CoursePanel';
 import { DocentOSPlayer } from './course/DocentOSPlayer';
 import { SyllabusTree } from './course/SyllabusTree';
 import { NotesPanel } from './course/NotesPanel';
-import { ResourcesPanel } from './course/ResourcesPanel';
+import { ResourcesPanel, groupResources } from './course/ResourcesPanel';
 import { SessionsPanel } from './course/SessionsPanel';
 import { MentorshipPanel } from './course/MentorshipPanel';
 import { LessonMetaBar, MobileLessonBar } from './course/LessonMetaBar';
 
 const LOCKED_NEXT_MESSAGE =
-  'Para pasar a la siguiente lección, mira al menos el 90% de este video y márcalo como completado.';
+  'Para pasar a la siguiente lección, termina de ver este video: se marcará como completado solo.';
+
+/** Segundos finales del video en los que se muestra la cuenta regresiva de completado. */
+const AUTO_COMPLETE_SECONDS = 10;
 
 interface CourseViewerProps {
 
@@ -243,8 +246,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     window.history.replaceState(window.history.state, '', url);
   }, [isModal]);
   const [theaterMode, setTheaterMode] = useState(false);
-  const totalResources =
-    (course.resources?.length || 0) + (course.modules || []).reduce((sum, module) => sum + (module.resources?.length || 0), 0);
 
   useEffect(() => {
     if (hideSyllabus && activePanel === 'syllabus') {
@@ -855,6 +856,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const [justUnlockedVideoId, setJustUnlockedVideoId] = useState<string | null>(null);
   // Las respuestas del servidor llegan tarde: se llama siempre a la versión más reciente.
   const unlockRef = useRef<(videoId: string, animate: boolean) => void>(() => {});
+  // Cuenta regresiva de los últimos segundos y control de que la lección se
+  // complete sola una única vez desde la lectura del reproductor.
+  const [autoCountdown, setAutoCountdown] = useState<{ videoId: string; seconds: number } | null>(null);
+  const autoFiredRef = useRef<string | null>(null);
+  const autoArmedRef = useRef<string | null>(null);
+  const canUncompleteProgress = currentUser?.role === 'ADMIN';
+  // Al cambiar de lección se reinicia la cuenta regresiva y el disparo automático.
+  useEffect(() => {
+    autoFiredRef.current = null;
+    autoArmedRef.current = null;
+    setAutoCountdown(null);
+  }, [currentVideo?.id]);
 
   const persistWatchRanges = (videoId: string, ranges: WatchRanges) => {
     if (!currentUser?.id) return;
@@ -966,6 +979,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     // quede fija y no sea sobrescrita por el useEffect de auto-resumen.
     setPickedByUser(true);
     const isCompleted = !completedVideos[videoId];
+
+    // Una lección completada no se desmarca (solo administración puede reiniciarla).
+    if (!isCompleted && !canUncompleteProgress) return false;
 
     // Validación estricta: para marcar una misión como completada el usuario DEBE
     // haber visto el video hasta el final y completado el examen si lo exige
@@ -1085,6 +1101,18 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     setWatchedVideos((prev) => (prev[videoId] ? prev : { ...prev, [videoId]: true }));
     if (currentUser?.id) localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
     if (animate && !alreadyWatched && !completedVideos[videoId]) setJustUnlockedVideoId(videoId);
+    // El video ya terminó y faltaba la confirmación del servidor: se completa ahora.
+    if (autoArmedRef.current === videoId) autoCompleteLesson(videoId);
+  };
+
+  // Completa la lección sin que el alumno pulse nada. Solo actúa si el servidor
+  // ya confirmó el 90% visto (marca local) y, en la última lección del módulo,
+  // si el examen está aprobado; nunca muestra errores por no cumplir.
+  const autoCompleteLesson = (videoId: string) => {
+    if (!currentUser?.id || completedVideos[videoId]) return;
+    if (localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) !== 'true') return;
+    if (isLastLessonOfModule && !isQuizPassed) return;
+    void toggleVideoCompletion(videoId, false, { advance: false });
   };
   unlockRef.current = unlockAfterCleanWatch;
 
@@ -1129,6 +1157,22 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     const fraction = watchedFraction(state.ranges, state.duration);
     if (after !== before) persistWatchRanges(videoId, state.ranges);
 
+    // Cuenta regresiva de los últimos segundos: solo si, viendo lo que queda,
+    // la lección llegará al 90% (quien adelantó el video no la completa sola).
+    const remaining = state.duration - time;
+    const willQualify =
+      state.duration > 0 && Number.isFinite(remaining) && fraction + Math.max(remaining, 0) / state.duration >= WATCH_THRESHOLD;
+    if (!completedVideos[videoId] && willQualify && remaining > 0 && remaining <= AUTO_COMPLETE_SECONDS) {
+      const seconds = Math.ceil(remaining);
+      setAutoCountdown((prev) => (prev && prev.videoId === videoId && prev.seconds === seconds ? prev : { videoId, seconds }));
+    } else {
+      setAutoCountdown((prev) => (prev ? null : prev));
+    }
+    if (willQualify && remaining <= 0.5 && autoFiredRef.current !== videoId) {
+      autoFiredRef.current = videoId;
+      autoCompleteLesson(videoId);
+    }
+
     const hb = heartbeatRef.current;
     if (hb.inFlight) return;
     const reachedLocally = fraction >= WATCH_THRESHOLD;
@@ -1142,10 +1186,16 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     }
   };
 
-  const handlePlayerEnded = () => {
+  const handlePlayerEnded = async () => {
     if (selectedMeetingPlayback || !currentVideo) return;
-    // Último envío al terminar: si con él llega al 90%, se habilita el botón.
-    if (supportsPlaybackTracking(currentVideo)) void sendHeartbeat(currentVideo.id);
+    setAutoCountdown(null);
+    if (!supportsPlaybackTracking(currentVideo)) return;
+    // Último envío al terminar: si con él llega al 90%, la lección se completa
+    // sola; si la confirmación del servidor llega después, unlockAfterCleanWatch
+    // la completa al recibirla.
+    autoArmedRef.current = currentVideo.id;
+    await sendHeartbeat(currentVideo.id);
+    autoCompleteLesson(currentVideo.id);
   };
 
   // Detección automática al terminar el video (protocolo postMessage del IFrame API de YouTube / Vimeo / <video>)
@@ -1355,7 +1405,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     currentLessonIndex !== -1 &&
     lessons.slice(currentLessonIndex + 1).some((l) => Boolean(completedVideos[l.videoId]))
   );
-  const canUncompleteLesson = !hasSubsequentCompleted;
+  const canUncompleteLesson = canUncompleteProgress && !hasSubsequentCompleted;
 
   // Validación estricta para desbloquear la misión:
   // 1. Debe haber visto el video completo (detectado automáticamente o persistido, o si ya tiene misiones posteriores completadas).
@@ -1917,6 +1967,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
                     highlightComplete={justUnlockedVideoId === currentVideo.id && !isCurrentCompleted}
+                    autoCompleteIn={!isCurrentCompleted && autoCountdown?.videoId === currentVideo.id ? autoCountdown.seconds : null}
                     onPrevious={() => previousLesson && goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
                     onNext={() => nextLesson && goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
@@ -1936,6 +1987,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     canUncomplete={canUncompleteLesson}
                     lockedReason={lessonLockedReason}
                     highlightComplete={justUnlockedVideoId === currentVideo.id && !isCurrentCompleted}
+                    autoCompleteIn={!isCurrentCompleted && autoCountdown?.videoId === currentVideo.id ? autoCountdown.seconds : null}
                     onToggleComplete={() => toggleVideoCompletion(currentVideo.id)}
                     playbackUrl={showsPlayer ? (resolvedPlaybackUrls[currentVideo.id] || currentVideo.playbackUrl || videoSource?.originalUrl || (videoSource?.videoId ? `https://www.youtube.com/watch?v=${videoSource.videoId}` : undefined)) : undefined}
                     isLive={Boolean(currentVideo.isLive || (activeLiveMeeting && activeLiveMeeting.id === currentVideo.id))}
@@ -1995,7 +2047,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               temario; en móvil o modal es un bloque de altura adaptable y responsivo que
               crece de forma dinámica con el contenido (sesiones, notas, mentoría). */}
           <div className={theaterMode ? 'flex flex-col lg:mt-4' : `lg:relative flex flex-col ${isModal ? 'lg:col-span-5 lg:self-start' : 'lg:col-span-4'}`}>
-            <div className={`h-auto min-h-0 flex flex-col px-4 ${isModal ? 'max-h-none lg:relative lg:h-auto lg:px-0' : 'max-h-[70vh] lg:absolute lg:inset-0 lg:h-auto lg:max-h-none lg:px-0'}`}>
+            <div className={`h-auto min-h-0 flex flex-col px-4 ${isModal ? 'max-h-[70dvh] lg:relative lg:h-auto lg:max-h-[calc(100dvh-13rem)] lg:px-0' : 'max-h-[70vh] lg:absolute lg:inset-0 lg:h-auto lg:max-h-none lg:px-0'}`}>
               <CoursePanel
                 active={activePanel}
                 onChange={setActivePanel}
@@ -2026,6 +2078,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                                 onOpenQuiz={abrirExamen}
                                 quizOpenModuleIndex={examenActivo ? examenModuleIndex : null}
                                 onToggleComplete={toggleVideoCompletion}
+                                canUncomplete={canUncompleteProgress}
                                 onOpenPaywall={currentUser?.role === 'MENTEE' ? () => {} : onOpenPaywall}
                               />
                             </div>
@@ -2051,8 +2104,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     id: 'resources',
                     label: t('viewer.resourcesTab', 'Recursos'),
                     icon: FolderOpen,
-                    count: totalResources,
-                    content: <ResourcesPanel course={course} activeModuleIndex={activeModuleIndex} />,
+                    count: (() => {
+                      const shown = groupResources(course, activeModuleIndex, currentVideo?.id);
+                      return shown.lesson.length + shown.general.length;
+                    })(),
+                    content: <ResourcesPanel course={course} activeModuleIndex={activeModuleIndex} activeVideoId={currentVideo?.id} />,
                   },
                   {
                     id: 'notes',

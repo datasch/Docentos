@@ -2085,10 +2085,21 @@ app.post(
           }
 
           if (resources.length > 0) {
+            // Lección de cada recurso (mismo nombre base en Drive): se resuelve
+            // contra la base porque `createMany` no devuelve los ids creados.
+            const lessonDriveIds = [...new Set(resources.map((r) => r.lessonDriveFileId).filter((v): v is string => Boolean(v)))];
+            const lessonRows = lessonDriveIds.length
+              ? await tx.videoDriveLink.findMany({
+                  where: { moduleId: slot.id, driveFileId: { in: lessonDriveIds } },
+                  select: { id: true, driveFileId: true },
+                })
+              : [];
+            const lessonIdByDrive = new Map(lessonRows.map((row) => [row.driveFileId, row.id]));
             await tx.courseResource.createMany({
               data: resources.map((resource, index) => ({
                 courseId: id,
                 moduleId: slot!.id,
+                videoId: resource.lessonDriveFileId ? lessonIdByDrive.get(resource.lessonDriveFileId) ?? null : null,
                 title: resource.title,
                 description: resource.isSubtitle ? 'Subtítulos de la lección.' : null,
                 kind: 'FILE' as const,
@@ -2379,6 +2390,14 @@ app.post(
     }
 
     if (completed === false) {
+      // Una lección completada queda completada: solo administración puede
+      // reiniciar el progreso (el alumno ya demostró haberla visto).
+      if (req.user!.role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Una lección completada no se puede desmarcar.',
+          code: 'PROGRESS_LOCKED',
+        });
+      }
       await prisma.userProgress.deleteMany({ where: { userId: req.user!.id, videoId } });
     } else {
       // El servidor decide el 90%: completar una lección medida exige haberla
@@ -5377,10 +5396,23 @@ app.post(
       return res.status(400).json({ error: 'El título y la URL privada del recurso son obligatorios.' });
     }
 
+    // Una lección pertenece a un módulo del curso: de ella se deduce el módulo.
+    const lessonId = req.body.videoId ? String(req.body.videoId) : null;
+    let moduleId: string | null = req.body.moduleId || null;
+    if (lessonId) {
+      const lesson = await prisma.videoDriveLink.findFirst({
+        where: { id: lessonId, module: { courseId: req.params.courseId } },
+        select: { moduleId: true },
+      });
+      if (!lesson) return res.status(400).json({ error: 'La lección no pertenece a este curso.' });
+      moduleId = lesson.moduleId;
+    }
+
     const resource = await prisma.courseResource.create({
       data: {
         courseId: req.params.courseId,
-        moduleId: req.body.moduleId || null,
+        moduleId,
+        videoId: lessonId,
         title,
         description: req.body.description ? String(req.body.description).trim() : null,
         kind: req.body.kind || 'FILE',
@@ -5412,9 +5444,24 @@ app.put(
     if (!safeExternalUrl(privateUrl, config.DOCENTOS_ENV === 'development')) {
       return res.status(400).json({ error: 'URL privada del recurso no permitida.' });
     }
+    // `videoId: null` quita la asignación a lección (queda en su módulo).
+    let placement: { videoId: string | null; moduleId?: string | null } | null = null;
+    if (req.body.videoId !== undefined) {
+      if (req.body.videoId === null || req.body.videoId === '') {
+        placement = { videoId: null };
+      } else {
+        const lesson = await prisma.videoDriveLink.findFirst({
+          where: { id: String(req.body.videoId), module: { courseId: req.params.courseId } },
+          select: { id: true, moduleId: true },
+        });
+        if (!lesson) return res.status(400).json({ error: 'La lección no pertenece a este curso.' });
+        placement = { videoId: lesson.id, moduleId: lesson.moduleId };
+      }
+    }
     const resource = await prisma.courseResource.update({
       where: { id: existing.id },
       data: {
+        ...(placement ?? {}),
         ...(req.body.title !== undefined ? { title: String(req.body.title).trim() } : {}),
         ...(req.body.description !== undefined ? { description: String(req.body.description).trim() } : {}),
         privateUrl,

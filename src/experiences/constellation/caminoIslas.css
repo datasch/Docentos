@@ -84,46 +84,48 @@ html:not([data-color-mode="light"]) .constellation-viewer-root {
   color: #edeef5 !important;
 }
 
+/* Modo claro "Hielo": fondo y tinta salen de los tokens (antes #f8fafc y #0f172a fijos). */
 html[data-color-mode="light"] .camino-cosmico-fondo,
 html[data-color-mode="light"] .constellation-viewer-root {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: var(--color-canvas) !important;
+  color: var(--color-ink) !important;
 }
 
-/* Tokens y contrastes en Modo Claro */
+/* Tokens y contrastes en Modo Claro. El camino y la isla actual siguen el
+   acento elegido (antes eran violeta fijo con cualquier acento). */
 html[data-color-mode="light"] .camino svg.ruta .ruta-base {
-  stroke: rgba(124, 58, 237, 0.4);
+  stroke: rgba(var(--brand-accent-rgb), 0.4);
 }
 
 html[data-color-mode="light"] .isla-roca {
-  background: linear-gradient(180deg, #ffffff 0 38%, #f1f5f9 39%, #e2e8f0 100%);
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  box-shadow: 0 10px 0 -3px rgba(148, 163, 184, 0.35), 0 16px 20px -10px rgba(15, 23, 42, 0.1);
+  background: linear-gradient(180deg, var(--color-surface) 0 38%, var(--color-raised) 39%, var(--color-elevated) 100%);
+  border: 1px solid var(--hielo-border);
+  box-shadow: 0 10px 0 -3px rgba(142, 163, 181, 0.35), 0 16px 20px -10px rgba(22, 40, 58, 0.12);
 }
 
 html[data-color-mode="light"] .isla .rotulo {
-  background: rgba(255, 255, 255, 0.96);
-  color: #0f172a;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  background: rgba(239, 245, 249, 0.96);
+  color: var(--color-ink);
+  border: 1px solid var(--hielo-border);
+  box-shadow: 0 4px 12px rgba(22, 40, 58, 0.08);
 }
 
 html[data-color-mode="light"] .isla.actual .rotulo {
-  border-color: #7c3aed;
-  box-shadow: 0 0 16px rgba(124, 58, 237, 0.35);
-  color: #0f172a;
+  border-color: var(--color-brand-cyan);
+  box-shadow: 0 0 16px rgba(var(--brand-accent-rgb), 0.3);
+  color: var(--color-ink);
   font-weight: 800;
 }
 
 html[data-color-mode="light"] .isla.cerrada .rotulo {
-  color: #64748b;
-  background: rgba(241, 245, 249, 0.9);
+  color: var(--color-ink-muted);
+  background: rgba(218, 229, 237, 0.9);
 }
 
 html[data-color-mode="light"] .mision-popover {
   background: var(--color-surface);
   border-color: var(--color-line);
-  box-shadow: 0 16px 36px rgb(24 34 53 / 14%);
+  box-shadow: 0 16px 36px rgb(22 40 58 / 14%);
   color: var(--color-ink);
 }
 
@@ -189,71 +191,73 @@ html[data-color-mode="light"] .constellation-mission-modal,
 body[data-color-mode="light"] .constellation-mission-modal,
 html.mode-light .constellation-mission-modal,
 body.mode-light .constellation-mission-modal {
-  --color-canvas: #f8fafc !important;
-  --color-surface: #ffffff !important;
-  --color-raised: #f1f5f9 !important;
-  --color-elevated: #ffffff !important;
-  --color-card: #f8fafc !important;
-  --color-line: rgba(15, 23, 42, 0.08) !important;
-  --color-line-strong: rgba(15, 23, 42, 0.16) !important;
-  --color-ink: #0f172a !important;
-  --color-ink-soft: #1e293b !important;
-  --color-ink-muted: #475569 !important;
-  --color-ink-faint: #64748b !important;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
-  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.18), 0 0 35px rgba(139, 92, 246, 0.08) !important;
+  /* Hielo. Valores literales y no var(): redefinen los mismos tokens, y una
+     referencia a sí mismos sería un ciclo. Iguales a los de academy-system.css. */
+  --color-canvas: #e4edf3 !important;
+  --color-surface: #eff5f9 !important;
+  --color-raised: #dae5ed !important;
+  --color-elevated: #d2dfe9 !important;
+  --color-card: #eff5f9 !important;
+  --color-line: var(--hielo-border) !important;
+  --color-line-strong: var(--hielo-border-strong) !important;
+  --color-ink: #16283a !important;
+  --color-ink-soft: #2f4256 !important;
+  --color-ink-muted: #3f5366 !important;
+  --color-ink-faint: #4f6273 !important;
+  background-color: #eff5f9 !important;
+  color: #16283a !important;
+  border-color: var(--hielo-border) !important;
+  box-shadow: 0 25px 60px -15px rgba(22, 40, 58, 0.22), 0 0 35px rgba(var(--brand-accent-rgb), 0.08) !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .bg-surface,
 .mode-light .constellation-mission-modal .bg-surface {
-  background-color: #ffffff !important;
+  background-color: #eff5f9 !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .bg-card,
 .mode-light .constellation-mission-modal .bg-card {
-  background-color: #f8fafc !important;
+  background-color: #eff5f9 !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .bg-canvas,
 .mode-light .constellation-mission-modal .bg-canvas {
-  background-color: #f8fafc !important;
+  background-color: #e4edf3 !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .bg-raised,
 .mode-light .constellation-mission-modal .bg-raised {
-  background-color: #f1f5f9 !important;
+  background-color: #dae5ed !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .bg-elevated,
 .mode-light .constellation-mission-modal .bg-elevated {
-  background-color: #ffffff !important;
+  background-color: #d2dfe9 !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .border-line,
 .mode-light .constellation-mission-modal .border-line {
-  border-color: rgba(15, 23, 42, 0.08) !important;
+  border-color: var(--hielo-border) !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .text-ink,
 .mode-light .constellation-mission-modal .text-ink {
-  color: #0f172a !important;
+  color: #16283a !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .text-ink-muted,
 .mode-light .constellation-mission-modal .text-ink-muted {
-  color: #475569 !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .text-ink-soft,
 .mode-light .constellation-mission-modal .text-ink-soft {
-  color: #1e293b !important;
+  color: #3f5366 !important;
 }
 
 [data-color-mode="light"] .constellation-mission-modal .text-ink-faint,
 .mode-light .constellation-mission-modal .text-ink-faint {
-  color: #64748b !important;
+  color: #5f7283 !important;
 }
 
 /* ==========================================================================

@@ -23,6 +23,8 @@ interface LessonMetaBarProps {
    * completado» aparece con una animación y se anuncia a lectores de pantalla.
    */
   highlightComplete?: boolean;
+  /** Segundos que faltan para que la lección se complete sola (últimos segundos del video). */
+  autoCompleteIn?: number | null;
 }
 
 /**
@@ -49,6 +51,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
   meetingType,
   meetingUrl,
   highlightComplete = false,
+  autoCompleteIn = null,
 }) => {
   const { t } = useTranslation()
   return (
@@ -96,17 +99,17 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
                 : t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
               : isCompleted
                 ? !canUncomplete
-                  ? t('noPuedesDesmarcarEstaMisionPorqueTienes2', 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas. Para retroceder, desmarca una por una hacia atrás.')
+                  ? t('misionCompletadaBloqueada', 'Misión completada: el avance queda guardado y no se puede desmarcar.')
                   : t('desmarcarMisionCompletada', 'Desmarcar misión completada')
                 : t('marcarMisionComoCompletada', 'Marcar misión como completada')
           }
           className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium transition-all ${
             isCompleted
               ? !canUncomplete
-                ? 'bg-purple-100/70 dark:bg-purple-950/30 text-purple-700/60 dark:text-purple-300/50 border border-purple-200 dark:border-purple-500/20 cursor-not-allowed'
+                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 cursor-default shadow-sm'
                 : 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-500/50 hover:bg-purple-200/80 dark:hover:bg-purple-900/60 cursor-pointer shadow-sm'
               : !canComplete
-                ? 'bg-slate-100 dark:bg-raised/40 text-slate-500 dark:text-ink-muted border border-slate-200 dark:border-line/60 cursor-not-allowed opacity-75'
+                ? 'bg-slate-100 dark:bg-raised/40 text-slate-600 dark:text-ink-muted border border-slate-300 dark:border-line/60 cursor-not-allowed'
                 : 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-200 dark:border-line hover:bg-slate-200/80 dark:hover:bg-line cursor-pointer shadow-sm'
           }`}
         >
@@ -123,7 +126,12 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
                 : t('verVideoParaCompletar', 'Ver video para completar')
               : t('marcarComoCompletado', 'Marcar como completado')}
         </button>
-        {highlightComplete && canComplete && !isCompleted && (
+        {autoCompleteIn !== null && !isCompleted && (
+          <span role="status" className="text-meta font-medium tabular-nums text-ink-soft">
+            {t('lessonAutoCompleteIn', 'Se completará en {{seconds}} s', { seconds: autoCompleteIn })}
+          </span>
+        )}
+        {highlightComplete && canComplete && !isCompleted && autoCompleteIn === null && (
           <span role="status" className="sr-only">{t('yaPuedesMarcarEstaLeccionComoCompletada', 'Ya puedes marcar esta lección como completada.')}</span>
         )}
       </div>
@@ -149,6 +157,8 @@ interface MobileLessonBarProps {
    * completado» aparece con una animación y se anuncia a lectores de pantalla.
    */
   highlightComplete?: boolean;
+  /** Segundos que faltan para que la lección se complete sola. */
+  autoCompleteIn?: number | null;
 }
 
 /**
@@ -167,6 +177,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
   onNext,
   onToggleComplete,
   highlightComplete = false,
+  autoCompleteIn = null,
 }) => {
   const { t } = useTranslation()
   return (
@@ -202,7 +213,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       aria-pressed={isCompleted}
       title={
         isCompleted && !canUncomplete
-          ? t('noPuedesDesmarcarEstaMisionPorqueTienes3', 'No puedes desmarcar esta misión porque tienes misiones posteriores completadas')
+          ? t('misionCompletadaBloqueada', 'Misión completada: el avance queda guardado y no se puede desmarcar.')
           : !isCompleted && !canComplete && lockedReason !== 'quiz'
             ? t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
             : undefined
@@ -210,10 +221,10 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
       className={`${highlightComplete && canComplete && !isCompleted ? 'lesson-complete-ready ' : ''}flex min-w-0 items-center gap-1 rounded-lg px-2 py-2 text-micro font-semibold transition-colors ${
         isCompleted
           ? !canUncomplete
-            ? 'text-purple-600/50 dark:text-purple-300/50 cursor-not-allowed'
+            ? 'text-purple-700 dark:text-purple-300 cursor-default'
             : 'text-purple-700 dark:text-purple-300'
           : !canComplete
-            ? 'text-slate-400 dark:text-ink-muted opacity-60 cursor-not-allowed'
+            ? 'text-slate-600 dark:text-ink-muted cursor-not-allowed'
             : 'text-slate-800 dark:text-ink-soft'
       }`}
     >
@@ -229,7 +240,9 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
             ? lockedReason === 'quiz'
               ? t('examen', 'Examen')
               : t('verVideo', 'Ver video')
-            : t('completar', 'Completar')}
+            : autoCompleteIn !== null
+              ? t('lessonAutoCompleteShort', '{{seconds}} s', { seconds: autoCompleteIn })
+              : t('completar', 'Completar')}
       </span>
     </button>
   </div>

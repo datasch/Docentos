@@ -326,6 +326,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const [resPrivateUrl, setResPrivateUrl] = useState('');
   const [resKind, setResKind] = useState<'FILE' | 'LINK'>('FILE');
   const [resModuleId, setResModuleId] = useState<string>('');
+  const [resVideoId, setResVideoId] = useState<string>('');
   const [resSuccessMsg, setResSuccessMsg] = useState('');
   const [resErrorMsg, setResErrorMsg] = useState('');
 
@@ -469,6 +470,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   useEffect(() => {
     const modules = workCourse.modules || [];
     setResModuleId('');
+    setResVideoId('');
     setSelectedModuleId(modules[0]?.id || '');
     setTtsTargetVideoId(modules.flatMap((m) => m.videos)[0]?.id || '');
     setResSuccessMsg('');
@@ -574,6 +576,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     try {
       await api.createCourseResource(workCourse.id, {
         moduleId: resModuleId || null,
+        videoId: resModuleId && resVideoId ? resVideoId : null,
         title: resTitle.trim(),
         privateUrl: resPrivateUrl.trim(),
         kind: resKind,
@@ -930,7 +933,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const workResources = [
     ...(workCourse.resources || []).map((resource) => ({ resource, moduleTitle: '' })),
     ...workModules.flatMap((m) =>
-      (m.resources || []).map((resource) => ({ resource, moduleTitle: m.title })),
+      (m.resources || []).map((resource) => {
+        const lesson = resource.videoId ? (m.videos || []).find((video) => video.id === resource.videoId) : null;
+        return { resource, moduleTitle: lesson ? `${m.title} · ${lesson.title}` : m.title };
+      }),
     ),
   ];
   const catalogResourceCount = allCourses.reduce((total, item) =>
@@ -1603,7 +1609,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   </div>
                 </div>}
               </dialog>
-              <AdminResourceSheet open={showResourceSheet} onClose={() => setShowResourceSheet(false)} onSubmit={handleAddResource} modules={workModules} title={resTitle} onTitle={setResTitle} privateUrl={resPrivateUrl} onPrivateUrl={setResPrivateUrl} moduleId={resModuleId} onModuleId={setResModuleId} error={resErrorMsg} />
+              <AdminResourceSheet open={showResourceSheet} onClose={() => setShowResourceSheet(false)} onSubmit={handleAddResource} modules={workModules} title={resTitle} onTitle={setResTitle} privateUrl={resPrivateUrl} onPrivateUrl={setResPrivateUrl} moduleId={resModuleId} onModuleId={(value) => { setResModuleId(value); setResVideoId(''); }} videoId={resVideoId} onVideoId={setResVideoId} error={resErrorMsg} />
             </section>
           )}
 

@@ -1400,7 +1400,7 @@ export const api = {
   },
 
   // Resource Admin CRUD
-  async createCourseResource(courseId: string, data: { moduleId?: string | null; title: string; description?: string; kind?: string; privateUrl: string; mimeType?: string; sizeBytes?: number; order?: number }): Promise<{ success: boolean; resource: CourseResource }> {
+  async createCourseResource(courseId: string, data: { moduleId?: string | null; videoId?: string | null; title: string; description?: string; kind?: string; privateUrl: string; mimeType?: string; sizeBytes?: number; order?: number }): Promise<{ success: boolean; resource: CourseResource }> {
     const res = await fetch(`/api/admin/courses/${courseId}/resources`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

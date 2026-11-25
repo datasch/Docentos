@@ -83,7 +83,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         {unreadCount > 0 && (
           <span
             aria-hidden
-            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-brand-cyan)] text-[10px] font-bold leading-[18px] text-[#050505] text-center tabular-nums"
+            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-brand-cyan)] text-[10px] font-bold leading-[18px] text-on-brand text-center tabular-nums"
           >
             {badge}
           </span>

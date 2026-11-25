@@ -184,7 +184,7 @@ export const FestiveHatOverlay: React.FC<FestiveHatOverlayProps> = ({
           <path
             d="M 72 16 Q 72 20 76 20 Q 72 20 72 24 Q 72 20 68 20 Q 72 20 72 16 Z"
             fill="#fde047"
-            className="animate-pulse"
+            className="animate-pulse festive-hat-twinkle"
           />
         </svg>
       ) : (
@@ -250,7 +250,7 @@ export const FestiveHatOverlay: React.FC<FestiveHatOverlayProps> = ({
           <path
             d="M 52 10 Q 52 14 55 14 Q 52 14 52 18 Q 52 14 49 14 Q 52 14 52 10 Z"
             fill="#fef08a"
-            className="animate-pulse"
+            className="animate-pulse festive-hat-twinkle"
           />
         </svg>
       )}

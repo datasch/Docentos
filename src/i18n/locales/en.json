@@ -189,7 +189,11 @@
     "syncSessionsSubtitle": "Live sessions and on-demand recorded classes for this course.",
     "noSessionsScheduled": "No sessions scheduled yet",
     "mentorWillSchedule": "Your mentor will schedule live classes and recordings here.",
-    "generalSessions": "General Course Sessions"
+    "generalSessions": "General Course Sessions",
+    "resourcesEmptyLesson": "This lesson has no materials yet. When they are added, they will appear here.",
+    "resourcesThisLesson": "This lesson",
+    "resourcesNoneForLesson": "This lesson has no materials of its own.",
+    "resourcesGeneral": "General module and course material"
   },
   "paywall": {
     "menteeTag": "Mentee Account • No Fees",
@@ -3108,5 +3112,11 @@
   "ningunaClaseCoincideConLosFiltros_many": "No class matches the filters",
   "countPreguntasEnTotal_many": "{{count}} questions in total",
   "countPreguntas_many": "{{count}} questions",
-  "seCorrigieronCountRespuestasParaQue_many": "{{count}} answers were corrected to match their explanation."
+  "seCorrigieronCountRespuestasParaQue_many": "{{count}} answers were corrected to match their explanation.",
+  "misionCompletadaBloqueada": "Mission completed: your progress is saved and cannot be unmarked.",
+  "titleCompletadaNoSeDesmarca": "{{title}}: completed",
+  "lessonAutoCompleteIn": "Completes in {{seconds}} s",
+  "lessonAutoCompleteShort": "{{seconds}} s",
+  "asignarALeccion": "Assign to lesson (optional)",
+  "materialGeneralDelModulo": "General module material"
 }

@@ -26,6 +26,8 @@ interface SyllabusTreeProps {
   /** Modulo cuyo examen esta abierto ahora mismo, o null si se ve una clase. */
   quizOpenModuleIndex?: number | null;
   onToggleComplete: (videoId: string) => void;
+  /** Si es false, una lección completada no se puede desmarcar desde el temario. */
+  canUncomplete?: boolean;
   onOpenPaywall: () => void;
 }
 
@@ -58,6 +60,7 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
   onOpenQuiz,
   quizOpenModuleIndex = null,
   onToggleComplete,
+  canUncomplete = true,
   onOpenPaywall,
 }) => {
   const { t } = useTranslation()
@@ -322,11 +325,13 @@ export const SyllabusTree: React.FC<SyllabusTreeProps> = ({
                             <button
                               type="button"
                               tabIndex={-1}
-                              disabled={!hasAccess}
+                              disabled={!hasAccess || (isDone && !canUncomplete)}
                               aria-pressed={isDone}
                               aria-label={
                                 isDone
-                                  ? t('marcarTitleComoPendiente', 'Marcar {{title}} como pendiente', { title: video.title })
+                                  ? canUncomplete
+                                    ? t('marcarTitleComoPendiente', 'Marcar {{title}} como pendiente', { title: video.title })
+                                    : t('titleCompletadaNoSeDesmarca', '{{title}}: completada', { title: video.title })
                                   : t('marcarTitleComoCompletada', 'Marcar {{title}} como completada', { title: video.title })
                               }
                               onClick={(event) => {
