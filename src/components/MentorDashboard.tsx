@@ -658,7 +658,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </section>
 
       {actionNotice && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in">
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-success-light text-xs font-bold rounded-xl flex items-center gap-2 animate-fade-in">
           <CheckCircle2 className="w-4 h-4" /> {actionNotice}
         </div>
       )}
@@ -672,13 +672,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             title: t('mentor.answeredQuestions', 'Consultas Respondidas'),
             value: qnaComments.length > 0 ? `${answeredPct}%` : '—',
             icon: CheckCircle2,
-            color: 'text-emerald-400',
+            color: 'text-success-light',
           },
           {
             title: t('mentor.pendingQuestions', 'Consultas Pendientes'),
             value: pendingQuestions.length,
             icon: Clock,
-            color: 'text-amber-400',
+            color: 'text-warning-light',
           },
         ].map((card, idx) => {
           const Icon = card.icon;
@@ -727,7 +727,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           <Users className="w-4 h-4 shrink-0" />
           <span>{t('mentor.tabMentees', 'Mentees Asignados')} ({mentees.length})</span>
           {accessRequests.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-warning-light border border-amber-500/30">
               {accessRequests.length} {accessRequests.length === 1 ? t('mentor.requestSingular', 'solicitud') : t('mentor.requestPlural', 'solicitudes')}
             </span>
           )}
@@ -1643,11 +1643,11 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {showAssignMenteeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-md space-y-4">
-            <h3 className="font-extrabold text-base text-white">{t('asignarNuevoMentee', 'Asignar Nuevo Mentee')}</h3>
+            <h3 className="font-semibold text-base text-white">{t('asignarNuevoMentee', 'Asignar Nuevo Mentee')}</h3>
             <p className="text-xs text-ink-muted">{t('ingresaLosDatosDelEstudiantePara', 'Ingresa los datos del estudiante para asignarle mentoría prioritaria.')}</p>
 
             {assignError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-danger-light text-xs rounded-xl flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> <span>{assignError}</span>
               </div>
             )}
@@ -1706,7 +1706,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   type="submit"
                   disabled={assigningMentee}
-                  className="px-4 py-2 bg-[var(--color-brand-cyan)] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-2 bg-[var(--color-brand-cyan)] text-black text-xs font-semibold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {assigningMentee && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {t('asignarMentee', 'Asignar Mentee')}
@@ -1721,13 +1721,13 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       {showCreateCourseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <div className="bg-surface border border-line rounded-2xl p-6 w-full max-w-lg space-y-4">
-            <h3 className="font-extrabold text-base text-white">{t('crearNuevoPrograma', 'Crear Nuevo Programa')}</h3>
+            <h3 className="font-semibold text-base text-white">{t('crearNuevoPrograma', 'Crear Nuevo Programa')}</h3>
             <p className="text-xs text-ink-muted">
               {t('seCreaLaFichaDelProgramaLosModulosYLas', 'Se crea la ficha del programa. Los módulos y las clases se añaden después desde Administración › Cursos o importando una carpeta de Google Drive.')}
             </p>
 
             {createCourseError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded-xl flex items-start gap-2">
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-danger-light text-xs rounded-xl flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-px" /> <span>{createCourseError}</span>
               </div>
             )}
@@ -1814,7 +1814,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
                 <button
                   type="submit"
                   disabled={creatingCourse}
-                  className="px-4 py-2 bg-gradient-to-r from-[var(--color-brand-cyan)] to-[#a855f7] text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
+                  className="px-4 py-2 bg-brand-cyan text-on-brand text-xs font-semibold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {creatingCourse ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                   {t('crearPrograma', 'Crear Programa')}

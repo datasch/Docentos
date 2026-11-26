@@ -313,7 +313,6 @@ html:has(.lp-root) {
   border-radius: var(--lp-r-pill);
   box-shadow: var(--lp-glow-gold);
   letter-spacing: 0.4px;
-  text-transform: uppercase;
   margin-left: 4px;
   transition: transform var(--lp-fast), box-shadow var(--lp-fast);
 }
@@ -355,7 +354,7 @@ html:has(.lp-root) {
 
 .lp-search-box:focus-within {
   border-color: var(--lp-cyan);
-  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15), var(--lp-glow-cyan);
+  box-shadow: var(--lp-glow-cyan);
   background: rgba(23, 23, 33, 0.9);
 }
 
@@ -561,7 +560,6 @@ html:has(.lp-root) {
   display: block;
   font-size: 0.7rem;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lp-cyan);
   margin-top: 2px;
@@ -752,7 +750,7 @@ html:has(.lp-root) {
 
 .lp-btn-primary:hover {
   transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 0 30px rgba(139, 92, 246, 0.45), 0 0 40px rgba(34, 211, 238, 0.35);
+  box-shadow: none;
 }
 
 .lp-btn-secondary {
@@ -951,7 +949,6 @@ html:has(.lp-root) {
 .lp-streak-title {
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--lp-gold);
 }
@@ -1025,7 +1022,7 @@ html:has(.lp-root) {
   border-radius: var(--lp-r-pill);
   background: rgba(15, 15, 23, 0.8);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.3), inset 0 0 12px rgba(139, 92, 246, 0.1);
+  box-shadow: none;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: var(--lp-text-secondary);
@@ -1038,7 +1035,7 @@ html:has(.lp-root) {
 .lp-hero-badge:hover {
   border-color: rgba(139, 92, 246, 0.6);
   transform: translateY(-2px);
-  box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.45), inset 0 0 15px rgba(139, 92, 246, 0.2);
+  box-shadow: none;
 }
 
 .lp-hero-badge-icon {
@@ -1239,7 +1236,7 @@ html:has(.lp-root) {
   transform: translateY(-4px);
   border-color: rgba(139, 92, 246, 0.4);
   background: linear-gradient(180deg, rgba(23, 23, 33, 0.6) 0%, rgba(15, 15, 23, 0.7) 100%);
-  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(139, 92, 246, 0.15);
+  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .lp-stat-icon {
@@ -1326,7 +1323,7 @@ html:has(.lp-root) {
   color: var(--lp-text-strong);
   background: rgba(139, 92, 246, 0.15);
   border-color: var(--lp-accent);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+  box-shadow: none;
 }
 
 /* ==========================================================================
@@ -1369,7 +1366,7 @@ html:has(.lp-root) {
 
 .lp-section-indicator.is-violet {
   background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-  box-shadow: 0 0 22px rgba(168, 85, 247, 0.35);
+  box-shadow: none;
 }
 
 .lp-section-title {
@@ -1559,7 +1556,6 @@ html:has(.lp-root) {
   font-weight: 700;
   padding: 4px 10px;
   border-radius: var(--lp-r-pill);
-  text-transform: uppercase;
   letter-spacing: 0.4px;
   background: rgba(7, 7, 11, 0.75);
   backdrop-filter: blur(6px);
@@ -1603,7 +1599,7 @@ html:has(.lp-root) {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  box-shadow: none;
   opacity: 0;
   transform: scale(0.7);
   transition: opacity var(--lp-smooth), transform var(--lp-smooth);
@@ -1808,7 +1804,7 @@ html:has(.lp-root) {
 .lp-testimonial:hover {
   transform: translateY(-4px);
   border-color: rgba(168, 85, 247, 0.35);
-  box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.7), 0 0 28px rgba(168, 85, 247, 0.18);
+  box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.7);
 }
 
 .lp-testimonial-head {
@@ -1899,8 +1895,6 @@ html:has(.lp-root) {
 .lp-testimonial-form-label {
   font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--lp-text-muted);
 }
 
@@ -2034,7 +2028,6 @@ html:has(.lp-root) {
   color: var(--lp-text-on-fill);
   font-size: 0.68rem;
   font-weight: 800;
-  text-transform: uppercase;
   letter-spacing: 0.8px;
   box-shadow: var(--lp-glow-accent);
   white-space: nowrap;
@@ -2046,7 +2039,6 @@ html:has(.lp-root) {
   gap: 6px;
   font-size: 0.72rem;
   font-weight: 800;
-  text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--lp-text-muted);
   margin-bottom: 10px;
@@ -2131,7 +2123,7 @@ html:has(.lp-root) {
   padding: 56px 36px;
   text-align: center;
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 85, 247, 0.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
 }
 
 .lp-promo-banner::before {
@@ -2180,7 +2172,6 @@ html:has(.lp-root) {
   border-radius: var(--lp-r-pill);
   box-shadow: var(--lp-glow-gold);
   letter-spacing: 0.8px;
-  text-transform: uppercase;
   margin-bottom: 20px;
   animation: lpBounceSoft 2.5s infinite ease-in-out;
 }
@@ -2331,7 +2322,7 @@ html:has(.lp-root) {
   color: var(--color-ink);
   border: 1px solid color-mix(in srgb, var(--color-brand-cyan) 40%, transparent);
   border-radius: var(--lp-r-full);
-  box-shadow: 0 10px 25px -4px color-mix(in srgb, var(--color-canvas) 50%, transparent), 0 0 20px color-mix(in srgb, var(--color-brand-cyan) 18%, transparent);
+  box-shadow: 0 10px 25px -4px color-mix(in srgb, var(--color-canvas) 50%, transparent);
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
@@ -2344,7 +2335,7 @@ html:has(.lp-root) {
 .lp-listening-floating-btn:hover {
   transform: translateY(-2px) scale(1.03);
   border-color: color-mix(in srgb, var(--color-brand-cyan) 75%, transparent);
-  box-shadow: 0 14px 32px -4px color-mix(in srgb, var(--color-canvas) 65%, transparent), 0 0 28px color-mix(in srgb, var(--color-brand-cyan) 35%, transparent);
+  box-shadow: 0 14px 32px -4px color-mix(in srgb, var(--color-canvas) 65%, transparent);
   background: color-mix(in srgb, var(--color-raised) 98%, transparent);
 }
 
@@ -2856,7 +2847,7 @@ body[data-color-mode="light"]:has(.lp-root) {
   background: rgba(11, 96, 117, 0.1) !important;
   border-color: rgba(11, 96, 117, 0.35) !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 8px rgba(var(--brand-accent-rgb), 0.12) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
 }
 
 [data-color-mode="light"] .lp-section-title {
@@ -2886,7 +2877,7 @@ body[data-color-mode="light"]:has(.lp-root) {
   background: #eff5f9 !important;
   transform: translateY(-4px) !important;
   border-color: rgba(var(--brand-accent-rgb), 0.35) !important;
-  box-shadow: 0 12px 32px -4px rgba(22, 40, 58, 0.1), 0 0 20px rgba(var(--brand-accent-rgb), 0.12) !important;
+  box-shadow: 0 12px 32px -4px rgba(22, 40, 58, 0.1) !important;
 }
 
 [data-color-mode="light"] .lp-card-cover {

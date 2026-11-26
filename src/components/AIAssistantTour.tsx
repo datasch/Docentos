@@ -120,7 +120,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
     <div className="pointer-events-auto fixed inset-x-3 bottom-3 z-50 flex flex-col items-stretch animate-fade-in sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-full sm:max-w-md sm:items-end">
       
       {/* JARVIS STYLE FLOATING DIALOG CARD */}
-      <div className="bg-surface/95 backdrop-blur-xl border border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-brand-cyan/20 text-white space-y-4 w-full relative max-h-[80dvh] overflow-y-auto overscroll-contain">
+      <div className="bg-surface/95 backdrop-blur-xl border border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-2xl text-white space-y-4 w-full relative max-h-[80dvh] overflow-y-auto overscroll-contain">
         
         {/* Glow Ring & Close Button */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-brand-cyan/20 rounded-full blur-2xl pointer-events-none" />
@@ -139,7 +139,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h4 className="font-extrabold text-xs text-white uppercase tracking-wider">{t('assistantNameAi', '{{assistantName}} AI', { assistantName })}</h4>
+                <h4 className="font-semibold text-xs text-white">{t('assistantNameAi', '{{assistantName}} AI', { assistantName })}</h4>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/30">
                   {t('onboarding', 'ONBOARDING')}
                 </span>
@@ -150,7 +150,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
 
           <button
             onClick={handleCloseTour}
-            className="shrink-0 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-raised transition-all"
+            className="shrink-0 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-raised transition-colors"
             title={t('tour.skipTour')}
           >
             <X className="w-4 h-4" />
@@ -193,7 +193,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                 {steps.slice(0, -1).map((paso, idx) => (
                   <div
                     key={paso.id}
-                    className={`h-1.5 rounded-full transition-all ${
+                    className={`h-1.5 rounded-full transition-colors ${
                       idx === currentStep ? 'w-6 bg-brand-cyan' : 'w-2 bg-line'
                     }`}
                   />
@@ -243,7 +243,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                       key={star}
                       type="button"
                       onClick={() => setFeedbackRating(star)}
-                      className="p-1 transition-transform hover:scale-110"
+                      className="p-1 transition-transform"
                     >
                       <Star
                         className={`w-6 h-6 ${
@@ -266,7 +266,7 @@ export const AIAssistantTour: React.FC<AIAssistantTourProps> = ({ onHighlightTab
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full btn-brand-primary py-2 text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-brand-cyan/20"
+                  className="w-full btn-brand-primary py-2 text-xs font-semibold flex items-center justify-center gap-2 shadow-lg"
                 >
                   <Send className="w-3.5 h-3.5" />
                   {isSubmitting ? t('common.loading') : t('tour.feedbackSubmit')}

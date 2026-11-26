@@ -298,7 +298,7 @@
 }
 [data-mentor-ui='modern'] .admin-person-sheet .meeting-field :is(select, input) { width: 100%; }
 
-/* Acciones críticas: bloque neutro; el color vive solo en los botones (strike ámbar, suspender rojo). */
+/* Acciones críticas: bloque neutro; el color solo marca el significado de cada botón. */
 [data-mentor-ui='modern'] .admin-critical {
   display: grid;
   gap: 16px;
@@ -315,19 +315,69 @@
 [data-mentor-ui='modern'] .admin-critical__confirm p { margin: 0; color: var(--mentor-text); font-size: 14px; line-height: 20px; }
 [data-mentor-ui='modern'] .admin-critical__done { margin: 0; color: var(--mentor-muted); font-size: 14px; line-height: 20px; }
 
-/* Tonos de botón: contorno de color para elegir, sólido para confirmar. */
-[data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone] {
-  --tone: var(--mentor-muted);
-  border-color: color-mix(in srgb, var(--tone) 60%, transparent);
-  color: color-mix(in srgb, var(--tone) 70%, var(--mentor-text));
+/* Botones de las acciones críticas. Para elegir, todos neutros como el resto del
+   panel; el color solo marca el significado (rojo = destructiva, verde = reactivar),
+   siempre con los tokens semánticos para que valga en claro y en oscuro. Para
+   confirmar, botón sólido. Deshabilitado = el mismo botón atenuado, no otro color. */
+[data-mentor-ui='modern'] .admin-critical .mentor-course-control:not(.admin-critical__go) {
+  border-color: var(--mentor-line-strong, var(--course-line));
+  background: var(--mentor-surface);
+  color: var(--mentor-text);
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
-[data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='warn'] { --tone: #f59e0b; }
-[data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger'] { --tone: #ef4444; }
-[data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok'] { --tone: #22c55e; }
-[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone] { background: var(--tone); border-color: var(--tone); color: #fff; }
-[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='warn'] { background: #f59e0b; border-color: #f59e0b; color: #1c1100; }
-[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='danger'] { background: #dc2626; border-color: #dc2626; }
-[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='ok'] { background: #16a34a; border-color: #16a34a; }
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control:not(.admin-critical__go) { background: #ffffff; }
+[data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger'] {
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+  color: var(--color-danger-light);
+}
+[data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok'] {
+  border-color: color-mix(in srgb, var(--color-success) 45%, transparent);
+  color: var(--color-success-light);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-mentor-ui='modern'] .admin-critical .mentor-course-control:not(.admin-critical__go):not([data-tone='danger']):not([data-tone='ok']):not(:disabled):hover { background: var(--mentor-raised); }
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control:not(.admin-critical__go):not([data-tone='danger']):not([data-tone='ok']):not(:disabled):hover { background: #edf3fa; }
+  [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger']:not(:disabled):hover { background: color-mix(in srgb, var(--color-danger) 8%, var(--mentor-surface)); }
+  [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok']:not(:disabled):hover { background: color-mix(in srgb, var(--color-success) 8%, var(--mentor-surface)); }
+}
+[data-mentor-ui='modern'] .admin-critical .mentor-course-control:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Modo claro: mismos tonos, más intensos (borde lleno, texto oscuro y un fondo
+   apenas teñido) para que no se vean lavados sobre el panel claro. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control:not(.admin-critical__go) {
+  border-color: #9fb2c6;
+  color: #0f1f2e;
+  font-weight: 500;
+}
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='warn']:not(.admin-critical__go) {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #9a3412;
+}
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger']:not(.admin-critical__go) {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok']:not(.admin-critical__go) {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  color: #116a33;
+}
+[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control:disabled {
+  opacity: 1;
+  border-color: #cdd8e3;
+  background: #eef2f6;
+  color: #6b7c8f;
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='warn']:not(.admin-critical__go):not(:disabled):hover { background: #ffedd5; }
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger']:not(.admin-critical__go):not(:disabled):hover { background: #fee2e2; }
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok']:not(.admin-critical__go):not(:disabled):hover { background: #dcfce7; }
+}
+[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone] { border-color: var(--mentor-text); background: var(--mentor-text); color: var(--color-canvas); }
+[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='danger'] { border-color: var(--color-danger); background: var(--color-danger); color: #ffffff; }
+[data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='ok'] { border-color: var(--color-success); background: var(--color-success); color: #ffffff; }
 @media (hover: hover) and (pointer: fine) {
   [data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='warn']:hover:not(:disabled) { background: #d97706; border-color: #d97706; }
   [data-mentor-ui='modern'] .admin-critical .admin-critical__go[data-tone='danger']:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
@@ -695,8 +745,3 @@
 [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical__head svg,
 [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical__head p,
 [data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical__done { color: #3f5366; }
-[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control { background: #ffffff; border-color: #a6b8c7; color: #16283a; }
-[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control:disabled { opacity: 1; background: #eef3f8; border-color: #d3e0ec; color: #5f7283; }
-[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='warn']:not(:disabled) { color: #92400e; border-color: rgb(180 83 9 / 0.6); }
-[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='danger']:not(:disabled) { color: #b91c1c; border-color: rgb(185 28 28 / 0.55); }
-[data-color-mode='light'] [data-mentor-ui='modern'] .admin-critical .mentor-course-control[data-tone='ok']:not(:disabled) { color: #166534; border-color: rgb(22 101 52 / 0.5); }

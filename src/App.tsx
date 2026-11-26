@@ -442,7 +442,7 @@ export default function App() {
                 navigateTo('landing');
               }
             }}
-            className="mt-7 rounded-[10px] border border-line bg-ink px-[18px] py-3 text-sm font-medium text-canvas transition-colors hover:border-brand-cyan hover:bg-surface hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-cyan"
+            className="mt-7 rounded-[10px] border border-line bg-ink px-5 py-3 text-sm font-medium text-canvas transition-colors hover:border-brand-cyan hover:bg-surface hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-cyan"
           >
             {privateRouteStatus === 'unavailable' ? t('reintentar', 'Reintentar') : t('volverAlInicio', 'Volver al inicio')}
           </button>
@@ -572,7 +572,7 @@ export default function App() {
             <div className="relative max-w-4xl w-full">
               <button
                 onClick={() => setShowPaywallModal(false)}
-                className="absolute top-4 right-4 z-20 text-slate-400 hover:text-white bg-[#141420] border border-white/10 p-2 rounded-xl transition-all"
+                className="absolute top-4 right-4 z-20 text-slate-400 hover:text-white bg-[#141420] border border-white/10 p-2 rounded-xl transition-colors"
               >
                 ✕
               </button>

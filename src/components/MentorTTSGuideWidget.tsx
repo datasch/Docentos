@@ -64,7 +64,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
   };
 
   return (
-    <div className="bg-surface border border-line hover:border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-xl transition-all space-y-3 relative overflow-hidden">
+    <div className="bg-surface border border-line hover:border-brand-cyan/40 rounded-2xl p-4 sm:p-5 shadow-xl transition-[color,background-color,border-color,opacity,box-shadow] space-y-3 relative overflow-hidden">
       
       {/* Background Subtle Gradient Glow */}
 
@@ -77,7 +77,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             <img
               src={guide.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
               alt={guide.mentorName}
-              className={`w-11 h-11 rounded-full object-cover ring-2 transition-all ${
+              className={`w-11 h-11 rounded-full object-cover ring-2 transition-colors ${
                 isPlaying ? 'ring-ink' : 'ring-[#2d2d44]'
               }`}
             />
@@ -137,7 +137,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
               {[0.4, 0.8, 0.3, 0.9, 0.5, 0.7, 0.2, 0.8].map((val, idx) => (
                 <div
                   key={idx}
-                  className={`w-1 bg-brand-cyan rounded-full transition-all duration-300 ${
+                  className={`w-1 bg-brand-cyan rounded-full transition-colors duration-300 ${
                     isPlaying ? 'animate-pulse' : 'opacity-40'
                   }`}
                   style={{
@@ -151,7 +151,7 @@ export const MentorTTSGuideWidget: React.FC<MentorTTSGuideWidgetProps> = ({ guid
             {/* Audio Progress Bar */}
             <div className="flex-1 bg-raised h-2 rounded-full overflow-hidden border border-line relative">
               <div
-                className="bg-brand-gradient h-full transition-all duration-300 rounded-full"
+                className="bg-brand-gradient h-full transition-[width] duration-300 rounded-full"
                 style={{ width: `${speechProgress}%` }}
               />
             </div>

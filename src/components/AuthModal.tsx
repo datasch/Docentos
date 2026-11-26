@@ -267,14 +267,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Error Notification */}
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2.5 text-red-400 text-sm">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2.5 text-danger-light text-sm">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm">
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-success-light text-sm">
             {successMessage}
           </div>
         )}
@@ -406,7 +406,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   inputMode="text"
                   autoFocus
                   aria-describedby="auth-two-factor-ayuda"
-                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs tracking-[0.3em] text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-surface transition-all"
+                  className="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-canvas border border-line focus:border-brand-cyan rounded-xl text-base sm:text-xs tracking-[0.3em] text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-cyan focus:ring-offset-2 focus:ring-offset-surface transition-colors"
                   required
                 />
               </div>

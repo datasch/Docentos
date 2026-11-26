@@ -62,11 +62,11 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
         
         {/* Header Badge & Title */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1a1a2e] border border-[#2d2d44] text-[var(--color-brand-cyan)] text-xs font-bold uppercase tracking-wider shadow-md">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1a1a2e] border border-[#2d2d44] text-[var(--color-brand-cyan)] text-xs font-bold shadow-md">
             <Sparkles className="w-4 h-4 text-[var(--color-brand-cyan)]" />
             {t('firstRunSetupGuardDocentos', 'First Run Setup Guard • DocentOS')}
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight">
             {t('asistenteDeInstalacionInicial', 'Asistente de Instalación Inicial')}
           </h1>
           <p className="text-sm text-slate-400 max-w-md mx-auto">
@@ -78,7 +78,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
         <div className="bg-[#141420] border border-[#2d2d44] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
           
           {errorMessage && (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2">
+            <div className="p-4 bg-red-500/10 border border-red-500/30 text-danger-light text-xs rounded-xl flex items-center gap-2">
               <Shield className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </div>
@@ -88,7 +88,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
             
             {/* Academy Name */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-300 mb-2">
                 {t('nombreDeLaAcademiaInstanciaDocentos', 'Nombre de la Academia / Instancia DocentOS')}
               </label>
               <div className="relative">
@@ -106,7 +106,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
 
             {/* Admin Full Name */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-300 mb-2">
                 {t('nombreCompletoDelAdministrador', 'Nombre Completo del Administrador')}
               </label>
               <div className="relative">
@@ -124,7 +124,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
 
             {/* Admin Email */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-300 mb-2">
                 {t('correoElectronicoDelAdministrador', 'Correo Electrónico del Administrador')}
               </label>
               <div className="relative">
@@ -142,7 +142,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
 
             {/* Admin Password */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-300 mb-2">
                 {t('contrasenaSeguraDeAcceso', 'Contraseña Segura de Acceso')}
               </label>
               <div className="relative">
@@ -178,7 +178,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full btn-brand-primary py-3 px-6 text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-brand-cyan)]/20 transition-all disabled:opacity-50 mt-4"
+              className="w-full btn-brand-primary py-3 px-6 text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-brand-cyan)]/20 transition-[color,background-color,border-color,opacity,box-shadow] disabled:opacity-50 mt-4"
             >
               {isSubmitting ? (
                 <>

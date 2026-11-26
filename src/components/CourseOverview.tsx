@@ -138,8 +138,8 @@ export function CourseOverview({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-brand-cyan">{course.category || t('overview.professionalTraining', 'Formación profesional')}</p>
             {isMentee && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 text-[11px] font-bold text-brand-violet-light uppercase tracking-wider">
-                <Sparkles className="h-3 w-3 text-brand-violet-light" /> {t('overview.menteeBadge', 'Mentee')}
+              <span className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-[11px] font-bold text-brand-cyan">
+                <Sparkles className="h-3 w-3 text-brand-cyan" /> {t('overview.menteeBadge', 'Mentee')}
               </span>
             )}
           </div>
@@ -156,8 +156,8 @@ export function CourseOverview({
           {!allowed && (
             isMentee ? (
               <div className="mt-6 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-1 text-xs font-semibold text-brand-violet-light">
-                  <Sparkles className="h-3.5 w-3.5 text-brand-violet-light" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold text-brand-cyan">
+                  <Sparkles className="h-3.5 w-3.5 text-brand-cyan" />
                   {t('overview.menteeNotice', 'Acceso gestionado por Mentoría • Sin cobros de matrícula')}
                 </span>
               </div>
@@ -184,21 +184,21 @@ export function CourseOverview({
               <CourseShareButton course={course} />
             </div>
           ) : isMentee ? (
-            <div className="mt-6 rounded-2xl border border-purple-500/30 bg-purple-950/15 p-5 shadow-lg backdrop-blur-sm">
+            <div className="mt-6 rounded-2xl border border-line p-5 shadow-lg backdrop-blur-sm">
               <div className="flex items-center gap-3.5">
                 {effectiveMentor?.avatarUrl ? (
                   <img
                     src={effectiveMentor.avatarUrl}
                     alt={effectiveMentor.name}
-                    className="h-12 w-12 rounded-full border border-purple-500/40 object-cover"
+                    className="h-12 w-12 rounded-full border border-line object-cover"
                   />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-500/20 font-bold text-brand-violet-light border border-purple-500/30">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-bold text-brand-cyan border border-line">
                     {effectiveMentor?.name ? effectiveMentor.name.charAt(0).toUpperCase() : 'M'}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-violet-light">
+                  <span className="text-[11px] font-semibold text-brand-cyan">
                     {effectiveMentor ? t('mentorAsignado', 'Mentor Asignado') : t('coordinacionAcademica', 'Coordinación Académica')}
                   </span>
                   <h3 className="truncate text-base font-bold text-ink">{effectiveMentor?.name || t('mentorDocentos', 'Mentor DocentOS')}</h3>
@@ -207,12 +207,12 @@ export function CourseOverview({
               </div>
 
               {hasPendingRequest ? (
-                <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-purple-500/20">
+                <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-line">
                   <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-warning-light">
-                    <Clock className="h-4 w-4 shrink-0 text-amber-400 mt-0.5 animate-pulse" />
+                    <Clock className="h-4 w-4 shrink-0 text-warning-light mt-0.5" />
                     <div className="min-w-0 flex-1">
                       <p className="font-bold">{t('solicitudEnviadaATuMentorEnEsperaDe', 'Solicitud enviada a tu mentor • En espera de aprobación')}</p>
-                      <p className="text-[11px] font-normal text-amber-200/80 mt-0.5">
+                      <p className="text-[11px] font-normal text-warning-light mt-0.5">
                         {t('tuMentorTieneLaNotificacionEnSuPanelPara', 'Tu mentor tiene la notificación en su panel para autorizar tu acceso en 1 clic.')}
                       </p>
                     </div>
@@ -221,7 +221,7 @@ export function CourseOverview({
                     <button
                       type="button"
                       onClick={onContinue}
-                      className="inline-flex items-center gap-1.5 text-brand-violet-light hover:text-white transition-colors cursor-pointer text-xs font-semibold"
+                      className="inline-flex items-center gap-1.5 text-brand-cyan hover:text-white transition-colors cursor-pointer text-xs font-semibold"
                     >
                       <span>{t('verTemarioEnElVisor', 'Ver temario en el visor')}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -240,14 +240,14 @@ export function CourseOverview({
                           onClick={handleCopyEmail}
                           className="hover:text-ink transition-colors flex items-center gap-1 font-mono text-[11px] cursor-pointer"
                         >
-                          {copiedEmail ? <span className="text-emerald-400 font-bold">{t('copiado', '¡Copiado!')}</span> : <span>{t('copiarCorreo', 'Copiar correo')}</span>}
+                          {copiedEmail ? <span className="text-success-light font-bold">{t('copiado', '¡Copiado!')}</span> : <span>{t('copiarCorreo', 'Copiar correo')}</span>}
                         </button>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 flex flex-col gap-3 pt-3 border-t border-purple-500/20">
+                <div className="mt-4 flex flex-col gap-3 pt-3 border-t border-line">
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
@@ -314,7 +314,7 @@ export function CourseOverview({
           {!allowed && (
             isMentee ? (
               <p className="mt-5 flex items-start gap-2 text-xs text-ink-muted">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-violet-light" />
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-cyan" />
                 {t('comoMenteeTuAccesoAEsteCursoNoRequiere', 'Como Mentee, tu acceso a este curso no requiere compra. Tu mentor asignado habilitará tu acceso en un solo clic desde su panel.')}
               </p>
             ) : (

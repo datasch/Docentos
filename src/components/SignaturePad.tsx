@@ -115,12 +115,12 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
     <div className="space-y-3 bg-[#141420] border border-[#2d2d44] rounded-xl p-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#2d2d44] pb-2">
-        <label className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+        <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
           <PenTool className="w-3.5 h-3.5 text-[var(--color-brand-cyan)]" />
           {label}
         </label>
         {value && (
-          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+          <span className="text-[10px] font-bold text-success-light bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
             <Check className="w-3 h-3" /> {t('firmaConfigurada', 'Firma Configurada')}
           </span>
         )}
@@ -131,7 +131,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         <button
           type="button"
           onClick={() => setMode('upload')}
-          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${mode === 'upload' ? 'bg-[var(--color-brand-cyan)] text-black shadow-sm' : 'text-slate-400 hover:text-white'
+          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-[color,background-color,border-color,opacity,box-shadow] flex items-center justify-center gap-1.5 ${mode === 'upload' ? 'bg-[var(--color-brand-cyan)] text-black shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
         >
           <Upload className="w-3 h-3" />
@@ -140,7 +140,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
         <button
           type="button"
           onClick={() => setMode('type')}
-          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${mode === 'type' ? 'bg-[var(--color-brand-cyan)] text-black shadow-sm' : 'text-slate-400 hover:text-white'
+          className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-[color,background-color,border-color,opacity,box-shadow] flex items-center justify-center gap-1.5 ${mode === 'type' ? 'bg-[var(--color-brand-cyan)] text-black shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
         >
           <Sparkles className="w-3 h-3" />
@@ -162,7 +162,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className="border-2 border-dashed border-[#2d2d44] hover:border-[var(--color-brand-cyan)] rounded-xl p-5 text-center cursor-pointer transition-colors bg-[#0a0a0f] group"
           >
-            <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-[var(--color-brand-cyan)]/10 border border-[var(--color-brand-cyan)]/30 flex items-center justify-center text-[var(--color-brand-cyan)] group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-[var(--color-brand-cyan)]/10 border border-[var(--color-brand-cyan)]/30 flex items-center justify-center text-[var(--color-brand-cyan)] transition-transform">
               <Upload className="w-5 h-5" />
             </div>
             <p className="text-xs font-bold text-white">{t('clicParaSeleccionarImagenDeFirma', 'Clic para seleccionar imagen de firma')}</p>
@@ -184,7 +184,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
           <button
             type="button"
             onClick={generateCalligraphy}
-            className="px-4 py-2 bg-gradient-to-r from-[var(--color-brand-cyan)] to-[#a855f7] hover:opacity-90 text-black font-extrabold text-xs rounded-lg flex items-center gap-1.5 transition-opacity whitespace-nowrap"
+            className="px-4 py-2 bg-brand-cyan hover:opacity-90 text-on-brand font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-opacity whitespace-nowrap"
           >
             <Sparkles className="w-3.5 h-3.5" />
             {t('generar', 'Generar')}
@@ -200,7 +200,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             <button
               type="button"
               onClick={() => onChange('')}
-              className="text-rose-400 hover:text-rose-300 flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-500/10 transition-colors"
+              className="text-danger-light hover:text-danger-light flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-500/10 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
               {t('eliminarFirma', 'Eliminar Firma')}
@@ -216,7 +216,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
             </div>
             <div className="w-72 border-t-2 border-[#2d2d44] my-2" />
             <p className="text-xs font-bold text-slate-100 text-center">{signatoryTitle}</p>
-            <span className="text-[10px] font-mono text-[var(--color-brand-cyan)] uppercase tracking-wider mt-0.5">
+            <span className="text-[10px] font-mono text-[var(--color-brand-cyan)] mt-0.5">
               {t('certificacionDigitalVerificada', 'Certificación Digital Verificada')}
             </span>
           </div>

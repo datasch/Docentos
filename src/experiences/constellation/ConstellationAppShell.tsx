@@ -321,12 +321,6 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
         onDismiss={notificationsState.dismissToast}
       />
 
-      {/* Resplandor ambiental atmosférico cósmico de fondo */}
-      <div
-        aria-hidden="true"
-        className="hidden dark:block fixed top-20 left-1/2 -translate-x-1/2 w-[340px] sm:w-[600px] h-[340px] sm:h-[600px] rounded-full blur-[120px] opacity-15 dark:opacity-25 pointer-events-none -z-10 bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#a855f7] to-[var(--color-brand-cyan)]"
-      />
-
       {/* Lienzo 3D de Constelación Neural: visible en inicio, catálogo y mi aprendizaje */}
       {showDesktopBrand && (constellationTab === 'explore' || constellationTab === 'courses' || constellationTab === 'learning') && !sharedCourseId && (
         <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
@@ -521,7 +515,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                       <button
                         type="button"
                         onClick={onOpenAuth}
-                        className="cursor-pointer px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs font-semibold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(128,82,255,0.35)]"
+                        className="cursor-pointer px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs font-semibold transition-[color,background-color,border-color,opacity,box-shadow]"
                       >
                         {t('appShell.login', 'Iniciar Sesión')}
                       </button>
@@ -531,7 +525,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                           setConstellationTab('explore');
                           onNavigate('landing');
                         }}
-                        className="cursor-pointer px-5 py-2.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white font-constellation-label text-xs font-semibold tracking-wider transition-all"
+                        className="cursor-pointer px-5 py-2.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white font-constellation-label text-xs font-semibold tracking-wider transition-colors"
                       >
                         {t('appShell.backToHome', 'Volver al Inicio')}
                       </button>
@@ -561,7 +555,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   </div>
                 ) : (
                   <div className="max-w-md mx-auto py-24 px-6 text-center animate-fade-in">
-                    <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-warning-light">
                       <Shield className="w-7 h-7" />
                     </div>
                     <h2 className="font-constellation-display text-2xl text-slate-900 dark:text-white mb-2">
@@ -574,7 +568,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                       <button
                         type="button"
                         onClick={onOpenAuth}
-                        className="cursor-pointer px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs font-semibold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(128,82,255,0.35)]"
+                        className="cursor-pointer px-6 py-2.5 rounded-full bg-[#8052ff] hover:bg-[#7042f0] text-white font-constellation-label text-xs font-semibold transition-[color,background-color,border-color,opacity,box-shadow]"
                       >
                         {t('appShell.login', 'Iniciar Sesión')}
                       </button>
@@ -584,7 +578,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                           setConstellationTab('explore');
                           onNavigate('landing');
                         }}
-                        className="cursor-pointer px-5 py-2.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white font-constellation-label text-xs font-semibold tracking-wider transition-all"
+                        className="cursor-pointer px-5 py-2.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white font-constellation-label text-xs font-semibold tracking-wider transition-colors"
                       >
                         {t('appShell.backToHome', 'Volver al Inicio')}
                       </button>

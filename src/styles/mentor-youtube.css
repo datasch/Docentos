@@ -237,9 +237,11 @@
   border-radius: 50%;
 }
 [data-mentor-ui='modern'] .mentor-youtube-panel .yt-options button[aria-checked='true'] {
-  border-color: color-mix(in srgb, var(--mentor-accent) 40%, transparent);
+  border-color: color-mix(in srgb, var(--mentor-accent) 55%, transparent);
   background: var(--mentor-raised);
 }
+/* Tema claro: la opción elegida se marca con el borde y el punto del acento, sin fondo tintado. */
+[data-color-mode='light'] [data-mentor-ui='modern'] .mentor-youtube-panel .yt-options button[aria-checked='true'] { background: transparent; }
 [data-mentor-ui='modern'] .mentor-youtube-panel .yt-options button[aria-checked='true']::after {
   border-color: var(--mentor-accent);
   background: var(--mentor-accent);

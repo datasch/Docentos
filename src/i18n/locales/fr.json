@@ -1572,7 +1572,7 @@
   "cargandoMentees": "Chargement des mentorés...",
   "aunNoTienesMenteesAsignados": "Vous n'avez pas encore de mentorés assignés.",
   "progresoEnCurso": "Progression dans le cours",
-  "completedVideosCountDeTotalVideosCount": "{{completedVideosCount}} sur {{totalVideosCount}} leçons • Actif {{lastActiveDate}}",
+  "completedVideosCountDeTotalVideosCount": "{{completedVideosCount}} sur {{totalVideosCount}} leçons",
   "sinCursosAsignados": "Aucun cours assigné",
   "courseProgressCompletedVideosCountDe": "{{courseProgress}} % · {{completedVideosCount}} sur {{totalVideosCount}} leçons",
   "editarCursos": "Modifier les cours",

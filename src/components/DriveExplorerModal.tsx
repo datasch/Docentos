@@ -78,7 +78,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
       {/* Title & Drive API Status Banner */}
       <div className="bg-surface border border-line rounded-xl p-6 shadow-xl text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <div className="flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-brand-cyan text-xs font-bold mb-1">
             <HardDrive className="w-4 h-4 text-brand-cyan" /> {t('integracionConGoogleDriveApiV3', 'Integración con Google Drive API v3')}
           </div>
           <h2 className="text-2xl font-bold text-white">{t('buscadorYBibliotecaDeVideosDrive', 'Buscador y Biblioteca de Videos Drive')}</h2>
@@ -108,7 +108,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
       </div>
 
       {isDemo && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-300 text-sm">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-warning-light text-sm">
           <Trans i18nKey="modoDemostracionNoHayCredencialesDe"><strong className="font-bold">Modo demostración.</strong> No hay credenciales de Google
           Drive configuradas, así que este catálogo es de ejemplo: sus identificadores no
           corresponden a archivos reales y los vídeos que enlaces desde aquí no se reproducirán.
@@ -135,7 +135,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                 <div
                   key={video.id}
                   onClick={() => setSelectedVideo(video)}
-                  className={`cursor-pointer rounded-xl border p-4 transition-all flex flex-col justify-between ${
+                  className={`cursor-pointer rounded-xl border p-4 transition-colors flex flex-col justify-between ${
                     isSelected
                       ? 'bg-raised border-brand-cyan ring-2 ring-brand-cyan/30 shadow-lg'
                       : 'bg-surface border-line hover:border-brand-cyan/50 hover:bg-raised'
@@ -146,7 +146,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                       <img
                         src={video.thumbnailLink || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'}
                         alt={video.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        className="w-full h-full object-cover transition-transform"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
                         <div className="w-10 h-10 rounded-full bg-brand-gradient text-on-brand flex items-center justify-center shadow-lg">
@@ -229,7 +229,7 @@ export const DriveExplorerModal: React.FC<DriveExplorerModalProps> = ({
                     <button
                       onClick={handleLinkVideo}
                       disabled={linking || !selectedModuleId}
-                      className="w-full py-2.5 px-4 rounded-lg bg-brand-purple hover:bg-brand-purple/80 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-brand-purple/25 transition-all disabled:opacity-50"
+                      className="w-full py-2.5 px-4 rounded-lg bg-brand-purple hover:bg-brand-purple/80 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-[color,background-color,border-color,opacity,box-shadow] disabled:opacity-50"
                     >
                       {linking ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

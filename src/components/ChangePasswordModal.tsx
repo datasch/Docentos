@@ -82,7 +82,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <button type="button" onClick={onClose} className="absolute right-4 top-4 p-2 text-slate-400 hover:text-white" aria-label={t('cerrar', 'Cerrar')}>
           <X className="h-4 w-4" />
         </button>
-        <h2 id="change-password-title" className="text-xl font-extrabold text-white">{t('seguridadDeLaCuenta', 'Seguridad de la cuenta')}</h2>
+        <h2 id="change-password-title" className="text-xl font-semibold text-white">{t('seguridadDeLaCuenta', 'Seguridad de la cuenta')}</h2>
         <p className="mt-1 text-xs text-ink-muted">{t('contrasenaYVerificacionEnDosPasos', 'Contraseña y verificación en dos pasos.')}</p>
 
         <h3 className="mt-5 flex items-center gap-2 text-sm font-bold text-ink">
@@ -91,7 +91,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <p className="mt-1 text-xs text-slate-400">{t('alGuardarSeCerraranTodasLasSesionesPor', 'Al guardar se cerrarán todas las sesiones por seguridad.')}</p>
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-danger-light">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
           </div>
         )}
@@ -102,7 +102,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             { label: t('nuevaContrasena', 'Nueva contraseña'), value: newPassword, setter: setNewPassword, autoComplete: 'new-password' },
             { label: t('confirmarNuevaContrasena', 'Confirmar nueva contraseña'), value: confirmPassword, setter: setConfirmPassword, autoComplete: 'new-password' },
           ].map((field) => (
-            <label key={field.label} className="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
+            <label key={field.label} className="block text-[11px] font-bold text-slate-300">
               {field.label}
               <span className="relative mt-1 block">
                 <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
@@ -118,7 +118,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               </span>
             </label>
           ))}
-          <button type="submit" disabled={loading} className="btn-brand-primary w-full py-3 text-sm font-extrabold disabled:opacity-60">
+          <button type="submit" disabled={loading} className="btn-brand-primary w-full py-3 text-sm font-semibold disabled:opacity-60">
             {loading ? t('guardando', 'Guardando...') : t('cambiarContrasena', 'Cambiar Contraseña')}
           </button>
         </form>

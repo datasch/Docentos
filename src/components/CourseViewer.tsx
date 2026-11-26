@@ -1497,7 +1497,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
               <button
                 type="button"
                 onClick={onBackToPath}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-cyan/10 dark:bg-brand-cyan/20 px-3 py-1.5 text-xs font-bold text-brand-cyan dark:text-brand-cyan border border-brand-cyan/20 hover:bg-brand-cyan/25 active:scale-95 transition-all shadow-sm"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-cyan/10 dark:bg-brand-cyan/20 px-3 py-1.5 text-xs font-bold text-brand-cyan dark:text-brand-cyan border border-brand-cyan/20 hover:bg-brand-cyan/25 active:scale-95 transition-[color,background-color,border-color,opacity,transform] shadow-sm"
               >
                 <Compass aria-hidden className="h-3.5 w-3.5" />
                 <span>{t('volverALaRuta', 'Volver a la Ruta')}</span>
@@ -1690,11 +1690,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 /* Para usuarios con rol MENTEE: se desactiva el modal de pago y se muestra
                    el contacto de su mentor o del mentor asignado a este curso. */
                 <div className="flex h-full flex-col items-center justify-center gap-5 bg-surface px-6 py-8 text-center">
-                  <div className="inline-flex items-center justify-center rounded-2xl bg-purple-500/10 p-3 text-brand-violet-light border border-purple-500/20 shadow-sm">
+                  <div className="inline-flex items-center justify-center rounded-2xl p-3 text-brand-cyan border border-line shadow-sm">
                     <GraduationCap aria-hidden className="h-8 w-8" />
                   </div>
                   <div className="max-w-md">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-violet-light mb-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-bold text-brand-cyan mb-2">
                       {t('accesoPorMentoria', 'Acceso por Mentoría')}
                     </span>
                     <h2 className="text-section font-bold text-ink sm:text-xl">
@@ -1720,7 +1720,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-violet-light">
+                          <span className="text-[11px] font-semibold text-brand-cyan">
                             {course.assignedMentor?.id === effectiveMentor.id ? t('tuMentorAsignado', 'Tu mentor asignado') : t('mentorDelCurso', 'Mentor del curso')}
                           </span>
                           <h3 className="truncate text-sm font-bold text-ink">{effectiveMentor.name}</h3>
@@ -1730,11 +1730,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
                       {hasPendingRequest ? (
                         <div className="mt-4 flex flex-col gap-2.5 pt-3 border-t border-line-subtle">
-                          <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-amber-300">
-                            <Clock aria-hidden className="h-4 w-4 shrink-0 text-amber-400 mt-0.5 animate-pulse" />
+                          <div className="flex items-start gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 p-3 text-xs text-warning-light">
+                            <Clock aria-hidden className="h-4 w-4 shrink-0 text-warning-light mt-0.5" />
                             <div className="min-w-0 flex-1">
                               <p className="font-bold">{t('solicitudEnviadaATuMentor', 'Solicitud enviada a tu mentor')}</p>
-                              <p className="text-[11px] font-normal text-amber-200/80 mt-0.5">
+                              <p className="text-[11px] font-normal text-warning-light mt-0.5">
                                 {t('tuSolicitudEstaEnEsperaDeAprobacionTu', 'Tu solicitud está en espera de aprobación. Tu mentor tiene la notificación en su panel para autorizar tu acceso en 1 clic.')}
                               </p>
                             </div>
@@ -1752,7 +1752,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                               onClick={handleCopyEmail}
                               className="hover:text-ink transition-colors flex items-center gap-1 font-mono"
                             >
-                              {copiedEmail ? <span className="text-emerald-400 font-bold">{t('copiado', '¡Copiado!')}</span> : <span>{t('copiarCorreo', 'Copiar correo')}</span>}
+                              {copiedEmail ? <span className="text-success-light font-bold">{t('copiado', '¡Copiado!')}</span> : <span>{t('copiarCorreo', 'Copiar correo')}</span>}
                             </button>
                           </div>
                         </div>
@@ -1785,8 +1785,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                             >
                               {copiedEmail ? (
                                 <>
-                                  <Check aria-hidden className="h-3.5 w-3.5 text-emerald-400" />
-                                  <span className="text-emerald-400 font-semibold">{t('copiado', '¡Copiado!')}</span>
+                                  <Check aria-hidden className="h-3.5 w-3.5 text-success-light" />
+                                  <span className="text-success-light font-semibold">{t('copiado', '¡Copiado!')}</span>
                                 </>
                               ) : (
                                 <>
@@ -1808,8 +1808,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         {t('ponteEnContactoConLaCoordinacion', 'Ponte en contacto con la coordinación académica o envía una solicitud para que habiliten este curso en tu perfil.')}
                       </p>
                       {hasPendingRequest ? (
-                        <div className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs font-semibold text-amber-300">
-                          <Clock aria-hidden className="h-4 w-4 animate-pulse text-amber-400" />
+                        <div className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs font-semibold text-warning-light">
+                          <Clock aria-hidden className="h-4 w-4 text-warning-light" />
                           <span>{t('solicitudDeAccesoEnviadaEnEspera', 'Solicitud de acceso enviada • En espera')}</span>
                         </div>
                       ) : (
@@ -1904,7 +1904,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
             {/* Barra de información de la lección o de la sesión asincrónica */}
             {selectedMeetingPlayback ? (
-              <div className="mt-3 mx-4 lg:mx-0 rounded-2xl border border-success/40 bg-[#0a1210] p-4 text-meta shadow-xl shadow-emerald-500/10 animate-fade-in">
+              <div className="mt-3 mx-4 lg:mx-0 rounded-2xl border border-success/40 bg-[#0a1210] p-4 text-meta shadow-xl animate-fade-in">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
                   <div className="flex items-start sm:items-center gap-3 min-w-0">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/20 text-success-light border border-success/30">
@@ -1912,7 +1912,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2.5 py-0.5 text-micro font-bold uppercase tracking-wider text-success-light border border-success/30">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-2.5 py-0.5 text-micro font-bold text-success-light border border-success/30">
                           <PlaySquare className="h-3 w-3" />
                           {t('viewer.asyncRecording', 'Grabación Asincrónica')}
                         </span>
@@ -2000,15 +2000,15 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
                   if (isLastLesson && hasQuiz) {
                     return (
-                      <div className="mt-3 mx-4 lg:mx-0 p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50/80 to-slate-50 dark:from-purple-950/90 dark:via-indigo-950/90 dark:to-[#141420] border border-purple-200 dark:border-purple-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg dark:shadow-xl dark:shadow-purple-950/50">
+                      <div className="mt-3 mx-4 lg:mx-0 p-4 rounded-2xl bg-surface border border-line flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg dark:shadow-xl">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 bg-purple-500/10 dark:bg-purple-500/20 rounded-xl text-amber-500 dark:text-amber-300 shrink-0 border border-purple-400/30 dark:border-purple-500/30">
+                          <div className="p-2.5 rounded-xl text-brand-cyan shrink-0 border border-line">
                             <Award className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs font-extrabold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
+                            <h4 className="text-xs font-semibold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
                               <span>{t('ultimaLeccionDelModulo', '🎯 ¡Última lección del módulo!')}</span>
-                              <span className="text-[10px] bg-purple-500/15 dark:bg-purple-500/30 text-purple-700 dark:text-purple-300 border border-purple-400/30 dark:border-purple-500/40 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                              <span className="text-[10px] text-brand-cyan border border-brand-cyan/40 px-2 py-0.5 rounded-full font-semibold">
                                 {t('examenRequerido', 'Examen Requerido')}
                               </span>
                             </h4>
@@ -2020,9 +2020,9 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                         <button
                           type="button"
                           onClick={() => abrirExamen(activeModuleIndex)}
-                          className="btn-brand-primary px-4 py-2 text-xs font-black flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand-cyan/20 cursor-pointer"
+                          className="btn-brand-primary px-4 py-2 text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-lg cursor-pointer"
                         >
-                          <CheckSquare className="w-4 h-4 text-amber-300" />
+                          <CheckSquare className="w-4 h-4 text-warning-light" />
                           <span>{t('rendirElExamen', 'Rendir el examen')}</span>
                         </button>
                       </div>

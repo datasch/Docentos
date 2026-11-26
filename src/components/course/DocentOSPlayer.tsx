@@ -714,7 +714,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         }
       }}
       onTouchStart={handleTouch}
-      className={`group relative mx-auto aspect-video w-full select-none overflow-hidden bg-black shadow-2xl transition-all duration-300 ${
+      className={`group relative mx-auto aspect-video w-full select-none overflow-hidden bg-black shadow-2xl transition-[color,background-color,border-color,opacity,box-shadow] duration-300 ${
         isFullscreen ? 'h-screen w-screen rounded-none' : 'lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl border border-line'
       }`}
     >
@@ -828,7 +828,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           {/* Botón Play central estilo Bezel YouTube en (50%, 50%). Mientras arranca
               se oculta: en su lugar queda el indicador de carga. */}
           <div className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${isStarting ? 'hidden' : ''}`}>
-            <div className="flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-black/65 hover:bg-black/75 border border-white/15 text-white shadow-xl backdrop-blur-sm hover:scale-105 active:scale-95 transition-all duration-200">
+            <div className="flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-black/65 hover:bg-black/75 border border-white/15 text-white shadow-xl backdrop-blur-sm active:scale-95 transition-[color,background-color,border-color,opacity,transform] duration-200">
               <Play className="h-8 w-8 sm:h-9 sm:w-9 fill-white text-white ml-0.5" />
             </div>
           </div>
@@ -926,17 +926,17 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           onClick={handleTimelineScrub}
           onMouseMove={handleTimelineMouseMove}
           onMouseLeave={handleTimelineMouseLeave}
-          className="group/timeline relative mb-3 h-2 w-full cursor-pointer rounded-full bg-[rgb(255_255_255/0.22)] transition-all hover:h-2.5"
+          className="group/timeline relative mb-3 h-2 w-full cursor-pointer rounded-full bg-[rgb(255_255_255/0.22)] transition-colors hover:h-2.5"
         >
           {/* Buffer precargado */}
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-[rgb(255_255_255/0.3)] transition-all duration-300"
+            className="absolute inset-y-0 left-0 rounded-full bg-[rgb(255_255_255/0.3)] transition-colors duration-300"
             style={{ width: `${bufferedPercent}%` }}
           />
 
           {/* Progreso reproducido */}
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-brand-cyan shadow-sm transition-all duration-75"
+            className="absolute inset-y-0 left-0 rounded-full bg-brand-cyan shadow-sm transition-[color,background-color,border-color,opacity,box-shadow] duration-75"
             style={{ width: `${currentPercent}%` }}
           />
 
@@ -1011,7 +1011,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
                 )}
               </button>
 
-              <div className="hidden sm:flex items-center w-0 overflow-hidden group-hover/vol:w-20 transition-all duration-200">
+              <div className="hidden sm:flex items-center w-0 overflow-hidden group-hover/vol:w-20 transition-colors duration-200">
                 <input
                   type="range"
                   min="0"
@@ -1049,7 +1049,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
 
               {showSpeedMenu && (
                 <div className="absolute bottom-full right-0 mb-2 w-24 overflow-hidden rounded-xl bg-canvas/95 border border-line p-1 shadow-2xl backdrop-blur-xl animate-scale-up">
-                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+                  <div className="px-2 py-1 text-[10px] font-bold text-ink-muted">
                     {t('velocidad', 'Velocidad')}
                   </div>
                   {PLAYBACK_RATES.map((rate) => (

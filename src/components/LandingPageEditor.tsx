@@ -743,11 +743,11 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#2d2d44]">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${testimonial.status === 'APPROVED'
-                          ? 'text-emerald-400'
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${testimonial.status === 'APPROVED'
+                          ? 'text-success-light'
                           : testimonial.status === 'REJECTED'
-                            ? 'text-red-400'
-                            : 'text-amber-400'
+                            ? 'text-danger-light'
+                            : 'text-warning-light'
                         }`}
                     >
                       {testimonial.status === 'APPROVED' ? (
@@ -764,7 +764,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                       {testimonial.status !== 'APPROVED' && (
                         <button
                           onClick={() => moderateTestimonial(testimonial.id, 'APPROVED')}
-                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 font-bold rounded-lg text-[11px]"
+                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-success-light font-bold rounded-lg text-[11px]"
                         >
                           {t('publicar', 'Publicar')}
                         </button>
@@ -779,7 +779,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                       )}
                       <button
                         onClick={() => setTestimonialToDelete(testimonial)}
-                        className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-[#141420]"
+                        className="p-1.5 text-slate-500 hover:text-danger-light rounded-lg hover:bg-[#141420]"
                         title={t('eliminarDefinitivamente', 'Eliminar definitivamente')}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -809,7 +809,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
           {/* Footer Texts & Links */}
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-300 mb-2">
                 {t('textoPrincipalDelFooter', 'Texto Principal del Footer')}
               </label>
               <input
@@ -822,7 +822,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-300 mb-2">
                   {t('githubRepositoryUrl', 'GitHub Repository URL')}
                 </label>
                 <input
@@ -834,7 +834,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-300 mb-2">
                   {t('linkedinUrl', 'LinkedIn URL')}
                 </label>
                 <input
@@ -846,7 +846,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-300 mb-2">
                   {t('discordCommunityUrl', 'Discord Community URL')}
                 </label>
                 <input
@@ -858,7 +858,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-300 mb-2">
                   {t('twitterXUrl', 'Twitter / X URL')}
                 </label>
                 <input

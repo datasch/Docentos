@@ -184,7 +184,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
           <article
             aria-label={`${featuredCourse.title} - ${t('catalog.featuredProgram', 'Programa destacado')}`}
             onClick={() => onSelectCourse(featuredCourse)}
-            className="catalog-featured-glow academy-course-card group relative order-1 mb-8 grid cursor-pointer grid-cols-1 overflow-hidden rounded-2xl border border-brand-cyan/35 bg-gradient-to-br from-brand-cyan/[0.08] via-surface to-surface transition-colors hover:border-brand-cyan/70 sm:mb-12 lg:grid-cols-2"
+            className="catalog-featured-glow academy-course-card group relative order-1 mb-8 grid cursor-pointer grid-cols-1 overflow-hidden rounded-2xl border border-brand-cyan/35 bg-surface transition-colors hover:border-brand-cyan/70 sm:mb-12 lg:grid-cols-2"
           >
             <div className="flex items-center p-5 sm:p-8 lg:order-2">
               <img
@@ -369,7 +369,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                       <img
                         {...getResponsiveCoverProps(cover, 'card')}
                         alt=""
-                        className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                        className="h-full w-full object-cover"
                         loading="lazy"
                         decoding="async"
                       />
@@ -402,7 +402,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
                     <img
                       {...getResponsiveCoverProps(cover, 'card')}
                       alt=""
-                      className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                      className="h-full w-full object-cover"
                       loading="lazy"
                       decoding="async"
                     />

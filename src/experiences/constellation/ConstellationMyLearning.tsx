@@ -70,7 +70,7 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
         alt=""
         loading={recommended ? 'eager' : 'lazy'}
         decoding="async"
-        className={`h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02] ${recommended ? 'rounded-xl' : ''}`}
+        className={`h-full w-full object-cover ${recommended ? 'rounded-xl' : ''}`}
       />
     ) : (
       <span className="grid h-full w-full place-items-center text-ink-faint"><BookOpen size={32} aria-hidden="true" /></span>

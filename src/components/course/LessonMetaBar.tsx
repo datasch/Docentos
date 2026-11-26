@@ -104,7 +104,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
                     : t('debesVerAlMenosEl90DelVideoSin', 'Debes ver al menos el 90% del video, sin adelantarlo, para poder completar esta misión')
                   : t('marcarMisionComoCompletada', 'Marcar misión como completada')
             }
-            className={`${highlightComplete && canComplete ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium tabular-nums transition-all ${
+            className={`${highlightComplete && canComplete ? 'lesson-complete-ready ' : ''}flex items-center gap-2 rounded-xl px-4 py-2.5 text-meta font-medium tabular-nums transition-colors ${
               autoCompleteIn !== null
                 ? 'bg-slate-100 dark:bg-raised text-slate-900 dark:text-ink border border-slate-300 dark:border-line cursor-progress'
                 : !canComplete
@@ -115,7 +115,7 @@ export const LessonMetaBar: React.FC<LessonMetaBarProps> = ({
             {autoCompleteIn !== null ? (
               <Timer aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" />
             ) : !canComplete ? (
-              <Lock aria-hidden className="h-4 w-4 text-amber-400 shrink-0" />
+              <Lock aria-hidden className="h-4 w-4 text-warning-light shrink-0" />
             ) : (
               <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" strokeWidth={2} />
             )}
@@ -227,7 +227,7 @@ export const MobileLessonBar: React.FC<MobileLessonBarProps> = ({
         {autoCompleteIn !== null ? (
           <Timer aria-hidden className="h-4 w-4 shrink-0" />
         ) : !canComplete ? (
-          <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+          <Lock aria-hidden className="h-3.5 w-3.5 shrink-0 text-warning-light" />
         ) : (
           <Check aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} />
         )}

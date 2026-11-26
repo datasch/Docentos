@@ -982,7 +982,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const courseScopeBar = (
     <div className="bg-raised border border-line rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center gap-3 justify-between">
       <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-2 w-full xl:w-auto">
-        <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider shrink-0">
+        <label className="text-[11px] font-bold text-ink-muted shrink-0">
           {t('cursoSobreElQueTrabajas', 'Curso sobre el que trabajas')}
         </label>
         <AdminSelect className="w-full min-w-0 sm:w-64 xl:w-96" ariaLabel={t('cursoSobreElQueTrabajas', 'Curso sobre el que trabajas')} value={workCourseId} onChange={setWorkCourseId} options={allCourses.map((item) => ({ value: item.id, label: `${item.title}${item.published ? '' : t('borradorGuion', ' — borrador')}` }))} />
@@ -1020,7 +1020,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <img
                 src={customizerConfig.customLogoUrl || DEFAULT_LOGO_URL}
                 alt={t('logo', 'Logo')}
-                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.4)]"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
                 }}
@@ -1028,11 +1028,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <FestiveHatOverlay size="md" />
             </div>
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 text-brand-cyan text-xs font-bold">
                 <Shield className="w-3.5 h-3.5" />
                 <span>{t('panelDeMentoriaAdministracionRbac', 'PANEL DE MENTORÍA & ADMINISTRACIÓN RBAC')}</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
                 {customizerConfig.customCampusName || t('customBrandNameControlCenter', '{{customBrandName}} Control Center', { customBrandName: customizerConfig.customBrandName || 'DocentOS' })}
               </h1>
               <p className="text-ink-muted text-xs mt-1 max-w-md leading-relaxed">
@@ -1048,8 +1048,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               {[
                 { id: 'users' as SubTab, label: t('usuarios', 'Usuarios'), icon: Users, iconColor: 'text-white/70' },
                 { id: 'courses' as SubTab, label: t('cursosCapital', 'Cursos'), icon: BookOpen, iconColor: 'text-brand-cyan' },
-                { id: 'enrollments' as SubTab, label: t('matriculas', 'Matrículas'), icon: GraduationCap, iconColor: 'text-emerald-400' },
-                { id: 'certificates' as SubTab, label: t('certificados', 'Certificados'), icon: Award, iconColor: 'text-amber-400' },
+                { id: 'enrollments' as SubTab, label: t('matriculas', 'Matrículas'), icon: GraduationCap, iconColor: 'text-success-light' },
+                { id: 'certificates' as SubTab, label: t('certificados', 'Certificados'), icon: Award, iconColor: 'text-warning-light' },
                 { id: 'contracts' as SubTab, label: t('contratos', 'Contratos'), icon: FileCheck, iconColor: 'text-blue-400' },
                 { id: 'resources' as SubTab, label: t('recursos', 'Recursos'), icon: BookOpen, iconColor: 'text-brand-cyan' },
               ].map((t) => {
@@ -1062,7 +1062,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     onClick={() => selectTab(t.id)}
                     className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl cursor-pointer ${
                       isSelected
-                        ? 'bg-gradient-to-r from-brand-cyan via-fuchsia-500 to-orange-500 text-white font-bold'
+                        ? 'bg-brand-cyan text-on-brand font-semibold'
                         : 'text-white/80 hover:text-white font-medium hover:bg-white/5'
                     }`}
                   >
@@ -1077,7 +1077,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {[
                 { id: 'drive' as SubTab, label: t('videosDrive', 'Videos Drive'), icon: HardDrive, iconColor: 'text-white/70' },
-                { id: 'tts' as SubTab, label: t('guiasTts', 'Guías TTS'), icon: Sparkles, iconColor: 'text-amber-300' },
+                { id: 'tts' as SubTab, label: t('guiasTts', 'Guías TTS'), icon: Sparkles, iconColor: 'text-warning-light' },
                 { id: 'plugins' as SubTab, label: t('plugins', 'Plugins'), icon: Layers, iconColor: 'text-brand-cyan' },
                 { id: 'landing' as SubTab, label: t('portada', 'Portada'), icon: Sliders, iconColor: 'text-brand-cyan' },
                 { id: 'listening' as SubTab, label: t('escucha', 'Escucha'), icon: HeartHandshake, iconColor: 'text-brand-cyan' },
@@ -1091,7 +1091,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     onClick={() => selectTab(t.id)}
                     className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl cursor-pointer ${
                       isSelected
-                        ? 'bg-gradient-to-r from-brand-cyan via-fuchsia-500 to-orange-500 text-white font-bold'
+                        ? 'bg-brand-cyan text-on-brand font-semibold'
                         : 'text-white/80 hover:text-white font-medium hover:bg-white/5'
                     }`}
                   >
@@ -1220,9 +1220,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               setActiveTab('courses');
             }
           }}
-          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+          className={`p-4 rounded-2xl border text-left transition-colors flex flex-col justify-between gap-3 ${
             masterSection === 'courses'
-              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              ? 'bg-elevated border-brand-cyan shadow-lg ring-1 ring-brand-cyan/40'
               : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
           }`}
         >
@@ -1250,9 +1250,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             setMasterSection('users');
             setActiveTab('users');
           }}
-          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+          className={`p-4 rounded-2xl border text-left transition-colors flex flex-col justify-between gap-3 ${
             masterSection === 'users'
-              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              ? 'bg-elevated border-brand-cyan shadow-lg ring-1 ring-brand-cyan/40'
               : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
           }`}
         >
@@ -1282,16 +1282,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               setActiveTab('certificates');
             }
           }}
-          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+          className={`p-4 rounded-2xl border text-left transition-colors flex flex-col justify-between gap-3 ${
             masterSection === 'legal'
-              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              ? 'bg-elevated border-brand-cyan shadow-lg ring-1 ring-brand-cyan/40'
               : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`p-2.5 rounded-xl border ${
               masterSection === 'legal'
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                ? 'bg-amber-500/20 border-amber-500/40 text-warning-light'
                 : 'bg-canvas border-line text-ink-muted'
             }`}>
               <Award className="w-4 h-4" />
@@ -1314,9 +1314,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               setActiveTab('plugins');
             }
           }}
-          className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 ${
+          className={`p-4 rounded-2xl border text-left transition-colors flex flex-col justify-between gap-3 ${
             masterSection === 'system'
-              ? 'bg-elevated border-brand-cyan shadow-lg shadow-brand-cyan/10 ring-1 ring-brand-cyan/40'
+              ? 'bg-elevated border-brand-cyan shadow-lg ring-1 ring-brand-cyan/40'
               : 'bg-raised/70 border-line hover:border-line-strong hover:bg-elevated/60'
           }`}
         >
@@ -1347,7 +1347,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <button
                 type="button"
                 onClick={() => setActiveTab('courses')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   activeTab === 'courses'
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
@@ -1361,7 +1361,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 onClick={() => {
                   setActiveTab(mediaView || 'resources');
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   ['resources', 'drive', 'tts'].includes(activeTab)
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
@@ -1381,7 +1381,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   setActiveTab('users');
                   setUserSectionView('directory');
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   userSectionView === 'directory'
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
@@ -1396,13 +1396,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   setActiveTab('users');
                   setUserSectionView('enrollments');
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   userSectionView === 'enrollments'
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
                 }`}
               >
-                <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
+                <GraduationCap className="w-3.5 h-3.5 text-success-light" />
                 <span>{t('admin.tabEnrollments', 'Registro de Matrículas')} ({enrollments.length})</span>
               </button>
             </div>
@@ -1416,13 +1416,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   setActiveTab('certificates');
                   setLegalView('certificates');
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   activeTab === 'certificates'
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
                 }`}
               >
-                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <Award className="w-3.5 h-3.5 text-warning-light" />
                 <span>{t('admin.tabCertificates', 'Certificados Emitidos')} ({certificates.length})</span>
               </button>
               <button
@@ -1431,7 +1431,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   setActiveTab('contracts');
                   setLegalView('contracts');
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   activeTab === 'contracts'
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
@@ -1448,7 +1448,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <button
                 type="button"
                 onClick={() => setActiveTab('plugins')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   activeTab === 'plugins'
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
@@ -1462,7 +1462,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 onClick={() => {
                   setActiveTab(portalView || 'landing');
                 }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
                   ['landing', 'listening'].includes(activeTab)
                     ? 'btn-brand-primary shadow-sm'
                     : 'bg-canvas hover:bg-elevated text-ink-muted hover:text-ink border border-line'
@@ -1791,7 +1791,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   <BookOpen className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-white">
+                  <h3 className="font-semibold text-sm text-white">
                     {t('cursosAsignadosAlMentor', 'Cursos Asignados al Mentor')}
                   </h3>
                   <p className="text-xs text-ink-muted">
@@ -1834,7 +1834,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                     return (
                       <label
                         key={c.id}
-                        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer ${
                           isChecked
                             ? 'bg-brand-cyan/10 border-brand-cyan/40 text-white'
                             : 'bg-[#141424] border-line text-ink-muted hover:text-ink'
@@ -1898,8 +1898,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
           role="alert"
           className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border px-4 py-3 text-xs font-bold shadow-2xl ${
             moderationNotice.tone === 'error'
-              ? 'bg-red-500/15 border-red-500/40 text-red-300'
-              : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+              ? 'bg-red-500/15 border-red-500/40 text-danger-light'
+              : 'bg-amber-500/15 border-amber-500/40 text-warning-light'
           }`}
         >
           <span>{moderationNotice.text}</span>

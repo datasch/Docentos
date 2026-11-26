@@ -48,7 +48,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
           {/* Columna Izquierda: Logo, Nombre y Motto de DocentOS */}
           <div className="lg:col-span-5 flex flex-col items-start gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="footer-logo-frame w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-[var(--color-brand-cyan)] via-[#8b5cf6] to-[#ec4899] p-[1.5px] flex items-center justify-center relative overflow-visible">
+              <span className="footer-logo-frame w-9 h-9 shrink-0 rounded-xl border border-line flex items-center justify-center relative overflow-visible">
                 {logoUrl ? (
                   <img
                     src={logoUrl === DEFAULT_LOGO_URL ? '/logo-64.avif' : logoUrl}

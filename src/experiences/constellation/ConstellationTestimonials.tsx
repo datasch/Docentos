@@ -446,7 +446,7 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                   maxLength={TESTIMONIAL_MAX_CHARS}
                   onChange={(e) => setDraftComment(e.target.value)}
                   placeholder={t('explicaQueImpactoTuvoEnTusConocimientos', 'Explica qué impacto tuvo en tus conocimientos, el trato de los mentores o los proyectos construidos...')}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-base sm:text-sm bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-base sm:text-sm bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors resize-none"
                 />
                 <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50 leading-relaxed">
                   {t('sePublicaraConTuNombreYFotoDePerfilUna', 'Se publicará con tu nombre y foto de perfil una vez aprobado por moderación.')}

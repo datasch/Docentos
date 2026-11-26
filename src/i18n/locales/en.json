@@ -1558,7 +1558,7 @@
   "cargandoMentees": "Loading mentees...",
   "aunNoTienesMenteesAsignados": "You don't have any mentees assigned yet.",
   "progresoEnCurso": "Course Progress",
-  "completedVideosCountDeTotalVideosCount": "{{completedVideosCount}} of {{totalVideosCount}} lessons • Active {{lastActiveDate}}",
+  "completedVideosCountDeTotalVideosCount": "{{completedVideosCount}} of {{totalVideosCount}} lessons",
   "sinCursosAsignados": "No courses assigned",
   "courseProgressCompletedVideosCountDe": "{{courseProgress}}% · {{completedVideosCount}} of {{totalVideosCount}} lessons",
   "editarCursos": "Edit courses",

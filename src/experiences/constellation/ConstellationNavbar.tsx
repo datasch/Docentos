@@ -209,7 +209,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
           className="academy-nav-brand flex items-center gap-2 sm:gap-3 group text-left cursor-pointer select-none bg-transparent border-0 p-0 min-w-0 shrink relative"
         >
           {/* Logo Mark Oficial o Personalizado del Campus */}
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 relative">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-300 relative">
             <img
               src={customLogoUrl === DEFAULT_LOGO_URL ? '/logo-64.avif' : customLogoUrl}
               srcSet={customLogoUrl === DEFAULT_LOGO_URL ? '/logo-64.avif 64w, /logo.avif 256w' : undefined}
@@ -217,7 +217,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
               width={32}
               height={32}
               alt={brandName}
-              className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(128,82,255,0.4)]"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
               }}

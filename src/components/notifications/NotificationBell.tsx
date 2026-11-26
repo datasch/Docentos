@@ -77,7 +77,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         aria-expanded={open}
         aria-label={unreadCount > 0 ? t('notificacionesUnreadCountSinLeer', 'Notificaciones: {{unreadCount}} sin leer', { unreadCount }) : t('notificaciones', 'Notificaciones')}
         title={t('notificaciones', 'Notificaciones')}
-        className="relative inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/[0.06] cursor-pointer"
+        className="relative inline-flex min-h-11 min-w-11 items-center justify-center p-2 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/[0.06] cursor-pointer"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (

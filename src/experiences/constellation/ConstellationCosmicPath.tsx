@@ -410,7 +410,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                 {t('path.completed', 'Completado')}
               </span>
             ) : (
-              <span className="text-sm px-2.5 py-0.5 rounded-full font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+              <span className="text-sm px-2.5 py-0.5 rounded-full font-semibold border border-line text-ink-soft">
                 {t('path.lessonsCount', { count: missions.length, defaultValue_one: '{{count}} lección', defaultValue_other: '{{count}} lecciones' })}
               </span>
             )}
@@ -540,7 +540,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
                     ) : seasonalTheme === 'christmas' ? (
                       <CandyCaneIcon size={28} />
                     ) : (
-                      <Sparkles className="w-8 h-8 text-brand-cyan  animate-pulse" />
+                      <Sparkles className="w-8 h-8 text-brand-cyan" />
                     )
                   ) : (
                     <IconComponent className="w-8 h-8 text-purple-300/70" />
@@ -650,7 +650,7 @@ const ModuloCaminoTrack: React.FC<ModuloCaminoTrackProps> = ({
             {allMissionsCompleted ? (
               /* Cuando todas las misiones están completadas: el orbe celestial cambia al círculo morado con el check blanco radiante de la imagen */
               <div 
-                className="w-full h-full rounded-full flex items-center justify-center border-2 border-white/80  animate-pulse"
+                className="w-full h-full rounded-full flex items-center justify-center border-2 border-white/80"
                 style={{
                   background: 'linear-gradient(180deg, #c4b5fd 0%, #8b5cf6 45%, #6d28d9 100%)',
                 }}
@@ -964,12 +964,12 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 /* Barra temática de Dulces en Halloween */
                 <div className="w-36 h-4 rounded-full bg-slate-200 dark:bg-purple-950/80 border-2 border-orange-500/60 p-0.5 relative ">
                   <div 
-                    className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-purple-600 rounded-full transition-all duration-500 "
+                    className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-purple-600 rounded-full transition-[width] duration-500 "
                     style={{ width: `${progressPct}%` }}
                   />
                   {progressPct > 0 && (
                     <div 
-                      className="absolute -top-2 transition-all duration-500 select-none -translate-x-1/2 pointer-events-none"
+                      className="absolute -top-2 transition-[color,background-color,border-color,opacity,transform] duration-500 select-none -translate-x-1/2 pointer-events-none"
                       style={{ left: `${Math.min(94, Math.max(6, progressPct))}%` }}
                     >
                       <HalloweenCandyIcon size={24} />
@@ -980,7 +980,7 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 /* Barra Cósmica Estándar */
                 <div className="w-28 h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700/80 overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-[var(--color-brand-cyan)] to-[#8b5cf6] rounded-full transition-all duration-500"
+                    className="h-full bg-brand-cyan rounded-full transition-[width] duration-500"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>

@@ -341,7 +341,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
         aria-labelledby="listening-title"
       >
         <header className="flex items-start gap-3 border-b border-line px-5 py-4 sm:gap-4 sm:px-7 sm:py-5">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-blue text-on-brand">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-cyan text-on-brand">
             <HeartHandshake aria-hidden className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">
@@ -431,7 +431,7 @@ export const ListeningBoxModal: React.FC<ListeningBoxModalProps> = ({
                           role="radio"
                           aria-checked={mood === item.value}
                           onClick={() => setMood(item.value)}
-                          className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-0.5 py-2.5 transition-all ${
+                          className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-0.5 py-2.5 transition-colors ${
                             mood === item.value ? `scale-[1.04] ${MOOD_SELECTED[item.value]}` : 'border-line bg-canvas/30 hover:border-line-strong'
                           }`}
                         >

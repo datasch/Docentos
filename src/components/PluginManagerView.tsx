@@ -443,7 +443,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${selectedCategory === cat
               ? 'bg-brand-cyan text-black shadow-md'
               : 'bg-canvas text-ink-muted hover:text-ink border border-line'
               }`}
@@ -474,7 +474,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
           return (
             <div
               key={plugin.id}
-              className={`bg-raised border rounded-xl p-6 transition-all flex flex-col justify-between space-y-4 ${plugin.enabled ? 'border-brand-cyan/50 shadow-lg shadow-brand-cyan/5' : 'border-line opacity-75'
+              className={`bg-raised border rounded-xl p-6 transition-[color,background-color,border-color,opacity,box-shadow] flex flex-col justify-between space-y-4 ${plugin.enabled ? 'border-brand-cyan/50 shadow-lg' : 'border-line opacity-75'
                 }`}
             >
               <div>
@@ -491,7 +491,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                           v{plugin.version}
                         </span>
                       </h3>
-                      <span className="text-micro font-bold text-brand-purple uppercase tracking-wider">
+                      <span className="text-micro font-bold text-brand-purple">
                         {t('categoriaCategory', 'Categoría: {{category}}', { category: plugin.category })}
                       </span>
                     </div>
@@ -533,7 +533,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
 
                 <button
                   onClick={() => handleOpenConfigModal(plugin)}
-                  className="px-3 py-1.5 bg-elevated hover:bg-elevated border border-line hover:border-brand-cyan text-ink text-xs font-bold rounded-lg transition-all flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-elevated hover:bg-elevated border border-line hover:border-brand-cyan text-ink text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
                 >
                   <Settings className="w-3.5 h-3.5 text-brand-cyan" />
                   <span>{t('configurar', 'Configurar')}</span>
@@ -604,7 +604,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                   {/* General Certificate Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                      <label className="block text-micro font-bold text-ink-soft mb-1">
                         {t('nombreDeLaInstitucionAcademia', 'Nombre de la Institución / Academia')}
                       </label>
                       <input
@@ -619,7 +619,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                     </div>
 
                     <div>
-                      <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                      <label className="block text-micro font-bold text-ink-soft mb-1">
                         {t('textoDeInsigniaDistintivo', 'Texto de Insignia / Distintivo')}
                       </label>
                       <input
@@ -634,7 +634,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                      <label className="block text-micro font-bold text-ink-soft mb-1">
                         {t('colorPrimarioDelCertificadoAcentoBrand', 'Color Primario del Certificado (Acento Brand Spectrum)')}
                       </label>
                       <div className="flex gap-2 items-center">
@@ -670,7 +670,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                               title={t('colorNameHex', 'Color {{name}} ({{hex}})', { name: c.name, hex: c.hex })}
                               onClick={() => setConfigFormState({ ...configFormState, primaryColor: c.hex })}
                               style={{ backgroundColor: c.hex }}
-                              className={`w-5 h-5 rounded-full border transition-transform hover:scale-110 ${configFormState.primaryColor === c.hex
+                              className={`w-5 h-5 rounded-full border transition-transform ${configFormState.primaryColor === c.hex
                                 ? 'border-white ring-2 ring-white/30 scale-110'
                                 : 'border-transparent'
                                 }`}
@@ -683,14 +683,14 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
 
                   {/* Personalización de Fondo: Blanco y Negro */}
                   <div className="bg-raised border border-line rounded-xl p-3.5 space-y-2">
-                    <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                    <label className="block text-micro font-bold text-ink-soft">
                       {t('fondoDelCertificadoBlancoNegro', 'Fondo del Certificado (Blanco / Negro)')}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setConfigFormState({ ...configFormState, backgroundColor: 'white' })}
-                        className={`py-2.5 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${configFormState.backgroundColor === 'white'
+                        className={`py-2.5 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-colors ${configFormState.backgroundColor === 'white'
                           ? 'bg-elevated border-brand-cyan text-ink shadow-md'
                           : 'bg-canvas border-line text-ink-muted hover:text-ink'
                           }`}
@@ -701,7 +701,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       <button
                         type="button"
                         onClick={() => setConfigFormState({ ...configFormState, backgroundColor: 'dark' })}
-                        className={`py-2.5 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-all ${(configFormState.backgroundColor || 'dark') === 'dark'
+                        className={`py-2.5 px-3 rounded-lg border text-xs font-bold flex items-center justify-center gap-2 transition-colors ${(configFormState.backgroundColor || 'dark') === 'dark'
                           ? 'bg-elevated border-brand-cyan text-ink shadow-md'
                           : 'bg-canvas border-line text-ink-muted hover:text-ink'
                           }`}
@@ -716,7 +716,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                   {/* Logo de la Institución: Por defecto Giantucchi con opción de Universidad */}
                   <div className="bg-raised border border-line rounded-xl p-3.5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                      <label className="text-micro font-bold text-ink-soft flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5 text-brand-cyan" />
                         {t('logoDelCertificadoPorDefectoGiantucchi', 'Logo del Certificado (Por defecto: Giantucchi)')}
                       </label>
@@ -794,7 +794,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                         />
                         <label
                           htmlFor="univ-logo-input"
-                          className="px-2.5 py-1.5 text-xs font-bold text-black bg-gradient-to-r from-brand-cyan to-brand-purple hover:opacity-95 rounded-lg cursor-pointer flex items-center gap-1 transition-all"
+                          className="px-2.5 py-1.5 text-xs font-bold text-black bg-brand-cyan text-on-brand hover:opacity-95 rounded-lg cursor-pointer flex items-center gap-1 transition-[color,background-color,border-color,opacity,box-shadow]"
                         >
                           <Upload className="w-3.5 h-3.5" />
                           <span>{t('subirLogoUniversidad', 'Subir Logo Universidad')}</span>
@@ -808,7 +808,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                   {/* ═══════════════════════════════════════════════════════════════ */}
                   <div className="border-t border-line pt-3 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-ink flex items-center gap-2">
                         <PenTool className="w-4 h-4 text-brand-magenta" />
                         <span>{t('firmasYAcreditacionInstitucional', 'Firmas y Acreditación Institucional')}</span>
                       </h4>
@@ -820,7 +820,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                     {/* FIRMA 1: GIANTUCCHI (PRINCIPAL / OBLIGATORIA) */}
                     <div className="bg-raised border border-line rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-micro font-bold text-brand-magenta uppercase tracking-wider flex items-center gap-1.5">
+                        <label className="text-micro font-bold text-brand-magenta flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-brand-magenta" />
                           {t('firma1DocentosPrincipal', 'Firma 1 : DocentOS (Principal)')}
                         </label>
@@ -830,7 +830,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       </div>
 
                       <div>
-                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                        <label className="block text-micro font-bold text-ink-soft mb-1">
                           {t('nombreYCargoDelFirmanteGiantucchi', 'Nombre y Cargo del Firmante Giantucchi')}
                         </label>
                         <input
@@ -862,7 +862,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                     <div className="bg-raised border border-line rounded-xl p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <label className="text-micro font-bold text-brand-cyan uppercase tracking-wider flex items-center gap-1.5">
+                          <label className="text-micro font-bold text-brand-cyan flex items-center gap-1.5">
                             <PenTool className="w-3.5 h-3.5 text-brand-cyan" />
                             {t('firma2UniversidadOInstituto', 'Firma 2 : Universidad o Instituto (Co-Certificación)')}
                           </label>
@@ -895,7 +895,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {configFormState.enableUniversitySignature ? (
                         <div className="space-y-3 pt-2 border-t border-line">
                           <div>
-                            <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                            <label className="block text-micro font-bold text-ink-soft mb-1">
                               {t('nombreYCargoDelFirmanteDeLaUniversidad', 'Nombre y Cargo del Firmante de la Universidad / Instituto')}
                             </label>
                             <input
@@ -937,7 +937,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       type="button"
                       onClick={handleDownloadSampleCert}
                       disabled={downloadingSampleCert}
-                      className="w-full py-2.5 px-4 bg-gradient-to-r from-brand-cyan/20 via-brand-purple/20 to-brand-yellow/20 hover:from-brand-cyan/30 hover:to-brand-yellow/30 border border-brand-cyan/50 hover:border-brand-cyan text-ink rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
+                      className="w-full py-2.5 px-4 bg-raised hover:bg-elevated border border-brand-cyan/50 hover:border-brand-cyan text-ink rounded-lg text-xs font-bold transition-[color,background-color,border-color,opacity,box-shadow] flex items-center justify-center gap-2 shadow-lg"
                     >
                       <Download className={`w-4 h-4 text-brand-cyan ${downloadingSampleCert ? 'animate-bounce' : ''}`} />
                       <span>{downloadingSampleCert ? t('generandoDiplomaDeAltaResolucion', 'Generando diploma de alta resolución...') : t('descargarCertificadoDeMuestraPng', 'Descargar Certificado de Muestra (PNG)')}</span>
@@ -956,7 +956,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                   {configModalPlugin.id === 'live-meetings' && (
                     <div className="space-y-3 p-4 bg-canvas border border-line rounded-xl">
                       <div>
-                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1.5">
+                        <label className="block text-micro font-bold text-ink-soft mb-1.5">
                           {t('proveedorPorDefecto', 'Proveedor por defecto')}
                         </label>
                         <div className="grid grid-cols-2 gap-2.5">
@@ -978,7 +978,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                                   jitsiDomain: domainMap[opt.value] ?? (opt.value === 'meet' ? 'meet.google.com' : 'meet.jit.si'),
                                 });
                               }}
-                              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl border text-xs font-bold transition-all ${
+                              className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl border text-xs font-bold transition-colors ${
                                 (configFormState.defaultProvider === opt.value || (!configFormState.defaultProvider && opt.value === 'jitsi'))
                                   ? 'border-brand-cyan bg-brand-cyan/10 text-ink shadow-md ring-1 ring-brand-cyan/30'
                                   : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
@@ -992,7 +992,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       </div>
 
                       <div>
-                        <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                        <label className="block text-micro font-bold text-ink-soft mb-1">
                           {t('dominioDelProveedor', 'Dominio del proveedor')}
                         </label>
                         <div className="flex gap-2 items-center">
@@ -1030,7 +1030,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {/* Arquitectura y Versión de Navegación */}
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                          <label className="block text-micro font-bold text-ink-soft">
                             {t('arquitecturaYVersionDeNavegacion', 'Arquitectura y Versión de Navegación')}
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
@@ -1045,7 +1045,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                             onClick={() => {
                               previewCustomizerState({ interfaceVersion: 'v0.5-modern' });
                             }}
-                            className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
+                            className={`p-4 rounded-xl border text-left transition-colors flex flex-col justify-between gap-3 cursor-pointer ${
                               configFormState.interfaceVersion !== 'v0.4-classic'
                                 ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
                                 : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
@@ -1068,7 +1068,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                             onClick={() => {
                               previewCustomizerState({ interfaceVersion: 'v0.4-classic' });
                             }}
-                            className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer ${
+                            className={`p-4 rounded-xl border text-left transition-colors flex flex-col justify-between gap-3 cursor-pointer ${
                               configFormState.interfaceVersion === 'v0.4-classic'
                                 ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
                                 : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
@@ -1090,7 +1090,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {/* Paleta de Color de Acento con cambio global en caliente */}
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                          <label className="block text-micro font-bold text-ink-soft">
                             {t('colorDeAcentoDelCampusCambioGlobalEnVivo', 'Color de Acento del Campus (Cambio Global en Vivo)')}
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
@@ -1118,7 +1118,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                                   const chosenColor = c.key as ColorTheme;
                                   previewCustomizerState({ colorTheme: chosenColor });
                                 }}
-                                className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
+                                className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2.5 transition-colors cursor-pointer ${
                                   isSelected
                                     ? 'border-brand-cyan bg-elevated text-ink ring-2 ring-brand-cyan shadow-md'
                                     : 'border-line bg-raised text-ink-muted hover:text-ink hover:border-line-strong'
@@ -1181,7 +1181,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {/* Modo de Iluminación: Claro vs Oscuro */}
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                          <label className="block text-micro font-bold text-ink-soft">
                             {t('modoDeIluminacionTemaClaroOscuro', 'Modo de Iluminación (Tema Claro / Oscuro)')}
                           </label>
                           <span className="text-micro font-bold text-brand-cyan">
@@ -1195,7 +1195,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                             onClick={() => {
                               previewCustomizerState({ colorMode: 'dark' });
                             }}
-                            className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                            className={`p-3.5 rounded-xl border text-left transition-colors flex items-center justify-between cursor-pointer ${
                               configFormState.colorMode !== 'light'
                                 ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
                                 : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
@@ -1221,7 +1221,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                             onClick={() => {
                               previewCustomizerState({ colorMode: 'light' });
                             }}
-                            className={`p-3.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                            className={`p-3.5 rounded-xl border text-left transition-colors flex items-center justify-between cursor-pointer ${
                               configFormState.colorMode === 'light'
                                 ? 'border-brand-cyan bg-brand-cyan/10 ring-2 ring-brand-cyan/40 text-ink shadow-md'
                                 : 'border-line bg-raised text-ink-muted hover:border-line-strong hover:text-ink'
@@ -1246,7 +1246,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {/* 1. Nombre de la Plataforma / Marca (Navbar & Footer) */}
                       <div className="space-y-2 p-4 rounded-xl bg-raised border border-line">
                         <div className="flex items-center justify-between">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                          <label className="block text-micro font-bold text-ink-soft flex items-center gap-1.5">
                             <Sparkles className="w-3.5 h-3.5 text-brand-cyan" />
                             <span>{t('nombreDeLaPlataformaMarca', 'Nombre de la Plataforma / Marca')}</span>
                           </label>
@@ -1293,7 +1293,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {/* 2. Título del Campus / Panel de Administración */}
                       <div className="space-y-2 p-4 rounded-xl bg-raised border border-line">
                         <div className="flex items-center justify-between">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                          <label className="block text-micro font-bold text-ink-soft flex items-center gap-1.5">
                             <Sliders className="w-3.5 h-3.5 text-brand-cyan" />
                             <span>{t('tituloDelCampusPanelDeAdministracion', 'Título del Campus / Panel de Administración')}</span>
                           </label>
@@ -1340,7 +1340,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                       {/* Logo Institucional y Sincronización con Scroll Animation */}
                       <div className="space-y-3 pt-2 border-t border-line">
                         <div className="flex items-center justify-between">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+                          <label className="block text-micro font-bold text-ink-soft flex items-center gap-1.5">
                             <ImageIcon className="w-3.5 h-3.5 text-brand-cyan" />
                             <span>{t('logoDeLaInstitucionAnimacionDeScroll', 'Logo de la Institución & Animación de Scroll')}</span>
                           </label>
@@ -1360,7 +1360,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                             <img
                               src={configFormState.customLogoUrl || DEFAULT_LOGO_URL}
                               alt={t('logoInstitucion', 'Logo Institución')}
-                              className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.5)]"
+                              className="w-full h-full object-contain"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = DEFAULT_LOGO_URL;
                               }}
@@ -1384,7 +1384,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                               />
 
                               {/* Botón para subir archivo local y convertir a Base64 */}
-                              <label className="px-3 py-2 rounded-lg bg-elevated hover:bg-canvas border border-line hover:border-brand-cyan text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0">
+                              <label className="px-3 py-2 rounded-lg bg-elevated hover:bg-canvas border border-line hover:border-brand-cyan text-ink text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0">
                                 <Upload className="w-3.5 h-3.5 text-brand-cyan" />
                                 <span className="hidden md:inline">{t('subir', 'Subir')}</span>
                                 <input
@@ -1414,7 +1414,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                                   onClick={() => {
                                     setConfigFormState((prev) => ({ ...prev, customLogoUrl: '' }));
                                   }}
-                                  className="p-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-muted hover:text-ink transition-all cursor-pointer"
+                                  className="p-2 rounded-lg bg-raised hover:bg-elevated border border-line text-ink-muted hover:text-ink transition-colors cursor-pointer"
                                   title={t('restablecerLogoPorDefecto', 'Restablecer logo por defecto')}
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1466,7 +1466,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
 
                         <div className="rounded-xl border border-line bg-raised p-3.5 flex items-center justify-between gap-3">
                           <div className="space-y-0.5">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-brand-cyan">
+                            <p className="text-[11px] font-bold text-brand-cyan">
                               {t('automatizacionNativaDocentos', 'Automatización nativa de DocentOS')}
                             </p>
                             <p className="text-xs text-ink-soft">
@@ -1493,7 +1493,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                         </div>
 
                         <div className="space-y-2">
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider">
+                          <label className="block text-micro font-bold text-ink-soft">
                             {t('modoOperacionFestividades', 'Modo de operación (Complemento + Respaldo)')}
                           </label>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1527,7 +1527,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
                                 key={opt.value}
                                 type="button"
                                 onClick={() => setConfigFormState({ ...configFormState, mode: opt.value })}
-                                className={`text-left p-3 rounded-xl border transition-all ${
+                                className={`text-left p-3 rounded-xl border transition-colors ${
                                   selectedMode === opt.value
                                     ? 'border-brand-cyan bg-brand-cyan/10 ring-1 ring-brand-cyan/30'
                                     : 'border-line bg-raised hover:border-line-strong'
@@ -1623,7 +1623,7 @@ export const PluginManagerView: React.FC<{ modern?: boolean }> = ({ modern = fal
 
                       return (
                         <div key={key}>
-                          <label className="block text-micro font-bold text-ink-soft uppercase tracking-wider mb-1">
+                          <label className="block text-micro font-bold text-ink-soft mb-1">
                             {label}
                           </label>
                           <input

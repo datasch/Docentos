@@ -1572,7 +1572,7 @@
   "cargandoMentees": "Caricamento dei mentee...",
   "aunNoTienesMenteesAsignados": "Non hai ancora mentee assegnati.",
   "progresoEnCurso": "Progresso nel corso",
-  "completedVideosCountDeTotalVideosCount": "{{completedVideosCount}} di {{totalVideosCount}} lezioni • Attivo {{lastActiveDate}}",
+  "completedVideosCountDeTotalVideosCount": "{{completedVideosCount}} di {{totalVideosCount}} lezioni",
   "sinCursosAsignados": "Nessun corso assegnato",
   "courseProgressCompletedVideosCountDe": "{{courseProgress}}% · {{completedVideosCount}} di {{totalVideosCount}} lezioni",
   "editarCursos": "Modifica corsi",

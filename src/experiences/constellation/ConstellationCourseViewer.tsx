@@ -319,7 +319,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           </div>
         </div>
 
-        <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-wide mb-2 text-center">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white tracking-wide mb-2 text-center">
           {t('viewer.tracingRoute', 'Trazando la Ruta Estelar de Aprendizaje...')}
         </h2>
         <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md text-center line-clamp-2">

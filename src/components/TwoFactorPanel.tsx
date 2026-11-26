@@ -219,7 +219,7 @@ export const TwoFactorPanel: React.FC = () => {
             {t('noPuedesEscanearEscribeEstaClaveEnLa', '¿No puedes escanear? Escribe esta clave en la aplicación:')}{' '}
             <code className="break-all font-mono text-ink">{alta.secret}</code>
           </p>
-          <label htmlFor="dos-pasos-codigo" className="block text-micro font-bold uppercase tracking-wider text-ink-soft">
+          <label htmlFor="dos-pasos-codigo" className="block text-micro font-bold text-ink-soft">
             {t('codigoDeSeisDigitos', 'Código de seis dígitos')}
           </label>
           <input
@@ -272,7 +272,7 @@ export const TwoFactorPanel: React.FC = () => {
 
       {pidiendoContrasena && (
         <form onSubmit={confirmarConContrasena} className="space-y-3 rounded-xl border border-line bg-elevated p-4">
-          <label htmlFor="dos-pasos-contrasena" className="block text-micro font-bold uppercase tracking-wider text-ink-soft">
+          <label htmlFor="dos-pasos-contrasena" className="block text-micro font-bold text-ink-soft">
             {t('confirmaConTuContrasena', 'Confirma con tu contraseña')}
           </label>
           <input
