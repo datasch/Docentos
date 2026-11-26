@@ -99,8 +99,11 @@ test('notificaciones en vivo de preguntas y respuestas de mentoría', async (t) 
     streams.forEach((s) => s.close());
     server.closeAllConnections?.();
     await new Promise<void>((r) => server.close(() => r()));
+    await prisma.notification.deleteMany({ where: { OR: [{ userId: { in: ids } }, { title: { contains: suffix } }] } });
     await prisma.mentorshipComment.deleteMany({ where: { videoId: video.id } });
     await prisma.auditLog.deleteMany({ where: { actorUserId: { in: ids } } });
+    await prisma.courseEnrollment.deleteMany({ where: { courseId: course.id } });
+    await prisma.courseMentor.deleteMany({ where: { courseId: course.id } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
     await prisma.course.delete({ where: { id: course.id } });
     await prisma.$disconnect();

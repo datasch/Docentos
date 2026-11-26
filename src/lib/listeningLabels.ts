@@ -44,3 +44,11 @@ export const MOODS = BASE_MOODS.map((mood) => ({
   emoji: mood.emoji,
   get label() { return i18n.t(`mood_${mood.value}`, mood.label); },
 }));
+
+export function npsVerdict(score: number | null): { label: string; tone: string } {
+  if (score === null) return { label: i18n.t('sinRespuestasTodavia', 'Sin respuestas todavía'), tone: 'text-ink-muted' };
+  if (score >= 50) return { label: i18n.t('excelente', 'Excelente'), tone: 'text-success-light' };
+  if (score >= 30) return { label: i18n.t('bueno', 'Bueno'), tone: 'text-success-light' };
+  if (score >= 0) return { label: i18n.t('porMejorar', 'Por mejorar'), tone: 'text-warning-light' };
+  return { label: i18n.t('critico', 'Crítico'), tone: 'text-danger-light' };
+}

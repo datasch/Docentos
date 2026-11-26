@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { Course, User } from '../../types';
 import { api } from '../../lib/api';
 import { courseLearningProgress, learningCourses, nextLearningCourse } from '../../lib/myLearning';
+import { RouteSkeleton } from '../../components/loading/RouteSkeleton';
 
 import { LearningCertificates } from './LearningCertificates';
 
@@ -13,29 +14,35 @@ interface MyLearningProps {
   user: User | null;
   courses: Course[];
   accessReady: boolean;
+  isActive?: boolean;
   onContinue: (course: Course) => void;
   onBrowse: () => void;
   onLogin: () => void;
   onVerifyCertificate?: (code: string) => void;
 }
 
-export function ConstellationMyLearning({ user, courses, accessReady, onContinue, onBrowse, onLogin, onVerifyCertificate }: MyLearningProps) {
+export function ConstellationMyLearning({ user, courses, accessReady, isActive = true, onContinue, onBrowse, onLogin, onVerifyCertificate }: MyLearningProps) {
   const { t } = useTranslation();
-  const [snapshot, setSnapshot] = useState<{ owner: User; data?: ProgressData; failed?: boolean } | null>(null);
+  const [snapshot, setSnapshot] = useState<{ ownerId: string; data?: ProgressData; failed?: boolean } | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    setSnapshot(null);
-    if (!user || !accessReady) return;
+    if (!user) {
+      setSnapshot(null);
+      return;
+    }
+    if (!accessReady || !isActive) return;
     api.getProgress().then(data => {
-      if (!cancelled) setSnapshot({ owner: user, data });
+      if (!cancelled) setSnapshot({ ownerId: user.id, data });
     }).catch(() => {
-      if (!cancelled) setSnapshot({ owner: user, failed: true });
+      if (!cancelled) {
+        setSnapshot((prev) => (prev?.ownerId === user.id && prev.data ? prev : { ownerId: user.id, failed: true }));
+      }
     });
     return () => { cancelled = true; };
-  }, [user, accessReady, retry]);
+  }, [user, accessReady, isActive, retry]);
 
-  const current = user && snapshot?.owner === user ? snapshot : null;
+  const current = user && snapshot?.ownerId === user.id ? snapshot : null;
   const progress = current?.data;
   const available = learningCourses(courses, accessReady, Boolean(user));
   const certificates = progress?.certificates || [];
@@ -160,9 +167,13 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
           <button type="button" className="academy-button" onClick={onLogin}>{t('myLearning.loginAction', 'Iniciar sesión')}</button>
         </div>
       ) : !accessReady || !current ? (
-        <p role="status" className="py-10 text-ink-soft">{t('myLearning.loading', 'Cargando tu aprendizaje…')}</p>
+        <RouteSkeleton
+          variant="learning"
+          hideHeader
+          label={t('myLearning.loading', 'Cargando tu aprendizaje…')}
+        />
       ) : (
-        <>
+        <div className="animate-backdrop-fade space-y-8">
           {current.failed && (
             <div role="alert" className="academy-learning-notice">
               <p>{t('myLearning.failedNotice', 'No pudimos cargar tu progreso. Puedes abrir tus cursos o volver a intentarlo.')}</p>
@@ -188,7 +199,7 @@ export function ConstellationMyLearning({ user, courses, accessReady, onContinue
             </>
           )}
           <LearningCertificates key={user.id} certificates={certificates} studentName={user.name} onVerify={onVerifyCertificate} />
-        </>
+        </div>
       )}
     </section>
   );

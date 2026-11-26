@@ -38,6 +38,7 @@ import {
   type ListeningTopic,
   type ListeningType,
 } from '../lib/listening';
+import { NPS_SELECTED, NPS_TONE } from '../lib/courseNps';
 import { LISTENING_STATUS_LABELS, LISTENING_TOPIC_LABELS, LISTENING_TYPE_LABELS, MOODS } from '../lib/listeningLabels';
 import type { OwnListeningEntry } from '../lib/listeningTypes';
 import type { Course } from '../types';
@@ -59,18 +60,6 @@ const TYPE_ICON: Record<ListeningType, string> = {
   PRAISE: '👏',
   QUESTION: '🤔',
 };
-
-const NPS_TONE = {
-  DETRACTOR: 'border-danger/40 text-danger-light hover:bg-danger/15',
-  PASSIVE: 'border-warning-light/40 text-warning-light hover:bg-warning-light/15',
-  PROMOTER: 'border-success-light/40 text-success-light hover:bg-success-light/15',
-} as const;
-
-const NPS_SELECTED = {
-  DETRACTOR: 'border-danger-light bg-danger text-ink',
-  PASSIVE: 'border-warning-light bg-warning-light text-canvas',
-  PROMOTER: 'border-success-light bg-success-light text-canvas',
-} as const;
 
 /** Cada carita se ilumina con su propio color: de rojo (muy mal) a verde (me encanta). */
 const MOOD_SELECTED: Record<number, string> = {

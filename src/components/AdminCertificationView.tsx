@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { List, LayoutGrid, Award, FileCheck, Eye, ShieldAlert, Ban } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { List, LayoutGrid, Award, FileCheck, Eye, ShieldAlert, Ban, ChevronRight, X } from 'lucide-react';
 import type { CertificateRecord } from '../types';
 import { AdminSearchField, FilterMenu, ActiveFilters, Pager, useListView } from './AdminListKit';
+import { AdminSelect } from './AdminSelect';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { useTranslation, Trans } from 'react-i18next'
 
 export interface ContractSignature {
@@ -33,30 +35,87 @@ interface Props {
 export function AdminCertificationView({ section, onSection, certificates, signatures, onRevoke, onViewSignature }: Props) {
   const { t } = useTranslation()
   const { isMobile, view, change } = useListView('admin-cert-view');
-  const size = view === 'list' ? 10 : 12;
+  const isCert = section === 'certificates';
+  const size = isCert || view === 'cards' ? 12 : 10;
 
   const [query, setQuery] = useState('');
   const [state, setState] = useState('ALL');
+  const [studentFilter, setStudentFilter] = useState('ALL');
+  const [sheetStudentKey, setSheetStudentKey] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const reset = (fn: () => void) => { fn(); setPage(1); };
   // Cada sección conserva su propio filtro: al cambiar de pestaña se parte limpio.
-  useEffect(() => { setQuery(''); setState('ALL'); setPage(1); }, [section]);
+  useEffect(() => { setQuery(''); setState('ALL'); setStudentFilter('ALL'); setSheetStudentKey(null); setPage(1); }, [section]);
 
   const q = query.trim().toLowerCase();
-  const isCert = section === 'certificates';
+
+  const studentKeyOf = (c: CertificateRecord) =>
+    c.userId || (c.userEmail ? c.userEmail.trim().toLowerCase() : c.recipientName.trim().toLowerCase());
 
   const certState = (c: CertificateRecord) => (c.revokedAt ? 'revoked' : 'valid');
-  const certMatchQ = (c: CertificateRecord) => !q || [c.recipientName, c.userEmail, c.courseTitle, c.verificationCode].some((t) => (t || '').toLowerCase().includes(q));
+  const certMatchQ = (c: CertificateRecord) =>
+    (!q || [c.recipientName, c.userName, c.userEmail, c.courseTitle, c.verificationCode].some((t) => (t || '').toLowerCase().includes(q))) &&
+    (studentFilter === 'ALL' || studentKeyOf(c) === studentFilter);
   const sigMatchQ = (s: ContractSignature) => !q || [s.userName, s.userEmail, s.ipAddress].some((t) => (t || '').toLowerCase().includes(q));
+
+  const studentOptions = useMemo(() => {
+    const map = new Map<string, { value: string; label: string; count: number }>();
+    for (const c of certificates) {
+      const key = studentKeyOf(c);
+      const existing = map.get(key);
+      if (existing) existing.count += 1;
+      else map.set(key, { value: key, label: c.recipientName || c.userName || c.userEmail || 'Alumno', count: 1 });
+    }
+    return [...map.values()]
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .map((s) => ({ value: s.value, label: `${s.label} (${s.count})` }));
+  }, [certificates]);
 
   const certOpts = (['valid', 'revoked'] as const).map((v) => ({ value: v, label: CERT_STATE[v], count: certificates.filter((c) => certMatchQ(c) && certState(c) === v).length }));
   const sigOpts = (Object.keys(SIG_STATE) as Array<ContractSignature['status']>).map((v) => ({ value: v, label: SIG_STATE[v], count: signatures.filter((s) => sigMatchQ(s) && s.status === v).length }));
 
   const certs = certificates.filter((c) => certMatchQ(c) && (state === 'ALL' || certState(c) === state));
+  const certStudentGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        key: string;
+        name: string;
+        email: string;
+        items: CertificateRecord[];
+        validCount: number;
+        revokedCount: number;
+        latestIssuedAt: string;
+      }
+    >();
+    for (const c of certs) {
+      const key = studentKeyOf(c);
+      const isRevoked = Boolean(c.revokedAt);
+      const existing = map.get(key);
+      if (existing) {
+        existing.items.push(c);
+        if (isRevoked) existing.revokedCount += 1;
+        else existing.validCount += 1;
+        if (c.issuedAt > existing.latestIssuedAt) existing.latestIssuedAt = c.issuedAt;
+      } else {
+        map.set(key, {
+          key,
+          name: c.recipientName || c.userName || c.userEmail || 'Alumno',
+          email: c.userEmail || '',
+          items: [c],
+          validCount: isRevoked ? 0 : 1,
+          revokedCount: isRevoked ? 1 : 0,
+          latestIssuedAt: c.issuedAt,
+        });
+      }
+    }
+    return [...map.values()];
+  }, [certs]);
+
   const sigs = signatures.filter((s) => sigMatchQ(s) && (state === 'ALL' || s.status === state));
   const total = isCert ? certificates.length : signatures.length;
   const shown = isCert ? certs.length : sigs.length;
-  const list = isCert ? certs : sigs;
+  const list = isCert ? certStudentGroups : sigs;
   const cur = Math.min(page, Math.max(1, Math.ceil(list.length / size)));
   const from = (cur - 1) * size;
 
@@ -67,6 +126,15 @@ export function AdminCertificationView({ section, onSection, certificates, signa
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const dlg = useRef<HTMLDialogElement>(null);
+  const sheetDlg = useRef<HTMLDialogElement>(null);
+  const sheetStudent = sheetStudentKey ? certStudentGroups.find((g) => g.key === sheetStudentKey) || null : null;
+  useBodyScrollLock(Boolean(sheetStudent) || Boolean(target));
+  useEffect(() => {
+    const d = sheetDlg.current;
+    if (!d) return;
+    if (sheetStudent && !d.open) d.showModal();
+    if (!sheetStudent && d.open) d.close();
+  }, [sheetStudent]);
   useEffect(() => {
     const d = dlg.current;
     if (!d) return;
@@ -81,6 +149,33 @@ export function AdminCertificationView({ section, onSection, certificates, signa
     setBusy(false);
     setTarget(null);
     setReason('');
+  };
+
+  const renderCertItem = (c: CertificateRecord) => {
+    const revoked = !!c.revokedAt;
+    return (
+      <li key={c.id} className="admin-cert-item">
+        <div className="admin-cert-item__info">
+          <strong className="admin-enroll-card__course" title={c.courseTitle}>{c.courseTitle}</strong>
+          <code className="admin-cert-code" title={c.verificationCode}>{c.verificationCode}</code>
+          <span className="admin-people-card__meta">{date(c.issuedAt)}</span>
+          <span className="mentor-mentee-status" data-state={revoked ? 'REVOKED' : 'active'} title={c.revocationReason || undefined}>
+            {revoked ? t('revocado', 'Revocado') : t('valido', 'Válido')}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="mentor-course-control"
+          data-danger="true"
+          disabled={revoked}
+          onClick={() => setTarget(c)}
+          aria-haspopup="dialog"
+        >
+          <Ban aria-hidden="true" />
+          {t('revocar', 'Revocar')}
+        </button>
+      </li>
+    );
   };
 
   const toggle = !isMobile && (
@@ -125,16 +220,25 @@ export function AdminCertificationView({ section, onSection, certificates, signa
 
         <div className="mentor-course-toolbar">
           <AdminSearchField value={query} onChange={(value) => reset(() => setQuery(value))} placeholder={isCert ? t('buscarPorGraduadoCursoOCodigo', 'Buscar por graduado, curso o código') : t('buscarPorUsuarioCorreoOIp', 'Buscar por usuario, correo o IP')} label={isCert ? 'Buscar certificado' : 'Buscar contrato'} />
+          {isCert && (
+            <AdminSelect
+              ariaLabel={t('courseNps.filterByStudent', 'Alumno')}
+              value={studentFilter}
+              onChange={(value) => reset(() => setStudentFilter(value))}
+              options={[{ value: 'ALL', label: t('courseNps.allStudents', 'Todos los alumnos') }, ...studentOptions]}
+            />
+          )}
           <FilterMenu groups={[{ value: state, onChange: (v) => reset(() => setState(v)), options: isCert ? certOpts : sigOpts }]} />
-          {toggle}
+          {!isCert && toggle}
         </div>
 
         <ActiveFilters
           noun={isCert ? 'certificados' : 'contratos'}
           shown={shown}
           total={total}
-          onClear={() => reset(() => { setQuery(''); setState('ALL'); })}
+          onClear={() => reset(() => { setQuery(''); setState('ALL'); setStudentFilter('ALL'); })}
           chips={[
+            ...(isCert && studentFilter !== 'ALL' ? [{ key: 'u', text: studentOptions.find((s) => s.value === studentFilter)?.label || 'Alumno', onRemove: () => reset(() => setStudentFilter('ALL')) }] : []),
             ...(state !== 'ALL' ? [{ key: 's', text: stateText, onRemove: () => reset(() => setState('ALL')) }] : []),
             ...(q ? [{ key: 'q', text: `«${query.trim()}»`, onRemove: () => reset(() => setQuery('')) }] : []),
           ]}
@@ -147,37 +251,58 @@ export function AdminCertificationView({ section, onSection, certificates, signa
               : t('nadaCoincideConElFiltro', 'Nada coincide con el filtro.')}
           </p>
         ) : isCert ? (
-          <div className="admin-people-list admin-cert-list" data-view={view}>
-            {view === 'list' && (
-              <div className="admin-people-head" aria-hidden="true">
-                <span>{t('graduado', 'Graduado')}</span><span>{t('curso', 'Curso')}</span><span>{t('codigo', 'Código')}</span><span>{t('emision', 'Emisión')}</span><span>{t('estado', 'Estado')}</span><span />
-              </div>
-            )}
-            <ul className="mentor-mentee-grid" data-view={view}>
-              {certs.slice(from, from + size).map((c) => {
-                const revoked = !!c.revokedAt;
-                return (
-                  <li key={c.id} className="mentor-mentee-card" data-view={view}>
+          <ul className="admin-cert-groups" data-view="cards">
+            {certStudentGroups.slice(from, from + size).map((group) => {
+              const isSelected = sheetStudentKey === group.key;
+              return (
+                <li key={group.key} className="admin-cert-student" data-view="cards">
+                  <button
+                    type="button"
+                    className="admin-cert-student__head"
+                    aria-expanded={isSelected}
+                    aria-haspopup="dialog"
+                    onClick={() => setSheetStudentKey(group.key)}
+                  >
                     <div className="mentor-mentee-card__head">
                       <span className="mentee-sheet__icon" aria-hidden="true"><Award /></span>
                       <div className="mentor-mentee-id">
-                        <strong>{c.recipientName}</strong>
-                        <span title={c.userEmail}>{c.userEmail}</span>
+                        <strong>{group.name}</strong>
+                        {group.email && <span title={group.email}>{group.email}</span>}
                       </div>
                     </div>
-                    <p className="admin-enroll-card__course" title={c.courseTitle}>{c.courseTitle}</p>
-                    <code className="admin-cert-code" title={c.verificationCode}>{c.verificationCode}</code>
-                    <p className="admin-people-card__meta">{date(c.issuedAt)}</p>
-                    <span className="mentor-mentee-status" data-state={revoked ? 'REVOKED' : 'active'} title={c.revocationReason || undefined}>{revoked ? t('revocado', 'Revocado') : t('valido', 'Válido')}</span>
-                    <button type="button" className="mentor-course-control" data-danger="true" disabled={revoked} onClick={() => setTarget(c)} aria-haspopup="dialog">
-                      <Ban aria-hidden="true" />
-                      {t('revocar', 'Revocar')}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                    <div className="admin-cert-student__meta">
+                      <span className="admin-cert-student__count">
+                        {t('certStudentCount', {
+                          defaultValue_one: '{{count}} certificado',
+                          defaultValue_other: '{{count}} certificados',
+                          count: group.items.length,
+                        })}
+                      </span>
+                      {group.validCount > 0 && (
+                        <span className="mentor-mentee-status" data-state="active">
+                          {t('certValidCount', {
+                            defaultValue_one: '{{count}} válido',
+                            defaultValue_other: '{{count}} válidos',
+                            count: group.validCount,
+                          })}
+                        </span>
+                      )}
+                      {group.revokedCount > 0 && (
+                        <span className="mentor-mentee-status" data-state="REVOKED">
+                          {t('certRevokedCount', {
+                            defaultValue_one: '{{count}} revocado',
+                            defaultValue_other: '{{count}} revocados',
+                            count: group.revokedCount,
+                          })}
+                        </span>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-ink-muted" aria-hidden="true" />
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           <div className="admin-people-list admin-contract-list" data-view={view}>
             {view === 'list' && (
@@ -208,7 +333,62 @@ export function AdminCertificationView({ section, onSection, certificates, signa
           </div>
         )}
 
-        <Pager total={list.length} size={size} page={cur} onPage={setPage} noun={isCert ? 'certificados' : 'contratos'} />
+        <Pager total={list.length} size={size} page={cur} onPage={setPage} noun={isCert ? 'alumnos' : 'contratos'} />
+
+        <dialog
+          ref={sheetDlg}
+          className="mentee-sheet admin-cert-sheet"
+          aria-labelledby="admin-cert-sheet-title"
+          onCancel={(e) => { e.preventDefault(); setSheetStudentKey(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setSheetStudentKey(null); }}
+        >
+          {sheetStudent && (
+            <div className="mentee-sheet__body admin-cert-sheet__body">
+              <header className="mentee-sheet__head">
+                <span className="mentee-sheet__icon" aria-hidden="true"><Award /></span>
+                <div className="mentor-mentee-id">
+                  <strong id="admin-cert-sheet-title">{sheetStudent.name}</strong>
+                  {sheetStudent.email && <span title={sheetStudent.email}>{sheetStudent.email}</span>}
+                </div>
+                <button type="button" onClick={() => setSheetStudentKey(null)} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
+                  <X aria-hidden="true" />
+                </button>
+              </header>
+              <div className="admin-cert-sheet__summary">
+                <span className="admin-cert-student__count">
+                  {t('certStudentCount', {
+                    defaultValue_one: '{{count}} certificado',
+                    defaultValue_other: '{{count}} certificados',
+                    count: sheetStudent.items.length,
+                  })}
+                </span>
+                {sheetStudent.validCount > 0 && (
+                  <span className="mentor-mentee-status" data-state="active">
+                    {t('certValidCount', {
+                      defaultValue_one: '{{count}} válido',
+                      defaultValue_other: '{{count}} válidos',
+                      count: sheetStudent.validCount,
+                    })}
+                  </span>
+                )}
+                {sheetStudent.revokedCount > 0 && (
+                  <span className="mentor-mentee-status" data-state="REVOKED">
+                    {t('certRevokedCount', {
+                      defaultValue_one: '{{count}} revocado',
+                      defaultValue_other: '{{count}} revocados',
+                      count: sheetStudent.revokedCount,
+                    })}
+                  </span>
+                )}
+              </div>
+              <div className="admin-cert-sheet__scroll">
+                <ul className="admin-cert-sheet__list">
+                  {sheetStudent.items.map(renderCertItem)}
+                </ul>
+              </div>
+            </div>
+          )}
+        </dialog>
 
         <dialog
           ref={dlg}

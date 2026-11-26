@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck, MessageCircleQuestion, MessageSquareReply } from 'lucide-react';
+import { Bell, CheckCheck, HeartHandshake, MessageCircleQuestion, MessageSquareReply } from 'lucide-react';
 import type { AppNotification } from '../../lib/api';
 import { notificationBody, notificationTitle } from '../../lib/notificationText';
 import { useTranslation } from 'react-i18next'
@@ -15,7 +15,9 @@ interface NotificationBellProps {
 }
 
 export function notificationIcon(type: AppNotification['type']) {
-  return type === 'qna.answered' ? MessageSquareReply : MessageCircleQuestion;
+  if (type === 'qna.answered') return MessageSquareReply;
+  if (type === 'listening.message') return HeartHandshake;
+  return MessageCircleQuestion;
 }
 
 export function relativeTime(iso: string, now = Date.now()): string {

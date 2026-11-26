@@ -590,6 +590,55 @@
   [data-mentor-ui='modern'] .admin-people-panel :is(.admin-cert-list, .admin-contract-list) .mentor-mentee-card[data-view='list'] { grid-template-columns: var(--cols); }
 }
 
+/* Certificados agrupados por alumno (vista lista y tarjetas con detalle lateral) */
+[data-mentor-ui='modern'] .admin-cert-groups { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+[data-mentor-ui='modern'] .admin-cert-groups[data-view='cards'] { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: stretch; gap: 16px; }
+[data-mentor-ui='modern'] .admin-cert-student { display: grid; gap: 12px; min-width: 0; padding: 16px 18px; border: 1px solid var(--people-line, color-mix(in srgb, var(--mentor-text) 10%, transparent)); border-radius: 12px; background: var(--mentor-surface); transition: border-color 160ms var(--course-ease, ease-out); }
+[data-mentor-ui='modern'] .admin-cert-student[data-view='cards'] { height: 100%; padding: 20px; }
+[data-mentor-ui='modern'] .admin-cert-student[data-view='cards']:hover { border-color: color-mix(in srgb, var(--mentor-text) 22%, transparent); }
+[data-mentor-ui='modern'] .admin-cert-student__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 0; border: 0; border-radius: 8px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+[data-mentor-ui='modern'] .admin-cert-student[data-view='cards'] .admin-cert-student__head { flex-direction: column; align-items: stretch; justify-content: space-between; gap: 16px; height: 100%; }
+[data-mentor-ui='modern'] .admin-cert-student__head:focus { outline: none; }
+[data-mentor-ui='modern'] .admin-cert-student__head:focus-visible { outline: 2px solid var(--mentor-accent); outline-offset: 6px; }
+[data-mentor-ui='modern'] .admin-cert-student__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+[data-mentor-ui='modern'] .admin-cert-student[data-view='cards'] .admin-cert-student__meta > :last-child { margin-left: auto; }
+[data-mentor-ui='modern'] .admin-cert-student__count { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid color-mix(in srgb, var(--mentor-text) 12%, transparent); border-radius: 999px; background: var(--mentor-raised); color: var(--mentor-text); font-size: 12px; font-weight: 500; }
+[data-mentor-ui='modern'] .admin-cert-student__items { display: grid; gap: 8px; margin: 0; padding: 12px 0 0; list-style: none; border-top: 1px solid color-mix(in srgb, var(--mentor-text) 10%, transparent); }
+[data-mentor-ui='modern'] .admin-cert-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--mentor-text) 8%, transparent); border-radius: 10px; background: var(--mentor-bg); }
+[data-mentor-ui='modern'] .mentee-sheet.admin-cert-sheet {
+  width: min(440px, calc(100vw - 24px));
+  height: auto;
+  max-height: calc(100dvh - 32px);
+  margin: 16px 16px auto auto;
+  border: 1px solid var(--course-line, color-mix(in srgb, var(--mentor-text) 12%, transparent));
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
+}
+[data-mentor-ui='modern'] .mentee-sheet.admin-cert-sheet .admin-cert-sheet__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  height: auto;
+  max-height: calc(100dvh - 34px);
+  padding: 20px;
+  overflow: hidden;
+}
+[data-mentor-ui='modern'] .admin-cert-sheet__summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent)); }
+[data-mentor-ui='modern'] .admin-cert-sheet__scroll { min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding-right: 2px; }
+[data-mentor-ui='modern'] .admin-cert-sheet__list { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 10px; margin: 0; padding: 0; list-style: none; align-content: start; }
+[data-mentor-ui='modern'] .admin-cert-sheet__list .admin-cert-item { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; min-width: 0; }
+[data-mentor-ui='modern'] .admin-cert-sheet__list .admin-cert-item__info { display: grid; gap: 6px; min-width: 0; }
+[data-mentor-ui='modern'] .admin-cert-sheet__list .admin-enroll-card__course { white-space: normal; overflow-wrap: anywhere; }
+[data-mentor-ui='modern'] .admin-cert-sheet__list .admin-cert-item .mentor-course-control { width: 100%; justify-content: center; }
+[data-mentor-ui='modern'] .admin-cert-item__info { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0; }
+@media (max-width: 639px) {
+  [data-mentor-ui='modern'] .admin-cert-item { grid-template-columns: minmax(0, 1fr); }
+  [data-mentor-ui='modern'] .mentee-sheet.admin-cert-sheet { margin: 12px 12px auto auto; max-height: calc(100dvh - 24px); }
+  [data-mentor-ui='modern'] .admin-cert-sheet__body { max-height: calc(100dvh - 26px); }
+}
+
 /* Acta de firma: modal centrado con aspecto de documento formal (papel claro, tipografía de texto). */
 [data-mentor-ui='modern'] .acta-modal {
   width: min(680px, calc(100vw - 32px));

@@ -20,7 +20,6 @@ const DEV_MOCK_TESTIMONIALS: LandingTestimonial[] = import.meta.env.DEV
       {
         id: 'dev-mock-1',
         name: 'Carlos Mendoza (Demo Local)',
-        role: 'Estudiante VIP & Software Engineer',
         avatarUrl: '',
         comment: 'DocentOS me permitió completar la mentoría técnica con guías explicativas por audio e interactuar directamente con los mentores.',
         rating: 5,
@@ -28,7 +27,6 @@ const DEV_MOCK_TESTIMONIALS: LandingTestimonial[] = import.meta.env.DEV
       {
         id: 'dev-mock-2',
         name: 'Ing. Sofia Ruiz (Demo Local)',
-        role: 'Mentor Senior en DocentOS',
         avatarUrl: '',
         comment: 'Gestión directa de estudiantes, revisión centralizada de preguntas y vinculación automática de videos en minutos.',
         rating: 5,
@@ -36,7 +34,6 @@ const DEV_MOCK_TESTIMONIALS: LandingTestimonial[] = import.meta.env.DEV
       {
         id: 'dev-mock-3',
         name: 'Alejandro Valdés (Demo Local)',
-        role: 'Fullstack Engineer & Alumno',
         avatarUrl: '',
         comment: 'La fluidez de la plataforma y el enfoque directo a código sin rodeos marca la diferencia frente a cualquier otro LMS tradicional.',
         rating: 5,
@@ -289,7 +286,6 @@ export const ConstellationTestimonials: React.FC<ConstellationTestimonialsProps>
                     />
                     <div className="min-w-0">
                       <p className="font-semibold text-ink">{testimonial.name}</p>
-                      <p className="text-sm text-ink-muted">{testimonial.role || t('estudiante', 'Estudiante')}</p>
                     </div>
                   </div>
                 </article>

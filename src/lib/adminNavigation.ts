@@ -43,7 +43,7 @@ export const MODERN_ADMIN_MODULES: ModernAdminModule[] = [
   {
     id: 'portal',
     get label() { return i18n.t('adminNav_portal_label', 'Portal'); },
-    get description() { return i18n.t('adminNav_portal_desc', 'Portada y escucha'); },
+    get description() { return i18n.t('adminNav_portal_desc', 'Portada y NPS'); },
     target: 'landing',
   },
   {

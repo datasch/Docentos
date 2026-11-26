@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { siteConfig } from '../config/theme';
-import { TermsModal } from './TermsModal';
 import { useTranslation } from 'react-i18next'
+
+const TermsModal = lazy(() =>
+  Promise.all([
+    import('../styles/terms-paper.css'),
+    import('./TermsModal'),
+  ]).then(([, m]) => ({ default: m.TermsModal }))
+);
 
 interface FooterProps {
   appName?: string;
@@ -43,7 +49,11 @@ export const Footer: React.FC<FooterProps> = ({ appName, githubUrl }) => {
           </a>
         </div>
       </footer>
-      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      {showTerms && (
+        <Suspense fallback={null}>
+          <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+        </Suspense>
+      )}
     </>
   );
 };

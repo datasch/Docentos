@@ -236,13 +236,16 @@ export const FestiveHatOverlay: React.FC<FestiveHatOverlayProps> = ({
           />
 
           {/* Borla blanca pom-pom en la punta caída */}
-          <circle cx="75" cy="54" r="10" fill="url(#docentosSantaPom)" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.25))" />
+          <circle cx="75" cy="54" r="10" fill="url(#docentosSantaPom)" stroke="#94a3b8" strokeWidth="1.25" className="festive-hat-fur" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.25))" />
           <circle cx="73" cy="52" r="8" fill="#ffffff" opacity="0.8" />
 
           {/* Ribete de felpa blanca / nieve acolchada en la base */}
           <path
             d="M 16 66 C 16 59, 24 58, 28 61 C 32 57, 40 57, 44 60 C 48 56, 56 56, 60 60 C 64 56, 72 58, 74 63 C 76 69, 70 74, 64 72 C 59 74, 50 74, 44 72 C 38 74, 28 74, 22 72 C 17 70, 15 68, 16 66 Z"
             fill="url(#docentosSantaFur)"
+            stroke="#94a3b8"
+            strokeWidth="1.25"
+            className="festive-hat-fur"
             filter="drop-shadow(0 2px 4px rgba(0,0,0,0.25))"
           />
 

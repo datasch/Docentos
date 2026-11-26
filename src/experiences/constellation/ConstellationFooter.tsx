@@ -1,12 +1,19 @@
 import { useLandingConfig } from '../../lib/landingConfig';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { siteConfig } from '../../config/theme';
 import { usePlatformBrand, DEFAULT_LOGO_URL } from '../../lib/logoConfig';
 import { FestiveHatOverlay } from '../../components/FestiveHatOverlay';
+import { useSeasonalTheme } from '../../lib/seasonalTheme';
 import { DOCENTOS_VERSION } from '../../version';
 import { CheckCircle2, Github, BookOpen, ShieldCheck, HeartHandshake, ArrowUp } from 'lucide-react';
-import { TermsModal } from '../../components/TermsModal';
+
+const TermsModal = lazy(() =>
+  Promise.all([
+    import('../../styles/terms-paper.css'),
+    import('../../components/TermsModal'),
+  ]).then(([, m]) => ({ default: m.TermsModal }))
+);
 
 interface ConstellationFooterProps {
   onOpenListening?: () => void;
@@ -22,6 +29,7 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
 }) => {
   const { t } = useTranslation();
   const { brandName: appName, logoUrl, logoInitial } = usePlatformBrand();
+  const seasonalTheme = useSeasonalTheme();
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const custom = useLandingConfig();
   const githubUrl = custom.githubUrl || siteConfig.poweredByLink || 'https://github.com/datasch/Docentos';
@@ -39,8 +47,8 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
   }, [listeningDocked]);
 
   return (
-    <footer className="w-full bg-transparent border-t border-slate-200 dark:border-white/[0.08] pt-8 sm:pt-12 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8 select-none">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+    <footer className="relative overflow-hidden w-full bg-transparent border-t border-slate-200 dark:border-white/[0.08] pt-8 sm:pt-12 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-8 select-none">
+      <div className="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6">
         
         {/* Grilla Principal del Footer de DocentOS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 sm:gap-8 pb-6 sm:pb-8 border-b border-slate-200 dark:border-white/[0.06]">
@@ -150,8 +158,42 @@ export const ConstellationFooter: React.FC<ConstellationFooterProps> = ({
 
       </div>
 
+      {/* Montaña de nieve navideña en la base del footer */}
+      {seasonalTheme === 'christmas' && (
+        <div className="christmas-footer-snow" aria-hidden="true">
+          <svg viewBox="0 0 1440 90" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="footerSnowBack" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" style={{ stopColor: 'var(--christmas-snow-back-start, rgba(224,242,254,0.65))' }} />
+                <stop offset="100%" style={{ stopColor: 'var(--christmas-snow-back-end, rgba(191,219,254,0.4))' }} />
+              </linearGradient>
+              <linearGradient id="footerSnowFront" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" style={{ stopColor: 'var(--christmas-snow-front-start, rgba(255,255,255,0.92))' }} />
+                <stop offset="100%" style={{ stopColor: 'var(--christmas-snow-front-end, rgba(224,242,254,0.82))' }} />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0,90 L0,46 C110,16 215,54 345,44 C470,34 555,14 685,38 C815,62 925,22 1065,36 C1205,50 1320,18 1440,42 L1440,90 Z"
+              fill="url(#footerSnowBack)"
+              stroke="var(--christmas-snow-stroke, transparent)"
+              strokeWidth="1"
+            />
+            <path
+              d="M0,90 L0,62 C135,38 250,70 390,58 C530,46 655,28 790,56 C925,84 1060,40 1200,56 C1305,68 1375,44 1440,58 L1440,90 Z"
+              fill="url(#footerSnowFront)"
+              stroke="var(--christmas-snow-stroke, transparent)"
+              strokeWidth="1"
+            />
+          </svg>
+        </div>
+      )}
+
       {/* Modal de Términos y Condiciones */}
-      <TermsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
+      {showTermsModal && (
+        <Suspense fallback={null}>
+          <TermsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
+        </Suspense>
+      )}
     </footer>
   );
 };

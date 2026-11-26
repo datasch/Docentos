@@ -3,7 +3,7 @@
  * Fase 5: Sesiones reales, concurrencia multiusuario, resiliencia y observabilidad (X-Request-ID, /api/ready).
  */
 
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { prisma } from '../server/prisma.js';
 import {
@@ -271,4 +271,14 @@ test('Fase 5: Observabilidad, Enmascaramiento de Datos y Sonda de Readiness', as
     assert.equal(redacted.nested.apiKey, '[REDACTED]');
     assert.equal(redacted.nested.publicField, 'safe_info');
   });
+});
+
+after(async () => {
+  await prisma.session.deleteMany({
+    where: { user: { email: { in: [TEST_EMAIL_A, TEST_EMAIL_B] } } },
+  });
+  await prisma.user.deleteMany({
+    where: { email: { in: [TEST_EMAIL_A, TEST_EMAIL_B] } },
+  });
+  await prisma.$disconnect();
 });

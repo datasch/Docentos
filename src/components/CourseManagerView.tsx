@@ -47,6 +47,9 @@ import {
   LayoutGrid,
   ArrowUpRight,
   FileText,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { DriveCourseImport } from './DriveCourseImport';
@@ -180,6 +183,16 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveError, setDriveError] = useState('');
   const [driveIsDemo, setDriveIsDemo] = useState(false);
+
+  // Edición inline de video en Temario
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editVideoTitle, setEditVideoTitle] = useState('');
+  const [editVideoDuration, setEditVideoDuration] = useState('');
+  const [editVideoSource, setEditVideoSource] = useState('');
+  const [editVideoInitialSource, setEditVideoInitialSource] = useState('');
+  const [editVideoDescription, setEditVideoDescription] = useState('');
+  const [editDriveOpen, setEditDriveOpen] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
 
   // Forzar / Confirmar eliminación
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -467,6 +480,13 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
 
   // Al elegir un archivo de Drive se rellena el formulario; el admin aún puede editarlo.
   const pickDriveVideo = (file: DriveVideoFile) => {
+    if (editingVideoId) {
+      setEditVideoSource(file.id);
+      setEditVideoTitle((current) => current.trim() || file.name);
+      if (file.duration) setEditVideoDuration(file.duration);
+      setEditDriveOpen(false);
+      return;
+    }
     setVideoDriveId(file.id);
     setVideoEmbedUrl(file.embedUrl || '');
     setVideoTitle((current) => current.trim() || file.name);
@@ -474,15 +494,127 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
     setDriveOpen(false);
   };
 
+  const renderDrivePicker = (selectedId: string) => (
+    <div className="tmr-drive">
+      <div className="tmr-inline">
+        <AdminSearchField className="tmr-drive-search" value={driveQuery} onChange={(value) => { setDriveQuery(value); if (!value && driveQuery) searchDrive(''); }} placeholder={t('buscarPorNombreEnGoogleDrive', 'Buscar por nombre en Google Drive…')} label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')} onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); searchDrive(); }
+        }} />
+        <button type="button" className="mentor-course-control tmr-icon" onClick={() => searchDrive()} disabled={driveLoading} aria-label={t('buscar', 'Buscar')}>
+          {driveLoading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
+        </button>
+      </div>
+
+      {driveIsDemo && (
+        <p className="tmr-warn">
+          {t('googleDriveNoEstaConfiguradoEstos', 'Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.')}
+        </p>
+      )}
+      {driveError && <p className="tmr-warn">{driveError}</p>}
+
+      <div className="tmr-drive__list">
+        {driveResults.map((file) => (
+          <button type="button" key={file.id} onClick={() => pickDriveVideo(file)} className="tmr-drive__item" aria-pressed={selectedId === file.id}>
+            {file.thumbnailLink ? (
+              <img src={file.thumbnailLink} alt="" />
+            ) : (
+              <span className="tmr-drive__thumb" aria-hidden="true"><Play /></span>
+            )}
+            <span className="tmr-drive__text">
+              <strong>{file.name}</strong>
+              <small>{file.duration || t('sinDuracion', 'sin duración')} · {file.id.slice(0, 14)}…</small>
+            </span>
+            {selectedId === file.id && <Link2 aria-hidden="true" />}
+          </button>
+        ))}
+        {!driveLoading && driveResults.length === 0 && !driveError && (
+          <p className="admin-sheet-note">{t('buscaUnVideoParaEnlazarlo', 'Busca un video para enlazarlo.')}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const [copiedUrlKey, setCopiedUrlKey] = useState<string | null>(null);
+
+  const getEditableVideoUrl = (video: VideoDriveLink): string => {
+    if (video.sourceUrl && video.sourceUrl.trim()) return video.sourceUrl.trim();
+    if (video.youtubeVideoId && !video.youtubeVideoId.startsWith('pending-') && !video.youtubeVideoId.startsWith('external-')) {
+      return `https://www.youtube.com/watch?v=${video.youtubeVideoId}`;
+    }
+    if (video.driveFileId && !video.driveFileId.startsWith('external-') && !video.driveFileId.startsWith('pending-')) {
+      if (video.source === 'YOUTUBE' || video.provider === 'youtube') {
+        return `https://www.youtube.com/watch?v=${video.driveFileId}`;
+      }
+      if (video.source === 'GOOGLE_DRIVE' || video.provider === 'drive') {
+        return `https://drive.google.com/file/d/${video.driveFileId}/view`;
+      }
+      return video.driveFileId;
+    }
+    return video.embedUrl || '';
+  };
+
+  const copySourceUrl = async (key: string, url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrlKey(key);
+      window.setTimeout(() => setCopiedUrlKey((curr) => (curr === key ? null : curr)), 1800);
+    } catch {
+      // Silencio si el navegador bloquea el portapapeles
+    }
+  };
+
+  const startEditVideo = (video: VideoDriveLink) => {
+    const initialSource = getEditableVideoUrl(video);
+    setVideoModuleId(null);
+    setEditingVideoId(video.id);
+    setEditVideoTitle(video.title || '');
+    setEditVideoDuration(video.duration || '');
+    setEditVideoDescription(video.description || '');
+    setEditVideoSource(initialSource);
+    setEditVideoInitialSource(initialSource);
+    setEditDriveOpen(false);
+  };
+
+  const handleSaveVideo = async (e: React.FormEvent, video: VideoDriveLink) => {
+    e.preventDefault();
+    if (!editVideoTitle.trim() || savingVideo) return;
+    setSavingVideo(true);
+    try {
+      const payload: {
+        title: string;
+        duration: string;
+        description: string;
+        sourceUrl?: string;
+      } = {
+        title: editVideoTitle.trim(),
+        duration: editVideoDuration.trim() || '20:00',
+        description: editVideoDescription.trim(),
+      };
+      const trimmedSource = editVideoSource.trim();
+      if (trimmedSource !== editVideoInitialSource.trim()) {
+        payload.sourceUrl = trimmedSource;
+      }
+      await api.updateVideo(video.id, payload);
+      setEditingVideoId(null);
+      setEditDriveOpen(false);
+      flash(t('videoActualizado', 'Video actualizado.'));
+      await refreshAll();
+    } catch (err: any) {
+      alert(err.message || t('errorAlActualizarVideo', 'Error al actualizar video'));
+    } finally {
+      setSavingVideo(false);
+    }
+  };
+
   const handleCreateVideo = async (e: React.FormEvent, moduleId: string) => {
     e.preventDefault();
     if (!videoTitle.trim()) return;
     try {
+      const rawSource = videoDriveId.trim() || videoEmbedUrl.trim();
       await api.createModuleVideo(moduleId, {
         title: videoTitle.trim(),
         duration: videoDuration.trim() || '20:00',
-        ...(videoDriveId.trim() ? { driveFileId: videoDriveId.trim() } : {}),
-        ...(videoEmbedUrl.trim() ? { embedUrl: videoEmbedUrl.trim() } : {}),
+        ...(rawSource ? { sourceUrl: rawSource } : {}),
       });
       resetVideoForm();
       setVideoModuleId(null);
@@ -603,7 +735,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
       {/* Cabecera: crear curso (manual, YouTube o Drive) */}
       <div className="mentor-section-heading">
         <div>
-          <h2 id="admin-courses-title">{t('cursos', 'Cursos')}</h2>
+          <h2 id="admin-courses-title">{t('cursosCapital', 'Cursos')}</h2>
           <p>{t('creaPublicaYOrganizaElTemarioDeCadaCurso', 'Crea, publica y organiza el temario de cada curso.')}</p>
         </div>
       </div>
@@ -1157,8 +1289,76 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
             {temarioCourse && (() => {
               const course = temarioCourse;
               const modules = [...course.modules].sort((a, b) => a.order - b.order);
+              const driveFolderUrl = course.driveFolderId
+                ? `https://drive.google.com/drive/folders/${course.driveFolderId}`
+                : null;
               return (
 <div className="tmr">
+                {(course.youtubePlaylistUrl || driveFolderUrl) && (
+                  <div className="tmr-source-banner">
+                    {course.youtubePlaylistUrl && (
+                      <div className="tmr-source-row">
+                        <div className="tmr-source-row__meta">
+                          <Youtube aria-hidden="true" />
+                          <div className="tmr-source-row__text">
+                            <strong>
+                              {t('playlistDeYoutube', 'Playlist de YouTube')}
+                              {course.youtubePlaylistTitle ? ` · ${course.youtubePlaylistTitle}` : ''}
+                            </strong>
+                            <a
+                              href={course.youtubePlaylistUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="tmr-source-link"
+                              title={course.youtubePlaylistUrl}
+                            >
+                              <span>{course.youtubePlaylistUrl}</span>
+                              <ExternalLink aria-hidden="true" />
+                            </a>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="mentor-course-control tmr-icon"
+                          onClick={() => void copySourceUrl(`playlist-${course.id}`, course.youtubePlaylistUrl!)}
+                          aria-label={t('copiarEnlaceDeLaPlaylist', 'Copiar enlace de la playlist')}
+                          title={copiedUrlKey === `playlist-${course.id}` ? t('copiado', 'Copiado') : t('copiarEnlace', 'Copiar enlace')}
+                        >
+                          {copiedUrlKey === `playlist-${course.id}` ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                        </button>
+                      </div>
+                    )}
+                    {driveFolderUrl && (
+                      <div className="tmr-source-row">
+                        <div className="tmr-source-row__meta">
+                          <HardDrive aria-hidden="true" />
+                          <div className="tmr-source-row__text">
+                            <strong>{t('carpetaDeGoogleDrive', 'Carpeta de Google Drive')}</strong>
+                            <a
+                              href={driveFolderUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="tmr-source-link"
+                              title={driveFolderUrl}
+                            >
+                              <span>{driveFolderUrl}</span>
+                              <ExternalLink aria-hidden="true" />
+                            </a>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="mentor-course-control tmr-icon"
+                          onClick={() => void copySourceUrl(`folder-${course.id}`, driveFolderUrl)}
+                          aria-label={t('copiarEnlaceDeLaCarpeta', 'Copiar enlace de la carpeta')}
+                          title={copiedUrlKey === `folder-${course.id}` ? t('copiado', 'Copiado') : t('copiarEnlace', 'Copiar enlace')}
+                        >
+                          {copiedUrlKey === `folder-${course.id}` ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="tmr-add">
                   <div className="meeting-field">
                     <label htmlFor="tmr-new-module">{t('nuevoModulo', 'Nuevo módulo')}</label>
@@ -1253,9 +1453,9 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                               <input id={`tmr-vd-${module.id}`} type="text" placeholder="20:00" value={videoDuration} onChange={(e) => setVideoDuration(e.target.value)} />
                             </div>
                             <div className="meeting-field">
-                              <label htmlFor={`tmr-vg-${module.id}`}>{t('archivoDeGoogleDrive', 'Archivo de Google Drive')}</label>
+                              <label htmlFor={`tmr-vg-${module.id}`}>{t('enlaceOIdDeVideo', 'Enlace o ID de video (Drive / YouTube / URL)')}</label>
                               <div className="tmr-inline">
-                                <input id={`tmr-vg-${module.id}`} type="text" placeholder={t('pegaElEnlaceDeDriveOSuId', 'Pega el enlace de Drive o su ID')} value={videoDriveId} onChange={(e) => setVideoDriveId(e.target.value)} />
+                                <input id={`tmr-vg-${module.id}`} type="text" placeholder={t('pegaElEnlaceDeYoutubeDriveOSuId', 'Pega el enlace de YouTube, Google Drive o su ID')} value={videoDriveId} onChange={(e) => setVideoDriveId(e.target.value)} />
                                 <button
                                   type="button"
                                   className="mentor-course-control tmr-icon"
@@ -1274,45 +1474,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                             </div>
 
                             {/* Selector de Google Drive */}
-                            {driveOpen && (
-                              <div className="tmr-drive">
-                                <div className="tmr-inline">
-                                  <AdminSearchField className="tmr-drive-search" value={driveQuery} onChange={(value) => { setDriveQuery(value); if (!value && driveQuery) searchDrive(''); }} placeholder={t('buscarPorNombreEnGoogleDrive', 'Buscar por nombre en Google Drive…')} label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')} onKeyDown={(e) => {
-                                    if (e.key === 'Enter') { e.preventDefault(); searchDrive(); }
-                                  }} />
-                                  <button type="button" className="mentor-course-control tmr-icon" onClick={() => searchDrive()} disabled={driveLoading} aria-label={t('buscar', 'Buscar')}>
-                                    {driveLoading ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Search aria-hidden="true" />}
-                                  </button>
-                                </div>
-
-                                {driveIsDemo && (
-                                  <p className="tmr-warn">
-                                    {t('googleDriveNoEstaConfiguradoEstos', 'Google Drive no está configurado: estos resultados son de demostración y sus identificadores no existen, así que el reproductor quedará vacío. Pega el enlace real del vídeo en el campo de arriba, o configura las credenciales de Drive.')}
-                                  </p>
-                                )}
-                                {driveError && <p className="tmr-warn">{driveError}</p>}
-
-                                <div className="tmr-drive__list">
-                                  {driveResults.map((file) => (
-                                    <button type="button" key={file.id} onClick={() => pickDriveVideo(file)} className="tmr-drive__item" aria-pressed={videoDriveId === file.id}>
-                                      {file.thumbnailLink ? (
-                                        <img src={file.thumbnailLink} alt="" />
-                                      ) : (
-                                        <span className="tmr-drive__thumb" aria-hidden="true"><Play /></span>
-                                      )}
-                                      <span className="tmr-drive__text">
-                                        <strong>{file.name}</strong>
-                                        <small>{file.duration || t('sinDuracion', 'sin duración')} · {file.id.slice(0, 14)}…</small>
-                                      </span>
-                                      {videoDriveId === file.id && <Link2 aria-hidden="true" />}
-                                    </button>
-                                  ))}
-                                  {!driveLoading && driveResults.length === 0 && !driveError && (
-                                    <p className="admin-sheet-note">{t('buscaUnVideoParaEnlazarlo', 'Busca un video para enlazarlo.')}</p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                            {driveOpen && renderDrivePicker(videoDriveId)}
 
                             <p className="admin-sheet-note">
                               {videoDriveId ? t('enlazadoADriveVideoDriveId', 'Enlazado a Drive: {{videoDriveId}}', { videoDriveId }) : t('sinArchivoDeDriveSeGeneraraUnEnlaceDe', 'Sin archivo de Drive: se generará un enlace de marcador.')}
@@ -1326,12 +1488,48 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         {/* Videos del módulo */}
                         {isOpen && videos.length > 0 && (
                           <ul className="tmr-videos">
-                            {videos.map((video, videoIndex) => (
+                            {videos.map((video, videoIndex) => {
+                              const resolvedVideoUrl = getEditableVideoUrl(video);
+                              const isHttpVideoUrl = /^https?:\/\//i.test(resolvedVideoUrl);
+                              return (
                               <li key={video.id} className="tmr-video">
                                 <Play aria-hidden="true" />
                                 <span className="tmr-video__text">
                                   <strong>{video.title}</strong>
                                   {video.duration && <small>{video.duration}</small>}
+                                  {resolvedVideoUrl ? (
+                                    <span className="tmr-video__url-row">
+                                      {isHttpVideoUrl ? (
+                                        <a
+                                          href={resolvedVideoUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="tmr-video__url"
+                                          title={resolvedVideoUrl}
+                                        >
+                                          <Link2 aria-hidden="true" />
+                                          <span>{resolvedVideoUrl}</span>
+                                          <ExternalLink aria-hidden="true" />
+                                        </a>
+                                      ) : (
+                                        <span className="tmr-video__url" title={resolvedVideoUrl}>
+                                          <Link2 aria-hidden="true" />
+                                          <span>{resolvedVideoUrl}</span>
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        className="tmr-video__copy"
+                                        onClick={() => void copySourceUrl(`vid-${video.id}`, resolvedVideoUrl)}
+                                        aria-label={t('copiarEnlaceDelVideo', 'Copiar enlace del video')}
+                                        title={copiedUrlKey === `vid-${video.id}` ? t('copiado', 'Copiado') : t('copiarEnlace', 'Copiar enlace')}
+                                      >
+                                        {copiedUrlKey === `vid-${video.id}` ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                                      </button>
+                                    </span>
+                                  ) : (
+                                    <small className="tmr-video__missing-url">{t('sinEnlaceDeVideo', 'Sin enlace de video asignado')}</small>
+                                  )}
                                 </span>
                                 <span className="tmr-video__actions">
                                   <span className="tmr-group">
@@ -1342,12 +1540,82 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                                     <ChevronDown aria-hidden="true" />
                                   </button>
                                   </span>
+                                  <span className="tmr-group">
+                                  <button
+                                    type="button"
+                                    className="mentor-course-control tmr-icon"
+                                    aria-expanded={editingVideoId === video.id}
+                                    onClick={() => (editingVideoId === video.id ? setEditingVideoId(null) : startEditVideo(video))}
+                                    aria-label={t('editarVideoTitle', 'Editar video {{title}}', { title: video.title })}
+                                    title={t('editarVideo', 'Editar video')}
+                                  >
+                                    <Pencil aria-hidden="true" />
+                                  </button>
                                   <button type="button" className="mentor-course-control tmr-icon" data-danger="true" onClick={() => handleDeleteVideo(video)} aria-label={t('eliminarTitle', 'Eliminar {{title}}', { title: video.title })} title={t('eliminarVideo', 'Eliminar video')}>
                                     <Trash2 aria-hidden="true" />
                                   </button>
+                                  </span>
                                 </span>
+                                {editingVideoId === video.id && (
+                                  <form onSubmit={(e) => void handleSaveVideo(e, video)} className="tmr-video__edit">
+                                    <div className="meeting-field">
+                                      <label htmlFor={`tmr-evt-${video.id}`}>{t('tituloDelVideo', 'Título del video')}</label>
+                                      <input id={`tmr-evt-${video.id}`} type="text" value={editVideoTitle} onChange={(e) => setEditVideoTitle(e.target.value)} required />
+                                    </div>
+                                    <div className="meeting-field">
+                                      <label htmlFor={`tmr-evd-${video.id}`}>{t('duracion', 'Duración')}</label>
+                                      <input id={`tmr-evd-${video.id}`} type="text" placeholder="20:00" value={editVideoDuration} onChange={(e) => setEditVideoDuration(e.target.value)} />
+                                    </div>
+                                    <div className="meeting-field">
+                                      <label htmlFor={`tmr-evg-${video.id}`}>{t('enlaceOIdDeVideo', 'Enlace o ID de video (Drive / YouTube / URL)')}</label>
+                                      <div className="tmr-inline">
+                                        <input id={`tmr-evg-${video.id}`} type="text" placeholder={t('pegaElEnlaceDeYoutubeDriveOSuId', 'Pega el enlace de YouTube, Google Drive o su ID')} value={editVideoSource} onChange={(e) => setEditVideoSource(e.target.value)} />
+                                        <button
+                                          type="button"
+                                          className="mentor-course-control tmr-icon"
+                                          aria-expanded={editDriveOpen}
+                                          aria-label={t('buscarEnGoogleDrive', 'Buscar en Google Drive')}
+                                          title={t('buscarEnGoogleDrive', 'Buscar en Google Drive')}
+                                          onClick={() => {
+                                            const opening = !editDriveOpen;
+                                            setEditDriveOpen(opening);
+                                            if (opening && driveResults.length === 0) searchDrive();
+                                          }}
+                                        >
+                                          <HardDrive aria-hidden="true" />
+                                        </button>
+                                      </div>
+                                      {/^https?:\/\//i.test(editVideoSource.trim()) && (
+                                        <a
+                                          href={editVideoSource.trim()}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="tmr-video__url-preview"
+                                        >
+                                          <ExternalLink aria-hidden="true" />
+                                          <span>{t('abrirEnlaceEnNuevaPestana', 'Abrir enlace en nueva pestaña')}</span>
+                                        </a>
+                                      )}
+                                    </div>
+                                    {editDriveOpen && renderDrivePicker(editVideoSource)}
+                                    <div className="meeting-field">
+                                      <label htmlFor={`tmr-evdesc-${video.id}`}>{t('descripcionOpcional', 'Descripción (opcional)')}</label>
+                                      <textarea id={`tmr-evdesc-${video.id}`} rows={2} value={editVideoDescription} onChange={(e) => setEditVideoDescription(e.target.value)} />
+                                    </div>
+                                    <div className="tmr-video__edit-actions">
+                                      <button type="submit" disabled={savingVideo || !editVideoTitle.trim()} className="mentor-course-control mentor-course-publish">
+                                        {savingVideo ? <Loader2 aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}
+                                        <span>{t('guardarCambios', 'Guardar cambios')}</span>
+                                      </button>
+                                      <button type="button" onClick={() => setEditingVideoId(null)} disabled={savingVideo} className="mentor-course-control">
+                                        <X aria-hidden="true" /> <span>{t('cancelar', 'Cancelar')}</span>
+                                      </button>
+                                    </div>
+                                  </form>
+                                )}
                               </li>
-                            ))}
+                              );
+                            })}
                           </ul>
                         )}
                       </section>

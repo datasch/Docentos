@@ -28,7 +28,6 @@
  * sistema pide reducir el movimiento, se muestra quieto (el símbolo de infinito).
  */
 import React from 'react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 
 const circleA =
@@ -49,7 +48,8 @@ interface MorphingInfinityProps extends React.ComponentProps<'svg'> {
 function MorphingInfinity({ label, duration = 5, ...props }: MorphingInfinityProps) {
   const { t } = useTranslation();
   const accessibleLabel = label ?? t('cargando', 'Cargando');
-  const reduceMotion = useReducedMotion();
+  const reduceMotion =
+    typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   return (
     <svg
       viewBox="0 0 24 24"
@@ -65,20 +65,17 @@ function MorphingInfinity({ label, duration = 5, ...props }: MorphingInfinityPro
       {reduceMotion ? (
         <path d={infinity} />
       ) : (
-        <motion.path
-          initial={{ d: circleA }}
-          animate={{
-            d: [circleA, infinity, circleB, infinity, circleA],
-          }}
-          transition={{
-            d: {
-              duration,
-              ease: 'easeInOut',
-              repeat: Infinity,
-              times: [0, 0.25, 0.5, 0.75, 1.0],
-            },
-          }}
-        />
+        <path d={circleA}>
+          <animate
+            attributeName="d"
+            values={`${circleA};${infinity};${circleB};${infinity};${circleA}`}
+            keyTimes="0;0.25;0.5;0.75;1"
+            dur={`${duration}s`}
+            calcMode="spline"
+            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1;0.42 0 0.58 1"
+            repeatCount="indefinite"
+          />
+        </path>
       )}
     </svg>
   );

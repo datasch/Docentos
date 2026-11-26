@@ -1060,7 +1060,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         pluginManager.onLessonComplete(currentUser, currentVideo);
 
         // Check if course reached 100% completion
-        const completedCount = Object.keys(newCompletedMap).filter((id) => newCompletedMap[id]).length;
+        const completedCount = countCompleted(course, newCompletedMap);
         if (totalCourseVideos > 0 && completedCount === totalCourseVideos) {
           pluginManager.onCourseComplete(currentUser, course);
         }
@@ -1855,7 +1855,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                 <button
                   type="button"
                   onClick={() => setTheaterMode(false)}
-                  className="pointer-events-auto absolute top-3 right-3 hidden items-center gap-1.5 rounded-lg bg-canvas/70 px-3 py-2 text-meta text-ink opacity-0 backdrop-blur-sm transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 lg:flex"
+                  className="pointer-events-auto absolute top-3 right-3 hidden items-center gap-1.5 rounded-lg bg-black/70 border border-white/15 px-3 py-2 text-meta text-white opacity-0 backdrop-blur-sm transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-black/85 lg:flex"
                 >
                   <Minimize2 aria-hidden className="h-4 w-4" />
                   {t('salirDelModoCine', 'Salir del modo cine')}
@@ -1870,7 +1870,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       type="button"
                       onClick={() => goToLesson(previousLesson.moduleIndex, previousLesson.videoIndex)}
                       aria-label={t('viewer.previousLesson', 'Lección anterior')}
-                      className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
+                      className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/65 border border-white/15 text-white backdrop-blur-sm transition-colors hover:bg-black/85"
                     >
                       <ChevronLeft aria-hidden className="h-5 w-5" />
                     </button>
@@ -1882,7 +1882,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       type="button"
                       onClick={() => goToLesson(nextLesson.moduleIndex, nextLesson.videoIndex)}
                       aria-label={t('viewer.nextLesson', 'Lección siguiente')}
-                      className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-canvas/70 text-ink backdrop-blur-sm transition-colors hover:bg-canvas"
+                      className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/65 border border-white/15 text-white backdrop-blur-sm transition-colors hover:bg-black/85"
                     >
                       <ChevronRight aria-hidden className="h-5 w-5" />
                     </button>
@@ -1893,7 +1893,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                       onClick={() => setProgressError(LOCKED_NEXT_MESSAGE)}
                       aria-label={t('leccionSiguienteBloqueadaCompletaEsta', 'Lección siguiente bloqueada: completa esta lección para continuar')}
                       title={t('completaEstaLeccionParaContinuar', 'Completa esta lección para continuar')}
-                      className="pointer-events-auto flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-full bg-canvas/50 text-ink-muted backdrop-blur-sm"
+                      className="pointer-events-auto flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-full bg-black/50 border border-white/10 text-zinc-400 backdrop-blur-sm"
                     >
                       <Lock aria-hidden className="h-4 w-4" />
                     </button>
@@ -2250,13 +2250,13 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
 
     return createPortal(
       <div
-        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-2 sm:p-4 md:p-6 animate-fade-in overscroll-contain"
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-2 sm:p-4 md:p-6 animate-backdrop-fade overscroll-contain"
         onMouseDown={handleBackdropClose}
         onClick={handleBackdropClose}
         onWheel={(e) => e.stopPropagation()}
       >
         <div
-          className="app-dialog academy-study-player constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain"
+          className="app-dialog academy-study-player constellation-mission-modal relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl text-slate-900 dark:text-white transition-colors overscroll-contain animate-modal-card"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}

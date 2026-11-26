@@ -9,19 +9,22 @@
  */
 
 import { useToastMessage } from '../lib/useToastMessage';
+import { useBodyScrollLock } from '../lib/useBodyScrollLock';
 import { AdminSelect } from './AdminSelect';
-import React, { useCallback, useEffect, useState } from 'react';
-import { PageLoader } from './loading/PageLoader';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { RouteSkeleton } from './loading/RouteSkeleton';
 import { createPortal } from 'react-dom';
-import { Download, Inbox, Loader2, Send, UserX } from 'lucide-react';
+import { ChevronRight, Download, Inbox, Loader2, Send, UserX, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
-import { ActiveFilters, FilterMenu, Pager } from './AdminListKit';
+import { ActiveFilters, AdminSearchField, FilterMenu, Pager } from './AdminListKit';
 import { dateLocale } from '../i18n/format';
-import { api } from '../lib/api';
+import { api, type AppNotification } from '../lib/api';
+import { ADMIN_LISTENING_EVENT, LISTENING_FOCUS_STORAGE_KEY, NOTIFICATION_EVENT } from '../lib/useNotifications';
 import { timeAgo } from '../lib/timeAgo';
 import { LISTENING_STATUSES, LISTENING_TOPICS, LISTENING_TYPES, type ListeningStatus } from '../lib/listening';
-import { LISTENING_STATUS_LABELS, LISTENING_TOPIC_LABELS, LISTENING_TYPE_LABELS, MOODS } from '../lib/listeningLabels';
+import { LISTENING_STATUS_LABELS, LISTENING_TOPIC_LABELS, LISTENING_TYPE_LABELS, MOODS, npsVerdict } from '../lib/listeningLabels';
+import { CourseNpsAnalyticsSection } from './CourseNpsAnalyticsSection';
 import type {
   ListeningAdminFilter,
   ListeningAdminResponse,
@@ -41,14 +44,6 @@ const PAGE_SIZE = 10;
 function moodFace(avg: number | null) {
   if (avg === null) return null;
   return MOODS[Math.min(5, Math.max(1, Math.round(avg))) - 1];
-}
-
-function npsVerdict(score: number | null): { label: string; tone: string } {
-  if (score === null) return { label: i18next.t('sinRespuestasTodavia', 'Sin respuestas todavía'), tone: 'text-ink-muted' };
-  if (score >= 50) return { label: i18next.t('excelente', 'Excelente'), tone: 'text-success-light' };
-  if (score >= 30) return { label: i18next.t('bueno', 'Bueno'), tone: 'text-success-light' };
-  if (score >= 0) return { label: i18next.t('porMejorar', 'Por mejorar'), tone: 'text-warning-light' };
-  return { label: i18next.t('critico', 'Crítico'), tone: 'text-danger-light' };
 }
 
 function npsGroupLabel(group: string | null | undefined): string {
@@ -107,7 +102,19 @@ const BarRow: React.FC<{ label: string; count: number; max: number; avgMood: num
 
 export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }> = ({ actionsSlot = null }) => {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState<ListeningAdminFilter>({ days: 90, status: '', type: '', topic: '', courseId: '', mood: '' });
+  const [section, setSection] = useState<'mailbox' | 'courseNps'>('mailbox');
+  const [filter, setFilter] = useState<ListeningAdminFilter>({ days: 90, status: '', type: '', topic: '', courseId: '', userId: '', mood: '' });
+  const [studentQuery, setStudentQuery] = useState('');
+  const [sheetUserId, setSheetUserId] = useState<string | null>(null);
+  const [focusEntryId, setFocusEntryId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(LISTENING_FOCUS_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
+  const sheetDlg = useRef<HTMLDialogElement>(null);
   const [data, setData] = useState<ListeningAdminResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +137,36 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const onNotification = (event: Event) => {
+      const detail = (event as CustomEvent<AppNotification>).detail;
+      if (detail?.type === 'listening.message') void load();
+    };
+    const onOpenListening = (event: Event) => {
+      const detail = (event as CustomEvent<{ listeningEntryId?: string | null } | undefined>).detail;
+      let nextFocus = detail?.listeningEntryId ?? null;
+      if (!nextFocus) {
+        try {
+          nextFocus = sessionStorage.getItem(LISTENING_FOCUS_STORAGE_KEY);
+        } catch {
+          nextFocus = null;
+        }
+      }
+      setSection('mailbox');
+      setStudentQuery('');
+      setFilter({ days: 90, status: '', type: '', topic: '', courseId: '', userId: '', mood: '' });
+      setPage(1);
+      if (nextFocus) setFocusEntryId(nextFocus);
+      void load();
+    };
+    window.addEventListener(NOTIFICATION_EVENT, onNotification);
+    window.addEventListener(ADMIN_LISTENING_EVENT, onOpenListening);
+    return () => {
+      window.removeEventListener(NOTIFICATION_EVENT, onNotification);
+      window.removeEventListener(ADMIN_LISTENING_EVENT, onOpenListening);
+    };
   }, [load]);
 
   const replaceEntry = (updated: StaffListeningEntry) =>
@@ -184,10 +221,92 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
   const pct = (value: number, total: number) => (total ? (value / total) * 100 : 0);
 
   const entries = data?.entries ?? [];
-  const safePage = Math.min(page, Math.max(1, Math.ceil(entries.length / PAGE_SIZE)));
-  const visible = entries.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const filteredEntries = useMemo(() => {
+    const q = studentQuery.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter((entry) =>
+      [entry.author?.name || '', entry.author?.email || '', entry.subject, entry.message, entry.courseTitle || '']
+        .some((value) => value.toLowerCase().includes(q)),
+    );
+  }, [entries, studentQuery]);
+
+  const studentGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        userId: string;
+        name: string;
+        email: string;
+        entries: StaffListeningEntry[];
+        pending: number;
+      }
+    >();
+    for (const entry of filteredEntries) {
+      const existingGroup = map.get(entry.userId);
+      const isPending = entry.status === 'NEW' || entry.status === 'IN_REVIEW';
+      if (existingGroup) {
+        existingGroup.entries.push(entry);
+        if (isPending) existingGroup.pending += 1;
+      } else {
+        map.set(entry.userId, {
+          userId: entry.userId,
+          name: entry.anonymous ? t('anonimo', 'Anónimo') : entry.author?.name || entry.author?.email || t('usuarioSinDatos', 'Usuario sin datos'),
+          email: entry.anonymous ? '' : entry.author?.email || '',
+          entries: [entry],
+          pending: isPending ? 1 : 0,
+        });
+      }
+    }
+    return [...map.values()];
+  }, [filteredEntries, t]);
+
+  const safePage = Math.min(page, Math.max(1, Math.ceil(studentGroups.length / PAGE_SIZE)));
+  const visibleGroups = studentGroups.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const sheetGroup = sheetUserId ? studentGroups.find((g) => g.userId === sheetUserId) || null : null;
+  useBodyScrollLock(Boolean(sheetGroup));
+
+  useEffect(() => {
+    const d = sheetDlg.current;
+    if (!d) return;
+    if (sheetGroup && !d.open) d.showModal();
+    if (!sheetGroup && d.open) d.close();
+  }, [sheetGroup]);
+
+  useEffect(() => {
+    if (!sheetGroup || !highlightedEntryId) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`listening-entry-${highlightedEntryId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [sheetGroup, highlightedEntryId]);
+
+  useEffect(() => {
+    if (!focusEntryId || loading) return;
+    const target = entries.find((entry) => entry.id === focusEntryId);
+    if (!target) {
+      if (data) {
+        try { sessionStorage.removeItem(LISTENING_FOCUS_STORAGE_KEY); } catch { /* ignore */ }
+        setFocusEntryId(null);
+      }
+      return;
+    }
+    try { sessionStorage.removeItem(LISTENING_FOCUS_STORAGE_KEY); } catch { /* ignore */ }
+    setSection('mailbox');
+    setStudentQuery('');
+    setSheetUserId(target.userId);
+    setHighlightedEntryId(target.id);
+    setFocusEntryId(null);
+    const timer = window.setTimeout(() => {
+      setHighlightedEntryId((current) => (current === target.id ? null : current));
+    }, 4500);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [focusEntryId, entries, loading, data]);
+
   const chips = [
     filter.courseId ? { key: 'course', text: data?.courses.find((course) => course.id === filter.courseId)?.title || 'Curso', onRemove: () => change({ courseId: '' }) } : null,
+    filter.userId ? { key: 'student', text: data?.authors?.find((author) => author.userId === filter.userId)?.name || 'Alumno', onRemove: () => change({ userId: '' }) } : null,
     filter.type ? { key: 'type', text: LISTENING_TYPE_LABELS[filter.type], onRemove: () => change({ type: '' }) } : null,
     filter.topic ? { key: 'topic', text: LISTENING_TOPIC_LABELS[filter.topic], onRemove: () => change({ topic: '' }) } : null,
     filter.status ? { key: 'status', text: LISTENING_STATUS_LABELS[filter.status], onRemove: () => change({ status: '' }) } : null,
@@ -207,14 +326,45 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
   );
 
   return (
-    <section data-mentor-ui="modern" className="admin-courses-root admin-listening" aria-label={t('buzonDeEscuchaTitulo', 'Buzón de escucha')}>
-      <div className="admin-listening__intro">
-        <div>
-          <h3>{t('buzonDeEscuchaTitulo', 'Buzón de escucha')}</h3>
-          <p>{t('loQueSientenYPidenTusEstudiantesEnCifras', 'Lo que sienten y piden tus estudiantes, en cifras. El NPS cuenta a cada persona una vez: su nota más reciente del periodo.')}</p>
+    <section data-mentor-ui="modern" className="admin-courses-root admin-listening" aria-label={t('nps', 'NPS')}>
+      <div className="admin-listening__subnav">
+        <div
+          className="admin-resources-shell__media"
+          role="tablist"
+          aria-label={t('courseNps.adminSectionSwitchAria', 'Vistas de NPS y escucha')}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={section === 'mailbox'}
+            aria-pressed={section === 'mailbox'}
+            onClick={() => setSection('mailbox')}
+          >
+            {t('buzonDeEscuchaTitulo', 'Buzón de escucha')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={section === 'courseNps'}
+            aria-pressed={section === 'courseNps'}
+            onClick={() => setSection('courseNps')}
+          >
+            {t('courseNps.sectionTitle', 'NPS de calidad de cursos')}
+          </button>
         </div>
-        {actionsSlot ? createPortal(exportButton, actionsSlot) : exportButton}
       </div>
+
+      {section === 'courseNps' ? (
+        <CourseNpsAnalyticsSection showControls actionsSlot={actionsSlot} />
+      ) : (
+        <>
+          <div className="admin-listening__intro">
+            <div>
+              <h3>{t('buzonDeEscuchaTitulo', 'Buzón de escucha')}</h3>
+              <p>{t('loQueSientenYPidenTusEstudiantesEnCifras', 'Lo que sienten y piden tus estudiantes, en cifras. El NPS cuenta a cada persona una vez: su nota más reciente del periodo.')}</p>
+            </div>
+            {actionsSlot ? createPortal(exportButton, actionsSlot) : exportButton}
+          </div>
 
       <div className="mentor-course-toolbar admin-listening__toolbar">
         <div className="mentor-publication-filters admin-view-toggle" role="group" aria-label={t('periodo', 'Periodo')}>
@@ -239,9 +389,9 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
           options={[{ value: 'ALL', label: t('todosLosCursos', 'Todos los cursos') }, ...(data?.courses ?? []).map((course) => ({ value: course.id, label: course.title }))]}
         />
       </div>
-      <ActiveFilters noun="mensajes" onClear={() => change({ courseId: '', type: '', topic: '', status: '', mood: '' })} chips={chips} />
+      <ActiveFilters noun="mensajes" onClear={() => { change({ courseId: '', userId: '', type: '', topic: '', status: '', mood: '' }); setStudentQuery(''); }} chips={chips} />
 
-      {loading && !data && <PageLoader label={t('cargandoElBuzon', 'Cargando el buzón…')} />}
+      {loading && !data && <RouteSkeleton variant="metrics" label={t('cargandoElBuzon', 'Cargando el buzón…')} />}
 
       {summary && (
         <>
@@ -351,11 +501,28 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
               {summary.weekly.length === 0 ? <p className="admin-listening__note">{t('sinDatos', 'Sin datos.')}</p> : (
                 <>
                   <div className="admin-listening__weekly" role="img" aria-label={t('mensajesPorSemanaColoreadosPorAnimoMedio', 'Mensajes por semana, coloreados por ánimo medio')}>
-                    {summary.weekly.slice(-16).map((week) => (
-                      <div key={week.weekStart} title={t('semanaDelWeekStartCountMensajesAnimoAvg', 'Semana del {{weekStart}}: {{count}} mensajes · ánimo {{avgMood}} · NPS {{nps}}', { weekStart: week.weekStart, count: week.count, avgMood: week.avgMood ?? '—', nps: week.nps ?? '—' })}>
-                        <div style={{ height: `${Math.max(6, (week.count / maxWeek) * 100)}%`, background: (week.avgMood ?? 0) >= 4 ? 'var(--color-success-light)' : (week.avgMood ?? 0) >= 3 ? 'var(--color-warning-light)' : 'var(--color-danger-light)' }} />
-                      </div>
-                    ))}
+                    {summary.weekly.slice(-16).map((week) => {
+                      const shortDate = `${week.weekStart.slice(8, 10)}/${week.weekStart.slice(5, 7)}`;
+                      return (
+                        <div
+                          key={week.weekStart}
+                          className="admin-listening__weekly-col"
+                          title={t('semanaDelWeekStartCountMensajesAnimoAvg', 'Semana del {{weekStart}}: {{count}} mensajes · ánimo {{avgMood}} · NPS {{nps}}', { weekStart: week.weekStart, count: week.count, avgMood: week.avgMood ?? '—', nps: week.nps ?? '—' })}
+                        >
+                          <span className="admin-listening__weekly-count">{week.count}</span>
+                          <div className="admin-listening__weekly-track">
+                            <div
+                              className="admin-listening__weekly-bar"
+                              style={{
+                                height: `${Math.max(8, (week.count / maxWeek) * 100)}%`,
+                                background: (week.avgMood ?? 0) >= 4 ? 'var(--color-success-light)' : (week.avgMood ?? 0) >= 3 ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
+                              }}
+                            />
+                          </div>
+                          <span className="admin-listening__weekly-date">{shortDate}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <p className="admin-listening__note">{t('alturaMensajesColorAnimoMedioDeLaSemana', 'Altura: mensajes. Color: ánimo medio de la semana.')}</p>
                 </>
@@ -366,78 +533,193 @@ export const ListeningAdminPanel: React.FC<{ actionsSlot?: HTMLElement | null }>
       )}
 
       <div className="admin-listening__messages" role="region" aria-label={t('mensajesRecibidos', 'Mensajes recibidos')}>
-        <h3>{t('mensajes', 'Mensajes')} <span>{entries.length}</span></h3>
+        <div className="admin-listening__messages-head">
+          <h3>
+            {t('mensajesPorAlumno', 'Mensajes por alumno')} <span>{studentGroups.length} · {filteredEntries.length}</span>
+          </h3>
+          <div className="admin-listening__messages-controls">
+            <AdminSearchField
+              value={studentQuery}
+              onChange={(value) => { setStudentQuery(value); setPage(1); }}
+              placeholder={t('buscarAlumnoOContenido', 'Buscar alumno, asunto o mensaje')}
+              label={t('buscarEnMensajes', 'Buscar en mensajes')}
+            />
+            <AdminSelect
+              ariaLabel={t('courseNps.filterByStudent', 'Alumno')}
+              value={orAll(filter.userId)}
+              onChange={(value) => change({ userId: fromAll(value) })}
+              options={[
+                { value: 'ALL', label: t('courseNps.allStudents', 'Todos los alumnos') },
+                ...(data?.authors ?? []).map((author) => ({
+                  value: author.userId,
+                  label: `${author.name} (${author.count})`,
+                })),
+              ]}
+            />
+          </div>
+        </div>
 
-        {data && entries.length === 0 && (
-          <div className="admin-listening__empty"><Inbox aria-hidden="true" /><p>{chips.length > 0 ? t('listenNoMatch', 'Ningún mensaje coincide con los filtros.') : t('listenNoneInPeriod', 'Todavía no hay mensajes en este periodo.')}</p></div>
+        {data && visibleGroups.length === 0 && (
+          <div className="admin-listening__empty"><Inbox aria-hidden="true" /><p>{chips.length > 0 || studentQuery.trim() ? t('listenNoMatch', 'Ningún mensaje coincide con los filtros.') : t('listenNoneInPeriod', 'Todavía no hay mensajes en este periodo.')}</p></div>
         )}
 
-        {visible.map((entry) => {
-          const face = MOODS.find((item) => item.value === entry.mood);
-          const name = entry.anonymous ? t('anonimo', 'Anónimo') : entry.author?.name || t('usuarioSinDatos', 'Usuario sin datos');
-          const draft = drafts[entry.id] || '';
-          return (
-            <article key={entry.id} className="admin-listening__entry" data-status={entry.status}>
-              <header className="admin-listening__head">
-                <span className="admin-listening__avatar" aria-hidden="true">{entry.anonymous ? <UserX /> : name.charAt(0).toUpperCase()}</span>
-                <div className="admin-listening__who">
-                  <strong>{name}</strong>
-                  <span>
-                    {!entry.anonymous && entry.author?.email ? `${entry.author.email} · ` : ''}
-                    <time dateTime={entry.createdAt} title={new Date(entry.createdAt).toLocaleString(dateLocale())}>{timeAgo(entry.createdAt)}</time>
-                  </span>
+        {visibleGroups.length > 0 && (
+          <ul className="admin-listening__student-grid">
+            {visibleGroups.map((group) => {
+              const latest = group.entries[0];
+              const isSelected = sheetUserId === group.userId;
+              return (
+                <li key={group.userId} className="admin-listening__student-card">
+                  <button
+                    type="button"
+                    className="admin-listening__student-card-btn"
+                    aria-expanded={isSelected}
+                    aria-haspopup="dialog"
+                    onClick={() => setSheetUserId(group.userId)}
+                  >
+                    <div className="admin-listening__head">
+                      <span className="admin-listening__avatar" aria-hidden="true">{group.name.charAt(0).toUpperCase()}</span>
+                      <div className="admin-listening__who">
+                        <strong>{group.name}</strong>
+                        <span>
+                          {group.email ? `${group.email} · ` : ''}
+                          {latest && <time dateTime={latest.createdAt}>{timeAgo(latest.createdAt)}</time>}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="admin-listening__student-card-foot">
+                      <span className="admin-listening__badge">
+                        {t('countMensajesStudent', {
+                          defaultValue_one: '{{count}} mensaje',
+                          defaultValue_other: '{{count}} mensajes',
+                          count: group.entries.length,
+                        })}
+                      </span>
+                      {group.pending > 0 && (
+                        <span className="admin-listening__badge" data-tone="warn">
+                          {t('pendingPorResponder', '{{pending}} por responder', { pending: group.pending })}
+                        </span>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-ink-muted" aria-hidden="true" />
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <Pager total={studentGroups.length} size={PAGE_SIZE} page={safePage} onPage={setPage} noun="alumnos" />
+
+        <dialog
+          ref={sheetDlg}
+          className="mentee-sheet admin-cert-sheet admin-listening-sheet"
+          aria-labelledby="admin-listening-sheet-title"
+          onCancel={(e) => { e.preventDefault(); setSheetUserId(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setSheetUserId(null); }}
+        >
+          {sheetGroup && (
+            <div className="mentee-sheet__body admin-cert-sheet__body">
+              <header className="mentee-sheet__head">
+                <span className="admin-listening__avatar" aria-hidden="true">{sheetGroup.name.charAt(0).toUpperCase()}</span>
+                <div className="mentor-mentee-id">
+                  <strong id="admin-listening-sheet-title">{sheetGroup.name}</strong>
+                  {sheetGroup.email && <span title={sheetGroup.email}>{sheetGroup.email}</span>}
                 </div>
-                <span className="admin-listening__status" data-status={entry.status}>{LISTENING_STATUS_LABELS[entry.status]}</span>
-                <div className="admin-listening__nps-badge" data-group={entry.npsGroup ?? 'NONE'} title={t('npsDeEstaPersona', 'NPS de esta persona (0 a 10)')}>
-                  <strong>{entry.npsScore ?? '—'}</strong>
-                  <span>{entry.npsScore === null ? t('sinNps', 'Sin NPS') : t('npsNpsGroupLabel', 'NPS · {{npsGroupLabel}}', { npsGroupLabel: npsGroupLabel(entry.npsGroup) })}</span>
-                </div>
-              </header>
-
-              <h4>{entry.subject}</h4>
-              <p className="admin-listening__message">{entry.message}</p>
-
-              <p className="admin-listening__meta">
-                <span title={face?.label}><span aria-hidden="true">{face?.emoji}</span> {entry.mood}/5</span>
-                <span>{LISTENING_TYPE_LABELS[entry.type]}</span>
-                <span>{LISTENING_TOPIC_LABELS[entry.topic]}</span>
-                {entry.courseTitle && <span>{entry.courseTitle}</span>}
-              </p>
-
-              {entry.reply && (
-                <blockquote className="admin-listening__reply">
-                  <cite>
-                    {entry.repliedBy || t('equipo', 'Equipo')}
-                    {entry.repliedAt && <> · <time dateTime={entry.repliedAt} title={new Date(entry.repliedAt).toLocaleString(dateLocale())}>{timeAgo(entry.repliedAt)}</time></>}
-                  </cite>
-                  <p>{entry.reply}</p>
-                </blockquote>
-              )}
-
-              <form className="admin-listening__compose" onSubmit={(event) => { event.preventDefault(); void handleReply(entry); }}>
-                <textarea
-                  aria-label={t('respuestaASubject', 'Respuesta a: {{subject}}', { subject: entry.subject })}
-                  rows={1}
-                  maxLength={2000}
-                  value={draft}
-                  onChange={(event) => {
-                    // Empezar a escribir es lo que pasa el mensaje a «En revisión».
-                    if (entry.status === 'NEW' && !draft && event.target.value) void handleStatus(entry, 'IN_REVIEW');
-                    setDrafts((current) => ({ ...current, [entry.id]: event.target.value }));
-                  }}
-                  onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void handleReply(entry); } }}
-                  placeholder={entry.reply ? t('escribeUnaNuevaRespuesta', 'Escribe una nueva respuesta...') : t('respondeAEstaPersona', 'Responde a esta persona...')}
-                />
-                <button type="submit" disabled={busyId === entry.id || !draft.trim()}>
-                  {busyId === entry.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
-                  {t('enviar', 'Enviar')}
+                <button type="button" onClick={() => setSheetUserId(null)} className="mentee-sheet__close" aria-label={t('cerrar', 'Cerrar')}>
+                  <X aria-hidden="true" />
                 </button>
-              </form>
-            </article>
-          );
-        })}
-        <Pager total={entries.length} size={PAGE_SIZE} page={safePage} onPage={setPage} noun="mensajes" />
+              </header>
+              <div className="admin-cert-sheet__summary">
+                <span className="admin-listening__badge">
+                  {t('countMensajesStudent', {
+                    defaultValue_one: '{{count}} mensaje',
+                    defaultValue_other: '{{count}} mensajes',
+                    count: sheetGroup.entries.length,
+                  })}
+                </span>
+                {sheetGroup.pending > 0 && (
+                  <span className="admin-listening__badge" data-tone="warn">
+                    {t('pendingPorResponder', '{{pending}} por responder', { pending: sheetGroup.pending })}
+                  </span>
+                )}
+              </div>
+              <div className="admin-cert-sheet__scroll">
+                <div className="admin-listening__student-thread-sheet">
+                  {sheetGroup.entries.map((entry) => {
+                    const face = MOODS.find((item) => item.value === entry.mood);
+                    const draft = drafts[entry.id] || '';
+                    return (
+                      <article
+                        key={entry.id}
+                        id={`listening-entry-${entry.id}`}
+                        className="admin-listening__entry"
+                        data-status={entry.status}
+                        data-focused={highlightedEntryId === entry.id ? 'true' : undefined}
+                      >
+                        <header className="admin-listening__head">
+                          <span className="admin-listening__avatar" aria-hidden="true">{entry.anonymous ? <UserX /> : sheetGroup.name.charAt(0).toUpperCase()}</span>
+                          <div className="admin-listening__who">
+                            <strong>{entry.subject}</strong>
+                            <span>
+                              <time dateTime={entry.createdAt} title={new Date(entry.createdAt).toLocaleString(dateLocale())}>{timeAgo(entry.createdAt)}</time>
+                            </span>
+                          </div>
+                          <span className="admin-listening__status" data-status={entry.status}>{LISTENING_STATUS_LABELS[entry.status]}</span>
+                          <div className="admin-listening__nps-badge" data-group={entry.npsGroup ?? 'NONE'} title={t('npsDeEstaPersona', 'NPS de esta persona (0 a 10)')}>
+                            <strong>{entry.npsScore ?? '—'}</strong>
+                            <span>{entry.npsScore === null ? t('sinNps', 'Sin NPS') : t('npsNpsGroupLabel', 'NPS · {{npsGroupLabel}}', { npsGroupLabel: npsGroupLabel(entry.npsGroup) })}</span>
+                          </div>
+                        </header>
+
+                        <p className="admin-listening__message">{entry.message}</p>
+
+                        <p className="admin-listening__meta">
+                          <span title={face?.label}><span aria-hidden="true">{face?.emoji}</span> {entry.mood}/5</span>
+                          <span>{LISTENING_TYPE_LABELS[entry.type]}</span>
+                          <span>{LISTENING_TOPIC_LABELS[entry.topic]}</span>
+                          {entry.courseTitle && <span>{entry.courseTitle}</span>}
+                        </p>
+
+                        {entry.reply && (
+                          <blockquote className="admin-listening__reply">
+                            <cite>
+                              {entry.repliedBy || t('equipo', 'Equipo')}
+                              {entry.repliedAt && <> · <time dateTime={entry.repliedAt} title={new Date(entry.repliedAt).toLocaleString(dateLocale())}>{timeAgo(entry.repliedAt)}</time></>}
+                            </cite>
+                            <p>{entry.reply}</p>
+                          </blockquote>
+                        )}
+
+                        <form className="admin-listening__compose" onSubmit={(event) => { event.preventDefault(); void handleReply(entry); }}>
+                          <textarea
+                            aria-label={t('respuestaASubject', 'Respuesta a: {{subject}}', { subject: entry.subject })}
+                            rows={1}
+                            maxLength={2000}
+                            value={draft}
+                            onChange={(event) => {
+                              // Empezar a escribir es lo que pasa el mensaje a «En revisión».
+                              if (entry.status === 'NEW' && !draft && event.target.value) void handleStatus(entry, 'IN_REVIEW');
+                              setDrafts((current) => ({ ...current, [entry.id]: event.target.value }));
+                            }}
+                            onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void handleReply(entry); } }}
+                            placeholder={entry.reply ? t('escribeUnaNuevaRespuesta', 'Escribe una nueva respuesta...') : t('respondeAEstaPersona', 'Responde a esta persona...')}
+                          />
+                          <button type="submit" disabled={busyId === entry.id || !draft.trim()}>
+                            {busyId === entry.id ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
+                            {t('enviar', 'Enviar')}
+                          </button>
+                        </form>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </dialog>
       </div>
+        </>
+      )}
     </section>
   );
 };

@@ -616,7 +616,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   return (
     <div
       data-mentor-ui="modern"
-      className="academy-mentor-dashboard mentor-workspace min-h-screen bg-canvas text-ink px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full max-w-7xl mx-auto overflow-x-hidden"
+      className="academy-mentor-dashboard mentor-workspace animate-backdrop-fade min-h-screen bg-canvas text-ink px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full max-w-7xl mx-auto overflow-x-hidden"
     >
 
       <section className="mentor-command-header" aria-labelledby="mentor-workspace-title">
@@ -701,7 +701,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
       </div>
 
       {/* Mentor Navigation Tabs */}
-      <nav aria-label={t('modulosDeMentoria', 'Módulos de mentoría')} className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
+      <nav aria-label={t('modulosDeMentoria', 'Módulos de mentoría')} className="mentor-module-nav grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1.5 p-1.5 bg-raised border border-line rounded-2xl">
         <button
           aria-current={activeTab === 'courses' ? 'page' : undefined}
           onClick={() => setActiveTab('courses')}

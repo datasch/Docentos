@@ -8,8 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSeasonalDisplay, SEASONAL_INFO } from '../lib/seasonalTheme';
 import { X } from 'lucide-react';
-import { useTranslation } from 'react-i18next'
-import Snowfall from 'react-snowfall';
+import { useTranslation } from 'react-i18next';
 import './seasonal-christmas.css';
 
 /** Ramita de acebo: dos hojas y tres bayas. `mirror` la gira para que el par quede simétrico. */
@@ -23,17 +22,10 @@ const HollySprig: React.FC<{ mirror?: boolean }> = ({ mirror = false }) => (
   </svg>
 );
 
-const snowSprites = [
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#f7fbf8" stroke="#779588" stroke-opacity=".42" stroke-width="1.5"/></svg>',
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M12 5l-2-2m2 2 2-2m-2 16-2 2m2-2 2 2M5.9 8.5l-2.7.5m2.7-.5-.9-2.5m13.1 9.5 2.7-.5m-2.7.5.9 2.5M5.9 15.5l-.9 2.5m.9-2.5-2.7-.5m13.1-6.5.9-2.5m-.9 2.5 2.7.5" fill="none" stroke="#e9f4ef" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19M12 5l-2-2m2 2 2-2m-2 14-2 2m2-2 2 2M5 12l-2-2m2 2-2 2m14-2 2-2m-2 2 2 2" fill="none" stroke="#f4f9f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-];
-
 export const SeasonalGlobalOverlay: React.FC = () => {
   const { t } = useTranslation();
   const { theme, showBanner, showParticles } = useSeasonalDisplay();
   const [dismissBanner, setDismissBanner] = useState(false);
-  const [snowImages, setSnowImages] = useState<HTMLImageElement[]>([]);
   const [reduceMotion, setReduceMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [narrowScreen, setNarrowScreen] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
 
@@ -52,55 +44,105 @@ export const SeasonalGlobalOverlay: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (theme !== 'christmas') return;
-    let active = true;
-    Promise.all(snowSprites.map((sprite) => new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = `data:image/svg+xml,${encodeURIComponent(sprite)}`;
-    }))).then((images) => {
-      if (active) setSnowImages([images[0], images[0], images[0], images[1], images[2]]);
-    }).catch(() => {
-      if (active) setSnowImages([]);
-    });
-    return () => { active = false; };
-  }, [theme]);
-
   if (theme === 'none') return null;
 
   const info = SEASONAL_INFO[theme];
+  const snowCount = narrowScreen ? 18 : 36;
+  const batCount = narrowScreen ? 2 : 6;
+  const emberCount = narrowScreen ? 4 : 10;
 
   return (
     <>
       {/* 1. Efecto Ambiental de Fondo en TODO DocentOS (Adaptativo y optimizado para móviles) */}
       {showParticles && theme === 'christmas' && !reduceMotion && (
-        <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden" aria-hidden="true">
-          <Snowfall
-            images={snowImages}
-            snowflakeCount={narrowScreen ? 14 : 30}
-            radius={[2, 6]}
-            speed={[0.35, 1.15]}
-            wind={[-0.35, 0.35]}
-            opacity={[0.3, 0.62]}
-            rotationSpeed={[-0.35, 0.35]}
-            changeFrequency={180}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-          />
-        </div>
+        <>
+          <div className="nevada-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
+            {Array.from({ length: snowCount }).map((_, i) => {
+              const baseLeft = ((i + 0.5) / snowCount) * 94 + 3;
+              const jitter = ((i * 17) % 5) - 2;
+              const left = Math.min(97, Math.max(2, baseLeft + jitter));
+              const size = 3.5 + (i % 3) * 1.9;
+              return (
+                <div
+                  key={i}
+                  className="copo-nieve"
+                  style={{
+                    left: `${left.toFixed(2)}%`,
+                    animationDelay: `${((i * 1.73) % 5.6).toFixed(2)}s`,
+                    animationDuration: `${(5.0 + ((i * 1.37) % 4.5)).toFixed(2)}s`,
+                    width: `${size}px`,
+                    height: `${size}px`,
+                    opacity: 0.52 + (i % 4) * 0.12,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Bancos de nieve suaves en los laterales inferiores */}
+          <div className="christmas-side-snowbanks" aria-hidden="true">
+            <svg className="christmas-side-snowbank" viewBox="0 0 260 90" fill="none">
+              <defs>
+                <linearGradient id="sideSnowLeftBack" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style={{ stopColor: 'var(--christmas-snow-back-start, rgba(224,242,254,0.65))' }} />
+                  <stop offset="100%" style={{ stopColor: 'var(--christmas-snow-back-end, rgba(191,219,254,0.4))' }} />
+                </linearGradient>
+                <linearGradient id="sideSnowLeftFront" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style={{ stopColor: 'var(--christmas-snow-front-start, rgba(255,255,255,0.95))' }} />
+                  <stop offset="100%" style={{ stopColor: 'var(--christmas-snow-front-end, rgba(219,234,254,0.82))' }} />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0 90V28C32 24 54 44 86 48C122 52 142 36 178 52C210 66 232 76 260 90H0Z"
+                fill="url(#sideSnowLeftBack)"
+                stroke="var(--christmas-snow-stroke, transparent)"
+                strokeWidth="1"
+              />
+              <path
+                d="M0 90V52C28 48 58 64 94 68C136 72 162 60 202 74C224 82 242 86 260 90H0Z"
+                fill="url(#sideSnowLeftFront)"
+                stroke="var(--christmas-snow-stroke, transparent)"
+                strokeWidth="1"
+              />
+            </svg>
+            <svg className="christmas-side-snowbank" viewBox="0 0 260 90" fill="none">
+              <defs>
+                <linearGradient id="sideSnowRightBack" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style={{ stopColor: 'var(--christmas-snow-back-start, rgba(224,242,254,0.65))' }} />
+                  <stop offset="100%" style={{ stopColor: 'var(--christmas-snow-back-end, rgba(191,219,254,0.4))' }} />
+                </linearGradient>
+                <linearGradient id="sideSnowRightFront" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style={{ stopColor: 'var(--christmas-snow-front-start, rgba(255,255,255,0.95))' }} />
+                  <stop offset="100%" style={{ stopColor: 'var(--christmas-snow-front-end, rgba(219,234,254,0.82))' }} />
+                </linearGradient>
+              </defs>
+              <path
+                d="M260 90V26C228 22 206 44 172 48C136 52 114 38 78 54C46 68 24 78 0 90H260Z"
+                fill="url(#sideSnowRightBack)"
+                stroke="var(--christmas-snow-stroke, transparent)"
+                strokeWidth="1"
+              />
+              <path
+                d="M260 90V50C232 46 202 64 166 68C124 72 98 60 58 74C36 82 18 86 0 90H260Z"
+                fill="url(#sideSnowRightFront)"
+                stroke="var(--christmas-snow-stroke, transparent)"
+                strokeWidth="1"
+              />
+            </svg>
+          </div>
+        </>
       )}
 
       {showParticles && theme === 'halloween' && (
         <div className="halloween-ambient-container pointer-events-none fixed inset-0 z-30 overflow-hidden [will-change:transform]" aria-hidden="true">
           {/* Murciélagos flotantes (solo 2 en móviles) */}
-          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 6 }).map((_, i) => (
+          {Array.from({ length: batCount }).map((_, i) => (
             <div
               key={`bat-${i}`}
               className="absolute pointer-events-none opacity-20 dark:opacity-30 [will-change:transform]"
               style={{
                 top: `${14 + (i * 14) % 70}%`,
-                left: `${(i * 16 + 6) % 88}%`,
+                left: `${(((i + 0.5) / batCount) * 82 + 6).toFixed(2)}%`,
                 transform: `scale(${0.6 + (i % 3) * 0.2}) rotate(${(i % 2 === 0 ? 1 : -1) * 6}deg) translate3d(0, 0, 0)`,
                 animationDuration: `${4 + i}s`,
               }}
@@ -112,13 +154,13 @@ export const SeasonalGlobalOverlay: React.FC = () => {
           ))}
 
           {/* Destellos de fuego fatuo optimizados con radial-gradient (cero repaints en GPU) */}
-          {Array.from({ length: typeof window !== 'undefined' && window.innerWidth < 768 ? 4 : 10 }).map((_, i) => (
+          {Array.from({ length: emberCount }).map((_, i) => (
             <div
               key={`ember-${i}`}
               className="absolute w-3 h-3 rounded-full pointer-events-none [will-change:transform]"
               style={{
-                top: `${(i * 8.8 + 5) % 92}%`,
-                left: `${(i * 8.4 + 4) % 94}%`,
+                top: `${(i * 19 + 8) % 88}%`,
+                left: `${(((i + 0.5) / emberCount) * 90 + 4).toFixed(2)}%`,
                 background:
                   i % 2 === 0
                     ? 'radial-gradient(circle, rgba(249,115,22,0.9) 0%, rgba(249,115,22,0.25) 45%, transparent 72%)'

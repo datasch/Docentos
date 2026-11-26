@@ -93,6 +93,14 @@ import {
   type ListeningFilter,
 } from './server/listeningService.js';
 import {
+  courseNpsFilterSchema,
+  courseNpsToCsv,
+  extractCourseNpsStudents,
+  submitCourseNpsSchema,
+  summarizeCourseNps,
+  type CourseNpsRow,
+} from './server/courseNpsService.js';
+import {
   getCourseAccessDecision,
   getCourseAccessDecisions,
   userHasCourseAccess,
@@ -103,6 +111,7 @@ import {
   serializeCourseForViewer,
   serializeCourseForAdmin,
 } from './server/courseAccess.js';
+import { parseVideoSource } from './src/lib/videoParser.js';
 import { redactPluginConfig } from './server/pluginConfig.js';
 import { ensurePluginCatalog } from './server/pluginCatalog.js';
 import {
@@ -122,6 +131,7 @@ import {
   listNotifications,
   markNotificationsRead,
   notificationHub,
+  notifyNewListeningEntry,
   notifyNewQuestion,
   notifyQuestionAnswered,
 } from './server/notificationService.js';
@@ -310,27 +320,17 @@ const TESTIMONIAL_MAX_CHARS = 400;
 /** Cuantos se pintan en la portada como mucho. */
 const TESTIMONIAL_PUBLIC_LIMIT = 12;
 
-const TESTIMONIAL_ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'Administrador',
-  MENTOR: 'Mentor',
-  MENTEE: 'Mentee',
-  VIP: 'Pase VIP',
-  PUBLIC_USER: 'Estudiante',
-  EXTERNAL: 'Invitado',
-};
-
 /**
- * Forma publica de un testimonio. El nombre, el cargo y el avatar se leen del
- * usuario en cada peticion en lugar de copiarse al aprobarlo: si alguien se
- * cambia el nombre o la foto, la portada lo refleja sola.
+ * Forma publica de un testimonio. El nombre y el avatar se leen del usuario en
+ * cada peticion en lugar de copiarse al aprobarlo: si alguien se cambia el
+ * nombre o la foto, la portada lo refleja sola.
  *
- * El correo no sale nunca de aqui.
+ * El correo y el rol no salen nunca de aqui.
  */
 function toPublicTestimonial(item: any) {
   return {
     id: item.id,
     name: item.user?.name || 'Persona usuaria',
-    role: TESTIMONIAL_ROLE_LABELS[item.user?.role] || 'Estudiante',
     avatarUrl: item.user?.avatarUrl || DEFAULT_AVATAR,
     comment: item.comment,
     rating: item.rating,
@@ -948,6 +948,7 @@ app.get(
   asyncRoute(async (req, res) => {
     const user = req.user;
     const viewerRole: UserRole = user?.role || 'PUBLIC_USER';
+    const includeStaffSources = viewerRole === 'ADMIN' || viewerRole === 'MENTOR';
     const courses = await prisma.course.findMany({
       where: user?.role === 'ADMIN' ? {} : { published: true },
       include: {
@@ -959,6 +960,17 @@ app.get(
             resources: { orderBy: { order: 'asc' } },
           },
         },
+        ...(includeStaffSources
+          ? {
+              aiJob: {
+                select: {
+                  playlist: {
+                    select: { youtubeId: true, title: true },
+                  },
+                },
+              },
+            }
+          : {}),
         mentors: {
           include: {
             mentor: {
@@ -1001,6 +1013,7 @@ app.get(
           assignedMentor: resolvedMentor,
         },
         decision.allowed,
+        { includeStaffSources },
       );
       return {
         ...serialized,
@@ -1021,6 +1034,8 @@ app.get(
 app.get(
   '/api/courses/:courseId',
   asyncRoute(async (req, res) => {
+    const viewerRole: UserRole = req.user?.role || 'PUBLIC_USER';
+    const includeStaffSources = viewerRole === 'ADMIN' || viewerRole === 'MENTOR';
     const course = await prisma.course.findUnique({
       where: { id: req.params.courseId },
       include: {
@@ -1032,6 +1047,17 @@ app.get(
             resources: { orderBy: { order: 'asc' } },
           },
         },
+        ...(includeStaffSources
+          ? {
+              aiJob: {
+                select: {
+                  playlist: {
+                    select: { youtubeId: true, title: true },
+                  },
+                },
+              },
+            }
+          : {}),
         mentors: {
           include: {
             mentor: {
@@ -1043,7 +1069,6 @@ app.get(
     });
     if (!course) return sendApiError(res, req, 404, 'COURSE_NOT_FOUND', 'Curso no encontrado');
 
-    const viewerRole: UserRole = req.user?.role || 'PUBLIC_USER';
     const decision = await getCourseAccessDecision(req.user, course.id);
 
     let userAssignedMentor: { id: string; name: string; email: string; avatarUrl: string | null } | null = null;
@@ -1082,6 +1107,7 @@ app.get(
         assignedMentor: resolvedMentor,
       },
       decision.allowed,
+      { includeStaffSources },
     );
 
     res.json({
@@ -2609,6 +2635,7 @@ app.get(
     res.json({
       certificates: certificates.map((c) => ({
         id: c.id,
+        userId: c.userId,
         verificationCode: c.verificationCode,
         recipientName: c.recipientName,
         courseTitle: c.courseTitle,
@@ -4734,31 +4761,76 @@ app.put(
 function resolveVideoSource(
   rawDriveInput: unknown,
   rawEmbedUrl: unknown,
-): { driveFileId: string; embedUrl: string } | { error: string } {
+): { driveFileId: string; embedUrl: string; source: 'YOUTUBE' | 'GOOGLE_DRIVE' | 'EXTERNAL_URL'; mimeType: string } | { error: string } {
   const driveInput = String(rawDriveInput ?? '').trim();
   const embedInput = String(rawEmbedUrl ?? '').trim();
-  if (embedInput && !safeExternalUrl(embedInput, config.DOCENTOS_ENV === 'development')) {
+  const allowHttp = config.DOCENTOS_ENV === 'development';
+
+  if (embedInput && !safeExternalUrl(embedInput, allowHttp)) {
     return { error: 'La URL de reproducción debe usar HTTPS.' };
   }
 
+  const primary = driveInput || embedInput;
+  if (!primary) {
+    // Sin origen: se crea un marcador de posicion que el administrador completara.
+    const placeholderId = `pending-${Date.now()}`;
+    return { driveFileId: placeholderId, embedUrl: '', source: 'EXTERNAL_URL', mimeType: 'video/mp4' };
+  }
+
+  // 1. Enlace o ID de YouTube (watch, youtu.be, shorts, embed o ID de 11 caracteres)
+  const ytParsed = parseVideoSource(primary);
+  if (ytParsed.provider === 'youtube' && ytParsed.videoId) {
+    return {
+      driveFileId: ytParsed.videoId,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${ytParsed.videoId}?autoplay=0&rel=0`,
+      source: 'YOUTUBE',
+      mimeType: 'video/youtube',
+    };
+  }
+  if (!/^https?:\/\//i.test(primary) && /^[A-Za-z0-9_-]{11}$/.test(primary)) {
+    return {
+      driveFileId: primary,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${primary}?autoplay=0&rel=0`,
+      source: 'YOUTUBE',
+      mimeType: 'video/youtube',
+    };
+  }
+
+  // 2. Enlace o ID de Google Drive
   if (driveInput) {
     const fileId = extractDriveFileId(driveInput);
-    if (!fileId) {
+    if (fileId) {
       return {
-        error:
-          'No se reconoce el archivo de Google Drive. Pega el enlace completo (por ejemplo https://drive.google.com/file/d/ABC123.../view) o solo su identificador.',
+        driveFileId: fileId,
+        embedUrl: embedInput || buildDriveEmbedUrl(fileId),
+        source: 'GOOGLE_DRIVE',
+        mimeType: 'video/mp4',
       };
     }
-    return { driveFileId: fileId, embedUrl: embedInput || buildDriveEmbedUrl(fileId) };
+    if (!/^https?:\/\//i.test(driveInput)) {
+      return {
+        error:
+          'No se reconoce el enlace o identificador de video. Pega un enlace completo de YouTube, Google Drive o una URL HTTPS válida.',
+      };
+    }
+    if (!safeExternalUrl(driveInput, allowHttp)) {
+      return { error: 'La URL de reproducción debe usar HTTPS.' };
+    }
+    return {
+      driveFileId: `external-${Date.now()}`,
+      embedUrl: ytParsed.embedUrl || driveInput,
+      source: 'EXTERNAL_URL',
+      mimeType: 'video/mp4',
+    };
   }
 
-  if (embedInput) {
-    return { driveFileId: `external-${Date.now()}`, embedUrl: embedInput };
-  }
-
-  // Sin origen: se crea un marcador de posicion que el administrador completara.
-  const placeholderId = `pending-${Date.now()}`;
-  return { driveFileId: placeholderId, embedUrl: '' };
+  // 3. URL externa (Vimeo, Loom u otro enlace HTTPS)
+  return {
+    driveFileId: `external-${Date.now()}`,
+    embedUrl: ytParsed.embedUrl || embedInput,
+    source: 'EXTERNAL_URL',
+    mimeType: 'video/mp4',
+  };
 }
 
 app.post(
@@ -4771,7 +4843,7 @@ app.post(
     });
     if (!targetModule) return res.status(404).json({ error: 'Módulo no encontrado' });
 
-    const resolved = resolveVideoSource(req.body.driveFileId, req.body.embedUrl);
+    const resolved = resolveVideoSource(req.body.sourceUrl ?? req.body.driveFileId, req.body.embedUrl);
     if ('error' in resolved) return res.status(400).json({ error: resolved.error });
 
     const video = await prisma.videoDriveLink.create({
@@ -4781,8 +4853,9 @@ app.post(
         title: req.body.title || 'Nuevo Video de Mentoría',
         duration: req.body.duration || '20:00',
         description: req.body.description || 'Video importado desde Google Drive.',
-        mimeType: 'video/mp4',
+        mimeType: resolved.mimeType,
         embedUrl: resolved.embedUrl,
+        source: resolved.source,
         // Se usa el maximo y no la cantidad: tras borrar un video intermedio, la
         // cantidad reutilizaria un `order` ya ocupado y romperia el reordenado.
         order: targetModule.videos.reduce((max, v) => Math.max(max, v.order), 0) + 1,
@@ -5310,15 +5383,24 @@ app.put(
 
     // El origen se renormaliza igual que al crear, para que corregir un enlace
     // roto desde la ficha del video baste para dejarlo reproducible.
-    let sourceUpdate: { driveFileId: string; embedUrl: string } | null = null;
-    if (req.body.driveFileId !== undefined || req.body.embedUrl !== undefined) {
+    let sourceUpdate: { driveFileId: string; embedUrl: string; source: 'YOUTUBE' | 'GOOGLE_DRIVE' | 'EXTERNAL_URL'; mimeType: string } | null = null;
+    if (req.body.sourceUrl !== undefined || req.body.driveFileId !== undefined || req.body.embedUrl !== undefined) {
       const resolved = resolveVideoSource(
-        req.body.driveFileId !== undefined ? req.body.driveFileId : '',
+        req.body.sourceUrl !== undefined
+          ? req.body.sourceUrl
+          : req.body.driveFileId !== undefined
+            ? req.body.driveFileId
+            : '',
         req.body.embedUrl !== undefined ? req.body.embedUrl : '',
       );
       if ('error' in resolved) return res.status(400).json({ error: resolved.error });
       sourceUpdate = resolved;
     }
+
+    const sourceChanged = Boolean(
+      sourceUpdate &&
+        (sourceUpdate.driveFileId !== existing.driveFileId || sourceUpdate.embedUrl !== existing.embedUrl),
+    );
 
     const updated = await prisma.videoDriveLink.update({
       where: { id: existing.id },
@@ -5326,12 +5408,18 @@ app.put(
         ...(req.body.title !== undefined ? { title: String(req.body.title).trim() } : {}),
         ...(req.body.description !== undefined ? { description: String(req.body.description).trim() } : {}),
         ...(req.body.duration !== undefined ? { duration: String(req.body.duration).trim() } : {}),
-        ...(sourceUpdate && req.body.driveFileId !== undefined
-          ? { driveFileId: sourceUpdate.driveFileId }
-          : {}),
-        ...(sourceUpdate ? { embedUrl: sourceUpdate.embedUrl } : {}),
+        ...(sourceUpdate
+          ? {
+              driveFileId: sourceUpdate.driveFileId,
+              embedUrl: sourceUpdate.embedUrl,
+              mimeType: sourceUpdate.mimeType,
+              source: req.body.source !== undefined ? req.body.source : sourceUpdate.source,
+            }
+          : req.body.source !== undefined
+            ? { source: req.body.source }
+            : {}),
+        ...(sourceChanged ? { mediaDurationSeconds: null, mediaDurationSource: null } : {}),
         ...(req.body.order !== undefined ? { order: Number(req.body.order) } : {}),
-        ...(req.body.source !== undefined ? { source: req.body.source } : {}),
       },
     });
 
@@ -6183,11 +6271,12 @@ function listeningWhere(filter: ListeningFilter, options: { forSummary: boolean 
   return {
     ...(filter.days > 0 ? { createdAt: { gte: new Date(Date.now() - filter.days * 86_400_000) } } : {}),
     ...(filter.courseId ? { courseId: filter.courseId } : {}),
-    // El resumen ignora estos tres: si no, filtrar la lista a "pendientes"
-    // vaciaria los indicadores de arriba, que describen el periodo entero.
+    // El resumen ignora estos filtros de lista: si no, filtrar por "pendientes" o un alumno
+    // vaciaria los indicadores de arriba o la lista completa de autores del periodo.
     ...(!options.forSummary && filter.status ? { status: filter.status } : {}),
     ...(!options.forSummary && filter.type ? { type: filter.type } : {}),
     ...(!options.forSummary && filter.topic ? { topic: filter.topic } : {}),
+    ...(!options.forSummary && filter.userId ? { userId: filter.userId } : {}),
     ...(!options.forSummary && filter.mood ? { mood: filter.mood } : {}),
   };
 }
@@ -6229,6 +6318,8 @@ app.post(
       },
       include: LISTENING_INCLUDE,
     });
+
+    fireAndForget('listening_message', () => notifyNewListeningEntry(entry));
 
     res.status(201).json({
       success: true,
@@ -6281,6 +6372,7 @@ app.get(
         where: listeningWhere(filter, { forSummary: true }),
         select: {
           userId: true,
+          user: { select: { name: true, email: true } },
           type: true,
           topic: true,
           mood: true,
@@ -6302,10 +6394,27 @@ app.get(
       prisma.course.findMany({ select: { id: true, title: true }, orderBy: { title: 'asc' } }),
     ]);
 
+    const authorMap = new Map<string, { userId: string; name: string; email: string; count: number }>();
+    for (const row of summaryRows) {
+      const existingAuthor = authorMap.get(row.userId);
+      if (existingAuthor) {
+        existingAuthor.count += 1;
+      } else {
+        authorMap.set(row.userId, {
+          userId: row.userId,
+          name: row.user?.name || row.user?.email || 'Estudiante',
+          email: row.user?.email || '',
+          count: 1,
+        });
+      }
+    }
+    const authors = [...authorMap.values()].sort((a, b) => a.name.localeCompare(b.name));
+
     res.json({
       summary: summarizeListening(summaryRows.map((row) => ({ ...row, courseTitle: row.course?.title ?? null }))),
       entries: entries.map(toStaffEntry),
       courses,
+      authors,
     });
   }),
 );
@@ -6369,6 +6478,232 @@ app.patch(
       metadata: { status: updated.status },
     });
     res.json({ success: true, entry: toStaffEntry(updated) });
+  }),
+);
+
+// --- ENCUESTAS NPS DE CALIDAD POR CURSO (INICIO, MITAD Y FINAL) ---
+
+const mapCourseNpsRow = (row: {
+  id: string;
+  userId: string;
+  courseId: string;
+  course: { title: string } | null;
+  stage: 'START' | 'MID' | 'END';
+  npsScore: number | null;
+  comment: string | null;
+  dismissed: boolean;
+  user: { name: string; email: string } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): CourseNpsRow => ({
+  id: row.id,
+  userId: row.userId,
+  courseId: row.courseId,
+  courseTitle: row.course?.title ?? null,
+  stage: row.stage,
+  npsScore: row.npsScore,
+  comment: row.comment,
+  dismissed: row.dismissed,
+  authorName: row.user?.name ?? null,
+  authorEmail: row.user?.email ?? null,
+  createdAt: row.createdAt,
+  updatedAt: row.updatedAt,
+});
+
+app.get(
+  '/api/courses/:courseId/nps/status',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const courseId = String(req.params.courseId);
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } });
+    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
+    const eligible = await userHasCourseAccess(req.user, courseId);
+    if (!eligible) {
+      return res.json({ eligible: false, resolvedStages: [], answered: [] });
+    }
+
+    const surveys = await prisma.courseNpsSurvey.findMany({
+      where: { userId: req.user!.id, courseId },
+      select: { stage: true, npsScore: true, dismissed: true, updatedAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const resolvedStages = surveys
+      .filter((s) => s.npsScore !== null || s.dismissed)
+      .map((s) => s.stage);
+    const answered = surveys
+      .filter((s) => s.npsScore !== null)
+      .map((s) => ({
+        stage: s.stage,
+        npsScore: s.npsScore as number,
+        createdAt: s.updatedAt.toISOString(),
+      }));
+
+    res.json({ eligible: true, resolvedStages, answered });
+  }),
+);
+
+app.post(
+  '/api/courses/:courseId/nps',
+  requireAuthenticated,
+  asyncRoute(async (req, res) => {
+    const courseId = String(req.params.courseId);
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } });
+    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
+    if (!(await userHasCourseAccess(req.user, courseId))) {
+      return res.status(403).json({ error: 'No tienes acceso a este curso.' });
+    }
+
+    const parsed = submitCourseNpsSchema.safeParse(req.body);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const { stage, npsScore, comment, dismissed } = parsed.data;
+
+    const existing = await prisma.courseNpsSurvey.findUnique({
+      where: { userId_courseId_stage: { userId: req.user!.id, courseId, stage } },
+      select: { id: true, npsScore: true },
+    });
+
+    if (dismissed && existing?.npsScore !== null && existing?.npsScore !== undefined) {
+      const all = await prisma.courseNpsSurvey.findMany({
+        where: { userId: req.user!.id, courseId },
+        select: { stage: true, npsScore: true, dismissed: true },
+      });
+      return res.json({
+        success: true,
+        resolvedStages: all.filter((s) => s.npsScore !== null || s.dismissed).map((s) => s.stage),
+      });
+    }
+
+    await prisma.courseNpsSurvey.upsert({
+      where: { userId_courseId_stage: { userId: req.user!.id, courseId, stage } },
+      update: dismissed
+        ? { dismissed: true }
+        : {
+            npsScore: npsScore as number,
+            comment: comment || null,
+            dismissed: false,
+          },
+      create: {
+        userId: req.user!.id,
+        courseId,
+        stage,
+        npsScore: dismissed ? null : (npsScore as number),
+        comment: dismissed ? null : comment || null,
+        dismissed: Boolean(dismissed),
+      },
+    });
+
+    const all = await prisma.courseNpsSurvey.findMany({
+      where: { userId: req.user!.id, courseId },
+      select: { stage: true, npsScore: true, dismissed: true },
+    });
+
+    res.status(existing ? 200 : 201).json({
+      success: true,
+      resolvedStages: all.filter((s) => s.npsScore !== null || s.dismissed).map((s) => s.stage),
+    });
+  }),
+);
+
+app.get(
+  '/api/admin/course-nps',
+  requireRole(['ADMIN', 'MENTOR']),
+  asyncRoute(async (req, res) => {
+    const parsed = courseNpsFilterSchema.safeParse(req.query);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const filter = parsed.data;
+
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    if (filter.courseId && scope !== 'ALL' && !scope.includes(filter.courseId)) {
+      return res.status(403).json({ error: 'No tienes acceso a las métricas de este curso.' });
+    }
+
+    const courseScopeFilter = filter.courseId
+      ? { courseId: filter.courseId }
+      : scope === 'ALL'
+        ? {}
+        : { courseId: { in: scope } };
+
+    const [surveys, courses] = await Promise.all([
+      prisma.courseNpsSurvey.findMany({
+        where: {
+          ...(filter.days > 0 ? { updatedAt: { gte: new Date(Date.now() - filter.days * 86_400_000) } } : {}),
+          ...courseScopeFilter,
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          course: { select: { title: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 50_000,
+      }),
+      prisma.course.findMany({
+        where: scope === 'ALL' ? {} : { id: { in: scope } },
+        select: { id: true, title: true },
+        orderBy: { title: 'asc' },
+      }),
+    ]);
+
+    const mappedRows = surveys.map(mapCourseNpsRow);
+    const students = extractCourseNpsStudents(mappedRows);
+    const scopedRows = filter.userId
+      ? mappedRows.filter((row) => row.userId === filter.userId)
+      : mappedRows;
+
+    res.json({
+      summary: summarizeCourseNps(scopedRows),
+      courses,
+      students,
+    });
+  }),
+);
+
+app.get(
+  '/api/admin/course-nps/export',
+  requireRole(['ADMIN', 'MENTOR']),
+  securityLimits.expensive,
+  asyncRoute(async (req, res) => {
+    const parsed = courseNpsFilterSchema.safeParse(req.query);
+    if (!parsed.success) return validationError(res, parsed.error);
+    const filter = parsed.data;
+
+    const scope = await getMentorAllowedCourseIds(req.user!.id, req.user!.role);
+    if (filter.courseId && scope !== 'ALL' && !scope.includes(filter.courseId)) {
+      return res.status(403).json({ error: 'No tienes acceso a las métricas de este curso.' });
+    }
+
+    const courseScopeFilter = filter.courseId
+      ? { courseId: filter.courseId }
+      : scope === 'ALL'
+        ? {}
+        : { courseId: { in: scope } };
+
+    const surveys = await prisma.courseNpsSurvey.findMany({
+      where: {
+        npsScore: { not: null },
+        ...(filter.days > 0 ? { updatedAt: { gte: new Date(Date.now() - filter.days * 86_400_000) } } : {}),
+        ...(filter.userId ? { userId: filter.userId } : {}),
+        ...courseScopeFilter,
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+        course: { select: { title: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 20_000,
+    });
+
+    await recordAuditEvent(req, {
+      action: 'course_nps.export',
+      targetType: 'CourseNpsSurvey',
+      metadata: { rows: surveys.length, days: filter.days, courseId: filter.courseId ?? null },
+    });
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="nps-calidad-cursos-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(courseNpsToCsv(surveys.map(mapCourseNpsRow)));
   }),
 );
 
@@ -6774,6 +7109,12 @@ const serveAiCatalog = (req: Request, res: Response) => {
         displayName: 'Catálogo Público de Cursos DocentOS',
         type: 'application/json',
         url: `${baseUrl}/api/courses`,
+        representativeQueries: [
+          'cursos disponibles',
+          'catálogo de cursos',
+          'programas de mentoría',
+          'courses',
+        ],
       },
     ],
   };
@@ -6783,6 +7124,7 @@ const serveAiCatalog = (req: Request, res: Response) => {
   res.send(JSON.stringify(manifest, null, 2));
 };
 
+app.get('/.well-known/ard.json', serveAiCatalog);
 app.get('/.well-known/ai-catalog.json', serveAiCatalog);
 app.get('/ai-catalog.json', serveAiCatalog);
 app.use('/.well-known', (_req, res) => {

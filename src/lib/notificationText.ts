@@ -27,6 +27,9 @@ export function notificationTitle(t: TFunction, n: AppNotification): string {
   if (n.type === 'qna.answered') {
     return t('notifAnsweredTitle', 'Tu consulta fue respondida');
   }
+  if (n.type === 'listening.message') {
+    return t('notifListeningTitle', 'Nuevo mensaje en el buzón de {{name}}', { name: displayName(t, n.data?.authorName) });
+  }
   return n.title;
 }
 

@@ -41,6 +41,7 @@ export interface OwnListeningEntry {
 
 export interface StaffListeningEntry {
   id: string;
+  userId: string;
   type: ListeningType;
   topic: ListeningTopic;
   mood: number;
@@ -86,11 +87,20 @@ export interface ListeningAdminFilter {
   type?: ListeningType | '';
   topic?: ListeningTopic | '';
   courseId?: string;
+  userId?: string;
   mood?: number | '';
+}
+
+export interface ListeningAuthorOption {
+  userId: string;
+  name: string;
+  email: string;
+  count: number;
 }
 
 export interface ListeningAdminResponse {
   summary: ListeningSummaryData;
   entries: StaffListeningEntry[];
   courses: { id: string; title: string }[];
+  authors?: ListeningAuthorOption[];
 }

@@ -304,7 +304,7 @@ html[data-festividad="navidad"] .mision-popover {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 30;
   overflow: hidden;
 }
 
@@ -319,19 +319,29 @@ html[data-festividad="navidad"] .mision-popover {
   box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.7);
 }
 
+html[data-color-mode="light"] .copo-nieve,
+body[data-color-mode="light"] .copo-nieve {
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e0f2fe 58%, #7dd3fc 100%);
+  border: 1px solid rgba(2, 132, 199, 0.4);
+  box-shadow: 0 1px 4px rgba(14, 116, 144, 0.28), 0 0 6px rgba(56, 189, 248, 0.42);
+}
+
 @keyframes caerNieve {
   0% {
-    transform: translateY(0) rotate(0deg);
+    transform: translate3d(0, 0, 0) rotate(0deg);
     opacity: 0;
   }
   10% {
-    opacity: 0.9;
+    opacity: 0.94;
+  }
+  50% {
+    transform: translate3d(8px, 52vh, 0) rotate(180deg);
   }
   90% {
-    opacity: 0.9;
+    opacity: 0.94;
   }
   100% {
-    transform: translateY(105vh) rotate(360deg);
+    transform: translate3d(-4px, 105vh, 0) rotate(360deg);
     opacity: 0;
   }
 }
@@ -1034,3 +1044,33 @@ body[data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash {
 }
 @keyframes christmas-route-breathe { from { opacity: .8; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .christmas-connector-done, html[data-festividad="navidad"] .camino svg.ruta .ruta-cane-white { animation: none; } }
+
+/* Contraste navideño en Modo Blanco / Claro */
+html[data-color-mode="light"][data-festividad="navidad"] .camino svg.ruta .ruta-base,
+body[data-color-mode="light"][data-festividad="navidad"] .camino svg.ruta .ruta-base,
+html[data-color-mode="light"][data-festividad="navidad"] .christmas-connector,
+body[data-color-mode="light"][data-festividad="navidad"] .christmas-connector {
+  stroke: rgba(100, 116, 139, 0.42);
+}
+
+html[data-color-mode="light"][data-festividad="navidad"] .camino svg.ruta .ruta-cane-white,
+body[data-color-mode="light"][data-festividad="navidad"] .camino svg.ruta .ruta-cane-white {
+  stroke: #f59e0b;
+  filter: drop-shadow(0 0 3px rgba(217, 119, 6, 0.45));
+}
+
+html[data-color-mode="light"][data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash,
+body[data-color-mode="light"][data-festividad="navidad"] .camino svg.ruta .ruta-candy-dash {
+  stroke: #d97706;
+  filter: drop-shadow(0 0 3px rgba(217, 119, 6, 0.45));
+}
+
+html[data-color-mode="light"][data-festividad="navidad"] .christmas-goal,
+body[data-color-mode="light"][data-festividad="navidad"] .christmas-goal {
+  background-image: linear-gradient(180deg, rgba(16, 185, 129, 0.12), transparent 55%) !important;
+}
+
+html[data-color-mode="light"][data-festividad="navidad"] .christmas-candy-bar,
+body[data-color-mode="light"][data-festividad="navidad"] .christmas-candy-bar {
+  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.22);
+}

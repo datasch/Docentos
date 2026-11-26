@@ -9,7 +9,7 @@
  */
 
 import { useToastMessage } from '../lib/useToastMessage';
-import { PageLoader } from './loading/PageLoader';
+import { RouteSkeleton } from './loading/RouteSkeleton';
 import React, { useState, useEffect, useRef, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -494,7 +494,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
   if (loading) {
     return (
       <div data-mentor-ui="modern" className="admin-courses-root">
-        <PageLoader label={t('cargandoCmsGestorDePortada', 'Cargando la portada…')} />
+        <RouteSkeleton variant="editor" label={t('cargandoCmsGestorDePortada', 'Cargando la portada…')} />
       </div>
     );
   }
@@ -523,7 +523,7 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
   );
 
   return (
-    <div data-mentor-ui="modern" className={`admin-courses-root landing-editor ${disableAnimation ? '' : 'animate-fade-in'}`}>
+    <div data-mentor-ui="modern" className={`admin-courses-root landing-editor ${disableAnimation ? '' : 'animate-backdrop-fade'}`}>
       {actionsSlot ? createPortal(actions, actionsSlot) : <div className="landing-editor__actions">{actions}</div>}
 
 
@@ -728,7 +728,6 @@ export const LandingPageEditor: React.FC<LandingPageEditorProps> = ({ onSaved, d
                       />
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-white truncate">{testimonial.name}</p>
-                        <p className="text-[10px] font-semibold text-[var(--color-brand-cyan)]">{testimonial.role}</p>
                       </div>
                     </div>
 

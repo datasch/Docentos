@@ -7,6 +7,8 @@ import { ConstellationCosmicPath } from './ConstellationCosmicPath';
 import { api } from '../../lib/api';
 import { LESSON_FOCUS_EVENT, readLessonFocus, type LessonFocus } from '../../lib/useNotifications';
 import { CourseShareButton } from '../../components/CourseShareButton';
+import { CourseNpsModal } from '../../components/CourseNpsModal';
+import { resolveCourseNpsStage, type CourseNpsStage } from '../../lib/courseNps';
 import { syncModuleQuizCounts, quizzesPluginEngine } from '../../plugins/QuizzesPlugin';
 
 interface ConstellationCourseViewerProps {
@@ -44,6 +46,14 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   const [progressLoaded, setProgressLoaded] = useState(false);
   const hasAutoNavigatedRef = useRef<string | null>(null);
   const [openedByReload] = useState(() => { const first = pageJustLoaded; pageJustLoaded = false; return first; });
+  const [npsEligible, setNpsEligible] = useState(false);
+  const [npsStatusLoaded, setNpsStatusLoaded] = useState(false);
+  const [resolvedNpsStages, setResolvedNpsStages] = useState<CourseNpsStage[]>([]);
+  const [activeNpsStage, setActiveNpsStage] = useState<CourseNpsStage | null>(null);
+  const completedCountRef = useRef(0);
+  const resolvedNpsStagesRef = useRef<CourseNpsStage[]>([]);
+  const pendingNextLessonRef = useRef<{ moduleIndex: number; videoIndex: number } | null>(null);
+  const pendingAutoStartRef = useRef(false);
 
   const effectiveUser: User = currentUser || {
     id: 'guest',
@@ -83,17 +93,21 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     };
   }, [initialCourse]);
 
+  // Lista plana de IDs de videos en orden secuencial del curso
+  const allVideoIds = useMemo(() => {
+    const ids: string[] = [];
+    (course.modules || []).forEach((m) => {
+      (m.videos || []).forEach((v) => ids.push(v.id));
+    });
+    return ids;
+  }, [course.modules]);
+
   const loadProgress = async () => {
     try {
       const res = await api.getProgress();
       if (res?.completedVideos) {
         // Asegurar consistencia secuencial: si una lección avanzada está completada,
         // todas las lecciones previas en la ruta se consideran completadas.
-        const allVideoIds: string[] = [];
-        (course.modules || []).forEach((m) => {
-          (m.videos || []).forEach((v) => allVideoIds.push(v.id));
-        });
-
         let highestCompletedIdx = -1;
         allVideoIds.forEach((id, idx) => {
           if (res.completedVideos[id]) {
@@ -101,6 +115,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           }
         });
 
+        const courseVideoSet = new Set(allVideoIds);
         const completedSet = new Set<string>();
         if (highestCompletedIdx >= 0) {
           for (let i = 0; i <= highestCompletedIdx; i++) {
@@ -108,10 +123,12 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           }
         }
         Object.entries(res.completedVideos).forEach(([id, done]) => {
-          if (done) completedSet.add(id);
+          if (done && courseVideoSet.has(id)) completedSet.add(id);
         });
 
-        setCompletedVideoIds(Array.from(completedSet));
+        const courseIds = Array.from(completedSet);
+        completedCountRef.current = courseIds.length;
+        setCompletedVideoIds(courseIds);
       }
       const found = res?.certificates?.find((c) => c.courseId === course.id);
       setCertificate(found || null);
@@ -146,7 +163,44 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   useEffect(() => {
     loadProgress();
     loadQuizzes();
-  }, [currentUser, course.id]);
+  }, [currentUser?.id, course.id, allVideoIds.length]);
+
+  useEffect(() => {
+    let active = true;
+    setNpsStatusLoaded(false);
+    setNpsEligible(false);
+    resolvedNpsStagesRef.current = [];
+    setResolvedNpsStages([]);
+    setActiveNpsStage(null);
+    pendingNextLessonRef.current = null;
+    pendingAutoStartRef.current = false;
+
+    const canAnswerSurvey = Boolean(currentUser && hasAccess);
+    if (!canAnswerSurvey) {
+      setNpsStatusLoaded(true);
+      return;
+    }
+
+    api
+      .getCourseNpsStatus(course.id)
+      .then((res) => {
+        if (!active) return;
+        setNpsEligible(res.eligible);
+        resolvedNpsStagesRef.current = res.resolvedStages;
+        setResolvedNpsStages(res.resolvedStages);
+      })
+      .catch(() => {
+        if (!active) return;
+        setNpsEligible(false);
+      })
+      .finally(() => {
+        if (active) setNpsStatusLoaded(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id, currentUser?.role, hasAccess, course.id]);
 
   const handleOpenLesson = (video: VideoDriveLink, module: Module) => {
     const modules = course.modules || [];
@@ -214,9 +268,28 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     setIsPlayerModalOpen(true);
   };
 
+  useEffect(() => {
+    completedCountRef.current = completedVideoIds.length;
+  }, [completedVideoIds]);
+
   const handleLessonCompletedAndAdvance = (nextTarget: { moduleIndex: number; videoIndex: number } | null) => {
     // 1. Cerrar el visor para que el alumno regrese de inmediato a la ruta cósmica
     setIsPlayerModalOpen(false);
+
+    // Verificar si corresponde mostrar la encuesta NPS de mitad o fin de curso
+    if (npsEligible && npsStatusLoaded) {
+      const dueStage = resolveCourseNpsStage(
+        completedCountRef.current,
+        allVideoIds.length,
+        new Set(resolvedNpsStagesRef.current),
+      );
+      if (dueStage === 'MID' || dueStage === 'END') {
+        pendingNextLessonRef.current = nextTarget;
+        setActiveNpsStage(dueStage);
+        if (!nextTarget) loadProgress();
+        return;
+      }
+    }
 
     // 2. Si es el final del curso o no hay lección siguiente, actualizar progreso
     if (!nextTarget) {
@@ -249,15 +322,6 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
   }, [openVideoId, loadingCourse, progressLoaded]);
 
-  // Lista plana de IDs de videos en orden secuencial del curso
-  const allVideoIds = useMemo(() => {
-    const ids: string[] = [];
-    (course.modules || []).forEach((m) => {
-      (m.videos || []).forEach((v) => ids.push(v.id));
-    });
-    return ids;
-  }, [course.modules]);
-
   // La misión que le corresponde activamente al alumno (frontera actual de aprendizaje).
   // Permite abrir lecciones anteriores para repasar o reforzar sin que el orbe se mueva de su lugar.
   const frontierVideoId = useMemo(() => {
@@ -269,7 +333,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   // Al entrar al curso: guía suavemente al alumno directamente a donde se quedó (orbe celestial)
   // y al enfocarlo abre automáticamente la lección correspondiente.
   useEffect(() => {
-    if (loadingCourse || !progressLoaded) return;
+    if (loadingCourse || !progressLoaded || !npsStatusLoaded) return;
     if (hasAutoNavigatedRef.current === course.id) return;
     hasAutoNavigatedRef.current = course.id;
 
@@ -293,6 +357,14 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         const fromUrl = new URLSearchParams(window.location.search).get('leccion');
         if (focus && openLessonById(focus.videoId)) return;
         if (fromUrl && openLessonById(fromUrl)) return;
+        const dueStage = npsEligible
+          ? resolveCourseNpsStage(completedVideoIds.length, allVideoIds.length, new Set(resolvedNpsStages))
+          : null;
+        if (dueStage) {
+          if (!openedByReload) pendingAutoStartRef.current = true;
+          setActiveNpsStage(dueStage);
+          return;
+        }
         // Tras recargar la página no se abre sola ninguna lección: se queda donde estaba (la ruta del curso).
         if (!openedByReload) handleOpenActiveLesson();
       }, 750);
@@ -302,7 +374,48 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       clearTimeout(scrollTimer);
       if (openTimer) clearTimeout(openTimer);
     };
-  }, [loadingCourse, progressLoaded, course.id]);
+  }, [loadingCourse, progressLoaded, npsStatusLoaded, course.id]);
+
+  // Dispara la encuesta NPS correspondiente (START al entrar, MID al 50% o END al 100%)
+  // sin superponerse con otro modal de encuesta ya abierto.
+  useEffect(() => {
+    if (loadingCourse || !progressLoaded || !npsStatusLoaded || !npsEligible || activeNpsStage) {
+      return;
+    }
+    const dueStage = resolveCourseNpsStage(
+      completedVideoIds.length,
+      allVideoIds.length,
+      new Set(resolvedNpsStages),
+    );
+    if (dueStage) {
+      setActiveNpsStage(dueStage);
+    }
+  }, [loadingCourse, progressLoaded, npsStatusLoaded, npsEligible, activeNpsStage, completedVideoIds.length, allVideoIds.length, resolvedNpsStages]);
+
+  const finishNpsModal = (updatedStages: CourseNpsStage[]) => {
+    const merged = Array.from(new Set([...resolvedNpsStagesRef.current, ...updatedStages]));
+    resolvedNpsStagesRef.current = merged;
+    setResolvedNpsStages(merged);
+    setActiveNpsStage(null);
+
+    const nextTarget = pendingNextLessonRef.current;
+    pendingNextLessonRef.current = null;
+    if (nextTarget) {
+      setSelectedModuleIndex(nextTarget.moduleIndex);
+      setSelectedVideoIndex(nextTarget.videoIndex);
+      const nextMod = course.modules?.[nextTarget.moduleIndex];
+      const nextVid = nextMod?.videos?.[nextTarget.videoIndex];
+      if (nextMod && nextVid) {
+        setIsPlayerModalOpen(true);
+      }
+      return;
+    }
+
+    if (pendingAutoStartRef.current) {
+      pendingAutoStartRef.current = false;
+      handleOpenActiveLesson();
+    }
+  };
 
   if (loadingCourse) {
     return (
@@ -393,9 +506,8 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
             setSelectedVideoIndex(vidIdx);
           }}
           onProgressChange={(newCompletedMap) => {
-            const ids = Object.entries(newCompletedMap)
-              .filter(([_, done]) => Boolean(done))
-              .map(([id]) => id);
+            const ids = allVideoIds.filter((id) => Boolean(newCompletedMap[id]));
+            completedCountRef.current = ids.length;
             setCompletedVideoIds(ids);
           }}
           onLessonCompletedAndAdvance={handleLessonCompletedAndAdvance}
@@ -410,6 +522,15 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           }}
         />
       )}
+
+      <CourseNpsModal
+        isOpen={activeNpsStage !== null}
+        courseId={course.id}
+        courseTitle={course.title}
+        stage={activeNpsStage}
+        onCompleted={finishNpsModal}
+        onDismissed={finishNpsModal}
+      />
     </div>
   );
 };

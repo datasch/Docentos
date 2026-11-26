@@ -320,6 +320,12 @@
   border-left: 1px solid var(--course-line);
   background: var(--mentor-surface);
   color: var(--mentor-text);
+  overscroll-behavior: contain;
+}
+html:has(.mentee-sheet[open]),
+body:has(.mentee-sheet[open]) {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 [data-mentor-ui='modern'] .mentee-sheet::backdrop {
   background: color-mix(in srgb, black 55%, transparent);

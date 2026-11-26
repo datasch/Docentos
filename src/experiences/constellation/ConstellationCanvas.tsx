@@ -21,6 +21,13 @@ const COLOR_MAP_LIGHT: Record<string, string> = {
   '#ec4899': '#db2777', // Vivid Magenta
   '#f97316': '#ea580c', // Vivid Orange
   '#eab308': '#ca8a04', // Amber Gold
+  // Tonos claros de gorros festivos adaptados al modo blanco
+  '#ffffff': '#94a3b8',
+  '#f8fafc': '#64748b',
+  '#f1f5f9': '#7dd3fc',
+  '#e2e8f0': '#cbd5e1',
+  '#fef08a': '#d97706',
+  '#fef9c3': '#ca8a04',
 };
 
 interface Particle3D {

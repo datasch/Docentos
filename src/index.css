@@ -303,6 +303,26 @@
   }
 }
 
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes pulseSlow {
   0%, 100% {
     opacity: 1;
@@ -330,9 +350,30 @@
   animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.animate-backdrop-fade {
+  animation: backdropFadeIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-tab-pane:not([hidden]) {
+  animation: backdropFadeIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-tab-pane:not([hidden]) {
+    animation: none;
+  }
+}
+
+.animate-modal-card {
+  animation: modalCardIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* En DocentOS 0.4 Clásica, las subpáginas cambian instantáneamente sin animación fade-in */
 [data-ui-version="v0.4-classic"] .animate-fade-in,
 [data-ui-version="v0.4-classic"].animate-fade-in,
+[data-ui-version="v0.4-classic"] .animate-backdrop-fade,
+[data-ui-version="v0.4-classic"] .portal-tab-pane:not([hidden]),
+[data-ui-version="v0.4-classic"] .animate-modal-card,
 html[data-ui-version="v0.4-classic"] .animate-fade-in,
 body[data-ui-version="v0.4-classic"] .animate-fade-in,
 .version-classic .animate-fade-in,
@@ -1336,20 +1377,60 @@ body[data-color-mode="light"],
    ========================================================================== */
 
 /* Conmutadores (aria-pressed): Lección completada, vista de cuadrícula/lista…
-   El pulsado sigue el acento elegido; antes era violeta fijo con cualquier
-   acento. Acento sobre su tinte: 5,1:1 o más con los cuatro acentos. */
-/* Tema claro: lo seleccionado se marca con el borde y la letra del acento, sin
-   fondo tintado; lo no seleccionado no lleva borde ni fondo. */
-[data-color-mode="light"] button[aria-pressed="true"] {
+   Tema claro: lo seleccionado se marca con el borde y la letra del acento, sin
+   fondo tintado; lo no seleccionado no lleva borde ni fondo.
+   Las pestañas subrayadas (.admin-resources-shell__media y .landing-tabs) y los
+   carriles segmentados (.mentor-publication-filters) llevan su propio diseño. */
+[data-color-mode="light"] button[aria-pressed="true"]:not([data-mentor-ui='modern'] .mentor-publication-filters button):not([data-mentor-ui='modern'] .admin-resources-shell__media button):not([data-mentor-ui='modern'] .landing-tabs button) {
   background-color: transparent !important;
   border: 1px solid rgba(var(--brand-accent-rgb), 0.5) !important;
   color: var(--color-brand-cyan) !important;
   font-weight: 600 !important;
 }
-[data-color-mode="light"] button[aria-pressed="false"] {
+[data-color-mode="light"] button[aria-pressed="false"]:not([data-mentor-ui='modern'] .mentor-publication-filters button):not([data-mentor-ui='modern'] .admin-resources-shell__media button):not([data-mentor-ui='modern'] .landing-tabs button) {
   background-color: transparent !important;
   border: 1px solid transparent !important;
   color: var(--color-ink-soft) !important;
+}
+
+/* Navegación segmentada moderna en modo claro: carril único, inactivos sin caja extra y activo con contraste armónico. */
+[data-color-mode="light"] [data-mentor-ui='modern'] .mentor-publication-filters {
+  background-color: var(--color-surface);
+  border-color: var(--hielo-border-soft);
+}
+[data-color-mode="light"] [data-mentor-ui='modern'] .mentor-publication-filters button {
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--color-ink-soft) !important;
+  font-weight: 500;
+}
+[data-color-mode="light"] [data-mentor-ui='modern'] .mentor-publication-filters button:hover {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+  color: var(--color-ink) !important;
+}
+[data-color-mode="light"] [data-mentor-ui='modern'] .mentor-publication-filters button[aria-pressed="true"],
+[data-color-mode="light"] [data-mentor-ui='modern'] .mentor-publication-filters button[aria-selected="true"] {
+  background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
+  border-color: rgba(var(--brand-accent-rgb), 0.32) !important;
+  color: var(--color-brand-cyan) !important;
+  font-weight: 600 !important;
+}
+
+/* Subpestañas subrayadas (.admin-resources-shell__media y .landing-tabs) en modo claro */
+[data-color-mode="light"] [data-mentor-ui='modern'] :is(.admin-resources-shell__media, .landing-tabs) button {
+  background: transparent !important;
+  border-top: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  color: var(--color-ink-soft) !important;
+}
+[data-color-mode="light"] [data-mentor-ui='modern'] :is(.admin-resources-shell__media, .landing-tabs) button:hover {
+  color: var(--color-ink) !important;
+}
+[data-color-mode="light"] [data-mentor-ui='modern'] :is(.admin-resources-shell__media, .landing-tabs) button[aria-pressed="true"],
+[data-color-mode="light"] [data-mentor-ui='modern'] :is(.admin-resources-shell__media, .landing-tabs) button[aria-selected="true"] {
+  color: var(--color-ink) !important;
+  font-weight: 600 !important;
 }
 
 /* Botones de Acción de Tabla. Siguen el acento elegido. Los enlaces de texto
@@ -1850,6 +1931,13 @@ html[data-festividad="navidad"] .selection\:bg-\[\#06b6d4\]::selection {
 [data-color-mode="light"] .app-media-surface .text-white { color: #ffffff !important; }
 [data-color-mode="light"] .app-media-surface :is(.text-zinc-300, .text-slate-300) { color: #d4d4d8 !important; }
 [data-color-mode="light"] .app-media-surface :is(.text-zinc-400, .text-slate-400) { color: #a1a1aa !important; }
+[data-color-mode="light"] .app-media-surface :is(.bg-white\/10, .hover\:bg-white\/10:hover) { background-color: rgb(255 255 255 / 0.1) !important; }
+[data-color-mode="light"] .app-media-surface .bg-white\/15 { background-color: rgb(255 255 255 / 0.15) !important; }
+[data-color-mode="light"] .app-media-surface :is(.bg-white\/20, .hover\:bg-white\/20:hover) { background-color: rgb(255 255 255 / 0.2) !important; }
+[data-color-mode="light"] .app-media-surface .bg-white\/25 { background-color: rgb(255 255 255 / 0.25) !important; }
+[data-color-mode="light"] .app-media-surface :is(.border-white\/10, .border-white\/15) { border-color: rgb(255 255 255 / 0.15) !important; }
+[data-color-mode="light"] .app-video-stage .text-brand-cyan { color: #22d3ee !important; }
+[data-color-mode="light"][data-festividad="navidad"] .app-video-stage .text-brand-cyan { color: #34d399 !important; }
 
 /* ==========================================================================
    TRANSICIÓN AL CAMBIAR DE MODO (src/lib/themeTransition.ts)
@@ -1992,6 +2080,7 @@ html.mode-light .catalog-featured-glow { border-color: var(--hielo-border) !impo
 html.mode-light .catalog-featured-glow:hover { border-color: var(--hielo-border-strong) !important; }
 html.mode-light .catalog-featured-glow img { --tw-ring-color: var(--hielo-border) !important; }
 html.mode-light .catalog-featured-glow .featured-badge.bg-brand-cyan {
+  background-image: none;
   background-color: rgba(var(--brand-accent-rgb), 0.12) !important;
   color: var(--color-brand-cyan) !important;
   box-shadow: inset 0 0 0 1px rgba(var(--brand-accent-rgb), 0.3);

@@ -15,13 +15,25 @@ test('HTTP y PostgreSQL: navegación de 100 alumnos y recuperación del login', 
   const suffix = randomUUID();
   const users = Array.from({ length: 100 }, (_, i) => ({ id: randomUUID(), name: `Alumno ${i}`, role: 'MENTEE' as const, email: `${suffix}-${i}@example.invalid` }));
   const courses: string[] = [];
+  const videoIds: string[] = [];
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   t.after(async () => {
+    server.closeAllConnections?.();
     await new Promise<void>(resolve => server.close(() => resolve()));
+    if (courses.length > 0) {
+      await prisma.certificate.deleteMany({ where: { courseId: { in: courses } } });
+      await prisma.courseEnrollment.deleteMany({ where: { courseId: { in: courses } } });
+    }
+    if (videoIds.length > 0) {
+      await prisma.userProgress.deleteMany({ where: { videoId: { in: videoIds } } });
+      await prisma.videoNote.deleteMany({ where: { videoId: { in: videoIds } } });
+    }
     await prisma.user.deleteMany({ where: { id: { in: users.map(u => u.id) } } });
-    await prisma.course.deleteMany({ where: { id: { in: courses } } });
+    if (courses.length > 0) {
+      await prisma.course.deleteMany({ where: { id: { in: courses } } });
+    }
     await securityLimits.close();
     await prisma.$disconnect();
   });
@@ -34,6 +46,7 @@ test('HTTP y PostgreSQL: navegación de 100 alumnos y recuperación del login', 
   courses.push(course.id);
   const module = await prisma.module.create({ data: { courseId: course.id, title: 'Módulo', order: 1 } });
   const video = await prisma.videoDriveLink.create({ data: { moduleId: module.id, title: 'Lección', driveFileId: suffix, embedUrl: 'https://example.invalid/video', order: 1 } });
+  videoIds.push(video.id);
   await prisma.courseEnrollment.createMany({ data: users.map(user => ({ userId: user.id, courseId: course.id, source: 'ADMIN' as const })) });
   const timings: number[] = [];
   const request = async (path: string, cookie: string, body?: unknown) => {

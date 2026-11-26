@@ -37,6 +37,7 @@ import { pluginManager } from '../plugins/PluginManager';
 import { DEFAULT_LOGO_URL } from '../lib/logoConfig';
 import { FestiveHatOverlay } from './FestiveHatOverlay';
 import { MODERN_ADMIN_MODULES, type ModernAdminModuleId } from '../lib/adminNavigation';
+import { ADMIN_LISTENING_EVENT, ADMIN_TAB_STORAGE_KEY } from '../lib/useNotifications';
 import i18next from 'i18next'
 
 interface AdminDashboardProps {
@@ -273,6 +274,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
   const [allCourses, setAllCourses] = useState<Course[]>(course ? [course] : []);
   // Hueco en la fila del selector donde el editor de Portada pinta sus botones.
   const [portalActionsSlot, setPortalActionsSlot] = useState<HTMLElement | null>(null);
+  const [mountedPortalViews, setMountedPortalViews] = useState<{ landing: boolean; listening: boolean }>(() => ({
+    landing: initialTab === 'landing',
+    listening: initialTab === 'listening',
+  }));
+  useEffect(() => {
+    if (activeTab === 'landing') {
+      setMountedPortalViews((prev) => (prev.landing ? prev : { ...prev, landing: true }));
+    } else if (activeTab === 'listening') {
+      setMountedPortalViews((prev) => (prev.listening ? prev : { ...prev, listening: true }));
+    }
+  }, [activeTab]);
   const [workCourseId, setWorkCourseId] = useState<string>(() => {
     try { return localStorage.getItem(WORK_COURSE_KEY) || course?.id || ''; } catch { return course?.id || ''; }
   });
@@ -380,9 +392,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     loadCatalog();
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab') as SubTab;
-    if (tabParam) {
+    let storedTab: string | null = null;
+    try {
+      storedTab = sessionStorage.getItem(ADMIN_TAB_STORAGE_KEY);
+      if (storedTab) sessionStorage.removeItem(ADMIN_TAB_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    if (storedTab && ADMIN_TABS.includes(storedTab as SubTab)) {
+      selectTab(storedTab as SubTab);
+    } else if (tabParam) {
       selectTab(tabParam);
     }
+  }, []);
+
+  useEffect(() => {
+    const onOpenListening = () => {
+      try {
+        sessionStorage.removeItem(ADMIN_TAB_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      selectTab('listening');
+    };
+    window.addEventListener(ADMIN_LISTENING_EVENT, onOpenListening);
+    return () => window.removeEventListener(ADMIN_LISTENING_EVENT, onOpenListening);
   }, []);
 
   const loadContracts = async (query?: string) => {
@@ -994,7 +1028,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
     </div>
   );
 
-  const animClass = uiVersion === 'v0.4-classic' ? '' : 'animate-fade-in';
+  const animClass = uiVersion === 'v0.4-classic' ? '' : 'animate-backdrop-fade';
   const modernContextActions: Array<{ label: string; target: SubTab }> = activeTab === 'courses'
     ? [] // Cursos es una sola vista; Recursos ya es un módulo del nav
     : ['users', 'enrollments'].includes(activeTab)
@@ -1080,7 +1114,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 { id: 'tts' as SubTab, label: t('guiasTts', 'Guías TTS'), icon: Sparkles, iconColor: 'text-warning-light' },
                 { id: 'plugins' as SubTab, label: t('plugins', 'Plugins'), icon: Layers, iconColor: 'text-brand-cyan' },
                 { id: 'landing' as SubTab, label: t('portada', 'Portada'), icon: Sliders, iconColor: 'text-brand-cyan' },
-                { id: 'listening' as SubTab, label: t('escucha', 'Escucha'), icon: HeartHandshake, iconColor: 'text-brand-cyan' },
+                { id: 'listening' as SubTab, label: t('nps', 'NPS'), icon: HeartHandshake, iconColor: 'text-brand-cyan' },
               ].map((t) => {
                 const Icon = t.icon;
                 const isSelected = activeTab === t.id;
@@ -1541,7 +1575,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
               <div className="mentor-mentees-panel admin-people-panel">
                 <div className="mentor-section-heading">
                   <div>
-                    <h2>{t('cursos', 'Cursos')}</h2>
+                    <h2>{t('cursosCapital', 'Cursos')}</h2>
                     <p>{t('gestionaElCatalogoYLosMaterialesDe', 'Gestiona el catálogo y los materiales de aprendizaje.')}</p>
                   </div>
                 </div>
@@ -1554,10 +1588,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                   {activeTab === 'drive' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setDriveErrorMsg(''); setShowDriveSheet(true); }} disabled={workModules.length === 0}><Plus size={18} aria-hidden="true" />{t('anadirVideo', 'Añadir video')}</button>}
                   {activeTab === 'tts' && <button type="button" className="mentor-course-control admin-primary-action" onClick={() => { setTtsErrorMsg(''); setShowTtsSheet(true); }} disabled={workLessonCount === 0}><Plus size={18} aria-hidden="true" />{t('nuevaGuia', 'Nueva guía')}</button>}
                 </div>
-                <div className="admin-resources-shell__media" role="group" aria-label={t('tipoDeRecurso', 'Tipo de recurso')}>
-                  <button type="button" aria-pressed={activeTab === 'resources'} onClick={() => { setActiveTab('resources'); setMediaView('resources'); }}>{t('materiales', 'Materiales')}</button>
-                  <button type="button" aria-pressed={activeTab === 'drive'} onClick={() => { setActiveTab('drive'); setMediaView('drive'); }}>{t('videosDrive', 'Videos Drive')}</button>
-                  <button type="button" aria-pressed={activeTab === 'tts'} onClick={() => { setActiveTab('tts'); setMediaView('tts'); }}>{t('audioTts', 'Audio TTS')}</button>
+                <div className="admin-resources-shell__media" role="tablist" aria-label={t('tipoDeRecurso', 'Tipo de recurso')}>
+                  <button type="button" role="tab" aria-selected={activeTab === 'resources'} aria-pressed={activeTab === 'resources'} onClick={() => { setActiveTab('resources'); setMediaView('resources'); }}>{t('materiales', 'Materiales')}</button>
+                  <button type="button" role="tab" aria-selected={activeTab === 'drive'} aria-pressed={activeTab === 'drive'} onClick={() => { setActiveTab('drive'); setMediaView('drive'); }}>{t('videosDrive', 'Videos Drive')}</button>
+                  <button type="button" role="tab" aria-selected={activeTab === 'tts'} aria-pressed={activeTab === 'tts'} onClick={() => { setActiveTab('tts'); setMediaView('tts'); }}>{t('audioTts', 'Audio TTS')}</button>
                 </div>
                 <div className="admin-resources-shell__scope">
                   <AdminCoursePicker courses={allCourses} value={workCourseId} onChange={(courseId) => { setWorkCourseId(courseId); setResourceQuery(''); setResourceKindFilter('ALL'); setResourcePage(1); setResSuccessMsg(''); setResErrorMsg(''); }} />
@@ -1730,13 +1764,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
                 <div className="mentor-section-heading">
                   <div>
                     <h2>{t('portal', 'Portal')}</h2>
-                    <p>{t('editaLaPortadaPublicaYAtiendeElBuzonDe', 'Edita la portada pública y atiende el buzón de escucha.')}</p>
+                    <p>{t('editaLaPortadaPublicaYAtiendeElBuzonDe', 'Edita la portada pública, atiende el buzón de escucha y revisa el NPS de cursos.')}</p>
                   </div>
                 </div>
                 <div className="admin-people-top">
                   <div className="mentor-publication-filters" role="group" aria-label={t('seccionDelPortal', 'Sección del portal')}>
                     <button type="button" aria-pressed={activeTab === 'landing' || portalView === 'landing'} onClick={() => { setActiveTab('landing'); setPortalView('landing'); }}><span>{t('portada', 'Portada')}</span></button>
-                    <button type="button" aria-pressed={activeTab === 'listening' || portalView === 'listening'} onClick={() => { setActiveTab('listening'); setPortalView('listening'); }}><span>{t('escucha', 'Escucha')}</span></button>
+                    <button type="button" aria-pressed={activeTab === 'listening' || portalView === 'listening'} onClick={() => { setActiveTab('listening'); setPortalView('listening'); }}><span>{t('nps', 'NPS')}</span></button>
                   </div>
                   <div ref={setPortalActionsSlot} className="admin-courses-actions" />
                 </div>
@@ -1744,12 +1778,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, cou
             </div>
           )}
 
-          {(uiVersion === 'v0.4-classic' ? activeTab === 'landing' : (activeTab === 'landing' || portalView === 'landing')) && (
-            <LandingPageEditor onSaved={onRefreshData} disableAnimation={uiVersion === 'v0.4-classic'} actionsSlot={uiVersion === 'v0.5-modern' ? portalActionsSlot : null} />
+          {(mountedPortalViews.landing || activeTab === 'landing') && (
+            <div className="portal-tab-pane" hidden={activeTab !== 'landing'} aria-hidden={activeTab !== 'landing'}>
+              <LandingPageEditor
+                onSaved={onRefreshData}
+                disableAnimation={uiVersion === 'v0.4-classic'}
+                actionsSlot={uiVersion === 'v0.5-modern' && activeTab === 'landing' ? portalActionsSlot : null}
+              />
+            </div>
           )}
 
-          {(uiVersion === 'v0.4-classic' ? activeTab === 'listening' : (activeTab === 'listening' || portalView === 'listening')) && (
-            <ListeningAdminPanel actionsSlot={uiVersion === 'v0.5-modern' ? portalActionsSlot : null} />
+          {(mountedPortalViews.listening || activeTab === 'listening') && (
+            <div className="portal-tab-pane" hidden={activeTab !== 'listening'} aria-hidden={activeTab !== 'listening'}>
+              <ListeningAdminPanel
+                actionsSlot={uiVersion === 'v0.5-modern' && activeTab === 'listening' ? portalActionsSlot : null}
+              />
+            </div>
           )}
         </div>
       )}

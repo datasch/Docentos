@@ -236,7 +236,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
               <div className="admin-people-list" data-view={view}>
               {view === 'list' && (
                 <div className="admin-people-head" aria-hidden="true">
-                  <span>{t('usuario', 'Usuario')}</span><span>{t('rol', 'Rol')}</span><span>{t('estado', 'Estado')}</span><span>{t('cursos', 'Cursos')}</span><span>{t('strikes', 'Strikes')}</span><span />
+                  <span>{t('usuario', 'Usuario')}</span><span>{t('rol', 'Rol')}</span><span>{t('estado', 'Estado')}</span><span>{t('cursosCapital', 'Cursos')}</span><span>{t('strikes', 'Strikes')}</span><span />
                 </div>
               )}
               <ul className="mentor-mentee-grid" data-view={view}>
@@ -258,7 +258,7 @@ export function AdminPeopleView({ users, enrollments, loading, roleError, sectio
                         <span className="mentor-mentee-status" data-state={suspended ? 'suspended' : 'active'}>{suspended ? t('suspendido', 'Suspendido') : t('activo', 'Activo')}</span>
                       </div>
                       <dl className="admin-people-stats">
-                        <div><dt>{t('cursos', 'Cursos')}</dt><dd>{courses}</dd></div>
+                        <div><dt>{t('cursosCapital', 'Cursos')}</dt><dd>{courses}</dd></div>
                         <div><dt>{t('strikes', 'Strikes')}</dt><dd>{strikes}</dd></div>
                       </dl>
                       <button type="button" className="mentor-course-control" onClick={() => setSheetId(u.id)} aria-haspopup="dialog" aria-label={t('gestionarAName', 'Gestionar a {{name}}', { name: u.name })}>
