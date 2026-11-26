@@ -88,7 +88,7 @@ correr "tsc" npx tsc --noEmit
 # --- Suite ENTERA, incluidas las de YouTube que npm test no lista ------------
 if [ -n "$DB" ]; then
   mapfile -t PRUEBAS < <(ls tests/*.test.ts tests/*.test.tsx 2>/dev/null)
-  correr "suite" npx tsx --test --test-concurrency=1 --test-timeout=120000 "${PRUEBAS[@]}"
+  correr "suite" npx tsx --test --test-reporter=tap --test-concurrency=1 --test-timeout=120000 "${PRUEBAS[@]}"
   TOTAL=$(printf '%s' "$SALIDA" | grep -oE '^# tests [0-9]+' | grep -oE '[0-9]+' | tail -1)
   PASAN=$(printf '%s' "$SALIDA" | grep -oE '^# pass [0-9]+' | grep -oE '[0-9]+' | tail -1)
   # Nombres de las pruebas que fallan (líneas "not ok N - nombre" de TAP).
