@@ -12,6 +12,25 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.1.3] - 2026-11-26
+
+**Migración de esquema de base de datos:** esta versión añade el enum `CourseNpsStage` y la tabla `CourseNpsSurvey` en PostgreSQL (migración aditiva aplicada automáticamente al iniciar el contenedor; no altera ni elimina datos existentes).
+
+### Added
+- Encuestas de calidad NPS por etapas del curso (`Inicio`, `Mitad` y `Fin`) para estudiantes y panel de analítica NPS en administración (`Portada | NPS` → `NPS de calidad de cursos`).
+- Notificaciones en tiempo real para nuevos mensajes y actividad en el buzón de escucha y alertas administrativas.
+- Visualización de la URL de la lista de reproducción de YouTube y campo de enlace editable por cada video dentro de **Editar curso → Temario** para administradores y mentores (oculto en la API pública y sesiones de mentees).
+
+### Changed
+- Eliminación de raíz del subtítulo de rol en las tarjetas de testimonios («Lo que opinan nuestros mentees») en la portada pública y en el endpoint de testimonios.
+- Unificación de la barra de pestañas subrayadas en `Recursos` (`Materiales | Videos Drive | Audio TTS`) y en `NPS` (`Buzón de Escucha | NPS de calidad de cursos`), ajuste compacto de los selectores `Portada | NPS` y `Catálogo | Recursos`, y título `Cursos`.
+- Integración completa con los cambios de `2.0.3` (bloqueo de progreso al cambiar de curso, asignación a lección, preservación de ruta al recargar) y salida TAP explícita en el hook pre-push para Node 26.
+
+### Fixed
+- Contraste en modo claro para la insignia `Programa destacado` (incluyendo sincronización de color en modo navideño) y para botones `aria-pressed` sin interferir con pestañas segmentadas ni pestañas de portada.
+- Normalización de URLs de video (YouTube, Google Drive o HTTPS) al editar el temario e invalidación automática de la duración cacheada cuando cambia el enlace del video.
+- Paridad completa de claves de internacionalización (`es`, `en`, `fr`, `it`, `pt`) y mensajes localizados del servidor.
+
 ## [2.0.3] - 2026-11-26
 
 **No migra el esquema de base de datos.** Es un arreglo de seguridad del progreso: tras desplegarlo, ya nadie puede desmarcar una lección completada.
