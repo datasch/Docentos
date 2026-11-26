@@ -12,6 +12,32 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.0.3] - 2026-11-26
+
+**No migra el esquema de base de datos.** Es un arreglo de seguridad del progreso: tras desplegarlo, ya nadie puede desmarcar una lección completada.
+
+### Fixed
+
+- **El progreso de una lección completada ya no se puede borrar.** Hasta la 2.0.2, pulsar «Marcar como completado» varias veces desmarcaba la lección y eliminaba su registro, y el alumno veía retroceder su avance. Ahora el servidor rechaza cualquier desmarcado (`403 PROGRESS_LOCKED`) para todos los roles, administración incluida (en la 2.0.2 un administrador aún podía), y completar una lección que ya estaba completada no escribe nada, ni siquiera la fecha. El progreso que ya está en producción no se modifica.
+- **Varios clics seguidos ya no lanzan peticiones duplicadas** al completar una lección.
+- **Abrir o recargar un curso en el visor abría otro curso.** Con cursos guardados en el navegador, recargar `/learning/course/…` o entrar por un enlace podía llevar al último curso estudiado (o al primero) en lugar del pedido, y se cargaban sus videos. Ahora siempre se abre el curso de la dirección.
+- **Botones de guardar a medias en las hojas laterales de Admin.** «Guardar mentores» (Admin → Cursos → Mentores) y «Crear curso» ocupaban solo la mitad del ancho, y «Cancelar» de «Editar curso» quedaba solo en media fila. Ahora los botones principales ocupan todo el ancho.
+
+### Added
+
+- **Contador dentro del botón de completar.** En los últimos 10 segundos del video, el propio botón muestra «Completando en N s» y, al llegar a cero, completa la lección y pasa a la siguiente. En la última lección de un módulo con examen sin aprobar no se muestra, porque ahí no se completa sola.
+- **Asignar un recurso a una lección** desde Admin → Cursos → Recursos, con un selector en cada fila para los recursos que ya existían.
+
+### Changed
+
+- **Recursos sin lección ya no se repiten en todas las clases.** Los del módulo salen solo en la primera lección de su módulo y los del curso en la primera del curso; el resto de lecciones muestra solo los suyos.
+- **«Misión completada» es una insignia fija**, no un botón: pastilla con borde verde y check.
+- **Reproductor:** el botón de play usa el color de acento y las barras ya no se ven como un bloque gris en modo claro.
+- **Modo claro, selectores y pestañas:** lo seleccionado se marca solo con el borde y la letra del acento, sin fondo tintado; lo no seleccionado no lleva borde. Afecta a Catálogo/Recursos, Todos/Publicados/Borradores, Lista/Tarjetas y la navegación de Cursos y de Mentoría.
+- **Admin → Usuarios → Gestionar** y las insignias de rol, con más contraste en modo claro. Las acciones críticas («Dar un strike», «Suspender cuenta», «Reactivar cuenta») conservan su color pero más intenso, y un botón deshabilitado se ve gris y legible en lugar de lavado.
+- **Colores y contraste en todo el sitio.** Tonos que en modo claro se veían tenues o demasiado fuertes pasan a los colores del tema; todos los textos auditados superan 5,5:1 en claro y 4,5:1 en oscuro.
+- **Interfaz más sobria.** Sin brillos ni sombras de color, botones de un solo color en lugar de degradados, etiquetas sin mayúsculas forzadas, títulos menos gruesos y sin animaciones de pulso que no indicaban nada. Las decoraciones de Festividades no cambian.
+
 ## [2.0.2] - 2026-11-25
 
 **Incluye una migración aditiva:** añade la columna opcional `videoId` (con índice y clave foránea) a la tabla `CourseResource`, para asignar un recurso a una lección. No toca datos existentes y se aplica sola al arrancar.
