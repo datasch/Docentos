@@ -1092,7 +1092,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         />
                         <div>
                           <h4 className="lp-testimonial-name">{testimonial.name}</h4>
-                          <span className="lp-testimonial-role">{testimonial.role}</span>
                         </div>
                       </div>
 

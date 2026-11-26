@@ -46,11 +46,17 @@ import type {
   OwnListeningEntry,
   StaffListeningEntry,
 } from './listeningTypes';
+import type {
+  CourseNpsStage,
+  CourseNpsStatusResponse,
+  CourseNpsSubmission,
+  CourseNpsSummaryResponse,
+} from './courseNps';
 
 import { apiRequest as fetch, ApiRequestError } from './apiRequest';
 import type { WatchRanges } from './watchProgress';
 
-export type AppNotificationType = 'qna.question' | 'qna.answered';
+export type AppNotificationType = 'qna.question' | 'qna.answered' | 'listening.message';
 
 export interface AppNotification {
   id: string;
@@ -64,6 +70,7 @@ export interface AppNotification {
     videoTitle?: string | null;
     commentId?: string | null;
     authorName?: string | null;
+    listeningEntryId?: string | null;
   };
   readAt: string | null;
   createdAt: string;
@@ -80,7 +87,7 @@ export interface WatchStatusResponse {
   accepted?: boolean;
 }
 
-function listeningQuery(filter: ListeningAdminFilter): string {
+function listeningQuery(filter: object): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filter)) {
     if (value !== undefined && value !== '' && value !== null) params.set(key, String(value));
@@ -757,6 +764,46 @@ export const api = {
     return res.json();
   },
 
+  // Encuestas NPS de calidad de cursos (Inicio, Mitad y Final)
+  async getCourseNpsStatus(courseId: string): Promise<CourseNpsStatusResponse> {
+    const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}/nps/status`);
+    if (!res.ok) throw new Error('No se pudo consultar el estado de la encuesta NPS');
+    return res.json();
+  },
+
+  async submitCourseNps(
+    courseId: string,
+    data: CourseNpsSubmission,
+  ): Promise<{ success: boolean; resolvedStages: CourseNpsStage[] }> {
+    const res = await fetch(`/api/courses/${encodeURIComponent(courseId)}/nps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo guardar la encuesta NPS');
+    }
+    return res.json();
+  },
+
+  async getCourseNpsAdmin(filter: { days?: number; courseId?: string; userId?: string }): Promise<CourseNpsSummaryResponse> {
+    const res = await fetch(`/api/admin/course-nps?${listeningQuery(filter)}`);
+    if (!res.ok) throw new Error('No se pudieron cargar las métricas NPS de cursos');
+    return res.json();
+  },
+
+  async downloadCourseNpsCsv(filter: { days?: number; courseId?: string; userId?: string }): Promise<void> {
+    const res = await fetch(`/api/admin/course-nps/export?${listeningQuery(filter)}`);
+    if (!res.ok) throw new Error('No se pudo exportar el NPS de cursos');
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `nps-calidad-cursos-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  },
+
   // Reparto de cursos entre mentees
   /** Cuentas mentee a las que se puede asignar un curso. */
   async getMenteeCandidates(): Promise<{ candidates: MenteeCandidate[] }> {
@@ -1360,7 +1407,7 @@ export const api = {
   },
 
   // Video Admin CRUD
-  async createModuleVideo(moduleId: string, data: { title: string; duration?: string; description?: string; driveFileId?: string; embedUrl?: string }): Promise<{ success: boolean; video: any }> {
+  async createModuleVideo(moduleId: string, data: { title: string; duration?: string; description?: string; driveFileId?: string; embedUrl?: string; sourceUrl?: string }): Promise<{ success: boolean; video: any }> {
     const res = await fetch(`/api/admin/modules/${moduleId}/videos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1373,7 +1420,7 @@ export const api = {
     return res.json();
   },
 
-  async updateVideo(videoId: string, data: { title?: string; description?: string; duration?: string; embedUrl?: string; order?: number }): Promise<{ success: boolean; video: any }> {
+  async updateVideo(videoId: string, data: { title?: string; description?: string; duration?: string; driveFileId?: string; embedUrl?: string; sourceUrl?: string; order?: number }): Promise<{ success: boolean; video: any }> {
     const res = await fetch(`/api/admin/videos/${videoId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

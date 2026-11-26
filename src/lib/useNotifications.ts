@@ -18,6 +18,12 @@ export const NOTIFICATION_EVENT = 'docentos:notification';
 export const MENTOR_QNA_EVENT = 'docentos:open-mentor-qna';
 /** Pestaña a abrir cuando el dashboard del mentor todavía no estaba montado. */
 export const MENTOR_TAB_STORAGE_KEY = 'docentos_mentor_open_tab';
+/** Pide al panel de administración que abra el Buzón de escucha (NPS). */
+export const ADMIN_LISTENING_EVENT = 'docentos:open-admin-listening';
+/** Pestaña a abrir cuando el panel de administración todavía no estaba montado. */
+export const ADMIN_TAB_STORAGE_KEY = 'docentos_admin_open_tab';
+/** Mensaje concreto del Buzón a abrir y resaltar al pulsar su notificación. */
+export const LISTENING_FOCUS_STORAGE_KEY = 'docentos_focus_listening_entry';
 /**
  * Lección a abrir al pulsar un aviso de respuesta: `{ courseId, videoId }`. Se
  * guarda por si el curso todavía no está montado (se lee al abrirlo) y además

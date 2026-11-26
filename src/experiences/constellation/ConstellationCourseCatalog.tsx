@@ -204,7 +204,7 @@ export const ConstellationCourseCatalog: React.FC<ConstellationCourseCatalogProp
               <p className="mt-4 text-sm text-ink-muted">
                 {featuredCourse.category ? t(`categories.${featuredCourse.category}`, featuredCourse.category) : t('categories.INGENIERÍA', 'Ingeniería')}
               </p>
-              <h3 className="mt-1 text-3xl font-semibold leading-tight text-ink lg:text-4xl">{featuredCourse.title}</h3>
+              <h2 className="mt-1 text-3xl font-semibold leading-tight text-ink lg:text-4xl">{featuredCourse.title}</h2>
 
               <ExpandableDescription
                 text={featuredCourse.description ||

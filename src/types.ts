@@ -211,6 +211,7 @@ export interface CertificateRecord {
   issuedAt: string;
   revokedAt?: string | null;
   revocationReason?: string | null;
+  userId?: string;
   userName?: string;
   userEmail?: string;
 }
@@ -248,6 +249,8 @@ export interface VideoDriveLink {
   duration?: string;
   mimeType: string;
   embedUrl: string;
+  /** URL editable (YouTube / Google Drive / HTTPS) expuesta únicamente a staff para editar el temario. */
+  sourceUrl?: string;
   previewUrl?: string | null;
   playbackUrl?: string;
   streamUrl?: string;
@@ -300,6 +303,11 @@ export interface Course {
   mentors?: { id: string; name: string; email: string; avatarUrl?: string | null }[];
   assignedMentor?: { id: string; name: string; email: string; avatarUrl?: string | null } | null;
   hasPendingRequest?: boolean;
+  /** Enlace a la playlist de YouTube de origen (solo visible para staff en la edición del temario). */
+  youtubePlaylistUrl?: string | null;
+  youtubePlaylistTitle?: string | null;
+  /** ID de la carpeta de Google Drive de origen, si el curso se importó desde Drive (solo staff). */
+  driveFolderId?: string | null;
 }
 
 export interface MentorshipComment {
@@ -393,13 +401,12 @@ export interface TTSGuide {
 
 /**
  * Testimonio de la portada. Lo escribe una persona usuaria y alguien de
- * administracion lo aprueba; el nombre, el cargo y el avatar se leen de su
- * ficha en cada peticion, no se copian al aprobarlo.
+ * administracion lo aprueba; el nombre y el avatar se leen de su ficha en cada
+ * peticion, no se copian al aprobarlo.
  */
 export interface LandingTestimonial {
   id: string;
   name: string;
-  role: string;
   avatarUrl: string;
   comment: string;
   rating: number;

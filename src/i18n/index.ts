@@ -20,9 +20,24 @@ const detector = new LanguageDetector();
 // Último recurso: el idioma por defecto que configuró la instancia.
 detector.addDetector({ name: 'instanceDefault', lookup: () => siteConfig.defaultLanguage });
 
+const loadLocaleResource = (language: string) => {
+  switch (language) {
+    case 'en':
+      return import('./locales/en.json');
+    case 'pt':
+      return import('./locales/pt.json');
+    case 'fr':
+      return import('./locales/fr.json');
+    case 'it':
+      return import('./locales/it.json');
+    default:
+      return Promise.resolve({ default: es });
+  }
+};
+
 export const i18nReady = i18n
   .use(detector)
-  .use(resourcesToBackend((language: string) => import(`./locales/${language}.json`)))
+  .use(resourcesToBackend(loadLocaleResource))
   .use(initReactI18next)
   .init({
     resources: { es: { translation: es } },

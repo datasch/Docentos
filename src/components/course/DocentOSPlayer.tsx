@@ -714,7 +714,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         }
       }}
       onTouchStart={handleTouch}
-      className={`group relative mx-auto aspect-video w-full select-none overflow-hidden bg-black shadow-2xl transition-all duration-300 ${
+      className={`app-video-stage group relative mx-auto aspect-video w-full select-none overflow-hidden bg-black shadow-2xl transition-all duration-300 ${
         isFullscreen ? 'h-screen w-screen rounded-none' : 'lg:w-[min(100%,calc((100dvh-9.5rem)*16/9))] lg:rounded-2xl border border-line'
       }`}
     >
@@ -803,7 +803,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0 pr-4">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface/90 border border-line text-brand-cyan shadow-sm">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 border border-white/15 text-brand-cyan shadow-sm">
             <Video className="h-4 w-4 text-brand-cyan" />
           </div>
           <span className="text-xs sm:text-sm font-semibold text-white truncate drop-shadow-sm">
@@ -826,9 +826,9 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           )}
 
           {/* Botón Play central estilo Bezel YouTube en (50%, 50%). Mientras arranca
-              se oculta: en su lugar queda el indicador de carga. */}
+              se oculta: en su lugar queda el indicador de carga con fondo opaco para tapar el botón rojo de YouTube. */}
           <div className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${isStarting ? 'hidden' : ''}`}>
-            <div className="flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-black/65 hover:bg-black/75 border border-white/15 text-white shadow-xl backdrop-blur-sm hover:scale-105 active:scale-95 transition-all duration-200">
+            <div className="flex h-18 w-18 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-[#0b0b10]/95 hover:bg-[#0b0b10] border border-white/15 text-white shadow-xl backdrop-blur-sm hover:scale-105 active:scale-95 transition-all duration-200">
               <Play className="h-8 w-8 sm:h-9 sm:w-9 fill-white text-white ml-0.5" />
             </div>
           </div>
@@ -863,14 +863,22 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
       {(isStarting || (isLoading && isPlaying)) && !hasError && (
         <div
           aria-busy="true"
-          className={`player-loading-overlay pointer-events-none absolute inset-0 z-20 ${isStarting ? '' : 'player-loading-overlay--rebuffer'}`}
+          className="pointer-events-none absolute inset-0 z-20"
         >
-          {/* Mismo centro (50%, 50%) que el botón de play, que se oculta mientras arranca. */}
-          <MorphingInfinity
-            label={t('cargandoVideo', 'Cargando video')}
-            duration={2.4}
-            className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:h-24 sm:w-24"
-          />
+          {/* Mismo centro (50%, 50%) que el botón de play, con círculo opaco inmediato al arrancar para cubrir el botón rojo de YouTube. */}
+          <div
+            className={`absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#0b0b10]/95 border border-white/15 shadow-xl sm:h-24 sm:w-24 ${
+              isStarting ? '' : 'player-loading-overlay player-loading-overlay--rebuffer'
+            }`}
+          >
+            <MorphingInfinity
+              label={t('cargandoVideo', 'Cargando video')}
+              duration={2.4}
+              className={`h-14 w-14 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] sm:h-16 sm:w-16 ${
+                isStarting ? 'player-loading-overlay' : ''
+              }`}
+            />
+          </div>
         </div>
       )}
 
@@ -901,7 +909,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
                   sendYtCommand('playVideo');
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-surface border border-line px-3.5 py-2 text-micro font-bold text-ink hover:border-line-strong hover:bg-raised transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 border border-white/15 px-3.5 py-2 text-micro font-bold text-white hover:border-white/30 hover:bg-white/20 transition-colors"
             >
               <RefreshCw className="h-3.5 w-3.5 text-brand-cyan" />
               <span>{t('reintentarReproduccion', 'Reintentar reproducción')}</span>
@@ -949,7 +957,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
           {/* Tooltip de tiempo en hover */}
           {hoverTime !== null && hoverPosition !== null && (
             <div
-              className="pointer-events-none absolute -top-8 -translate-x-1/2 rounded-md bg-canvas/90 border border-line px-1.5 py-0.5 text-[10px] font-mono font-medium text-white shadow-xl backdrop-blur-md"
+              className="pointer-events-none absolute -top-8 -translate-x-1/2 rounded-md bg-[#0b0b12]/95 border border-white/15 px-1.5 py-0.5 text-[10px] font-mono font-medium text-white shadow-xl backdrop-blur-md"
               style={{ left: `${hoverPosition}px` }}
             >
               {formatTime(hoverTime)}
@@ -1048,8 +1056,8 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
               </button>
 
               {showSpeedMenu && (
-                <div className="absolute bottom-full right-0 mb-2 w-24 overflow-hidden rounded-xl bg-canvas/95 border border-line p-1 shadow-2xl backdrop-blur-xl animate-scale-up">
-                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+                <div className="absolute bottom-full right-0 mb-2 w-24 overflow-hidden rounded-xl bg-[#0b0b12]/95 border border-white/15 p-1 shadow-2xl backdrop-blur-xl animate-scale-up">
+                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                     {t('velocidad', 'Velocidad')}
                   </div>
                   {PLAYBACK_RATES.map((rate) => (
@@ -1059,7 +1067,7 @@ export const DocentOSPlayer: React.FC<DocentOSPlayerProps> = ({
                       onClick={() => handleSpeedChange(rate)}
                       className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-micro transition-colors ${
                         playbackRate === rate
-                          ? 'bg-brand-cyan/20 text-brand-cyan font-bold'
+                          ? 'bg-white/15 text-brand-cyan font-bold'
                           : 'text-zinc-300 hover:bg-white/10 hover:text-white'
                       }`}
                     >

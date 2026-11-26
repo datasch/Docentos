@@ -6,14 +6,16 @@ import '../../styles/academy.css';
 import '../../styles/academy-layout.css';
 import { api } from '../../lib/api';
 import { getLocalizedCourse, getLocalizedCourses } from '../../lib/courseLocalization';
-import { CourseOverview } from '../../components/CourseOverview';
 import { ConstellationNavbar, ConstellationTab } from './ConstellationNavbar';
 import { NotificationBell } from '../../components/notifications/NotificationBell';
 import { NotificationToasts } from '../../components/notifications/NotificationToasts';
 import {
+  ADMIN_LISTENING_EVENT,
+  ADMIN_TAB_STORAGE_KEY,
   LESSON_FOCUS_EVENT,
   LESSON_FOCUS_STORAGE_KEY,
   LESSON_PANEL_STORAGE_KEY,
+  LISTENING_FOCUS_STORAGE_KEY,
   MENTOR_QNA_EVENT,
   MENTOR_TAB_STORAGE_KEY,
   useNotifications,
@@ -26,45 +28,50 @@ import { ConstellationPillars } from './ConstellationPillars';
 import { ConstellationTestimonials } from './ConstellationTestimonials';
 import { ConstellationFooter } from './ConstellationFooter';
 import { Shield, Users } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 import { getSeasonalTheme, SeasonalTheme } from '../../lib/seasonalTheme';
 import { SeasonalGlobalOverlay } from '../../components/SeasonalGlobalOverlay';
+import { RouteSkeleton } from '../../components/loading/RouteSkeleton';
 
+const loadCourseOverview = () => import('../../components/CourseOverview');
+const loadConstellationCanvas = () => import('./ConstellationCanvas');
+const loadMyLearningBundle = () =>
+  Promise.all([import('../../styles/my-learning.css'), import('./ConstellationMyLearning')]);
+const loadCourseViewer = () => import('./ConstellationCourseViewer');
+const loadAdminBundle = () =>
+  Promise.all([import('../../styles/staffStyles'), import('../../components/AdminDashboard')]);
+const loadMentorBundle = () =>
+  Promise.all([import('../../styles/staffStyles'), import('../../components/MentorDashboard')]);
+const loadPaywallModal = () => import('../../components/PaywallModal');
+
+function preloadTabChunk(tab: ConstellationTab) {
+  if (tab === 'learning') void loadMyLearningBundle();
+  else if (tab === 'mentor') void loadMentorBundle();
+  else if (tab === 'admin') void loadAdminBundle();
+  else if (tab === 'viewer') void loadCourseViewer();
+}
+
+const CourseOverview = lazy(() =>
+  loadCourseOverview().then((m) => ({ default: m.CourseOverview }))
+);
 const ConstellationCanvas = lazy(() =>
-  import('./ConstellationCanvas').then(module => ({ default: module.ConstellationCanvas }))
+  loadConstellationCanvas().then((module) => ({ default: module.ConstellationCanvas }))
 );
 const ConstellationMyLearning = lazy(() =>
-  import('./ConstellationMyLearning').then(module => ({ default: module.ConstellationMyLearning }))
+  loadMyLearningBundle().then(([, module]) => ({ default: module.ConstellationMyLearning }))
 );
 const ConstellationCourseViewer = lazy(() =>
-  import('./ConstellationCourseViewer').then((m) => ({ default: m.ConstellationCourseViewer }))
+  loadCourseViewer().then((m) => ({ default: m.ConstellationCourseViewer }))
 );
 const AdminDashboard = lazy(() =>
-  import('../../components/AdminDashboard').then((m) => ({ default: m.AdminDashboard }))
+  loadAdminBundle().then(([, m]) => ({ default: m.AdminDashboard }))
 );
 const MentorDashboard = lazy(() =>
-  import('../../components/MentorDashboard').then((m) => ({ default: m.MentorDashboard }))
+  loadMentorBundle().then(([, m]) => ({ default: m.MentorDashboard }))
 );
 const PaywallModal = lazy(() =>
-  import('../../components/PaywallModal').then((m) => ({ default: m.PaywallModal }))
+  loadPaywallModal().then((m) => ({ default: m.PaywallModal }))
 );
-
-import type { Variants } from 'motion/react';
-
-const pageTransitionVariants: Variants = {
-  initial: { opacity: 0, y: 8 },
-  animate: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.22, ease: 'easeOut' },
-  },
-  exit: {
-    opacity: 0,
-    y: -8,
-    transition: { duration: 0.16, ease: 'easeIn' },
-  },
-};
 
 interface ConstellationAppShellProps {
   currentUser: User | null;
@@ -137,6 +144,21 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   // Abrir un aviso: el mentor va a su bandeja de consultas y el alumno al curso.
   const handleOpenNotification = (notification: AppNotification) => {
     if (!notification.readAt) void notificationsState.markRead([notification.id]);
+    if (notification.type === 'listening.message') {
+      const listeningEntryId = notification.data?.listeningEntryId || null;
+      try {
+        sessionStorage.setItem(ADMIN_TAB_STORAGE_KEY, 'listening');
+        if (listeningEntryId) sessionStorage.setItem(LISTENING_FOCUS_STORAGE_KEY, listeningEntryId);
+        else sessionStorage.removeItem(LISTENING_FOCUS_STORAGE_KEY);
+      } catch {
+        // Sin almacenamiento la pestaña se cambia por el evento.
+      }
+      setConstellationTab('admin');
+      onNavigate('admin');
+      window.dispatchEvent(new CustomEvent(ADMIN_LISTENING_EVENT, { detail: { listeningEntryId } }));
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      return;
+    }
     if (notification.type === 'qna.question') {
       try {
         sessionStorage.setItem(MENTOR_TAB_STORAGE_KEY, 'qna');
@@ -179,11 +201,44 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
   const [selectedCourseForViewer, setSelectedCourseForViewer] = useState<Course | null>(activeCourse || null);
   const courseCacheRef = useRef<Map<string, Course>>(new Map());
   const [constellationTab, setConstellationTab] = useState<ConstellationTab>(() => resolveTab(activeTab));
+  const [visitedTabs, setVisitedTabs] = useState<Record<'explore' | 'courses' | 'learning' | 'mentor' | 'admin', boolean>>(() => {
+    const initial = resolveTab(activeTab);
+    return {
+      explore: initial === 'explore',
+      courses: initial === 'courses',
+      learning: initial === 'learning',
+      mentor: initial === 'mentor',
+      admin: initial === 'admin',
+    };
+  });
   const [seasonalTheme, setSeasonalThemeState] = useState<SeasonalTheme>(getSeasonalTheme());
 
   useEffect(() => {
     setConstellationTab(resolveTab(activeTab));
   }, [activeTab]);
+
+  useEffect(() => {
+    if (
+      constellationTab === 'explore' ||
+      constellationTab === 'courses' ||
+      constellationTab === 'learning' ||
+      constellationTab === 'mentor' ||
+      constellationTab === 'admin'
+    ) {
+      setVisitedTabs((prev) => (prev[constellationTab] ? prev : { ...prev, [constellationTab]: true }));
+    }
+  }, [constellationTab]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const warm = () => {
+      preloadTabChunk('learning');
+      if (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') preloadTabChunk('mentor');
+      if (currentUser.role === 'ADMIN') preloadTabChunk('admin');
+    };
+    const timer = window.setTimeout(warm, 1200);
+    return () => window.clearTimeout(timer);
+  }, [currentUser]);
 
   useEffect(() => {
     const handleSeasonalChange = (e: any) => {
@@ -285,6 +340,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
         activeCourse={currentCourse}
         activeTab={constellationTab}
         hasAccess={hasAccess}
+        onPreloadTab={preloadTabChunk}
         onSelectTab={(tab) => {
           if (tab === constellationTab && !sharedCourseId) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -338,7 +394,14 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
 
       {/* Contenido Dinámico con Transiciones Fluidas sin saltos de layout */}
       <main className="flex-1 w-full relative z-10">
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <RouteSkeleton
+              variant={constellationTab === 'learning' ? 'learning' : 'staff'}
+              label={t('cargando', 'Cargando…')}
+            />
+          }
+        >
           {sharedCourseId ? (
             <CourseOverview
               course={localizedCourses.find(c => c.id === sharedCourseId && c.published)}
@@ -356,16 +419,14 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                 if (selected) { setSelectedCourseForViewer(selected); onContinueCourse(selected); }
               }}
             />
-          ) : <AnimatePresence mode="wait">
+          ) : <>
             {/* 1. Vista Explorar: Hero con Constelación 3D + Búsqueda Neural + Muestra de Catálogo */}
-            {constellationTab === 'explore' && (
-              <motion.div
+            {(visitedTabs.explore || constellationTab === 'explore') && (
+              <div
                 key="view-explore"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full"
+                className="w-full portal-tab-pane"
+                hidden={constellationTab !== 'explore'}
+                aria-hidden={constellationTab !== 'explore'}
               >
                 <ConstellationHero
                   currentUser={currentUser}
@@ -399,34 +460,43 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   currentUser={currentUser}
                   onOpenAuth={onOpenAuth}
                 />
-              </motion.div>
+              </div>
             )}
 
-            {constellationTab === 'learning' && (
-              <motion.div key="view-learning" variants={pageTransitionVariants} initial="initial" animate="animate" exit="exit" className="w-full">
-                <ConstellationMyLearning user={currentUser} courses={localizedCourses} accessReady={courseAccessReady}
+            {(visitedTabs.learning || constellationTab === 'learning') && (
+              <div
+                key="view-learning"
+                className="w-full portal-tab-pane"
+                hidden={constellationTab !== 'learning'}
+                aria-hidden={constellationTab !== 'learning'}
+              >
+                <ConstellationMyLearning
+                  user={currentUser}
+                  courses={localizedCourses}
+                  accessReady={courseAccessReady}
+                  isActive={constellationTab === 'learning'}
                   onContinue={handleContinueCourse}
                   onBrowse={() => { setConstellationTab('courses'); onNavigate('courses'); }}
-                  onLogin={onOpenAuth} onVerifyCertificate={onOpenVerifyModal} />
-              </motion.div>
+                  onLogin={onOpenAuth}
+                  onVerifyCertificate={onOpenVerifyModal}
+                />
+              </div>
             )}
 
             {/* 3. Vista Catálogo Completo */}
-            {constellationTab === 'courses' && (
-              <motion.div
+            {(visitedTabs.courses || constellationTab === 'courses') && (
+              <div
                 key="view-courses"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full"
+                className="w-full portal-tab-pane"
+                hidden={constellationTab !== 'courses'}
+                aria-hidden={constellationTab !== 'courses'}
               >
                 <ConstellationCourseCatalog
                   courses={localizedCourses}
                   onSelectCourse={handleSelectCourse}
                   onPrefetchCourse={handlePrefetchCourse}
                 />
-              </motion.div>
+              </div>
             )}
 
             {/* 4. Vista Reproductor Inmersivo */}
@@ -434,14 +504,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
               <p role="status" className="p-8 text-center">{viewerError ? t('appShell.verifyAccessFailed', 'No se pudo verificar el acceso. Vuelve a abrir el curso para reintentar.') : t('appShell.verifyingCourseAccess', 'Verificando acceso al curso…')}</p>
             )}
             {constellationTab === 'viewer' && currentCourse && viewerCourse && (
-              <motion.div
-                key={`view-viewer-${currentCourse.id}`}
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full"
-              >
+              <div key={`view-viewer-${currentCourse.id}`} className="w-full animate-backdrop-fade">
                 <ConstellationCourseViewer
                   key={`${viewerCourse.id}-${currentUser?.id || 'guest'}`}
                   course={viewerCourse}
@@ -456,23 +519,16 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   onSelectCourse={handleSelectCourse}
                   courses={localizedCourses}
                 />
-              </motion.div>
+              </div>
             )}
 
             {/* Fallback si no hay cursos para el reproductor */}
             {constellationTab === 'viewer' && !currentCourse && (
-              <motion.div
-                key="view-viewer-empty"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="max-w-xl mx-auto py-24 px-6 text-center"
-              >
-                <h2 className="font-constellation-display text-2xl text-white mb-2">
+              <div key="view-viewer-empty" className="max-w-xl mx-auto py-24 px-6 text-center animate-backdrop-fade">
+                <h2 className="font-constellation-display text-2xl text-slate-900 dark:text-white mb-2">
                   {t('appShell.noCourseSelected', 'No hay un curso seleccionado')}
                 </h2>
-                <p className="font-constellation-body text-white/50 text-sm mb-6">
+                <p className="font-constellation-body text-slate-600 dark:text-white/50 text-sm mb-6">
                   {t('appShell.selectCourseDesc', 'Selecciona un curso desde el catálogo para iniciar la reproducción inmersiva.')}
                 </p>
                 <button
@@ -484,18 +540,16 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                 >
                   {t('appShell.exploreCatalog', 'Explorar Catálogo')}
                 </button>
-              </motion.div>
+              </div>
             )}
 
             {/* 5. Vista Mentoría */}
-            {constellationTab === 'mentor' && (
-              <motion.div
+            {(visitedTabs.mentor || constellationTab === 'mentor') && (
+              <div
                 key="view-mentor"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full"
+                className="w-full portal-tab-pane"
+                hidden={constellationTab !== 'mentor'}
+                aria-hidden={constellationTab !== 'mentor'}
               >
                 {currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'MENTOR') ? (
                   <div className="w-full max-w-[1600px] mx-auto overflow-x-hidden">
@@ -507,7 +561,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                     />
                   </div>
                 ) : (
-                  <div className="max-w-md mx-auto py-24 px-6 text-center animate-fade-in">
+                  <div className="max-w-md mx-auto py-24 px-6 text-center animate-backdrop-fade">
                     <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan">
                       <Users className="w-7 h-7" />
                     </div>
@@ -538,18 +592,16 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             )}
 
             {/* 6. Vista Administración */}
-            {constellationTab === 'admin' && (
-              <motion.div
+            {(visitedTabs.admin || constellationTab === 'admin') && (
+              <div
                 key="view-admin"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="w-full"
+                className="w-full portal-tab-pane"
+                hidden={constellationTab !== 'admin'}
+                aria-hidden={constellationTab !== 'admin'}
               >
                 {currentUser?.role === 'ADMIN' ? (
                   <div className="w-full max-w-[1600px] mx-auto overflow-x-clip">
@@ -560,7 +612,7 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                     />
                   </div>
                 ) : (
-                  <div className="max-w-md mx-auto py-24 px-6 text-center animate-fade-in">
+                  <div className="max-w-md mx-auto py-24 px-6 text-center animate-backdrop-fade">
                     <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
                       <Shield className="w-7 h-7" />
                     </div>
@@ -591,19 +643,12 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             )}
 
             {/* Pestaña VIP Paywall si activo */}
             {activeTab === 'vip' && currentUser && currentUser.role !== 'MENTEE' && currentCourse && (
-              <motion.div
-                key="view-vip"
-                variants={pageTransitionVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="max-w-4xl mx-auto px-4 py-8"
-              >
+              <div key="view-vip" className="max-w-4xl mx-auto px-4 py-8 animate-backdrop-fade">
                 <PaywallModal
                   userRole={currentUser.role}
                   courseTitle={currentCourse.title}
@@ -611,9 +656,9 @@ export const ConstellationAppShell: React.FC<ConstellationAppShellProps> = ({
                   onPaymentSuccess={onPaymentSuccess || (() => {})}
                   onVipActivated={onVipActivated || (() => {})}
                 />
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>}
+          </>}
         </Suspense>
       </main>
 

@@ -897,6 +897,7 @@ body.academy-ui {
 .academy-ui .academy-course-card .academy-course-meta { font-family: var(--academy-font-body); }
 .academy-ui .academy-course-card .academy-course-meta > span { color: var(--color-brand-cyan); }
 .academy-ui .academy-course-card img { transition: transform 220ms ease-out; }
+.academy-ui .catalog-featured-glow h2,
 .academy-ui .catalog-featured-glow h3 { font-family: var(--academy-font-display); }
 .academy-ui .course-category-filter { font-family: var(--academy-font-body); font-size: 1rem; }
 .academy-ui .course-category-filter > summary { min-height: 3rem; }

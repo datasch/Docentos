@@ -317,7 +317,35 @@ function displayDuration(video: any): string | null {
   return video.duration ?? null;
 }
 
-function serializeVideo(video: any) {
+export function buildEditableVideoSourceUrl(video: any): string {
+  const rawEmbed = String(video.embedUrl || '').trim();
+  const rawPreview = String(video.previewUrl || '').trim();
+  const rawDriveId = String(video.driveFileId || '').trim();
+  const isSyntheticId = !rawDriveId || rawDriveId.startsWith('pending-') || rawDriveId.startsWith('external-');
+  const parsed = parseVideoSource(rawEmbed || rawPreview || (!isSyntheticId ? rawDriveId : ''));
+
+  if (parsed.provider === 'youtube' || video.source === 'YOUTUBE') {
+    const ytId = parsed.videoId || (!isSyntheticId ? rawDriveId : '');
+    if (ytId) return `https://www.youtube.com/watch?v=${ytId}`;
+  }
+
+  if (parsed.provider === 'drive' || video.source === 'GOOGLE_DRIVE') {
+    const driveId = parsed.videoId || (!isSyntheticId ? rawDriveId : '');
+    if (driveId) return `https://drive.google.com/file/d/${driveId}/view`;
+  }
+
+  if (rawEmbed && /^https?:\/\//i.test(rawEmbed)) {
+    return rawEmbed;
+  }
+
+  if (!isSyntheticId) {
+    return rawDriveId;
+  }
+
+  return '';
+}
+
+function serializeVideo(video: any, includeStaffSources = false) {
   const parsed = parseVideoSource(video.embedUrl || video.previewUrl || video.driveFileId || '');
   const provider = parsed.provider;
   const youtubeVideoId =
@@ -339,6 +367,13 @@ function serializeVideo(video: any) {
     // proveedor pide un alto minimo distinto, y sin el se maquetaba a ciegas.
     provider,
     youtubeVideoId,
+    ...(includeStaffSources
+      ? {
+          driveFileId: video.driveFileId,
+          embedUrl: video.embedUrl,
+          sourceUrl: buildEditableVideoSourceUrl(video),
+        }
+      : {}),
     order: video.order,
     meetingType: video.meetingType || null,
     meetingUrl: video.meetingUrl || null,
@@ -351,7 +386,13 @@ function serializeVideo(video: any) {
   };
 }
 
-export function serializeCourseForViewer(course: any, hasAccess: boolean) {
+export function serializeCourseForViewer(
+  course: any,
+  hasAccess: boolean,
+  options?: { includeStaffSources?: boolean },
+) {
+  const includeStaffSources = Boolean(options?.includeStaffSources);
+  const playlistYoutubeId = course.aiJob?.playlist?.youtubeId || null;
   const base = {
     id: course.id,
     title: course.title,
@@ -368,6 +409,13 @@ export function serializeCourseForViewer(course: any, hasAccess: boolean) {
     sequentialUnlock: Boolean(course.sequentialUnlock),
     // El panel pinta con esto el estado del boton "Todos los registrados".
     openToAllRegistered: Boolean(course.openToAllRegistered),
+    ...(includeStaffSources
+      ? {
+          youtubePlaylistUrl: playlistYoutubeId ? `https://www.youtube.com/playlist?list=${playlistYoutubeId}` : null,
+          youtubePlaylistTitle: course.aiJob?.playlist?.title || null,
+          driveFolderId: course.driveFolderId || null,
+        }
+      : {}),
     mentors: (course.mentors || []).map((m: any) => ({
       id: m.mentor?.id || m.id || m.mentorId,
       name: m.mentor?.name || m.name || 'Mentor',
@@ -389,7 +437,7 @@ export function serializeCourseForViewer(course: any, hasAccess: boolean) {
       title: module.title,
       description: module.description,
       order: module.order,
-      videos: (module.videos || []).map(serializeVideo),
+      videos: (module.videos || []).map((video: any) => serializeVideo(video, includeStaffSources)),
       resources: (module.resources || []).map(serializeResource),
       createdAt: module.createdAt,
       updatedAt: module.updatedAt,

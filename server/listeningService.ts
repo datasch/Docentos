@@ -63,6 +63,7 @@ export const listeningFilterSchema = z.object({
   type: z.enum(LISTENING_TYPES).optional(),
   topic: z.enum(LISTENING_TOPICS).optional(),
   courseId: z.string().trim().min(1).max(100).optional(),
+  userId: z.string().trim().min(1).max(100).optional(),
   mood: z.coerce.number().int().min(1).max(5).optional(),
 });
 
@@ -257,6 +258,7 @@ interface EntryRow {
 export function toStaffEntry(row: EntryRow) {
   return {
     id: row.id,
+    userId: row.userId,
     type: row.type,
     topic: row.topic,
     mood: row.mood,

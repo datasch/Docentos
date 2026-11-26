@@ -53,6 +53,7 @@ interface ConstellationNavbarProps {
   activeTab: ConstellationTab;
   hasAccess?: boolean;
   onSelectTab: (tab: ConstellationTab) => void;
+  onPreloadTab?: (tab: ConstellationTab) => void;
   onOpenAuth: () => void;
   onLogout: () => void;
   onRestartTour?: () => void;
@@ -71,6 +72,7 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
   activeTab,
   hasAccess = false,
   onSelectTab,
+  onPreloadTab,
   onOpenAuth,
   onLogout,
   onRestartTour,
@@ -249,7 +251,15 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
         {/* 2. Navegación principal (escritorio). Por debajo de 1152px la sustituye la barra inferior. */}
         <nav aria-label={t('navegacionPrincipal', 'Navegación principal')} className="academy-navigation">
           {navItems.map((item) => (
-            <button key={item.tab} type="button" onClick={() => goTo(item.tab)} aria-current={item.active ? 'page' : undefined}>
+            <button
+              key={item.tab}
+              type="button"
+              onClick={() => goTo(item.tab)}
+              onMouseEnter={() => onPreloadTab?.(item.tab)}
+              onFocus={() => onPreloadTab?.(item.tab)}
+              onTouchStart={() => onPreloadTab?.(item.tab)}
+              aria-current={item.active ? 'page' : undefined}
+            >
               <item.icon size={18} aria-hidden="true" /><span>{item.label}</span>
             </button>
           ))}
@@ -449,13 +459,25 @@ export const ConstellationNavbar: React.FC<ConstellationNavbarProps> = ({
 
       </div>
 
+      {/* Borde nevado decorativo en la barra superior durante Navidad */}
+      {seasonalTheme === 'christmas' && (
+        <div className="christmas-navbar-snow" aria-hidden="true" />
+      )}
+
     </header>
 
     {/* Barra inferior: la navegación de móvil y tableta, al alcance del pulgar. Se oculta dentro del reproductor. */}
     {activeTab !== 'viewer' && (
       <nav className="academy-tabbar" aria-label={t('navegacionPrincipal', 'Navegación principal')}>
         {navItems.map((item) => (
-          <button key={item.tab} type="button" onClick={() => goTo(item.tab)} aria-current={item.active ? 'page' : undefined}>
+          <button
+            key={item.tab}
+            type="button"
+            onClick={() => goTo(item.tab)}
+            onFocus={() => onPreloadTab?.(item.tab)}
+            onTouchStart={() => onPreloadTab?.(item.tab)}
+            aria-current={item.active ? 'page' : undefined}
+          >
             <item.icon aria-hidden="true" />
             <span>{item.short}</span>
           </button>

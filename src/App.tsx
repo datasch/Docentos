@@ -31,8 +31,19 @@ const AuthModal = lazy(() => import('./components/AuthModal').then((m) => ({ def
 const ChangePasswordModal = lazy(() => import('./components/ChangePasswordModal').then((m) => ({ default: m.ChangePasswordModal })));
 const SetupWizard = lazy(() => import('./components/SetupWizard').then((m) => ({ default: m.SetupWizard })));
 const AIAssistantTour = lazy(() => import('./components/AIAssistantTour').then((m) => ({ default: m.AIAssistantTour })));
-const CertificateVerifyModal = lazy(() => import('./components/CertificateVerifyModal').then((m) => ({ default: m.CertificateVerifyModal })));
-const ContractSignatureModal = lazy(() => import('./components/ContractSignatureModal').then((m) => ({ default: m.ContractSignatureModal })));
+const CertificateVerifyModal = lazy(() =>
+  Promise.all([
+    import('./styles/terms-paper.css'),
+    import('./components/CertificateVerifyModal'),
+  ]).then(([, m]) => ({ default: m.CertificateVerifyModal }))
+);
+const ContractSignatureModal = lazy(() =>
+  Promise.all([
+    import('./styles/terms-paper.css'),
+    import('./styles/mentor-courses.css'),
+    import('./components/ContractSignatureModal'),
+  ]).then(([, , m]) => ({ default: m.ContractSignatureModal }))
+);
 const ListeningBoxModal = lazy(() => import('./components/ListeningBoxModal').then((m) => ({ default: m.ListeningBoxModal })));
 import { ListeningFloatingButton } from './components/ListeningFloatingButton';
 import { useTranslation } from 'react-i18next'

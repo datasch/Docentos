@@ -105,6 +105,13 @@ enum ListeningStatus {
   CLOSED
 }
 
+/// Momento del curso en el que el alumno responde la encuesta NPS de calidad.
+enum CourseNpsStage {
+  START
+  MID
+  END
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -145,6 +152,7 @@ model User {
   signedContracts     UserContractSignature[]
   listeningEntries    ListeningEntry[]     @relation("ListeningAuthor")
   listeningReplies    ListeningEntry[]     @relation("ListeningReplier")
+  courseNpsSurveys    CourseNpsSurvey[]
   assignedCourses     CourseMentor[]       @relation("AssignedCourseMentors")
   videoWatches        VideoWatch[]
   notifications       Notification[]
@@ -385,6 +393,7 @@ model Course {
   meetings          Meeting[]
   aiJob             AIJob?
   listeningEntries  ListeningEntry[]
+  courseNpsSurveys  CourseNpsSurvey[]
   mentors           CourseMentor[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -727,6 +736,27 @@ model ListeningEntry {
   @@index([status, createdAt])
   @@index([createdAt])
   @@index([courseId, createdAt])
+}
+
+/// Encuesta NPS de calidad de un curso respondida por un alumno al inicio,
+/// a la mitad (50%) o al finalizar (100%). Cada persona responde o descarta una
+/// sola vez por curso y etapa.
+model CourseNpsSurvey {
+  id        String         @id @default(uuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  stage     CourseNpsStage
+  npsScore  Int?
+  comment   String?
+  dismissed Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([userId, courseId, stage])
+  @@index([courseId, stage, createdAt])
+  @@index([userId, courseId])
 }
 
 model Meeting {

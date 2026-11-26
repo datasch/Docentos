@@ -209,6 +209,21 @@ test('Buzón: envío, respuesta del equipo, anonimato, permisos, CSV y límite d
   courseIds.push(course.id);
 
   t.after(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const testEntries = await prisma.listeningEntry.findMany({
+      where: { userId: { in: userIds } },
+      select: { id: true },
+    });
+    const entryIds = testEntries.map((item) => item.id);
+    if (entryIds.length > 0) {
+      await prisma.notification.deleteMany({
+        where: {
+          type: 'listening.message',
+          OR: entryIds.map((id) => ({ dataJson: { contains: id } })),
+        },
+      });
+    }
+    await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.listeningEntry.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -380,5 +395,18 @@ test('Buzón: envío, respuesta del equipo, anonimato, permisos, CSV y límite d
     const kept = await prisma.listeningEntry.findUnique({ where: { id: sent.json.entry.id } });
     assert.ok(kept);
     assert.equal(kept.courseId, null);
+
+    // El administrador recibe un aviso en la campana enlazado al mensaje recién enviado.
+    let found: { type?: string; data?: { listeningEntryId?: string } } | undefined;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const notifRes = await call('/api/notifications', 'GET', admin.cookie);
+      found = (notifRes.json?.notifications || []).find(
+        (n: { type?: string; data?: { listeningEntryId?: string } }) =>
+          n.type === 'listening.message' && n.data?.listeningEntryId === sent.json.entry.id,
+      );
+      if (found) break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    assert.ok(found, 'El administrador debería recibir una notificación listening.message');
   });
 });

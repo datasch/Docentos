@@ -12,7 +12,7 @@
 import { logger } from './logger.js';
 import { prisma } from './prisma.js';
 
-export type NotificationType = 'qna.question' | 'qna.answered';
+export type NotificationType = 'qna.question' | 'qna.answered' | 'listening.message';
 
 export interface NotificationData {
   courseId?: string | null;
@@ -21,6 +21,7 @@ export interface NotificationData {
   videoTitle?: string | null;
   commentId?: string | null;
   authorName?: string | null;
+  listeningEntryId?: string | null;
 }
 
 export interface NotificationRecord {
@@ -282,6 +283,36 @@ export async function notifyQuestionAnswered(input: {
       videoTitle: video?.title || null,
       commentId: input.question.id,
       authorName: mentorName,
+    },
+  });
+}
+
+/** Mensaje nuevo en el Buzón de escucha: avisa a los administradores activos. */
+export async function notifyNewListeningEntry(entry: {
+  id: string;
+  userId: string;
+  courseId?: string | null;
+  subject: string;
+  message: string;
+  user?: { name?: string | null; email?: string | null } | null;
+  course?: { title?: string | null } | null;
+}): Promise<NotificationRecord[]> {
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN', isActive: true },
+    select: { id: true },
+  });
+  const recipients = admins.map((a) => a.id).filter((id) => id !== entry.userId);
+  if (recipients.length === 0) return [];
+  const authorName = entry.user?.name || entry.user?.email || 'Un alumno';
+  return notifyUsers(recipients, {
+    type: 'listening.message',
+    title: `Nuevo mensaje en el buzón de ${authorName}`,
+    body: previewText(`${entry.subject}: ${entry.message}`),
+    data: {
+      courseId: entry.courseId || null,
+      courseTitle: entry.course?.title || null,
+      authorName,
+      listeningEntryId: entry.id,
     },
   });
 }

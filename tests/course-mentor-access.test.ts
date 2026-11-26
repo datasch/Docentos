@@ -45,9 +45,13 @@ test('el mentor asignado al curso (CourseMentor) tiene acceso a su curso y solo 
   await new Promise<void>((r) => server.once('listening', r));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   t.after(async () => {
+    server.closeAllConnections?.();
     await new Promise<void>((r) => server.close(() => r()));
+    await prisma.notification.deleteMany({ where: { OR: [{ userId: { in: ids } }, { title: { contains: suffix } }] } });
     await prisma.mentorshipComment.deleteMany({ where: { videoId: video.id } });
     await prisma.auditLog.deleteMany({ where: { actorUserId: { in: ids } } });
+    await prisma.courseEnrollment.deleteMany({ where: { courseId: { in: [course.id, otherCourse.id] } } });
+    await prisma.courseMentor.deleteMany({ where: { courseId: { in: [course.id, otherCourse.id] } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
     await prisma.course.deleteMany({ where: { id: { in: [course.id, otherCourse.id] } } });
     await prisma.$disconnect();
