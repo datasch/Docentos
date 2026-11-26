@@ -124,8 +124,12 @@ export default function App() {
   const [course, setCourse] = useState<Course | null>(() => {
     const cached = readCachedCourses();
     const lastId = readLastCourseId();
+    // Si la dirección pide un curso (/courses/:id o /learning/course/:id), manda él:
+    // empezar con otro hacía que el efecto que sincroniza la URL del visor la
+    // reescribiera antes de que loadData la leyera, y se abría un curso distinto.
+    const pathId = courseIdFromPath(window.location.pathname) || viewerCourseIdFromPath(window.location.pathname);
     if (cached.length > 0) {
-      return (lastId ? cached.find((c) => c.id === lastId) : null) || cached[0] || null;
+      return (pathId ? cached.find((c) => c.id === pathId) : null) || (lastId ? cached.find((c) => c.id === lastId) : null) || cached[0] || null;
     }
     return null;
   });
@@ -294,7 +298,9 @@ export default function App() {
             } catch {}
           }
 
-          const preferredId = courseIdFromPath(window.location.pathname) || viewerCourseIdFromPath(window.location.pathname) || lastStudiedId;
+          // `currentPath` se leyó al empezar, antes de las esperas: mientras tanto el
+          // efecto que sincroniza la URL del visor puede haberla reescrito.
+          const preferredId = courseIdFromPath(currentPath) || viewerCourseIdFromPath(currentPath) || lastStudiedId;
           const preferred = preferredId
             ? coursesRes.courses.find((c) => c.id === preferredId)
             : null;
