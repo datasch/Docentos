@@ -210,6 +210,30 @@ export const RESPONSE_TRANSLATIONS: Record<string, ResponseTranslation> = {
   'Ingresa un término o palabras clave para buscar playlists.': ['Enter a term or keywords to search for playlists.', 'Informe um termo ou palavras-chave para buscar playlists.', 'Saisissez un terme ou des mots-clés pour rechercher des playlists.', 'Inserisci un termine o parole chiave per cercare playlist.'],
   'Para buscar playlists en YouTube debes conectar tu cuenta con OAuth o configurar YOUTUBE_API_KEY en el servidor.': ['To search for playlists on YouTube you must connect your account with OAuth or configure YOUTUBE_API_KEY on the server.', 'Para buscar playlists no YouTube você deve conectar sua conta com OAuth ou configurar YOUTUBE_API_KEY no servidor.', 'Pour rechercher des playlists sur YouTube, vous devez connecter votre compte avec OAuth ou configurer YOUTUBE_API_KEY sur le serveur.', 'Per cercare playlist su YouTube devi collegare il tuo account con OAuth o configurare YOUTUBE_API_KEY sul server.'],
   'Modo de festividad no válido': ['Invalid seasonal theme mode.', 'Modo de festividade inválido.', 'Mode de festivité invalide.', 'Modalità festività non valida.'],
+  'No se reconoce el enlace o identificador de video. Pega un enlace completo de YouTube, Google Drive o una URL HTTPS válida.': [
+    'The video link or ID is not recognized. Paste a full YouTube link, Google Drive link, or a valid HTTPS URL.',
+    'O link ou ID do vídeo não é reconhecido. Cole um link completo do YouTube, Google Drive ou uma URL HTTPS válida.',
+    'Le lien ou l’identifiant de la vidéo n’est pas reconnu. Collez un lien complet YouTube, Google Drive ou une URL HTTPS valide.',
+    'Il link o l’ID del video non è riconosciuto. Incolla un link completo di YouTube, Google Drive o un URL HTTPS valido.',
+  ],
+  'No tienes acceso a las métricas de este curso.': [
+    "You don't have access to this course's metrics.",
+    'Você não tem acesso às métricas deste curso.',
+    "Vous n'avez pas accès aux métriques de ce cours.",
+    'Non hai accesso alle metriche di questo corso.',
+  ],
+  'Etapa de encuesta no válida': [
+    'Invalid survey stage',
+    'Etapa de pesquisa inválida',
+    'Étape d’enquête invalide',
+    'Fase del sondaggio non valida',
+  ],
+  'Selecciona una calificación de 0 a 10 para enviar la encuesta': [
+    'Select a rating from 0 to 10 to submit the survey',
+    'Selecione uma nota de 0 a 10 para enviar a pesquisa',
+    'Sélectionnez une note de 0 à 10 pour envoyer l’enquête',
+    'Seleziona un punteggio da 0 a 10 per inviare il sondaggio',
+  ],
 };
 
 /** Mensajes con datos variables: patrón sobre el texto en español y traducciones [en, pt, fr, it]. */

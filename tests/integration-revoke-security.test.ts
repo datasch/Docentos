@@ -44,9 +44,12 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  const usersToDelete = await prisma.user.findMany({ where: { email: { in: correos } }, select: { id: true } });
+  const userIds = usersToDelete.map((u) => u.id);
   await prisma.auditLog.deleteMany({
     where: {
       action: 'integration.access_revoked',
+      ...(userIds.length ? { targetId: { in: userIds } } : { targetId: '__none__' }),
     },
   });
   await prisma.courseEnrollment.deleteMany({

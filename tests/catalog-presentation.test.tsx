@@ -16,11 +16,14 @@ const renderCatalog = (items: Course[]) => renderToStaticMarkup(
   <ConstellationCourseCatalog courses={items} onSelectCourse={() => {}} />,
 );
 
+const courseHeadings = (html: string) =>
+  [...html.matchAll(/<article\b[\s\S]*?<(h[23])\b[^>]*>(.*?)<\/\1>/g)].map((match) => match[2]);
+
 test('Inicio presenta solo el destacado y una salida al catálogo completo', () => {
   const html = renderToStaticMarkup(
     <ConstellationCourseCatalog courses={courses} featuredOnly onSelectCourse={() => {}} onBrowseCatalog={() => {}} />,
   );
-  assert.equal((html.match(/<h3\b/g) || []).length, 1);
+  assert.equal(courseHeadings(html).length, 1);
   assert.ok(html.includes(courses[0].title));
   assert.ok(!html.includes(courses[1].title));
   assert.match(html, /Ver catálogo completo/);
@@ -36,8 +39,7 @@ test('Inicio sin cursos no duplica el estado vacío del catálogo', () => {
 
 test('El destacado aparece una sola vez y los demás cursos siguen disponibles', () => {
   const html = renderCatalog(courses);
-  const headings = [...html.matchAll(/<h3\b[^>]*>(.*?)<\/h3>/g)].map((match) => match[1]);
-  assert.deepEqual(headings, courses.map((course) => course.title));
+  assert.deepEqual(courseHeadings(html), courses.map((course) => course.title));
   assert.match(html, /Programa destacado/);
   assert.ok(html.indexOf('Programa destacado') < html.indexOf('aria-label="Buscar cursos y lecciones"'));
   for (const course of courses) assert.ok(html.includes(`Compartir curso: ${course.title}`));
@@ -45,7 +47,7 @@ test('El destacado aparece una sola vez y los demás cursos siguen disponibles',
 
 test('Un catálogo con un solo destacado no muestra un mensaje de ausencia de cursos', () => {
   const html = renderCatalog(courses.slice(0, 1));
-  assert.equal((html.match(/<h3\b/g) || []).length, 1);
+  assert.equal(courseHeadings(html).length, 1);
   assert.doesNotMatch(html, /No se encontraron cursos/);
   assert.match(renderCatalog([]), /No se encontraron cursos/);
 });

@@ -12,6 +12,28 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.1.2] - 2026-11-26
+
+**Incluye una migración aditiva:** crea el enum `CourseNpsStage` y la tabla `CourseNpsSurvey` (con verificación de puntuación `0..10` y clave única por estudiante, curso y etapa) para registrar las encuestas NPS de calidad dentro de los cursos. No toca datos existentes y se aplica sola al arrancar.
+
+### Added
+
+- **Encuestas NPS de calidad dentro de cada curso.** Los estudiantes responden una valoración breve al inicio, al 50 % y al completar el 100 % del curso; administración cuenta con tablero de métricas globales, promedio por etapa, variación inicio-a-final, detalle por estudiante en panel lateral y exportación a CSV.
+- **Notificaciones en tiempo real del Buzón de escucha.** Al recibir un nuevo mensaje de escucha, los administradores reciben un aviso en vivo en la campana; al abrirlo se navega directamente al hilo y ficha del estudiante con el foco puesto y el scroll del fondo bloqueado.
+- **Gestión completa de enlaces en el temario del curso.** En Admin → Cursos → Temario, los cursos importados desde YouTube o Google Drive muestran ahora el enlace de origen (playlist o carpeta) con copia rápida, y cada lección expone su URL editable de YouTube, Drive o externa para corregir o reemplazar videos directamente desde el editor.
+- **Descubrimiento agéntico (`/llms.txt` y `/.well-known/ard.json`).** Endpoint actualizado con esquema ARD y consultas representativas verificadas.
+
+### Changed
+
+- **Panel de NPS y Portal reorganizados con navegación unificada.** En Admin → Portal → NPS se separan **Buzón de escucha** y **NPS de calidad de cursos** mediante pestañas subrayadas idénticas a las de **Materiales · Videos Drive · Audio TTS**, se ajusta al contenido el ancho de los selectores **Portada | NPS** y **Catálogo | Recursos**, se unifica la capitalización de **Cursos** y las vistas largas de escucha, NPS y certificación agrupan la información en tarjetas por persona con panel lateral deslizable.
+- **Arranque y cambio de pestañas más fluidos.** Las hojas de estilo de Mentoría y Administración se cargan en diferido, el indicador infinito inicial anima sin cargar el paquete completo de animación y las pestañas principales se precargan y conservan su estado al alternar entre vistas.
+- **Ambientación navideña adaptable a modo claro y oscuro.** Copos de nieve, bancos glaciares, gorro festivo, destello e insignia de *Programa destacado* mantienen alto contraste sobre fondo claro «Hielo» y oscuro, respetando el espaciado sobre la barra inferior móvil.
+
+### Fixed
+
+- **Reproductor de video legible en modo claro.** El menú desplegable de **Velocidad**, los controles internos y los botones superpuestos de navegación o salida del modo teatro conservan superficie y contraste oscuros dentro del escenario de video sin heredar estilos claros globales.
+- **Testimonios públicos sin etiquetas de rol.** Se retiró el rol del usuario tanto de la respuesta pública de testimonios como de las tarjetas y previsualizaciones en portada y editor.
+
 ## [2.0.2] - 2026-11-25
 
 **Incluye una migración aditiva:** añade la columna opcional `videoId` (con índice y clave foránea) a la tabla `CourseResource`, para asignar un recurso a una lección. No toca datos existentes y se aplica sola al arrancar.
