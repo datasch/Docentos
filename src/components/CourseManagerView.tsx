@@ -1058,7 +1058,7 @@ export const CourseManagerView: React.FC<CourseManagerViewProps> = ({
                         {course.openToAllRegistered ? t('accesoParaMiembros', 'Acceso para miembros') : t('soloAsignados', 'Solo asignados')}
                       </span>
                       <div className="mentor-course-card__meta">
-                        <span>{t('countModulos', { defaultValue_one: '{{count}} módulo ·', defaultValue_other: '{{count}} módulos ·', count: modules.length })} {countVideos(course)} {countVideos(course) === 1 ? t('video', 'video') : t('videos', 'videos')}{course.sequentialUnlock ? t('secuencial', ' · Secuencial') : ''}</span>
+                        <span>{t('countModulos', { defaultValue_one: '{{count}} módulo ·', defaultValue_other: '{{count}} módulos ·', count: modules.length })} {countVideos(course)} {countVideos(course) === 1 ? t('video', 'video') : t('videos', 'videos')}{course.sequentialUnlock ? ` · ${t('secuencial', 'Secuencial')}` : ''}</span>
                         <span>{course.price > 0 ? `$${course.price} ${course.currency || 'USD'}` : t('gratuito', 'Gratuito')}</span>
                       </div>
                     </div>

@@ -143,3 +143,5 @@
 [data-mentor-ui='modern'] .admin-tts__kind, [data-mentor-ui='modern'] .admin-tts__kind[data-kind] { justify-content: center; box-sizing: border-box; width: 88px; max-width: 88px; padding: 2px 8px; border: 1px solid color-mix(in srgb, var(--mentor-accent) 45%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--mentor-accent) 14%, var(--mentor-raised)); color: var(--mentor-accent); font-size: 12px; font-weight: 500; line-height: 18px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 420px) { [data-mentor-ui='modern'] .admin-tts__item-main--tagged .admin-tts__kind { width: 88px; max-width: 88px; } }
 [data-mentor-ui='modern'] .admin-tts__list[data-view='list'] .admin-tts__item-main--tagged { grid-template-columns: 40px minmax(0, max-content) auto minmax(0, 1fr); }
+/* El nombre del mentor en su línea; la voz («Español (Latinoamérica …)») y la velocidad, debajo. */
+[data-mentor-ui='modern'] .admin-tts__meta-text .admin-tts__mentor-name { flex-basis: 100%; }

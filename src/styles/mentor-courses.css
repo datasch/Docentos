@@ -407,8 +407,13 @@
   gap: 12px 16px;
 }
 [data-mentor-ui='modern'] :is(.mentor-courses-panel, .mentor-mentees-panel, .mentor-qna-panel, .mentor-meetings-panel, .mentor-quiz-panel, .mentor-youtube-panel) .mentor-publication-filters {
+  /* Tantas columnas como botones, repartiendo todo el ancho. Con tres fijas, un
+     selector de dos (Resueltas | Solo pendientes, Buscar por tema | Pegar URL)
+     dejaba una columna vacía a la derecha. */
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   max-width: 100%;
   padding: 4px;
   border: 1px solid var(--course-line);

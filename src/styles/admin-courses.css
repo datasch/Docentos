@@ -28,7 +28,7 @@
   padding: 0;
   overflow: hidden;
 }
-[data-mentor-ui='modern'] .admin-course-card__cover {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__cover {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -36,18 +36,18 @@
   background: var(--mentor-raised);
   object-fit: cover;
 }
-[data-mentor-ui='modern'] .admin-course-card__cover--empty {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__cover--empty {
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--mentor-raised) 65%, var(--mentor-surface));
   color: color-mix(in srgb, var(--mentor-muted) 65%, var(--mentor-raised));
 }
-[data-mentor-ui='modern'] .admin-course-card__cover--empty svg {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__cover--empty svg {
   width: 28px;
   height: 28px;
   stroke-width: 1;
 }
-[data-mentor-ui='modern'] .admin-course-card__summary {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__summary {
   display: grid;
   flex: 1;
   grid-template-rows: auto 1fr auto;
@@ -56,29 +56,29 @@
   min-width: 0;
   padding: 20px 24px 0;
 }
-[data-mentor-ui='modern'] .admin-course-card__facts {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__facts {
   display: grid;
   gap: 8px;
   margin-top: auto;
 }
 /* Mismas alturas en todas las tarjetas: título y descripción a dos líneas. */
 /* Título completo siempre; descripción a dos líneas con puntos suspensivos. */
-[data-mentor-ui='modern'] .admin-course-card .mentor-course-card__title {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card .mentor-course-card__title {
   display: block;
   overflow: visible;
 }
-[data-mentor-ui='modern'] .admin-course-card .mentor-course-card__description {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card .mentor-course-card__description {
   display: -webkit-box;
   max-height: none;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-[data-mentor-ui='modern'] .admin-course-card .mentor-course-description[data-expanded='true'] .mentor-course-card__description {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card .mentor-course-description[data-expanded='true'] .mentor-course-card__description {
   display: block;
   -webkit-line-clamp: unset;
 }
-[data-mentor-ui='modern'] .admin-course-card .mentor-course-card__meta {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card .mentor-course-card__meta {
   margin: 0;
 }
 /* Mentores, Temario y Editar en una fila; publicar, solo, debajo. */
@@ -113,65 +113,65 @@
   padding-block: 0;
   padding-inline: 8px;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='cards'][data-expanded] {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='cards'][data-expanded] {
   grid-column: 1 / -1;
 }
 /* Lista: portada, resumen y las cuatro acciones, siempre en las mismas columnas. */
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
   align-items: center;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] .admin-course-card__cover {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__cover {
   grid-row: 1;
   margin: 16px 0 16px 16px;
   width: 96px;
   border: 1px solid var(--course-line);
   border-radius: 8px;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] .admin-course-card__summary {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__summary {
   padding: 16px;
   gap: 8px;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] .mentor-course-card__title {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .mentor-course-card__title {
   min-height: 0;
   font-size: 16px;
   line-height: 22px;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] .mentor-course-card__description {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .mentor-course-card__description {
   display: none;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] .admin-course-card__facts {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__facts {
   margin-top: 0;
 }
 [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__actions {
   grid-column: 1 / -1;
   padding: 0 16px 16px;
 }
-[data-mentor-ui='modern'] .admin-course-card[data-view='list'] > :not(.admin-course-card__cover):not(.admin-course-card__summary):not(.admin-course-card__actions) {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] > :not(.admin-course-card__cover):not(.admin-course-card__summary):not(.admin-course-card__actions) {
   grid-column: 1 / -1;
 }
 @media (min-width: 1024px) {
-  [data-mentor-ui='modern'] .admin-course-card[data-view='list'] {
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] {
     grid-template-columns: 176px minmax(0, 1fr) 400px;
   }
-  [data-mentor-ui='modern'] .admin-course-card[data-view='list'] .admin-course-card__cover {
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__cover {
     width: 144px;
     margin: 16px 0 16px 24px;
   }
-  [data-mentor-ui='modern'] .admin-course-card[data-view='list'] .admin-course-card__summary {
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__summary {
     padding: 16px 24px;
   }
   [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__actions {
     grid-column: 3;
     padding: 16px 24px 16px 0;
   }
-  [data-mentor-ui='modern'] .admin-course-card[data-view='list'] .admin-course-card__facts {
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .admin-course-card__facts {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 16px;
   }
-  [data-mentor-ui='modern'] .admin-course-card[data-view='list'] .mentor-course-card__meta {
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .mentor-course-card__meta {
     border: 0;
     padding: 0;
     justify-content: flex-start;
@@ -314,7 +314,7 @@
 }
 
 /* El cuerpo ocupa la fila flexible, pero título y descripción siguen juntos arriba. */
-[data-mentor-ui='modern'] .admin-course-card .mentor-course-card__body {
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card .mentor-course-card__body {
   align-content: start;
 }
 
@@ -886,11 +886,11 @@
 [data-mentor-ui='modern'] .admin-resources__notice--error { color: var(--color-danger-light); }
 
 /* Cursos: un acceso breve a los materiales del curso desde cada tarjeta. */
-[data-mentor-ui='modern'] .admin-course-card__resources { display: inline-flex; align-items: center; gap: 8px; justify-self: start; min-height: 36px; padding: 4px 0; border: 0; background: transparent; color: var(--mentor-text); font-size: 13px; font-weight: 500; cursor: pointer; }
-[data-mentor-ui='modern'] .admin-course-card__resources svg { flex: none; width: 16px; height: 16px; color: var(--mentor-muted); }
-[data-mentor-ui='modern'] .admin-course-card__resources svg:last-child { transition: transform 160ms var(--course-ease); }
-[data-mentor-ui='modern'] .admin-course-card__resources:hover svg:last-child { transform: translate(2px, -2px); }
-[data-mentor-ui='modern'] .admin-course-card__resources:focus-visible { outline: 2px solid var(--mentor-accent); outline-offset: 3px; }
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__resources { display: inline-flex; align-items: center; gap: 8px; justify-self: start; min-height: 36px; padding: 4px 0; border: 0; background: transparent; color: var(--mentor-text); font-size: 13px; font-weight: 500; cursor: pointer; }
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__resources svg { flex: none; width: 16px; height: 16px; color: var(--mentor-muted); }
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__resources svg:last-child { transition: transform 160ms var(--course-ease); }
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__resources:hover svg:last-child { transform: translate(2px, -2px); }
+[data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__resources:focus-visible { outline: 2px solid var(--mentor-accent); outline-offset: 3px; }
 
 /* Catálogo y Recursos son secciones de Cursos; los medios usan navegación subrayada limpia. */
 [data-mentor-ui='modern'] .admin-resources-shell__media { display: flex; flex-wrap: wrap; gap: 24px; width: 100%; border-bottom: 1px solid var(--course-line); }
@@ -926,7 +926,7 @@
 [data-mentor-ui='modern'] .admin-resources__item[data-view='cards'] .admin-resources__item-actions > * { flex: 1; }
 @media (max-width: 760px) { [data-mentor-ui='modern'] .admin-resources__item[data-view='list'] { grid-template-columns: minmax(0, 1fr); gap: 12px; } [data-mentor-ui='modern'] .admin-resources__item[data-view='list'] .admin-resources__item-actions { justify-content: flex-start; } }
 @media (max-width: 520px) { [data-mentor-ui='modern'] .admin-resources-shell__media { gap: 16px; } [data-mentor-ui='modern'] .admin-resources-shell__media button { font-size: 13px; } }
-@media (prefers-reduced-motion: reduce) { [data-mentor-ui='modern'] .admin-course-card__resources svg:last-child { transition: none; } }
+@media (prefers-reduced-motion: reduce) { [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card__resources svg:last-child { transition: none; } }
 
 /* Videos Drive comparte la estructura de biblioteca del módulo Cursos. */
 [data-mentor-ui='modern'].admin-drive { --course-line: var(--hielo-course-line, color-mix(in srgb, var(--mentor-text) 10%, transparent)); --course-ease: cubic-bezier(0.22, 1, 0.36, 1); display: grid; gap: 20px; min-width: 0; color: var(--mentor-text); }
@@ -1015,3 +1015,96 @@
 
 /* Tema claro: estas pestañas ya marcan la selección con la raya inferior; sin borde de caja. */
 [data-color-mode='light'] [data-mentor-ui='modern'] .admin-resources-shell__media button[aria-pressed] { border-color: transparent !important; }
+
+/* Catálogo de Admin → Cursos. `mentor-courses.css` (Mentoría) se carga después
+   con la misma especificidad y forzaba dos columnas de botones y la cuadrícula
+   de tarjetas también en la vista de lista. Aquí se sube la especificidad. */
+[data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-courses-list[data-view='list'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Mentores, Temario y Editar en una fila, iguales; publicar o pasar a borrador, solo, debajo. */
+[data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: center;
+}
+[data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions .mentor-course-control:nth-child(3) {
+  grid-column: auto;
+}
+[data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions .admin-course-card__publish {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+/* «Pasar a borrador» con el acento del tema. */
+[data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions .admin-course-card__publish:not(.mentor-course-publish) {
+  border-color: rgba(var(--brand-accent-rgb, 251, 191, 36), 0.55);
+  background: transparent;
+  color: var(--color-brand-cyan);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions .admin-course-card__publish:not(.mentor-course-publish):not(:disabled):hover {
+    border-color: var(--color-brand-cyan);
+    background: rgba(var(--brand-accent-rgb, 251, 191, 36), 0.08);
+    color: var(--color-brand-cyan);
+  }
+  /* «Publicar»: al pasar el ratón se atenúa; antes se quedaba sin fondo ni texto en modo claro. */
+  [data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions .mentor-course-publish:not(:disabled):hover {
+    background: var(--mentor-text) !important;
+    border-color: var(--mentor-text) !important;
+    color: var(--mentor-bg, var(--color-canvas)) !important;
+    opacity: 0.82;
+  }
+}
+@media (max-width: 639px) {
+  [data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card__actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* Lista: el estado (Publicado / Borrador) en la esquina superior derecha de la fila. */
+@media (min-width: 1024px) {
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] {
+    position: relative;
+  }
+  [data-mentor-ui='modern'] .admin-courses-panel .admin-course-card[data-view='list'] .mentor-course-card__status {
+    position: absolute;
+    top: 12px;
+    right: 24px;
+  }
+  [data-mentor-ui='modern'] .admin-courses-panel.mentor-courses-panel .admin-course-card[data-view='list'] .admin-course-card__actions {
+    padding-top: 40px;
+  }
+}
+/* Recursos: «Eliminar» ocupa todo el ancho bajo «Sin lección asignada» y «Abrir», en lista y en tarjetas. */
+[data-mentor-ui='modern'] .admin-resources__table .admin-tts__actions > .admin-resources__delete {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+/* Tema claro: «Desde YouTube con IA» y «Desde Drive» llevan aria-pressed y la
+   regla global les quita fondo y borde; sin esto el hover no se notaba. */
+@media (hover: hover) and (pointer: fine) {
+  /* Especificidad alta a propósito: la regla global de aria-pressed (index.css) suma
+     varios :not() complejos y pesa (0,8,4). */
+  [data-color-mode='light'] [data-mentor-ui='modern'] .admin-courses-actions.admin-courses-actions.admin-courses-actions button[aria-pressed][aria-pressed][aria-pressed]:not(:disabled):hover {
+    background-color: rgba(var(--brand-accent-rgb), 0.08) !important;
+    border-color: rgba(var(--brand-accent-rgb), 0.45) !important;
+    color: var(--color-brand-cyan) !important;
+  }
+}
+/* Selectores de vista (Lista / Tarjetas) de Admin: compactos, del ancho de sus
+   botones. `mentor-courses.css` les daba tres columnas y dejaba un hueco a la
+   derecha, como si faltara un botón (Certificación, Usuarios…). */
+[data-mentor-ui='modern'] :is(.mentor-courses-panel, .mentor-mentees-panel, .admin-people-panel, .admin-resources__toolbar) .mentor-publication-filters.admin-view-toggle {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  grid-template-columns: none;
+  width: fit-content;
+  max-width: 100%;
+}
+/* Lo mismo para los selectores de sección de la cabecera (Certificados | Contratos,
+   Catálogo | Recursos…): compactos, sin la tercera columna vacía. */
+[data-mentor-ui='modern'] :is(.mentor-courses-panel, .mentor-mentees-panel, .admin-people-panel) .admin-people-top .mentor-publication-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  grid-template-columns: none;
+  width: fit-content;
+  max-width: 100%;
+}
