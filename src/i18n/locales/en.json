@@ -170,7 +170,13 @@
     "lockedCertDesc": "Complete the final mission ({{mission}}) and pass the quizzes to earn your certificate.",
     "missionsCompletedCount": "Missions completed: {{completed}} of {{total}}",
     "celestialOrb": "Celestial Orb",
-    "finalMission": "Final Mission"
+    "finalMission": "Final Mission",
+    "examModule": "Module {{n}} exam",
+    "examFinal": "Final exam",
+    "examPassed": "Passed",
+    "examAvailable_one": "Available · {{count}} question",
+    "examAvailable_other": "Available · {{count}} questions",
+    "examLocked": "Finish the module's lessons to unlock it"
   },
   "viewer": {
     "tracingRoute": "Tracing the Stellar Learning Path...",
@@ -3193,5 +3199,7 @@
   "errorAlActualizarVideo": "Failed to update video",
   "editarVideoTitle": "Edit video {{title}}",
   "editarVideo": "Edit video",
-  "enlaceOIdDeVideo": "Video link or ID (Drive / YouTube / URL)"
+  "enlaceOIdDeVideo": "Video link or ID (Drive / YouTube / URL)",
+  "examContinuar": "Continue",
+  "examSigueTrasLeccion": "After this lesson comes the «{{module}}» exam, as one more lesson."
 }

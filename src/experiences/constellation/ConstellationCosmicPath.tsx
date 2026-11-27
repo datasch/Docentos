@@ -23,6 +23,7 @@ import {
   Download,
   CandyCane,
   Snowflake,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Course, Module, VideoDriveLink, User, CertificateRecord } from '../../types';
 import { downloadCertificate } from '../../plugins/CertificateGenerator';
@@ -41,6 +42,8 @@ interface ConstellationCosmicPathProps {
   courses: Course[];
   onSelectCourse: (c: Course) => void;
   onOpenLesson: (video: VideoDriveLink, module: Module) => void;
+  /** Abre la lección «Examen» de un módulo (examen de módulo o examen final). */
+  onOpenExam?: (module: Module) => void;
   completedVideoIds?: string[];
   currentUser?: User | null;
   certificate?: CertificateRecord | null;
@@ -700,9 +703,72 @@ const ChristmasGoalDecor: React.FC = () => (
   </>
 );
 
+/**
+ * Lección «Examen» al final de un módulo.
+ *
+ * El examen ya no va escondido dentro de la última lección: es una parada propia
+ * de la ruta. Se abre al completar las lecciones del módulo, queda marcado al
+ * aprobarlo y es lo que abre el módulo siguiente (o el certificado, si es el final).
+ */
+const ExamenDeModuloStop: React.FC<{
+  module: Module;
+  moduleNumber: number;
+  isFinal: boolean;
+  questionCount: number;
+  state: 'locked' | 'available' | 'passed';
+  onOpen: () => void;
+}> = ({ module, moduleNumber, isFinal, questionCount, state, onOpen }) => {
+  const { t } = useTranslation();
+  const titulo = isFinal ? t('path.examFinal', 'Examen final') : t('path.examModule', { n: moduleNumber, defaultValue: 'Examen del módulo {{n}}' });
+  const estado =
+    state === 'passed'
+      ? t('path.examPassed', 'Aprobado')
+      : state === 'available'
+        ? t('path.examAvailable', { count: questionCount, defaultValue: 'Disponible · {{count}} preguntas' })
+        : t('path.examLocked', 'Completa las lecciones del módulo para desbloquearlo');
+  return (
+    <div className="relative z-10 flex justify-center px-4 pt-2 pb-6">
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={state === 'locked'}
+        data-state={state}
+        aria-label={`${titulo}: ${module.title}. ${estado}`}
+        className={`academy-exam-stop flex w-full max-w-md items-center gap-4 rounded-2xl border bg-surface px-5 py-4 text-left shadow-sm transition-colors ${
+          state === 'passed'
+            ? 'border-success/50'
+            : state === 'available'
+              ? 'border-brand-cyan hover:bg-brand-cyan/10 cursor-pointer'
+              : 'border-line cursor-not-allowed opacity-80'
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
+            state === 'passed'
+              ? 'border-success/50 bg-success/10 text-success-light'
+              : state === 'available'
+                ? 'border-brand-cyan/50 bg-brand-cyan/10 text-brand-cyan'
+                : 'border-line bg-raised text-ink-muted'
+          }`}
+        >
+          {state === 'passed' ? <Check className="h-5 w-5" /> : state === 'locked' ? <Lock className="h-5 w-5" /> : <ClipboardCheck className="h-5 w-5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-ink">{titulo}</span>
+          <span className="block truncate text-meta text-ink-soft">{module.title}</span>
+          <span className={`mt-0.5 block text-micro ${state === 'passed' ? 'text-success-light' : state === 'available' ? 'text-brand-cyan' : 'text-ink-muted'}`}>{estado}</span>
+        </span>
+        {state === 'available' && <ArrowRight aria-hidden className="h-4 w-4 shrink-0 text-brand-cyan" />}
+      </button>
+    </div>
+  );
+};
+
 export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = ({
   course,
   onOpenLesson,
+  onOpenExam,
   completedVideoIds = [],
   currentUser,
   certificate,
@@ -1014,9 +1080,13 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
             modulesWithMissions.map((modGroup, index) => {
               const isPrevModuleCompleted = index === 0 ? true : modulesWithMissions[index - 1].isModuleComplete;
 
+              const examQuestions = pluginManager.isEnabled('interactive-quizzes') ? getModuleQuestionCount(modGroup.module.id) : 0;
+              const examPassed = examQuestions > 0 && Boolean(quizzesPluginEngine.getUserAttempt(effectiveUserId, modGroup.module.id)?.passed);
+              const isLastModule = index === modulesWithMissions.length - 1;
+
               return (
+                <React.Fragment key={modGroup.module.id}>
                 <ModuloCaminoTrack
-                  key={modGroup.module.id}
                   module={modGroup.module}
                   modIdx={modGroup.modIdx}
                   seasonalTheme={seasonalTheme}
@@ -1035,6 +1105,17 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                   canAccessMission={canAccessMission}
                   celebratingMissionId={celebratingMissionId}
                 />
+                {examQuestions > 0 && modGroup.missions.length > 0 && (
+                  <ExamenDeModuloStop
+                    module={modGroup.module}
+                    moduleNumber={modGroup.modIdx + 1}
+                    isFinal={isLastModule}
+                    questionCount={examQuestions}
+                    state={examPassed ? 'passed' : modGroup.isModuleComplete ? 'available' : 'locked'}
+                    onOpen={() => onOpenExam?.(modGroup.module)}
+                  />
+                )}
+                </React.Fragment>
               );
             })
           )}
@@ -1179,8 +1260,18 @@ export const ConstellationCosmicPath: React.FC<ConstellationCosmicPathProps> = (
                 <button
                   type="button"
                   onClick={() => {
-                    const nextMission = allMissions.find((m) => !isCompleted(m.video.id)) ?? allMissions[allMissions.length - 1];
-                    onOpenLesson(nextMission.video, nextMission.module);
+                    // El siguiente paso en orden: una lección pendiente o, si el
+                    // módulo ya está visto, su examen sin aprobar.
+                    for (const group of modulesWithMissions) {
+                      const pendiente = group.missions.find((m) => !isCompleted(m.video.id));
+                      if (pendiente) { onOpenLesson(pendiente.video, pendiente.module); return; }
+                      const tieneExamen = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(group.module.id) > 0;
+                      if (tieneExamen && group.missions.length > 0 && !quizzesPluginEngine.getUserAttempt(effectiveUserId, group.module.id)?.passed && onOpenExam) {
+                        onOpenExam(group.module); return;
+                      }
+                    }
+                    const ultima = allMissions[allMissions.length - 1];
+                    onOpenLesson(ultima.video, ultima.module);
                   }}
                   className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-cyan px-4 py-2.5 text-sm font-semibold text-on-brand transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan sm:w-auto"
                 >

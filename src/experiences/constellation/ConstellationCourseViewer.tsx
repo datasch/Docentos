@@ -9,7 +9,8 @@ import { LESSON_FOCUS_EVENT, readLessonFocus, type LessonFocus } from '../../lib
 import { CourseShareButton } from '../../components/CourseShareButton';
 import { CourseNpsModal } from '../../components/CourseNpsModal';
 import { resolveCourseNpsStage, type CourseNpsStage } from '../../lib/courseNps';
-import { syncModuleQuizCounts, quizzesPluginEngine } from '../../plugins/QuizzesPlugin';
+import { syncModuleQuizCounts, quizzesPluginEngine, getModuleQuestionCount } from '../../plugins/QuizzesPlugin';
+import { pluginManager } from '../../plugins/PluginManager';
 
 interface ConstellationCourseViewerProps {
   course: Course;
@@ -41,6 +42,8 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState<number>(0);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number>(0);
+  /** Módulo cuyo examen se abre como lección propia (null: se abre un video). */
+  const [examModuleIndex, setExamModuleIndex] = useState<number | null>(null);
   const [completedVideoIds, setCompletedVideoIds] = useState<string[]>([]);
   const [certificate, setCertificate] = useState<CertificateRecord | null>(null);
   const [progressLoaded, setProgressLoaded] = useState(false);
@@ -211,6 +214,18 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
 
     setSelectedModuleIndex(resolvedModIdx);
     setSelectedVideoIndex(resolvedVidIdx);
+    setExamModuleIndex(null);
+    setIsPlayerModalOpen(true);
+  };
+
+  /** Abre la lección «Examen» de un módulo: el visor empieza directamente en el examen. */
+  const handleOpenExam = (module: Module) => {
+    const modules = course.modules || [];
+    const modIdx = modules.findIndex((m) => m.id === module.id);
+    if (modIdx < 0) return;
+    setSelectedModuleIndex(modIdx);
+    setSelectedVideoIndex(Math.max(0, (modules[modIdx].videos?.length || 1) - 1));
+    setExamModuleIndex(modIdx);
     setIsPlayerModalOpen(true);
   };
 
@@ -223,6 +238,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       if (vidIdx >= 0) {
         setSelectedModuleIndex(modIdx);
         setSelectedVideoIndex(vidIdx);
+        setExamModuleIndex(null);
         setIsPlayerModalOpen(true);
         return true;
       }
@@ -260,11 +276,24 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       return;
     }
 
+    // Un módulo ya visto con su examen sin aprobar: lo siguiente es el examen.
+    const quizzesOn = pluginManager.isEnabled('interactive-quizzes');
+    for (let modIdx = 0; modIdx < modules.length; modIdx++) {
+      const vids = modules[modIdx].videos || [];
+      if (vids.length === 0) continue;
+      if (vids.some((v) => !completedVideoIds.includes(v.id))) break;
+      if (quizzesOn && getModuleQuestionCount(modules[modIdx].id) > 0 && !quizzesPluginEngine.getUserAttempt(effectiveUser.id, modules[modIdx].id)?.passed) {
+        handleOpenExam(modules[modIdx]);
+        return;
+      }
+    }
+
     const pending = allVideos.find((item) => !completedVideoIds.includes(item.video.id));
     const target = pending ?? allVideos[allVideos.length - 1];
 
     setSelectedModuleIndex(target.modIdx);
     setSelectedVideoIndex(target.vidIdx);
+    setExamModuleIndex(null);
     setIsPlayerModalOpen(true);
   };
 
@@ -298,6 +327,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
     }
 
     // 3. Fijar la siguiente lección en el estado
+    setExamModuleIndex(null);
     setSelectedModuleIndex(nextTarget.moduleIndex);
     setSelectedVideoIndex(nextTarget.videoIndex);
 
@@ -478,6 +508,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
         courses={courses}
         onSelectCourse={onSelectCourse || (() => {})}
         onOpenLesson={handleOpenLesson}
+        onOpenExam={handleOpenExam}
         completedVideoIds={completedVideoIds}
         currentUser={effectiveUser}
         certificate={certificate}
@@ -488,7 +519,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
       {/* Visor de Misión en Modal Superpuesto (como el Buzón de Escucha) */}
       {isPlayerModalOpen && (
         <CourseViewer
-          key={`player_${selectedModuleIndex}_${selectedVideoIndex}`}
+          key={`player_${selectedModuleIndex}_${selectedVideoIndex}_${examModuleIndex ?? 'v'}`}
           course={course}
           currentUser={effectiveUser}
           hasAccess={hasAccess}
@@ -498,6 +529,7 @@ export const ConstellationCourseViewer: React.FC<ConstellationCourseViewerProps>
           onGoHome={onGoHome}
           initialModuleIndex={selectedModuleIndex}
           initialVideoIndex={selectedVideoIndex}
+          initialExamModuleIndex={examModuleIndex}
           isModal={true}
           hideSyllabus={true}
           hideCertificate={true}

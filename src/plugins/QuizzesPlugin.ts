@@ -220,9 +220,9 @@ export class QuizzesPluginEngine {
   /**
    * Registra el intento de un usuario para un módulo.
    */
-  public recordAttempt(userId: string, moduleId: string, scorePercentage: number, passingThreshold: number = 80): UserQuizAttempt {
+  public recordAttempt(userId: string, moduleId: string, scorePercentage: number, passingThreshold: number = 80, serverPassed?: boolean): UserQuizAttempt {
     const key = `${userId}_${moduleId}`;
-    const passed = scorePercentage >= passingThreshold;
+    const passed = serverPassed ?? scorePercentage >= passingThreshold;
     const attempt: UserQuizAttempt = {
       moduleId,
       userId,
@@ -231,9 +231,9 @@ export class QuizzesPluginEngine {
       timestamp: new Date().toISOString(),
     };
 
-    // Guarda el mejor resultado obtenido
+    // Guarda el mejor resultado obtenido (un suspenso nunca pisa un aprobado)
     const previous = this.userAttemptsStore.get(key);
-    if (!previous || scorePercentage > previous.scorePercentage) {
+    if (!previous || (passed && !previous.passed) || (passed === previous.passed && scorePercentage > previous.scorePercentage)) {
       this.userAttemptsStore.set(key, attempt);
     }
 
@@ -271,7 +271,9 @@ export class QuizzesPluginEngine {
       const prevModule = modules[i];
       if (!prevModule || !moduleHasQuiz(prevModule.id)) continue;
       const attempt = this.getUserAttempt(userId, prevModule.id);
-      if (!attempt || !attempt.passed || attempt.scorePercentage < passingThreshold) {
+      // `passed` viene del servidor: volver a comparar con la nota mínima del
+      // navegador dejaba cerrado el módulo siguiente a quien ya había aprobado.
+      if (!attempt || !attempt.passed) {
         return false;
       }
     }

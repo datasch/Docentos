@@ -170,7 +170,13 @@
     "lockedCertDesc": "Completa la missione finale ({{mission}}) e supera le verifiche per ottenere il certificato.",
     "missionsCompletedCount": "Missioni completate: {{completed}} di {{total}}",
     "celestialOrb": "Orbe Celeste",
-    "finalMission": "Missione Finale"
+    "finalMission": "Missione Finale",
+    "examModule": "Esame del modulo {{n}}",
+    "examFinal": "Esame finale",
+    "examPassed": "Superato",
+    "examAvailable_one": "Disponibile · {{count}} domanda",
+    "examAvailable_other": "Disponibile · {{count}} domande",
+    "examLocked": "Completa le lezioni del modulo per sbloccarlo"
   },
   "viewer": {
     "tracingRoute": "Tracciamento del Percorso Stellare di Apprendimento...",
@@ -3195,5 +3201,7 @@
   "errorAlActualizarVideo": "Errore durante l’aggiornamento del video",
   "editarVideoTitle": "Modifica video {{title}}",
   "editarVideo": "Modifica video",
-  "enlaceOIdDeVideo": "Link o ID del video (Drive / YouTube / URL)"
+  "enlaceOIdDeVideo": "Link o ID del video (Drive / YouTube / URL)",
+  "examContinuar": "Continua",
+  "examSigueTrasLeccion": "Dopo questa lezione c’è l’esame di «{{module}}», come una lezione in più."
 }

@@ -9,7 +9,7 @@
 
 import { dateLocale } from '../i18n/format';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import {
   Award,
@@ -102,6 +102,8 @@ interface CourseViewerProps {
   onGoHome?: () => void;
   initialModuleIndex?: number;
   initialVideoIndex?: number;
+  /** Abre el visor directamente en el examen de ese módulo (la lección «Examen» de la ruta). */
+  initialExamModuleIndex?: number | null;
   onBackToPath?: () => void;
   isModal?: boolean;
   onCloseModal?: () => void;
@@ -199,6 +201,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   onGoHome,
   initialModuleIndex,
   initialVideoIndex,
+  initialExamModuleIndex = null,
   onBackToPath,
   isModal = false,
   onCloseModal,
@@ -355,7 +358,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
    * siempre, su cronómetro corría durante la clase y el examen se entregaba
    * solo, en blanco, antes de que el alumno llegara a él.
    */
-  const [examenModuleIndex, setExamenModuleIndex] = useState<number | null>(null);
+  const [examenModuleIndex, setExamenModuleIndex] = useState<number | null>(initialExamModuleIndex);
   const [certificate, setCertificate] = useState<CertificateRecord | null>(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
@@ -388,7 +391,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
       setActiveVideoIndex(0);
     }
     setSelectedMeetingPlayback(null);
-    setExamenModuleIndex(null);
+    setExamenModuleIndex(initialExamModuleIndex);
     // El diploma es de un curso concreto. Arrastrar el del curso anterior
     // mientras carga el progreso anuncia «Curso completado» nada más entrar.
     setCertificate(null);
@@ -947,6 +950,19 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   // Avanza a la lección siguiente tras completar la actual. En el visor modal
   // (Ruta Cósmica) se notifica el avance o se cierra; fuera de él se abre la siguiente.
   const advanceAfterCompletion = (completedMap: Record<string, boolean>) => {
+    // Tras la última lección de un módulo con examen pendiente, la siguiente
+    // «lección» es el examen: se abre ahí mismo, sin cerrar el visor.
+    const moduloActual = course.modules[activeModuleIndex];
+    const esUltimaDelModulo = Boolean(moduloActual && activeVideoIndex >= (moduloActual.videos?.length || 1) - 1);
+    if (
+      esUltimaDelModulo &&
+      pluginManager.isEnabled('interactive-quizzes') &&
+      getModuleQuestionCount(moduloActual.id) > 0 &&
+      !quizzesPluginEngine.getUserAttempt(currentUser.id, moduloActual.id)?.passed
+    ) {
+      abrirExamen(activeModuleIndex);
+      return;
+    }
     const target = stepLesson(course, { moduleIndex: activeModuleIndex, videoIndex: activeVideoIndex }, 1);
     const locksAfterMarking = moduleLockStates(course, completedMap, isQuizGateOpen);
     const nextTarget = target && isModuleOpen(locksAfterMarking, target.moduleIndex) ? target : null;
@@ -1024,16 +1040,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         return false;
       }
 
-      if (currentModule && activeVideoIndex >= (currentModule.videos?.length || 1) - 1) {
-        const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(currentModule.id) > 0;
-        if (hasQuiz) {
-          const attempt = quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id);
-          if (!attempt?.passed) {
-            setProgressError(t('paraCompletarEstaMisionDebesAprobarEl', 'Para completar esta misión debes aprobar el examen interactivo del módulo.'));
-            return false;
-          }
-        }
-      }
     }
 
     localStorage.setItem(getVideoWatchedKey(currentUser.id, videoId), 'true');
@@ -1101,7 +1107,6 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
   const autoCompleteLesson = (videoId: string) => {
     if (!currentUser?.id || completedVideos[videoId]) return;
     if (localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) !== 'true') return;
-    if (isLastLessonOfModule && !isQuizPassed) return;
     void completeLesson(videoId);
   };
   unlockRef.current = unlockAfterCleanWatch;
@@ -1152,10 +1157,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     const remaining = state.duration - time;
     const willQualify =
       state.duration > 0 && Number.isFinite(remaining) && fraction + Math.max(remaining, 0) / state.duration >= WATCH_THRESHOLD;
-    // En la última lección de un módulo con examen sin aprobar no se completa sola:
-    // tampoco se enseña un contador que no va a llegar a nada.
-    const quizBlocked = isLastLessonOfModule && !isQuizPassed;
-    if (!completedVideos[videoId] && !quizBlocked && willQualify && remaining > 0 && remaining <= AUTO_COMPLETE_SECONDS) {
+    if (!completedVideos[videoId] && willQualify && remaining > 0 && remaining <= AUTO_COMPLETE_SECONDS) {
       const seconds = Math.ceil(remaining);
       setAutoCountdown((prev) => (prev && prev.videoId === videoId && prev.seconds === seconds ? prev : { videoId, seconds }));
     } else {
@@ -1410,20 +1412,11 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     (currentVideo && currentUser?.id && localStorage.getItem(getVideoWatchedKey(currentUser.id, currentVideo.id)) === 'true') ||
     hasSubsequentCompleted
   );
-  const isLastLessonOfModule = Boolean(
-    currentModule && currentModule.videos && activeVideoIndex >= currentModule.videos.length - 1
-  );
-  const moduleRequiresQuiz = Boolean(
-    pluginManager.isEnabled('interactive-quizzes') &&
-    currentModule &&
-    getModuleQuestionCount(currentModule.id) > 0
-  );
-  const isQuizPassed = Boolean(
-    !moduleRequiresQuiz ||
-    (currentModule && currentUser?.id && quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id)?.passed)
-  );
-  const canCompleteLesson = isVideoWatched && (!isLastLessonOfModule || isQuizPassed);
-  const lessonLockedReason: 'video' | 'quiz' = !isVideoWatched ? 'video' : !isQuizPassed ? 'quiz' : 'video';
+  // El examen es su propia lección (después de la última del módulo): completar
+  // una lección solo depende de haber visto el video. El examen aprobado es lo
+  // que abre el módulo siguiente y el certificado.
+  const canCompleteLesson = isVideoWatched;
+  const lessonLockedReason: 'video' | 'quiz' = 'video';
   const examenActivo =
     examenModuleIndex !== null &&
     hasAccess &&
@@ -1540,8 +1533,35 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                   courseId={course.id}
                   user={currentUser}
                   onExit={cerrarExamen}
-                  onPassed={(score) => {
+                  onContinue={() => {
+                    // Aprobado el examen, la ruta sigue: primera lección del módulo
+                    // siguiente o, si era el examen final, vuelta a la ruta y al certificado.
+                    const indice = examenModuleIndex ?? activeModuleIndex;
+                    const siguiente = course.modules.slice(indice + 1).findIndex((m) => (m.videos?.length || 0) > 0);
+                    const destino = siguiente >= 0 ? { moduleIndex: indice + 1 + siguiente, videoIndex: 0 } : null;
+                    cerrarExamen();
+                    if (isModal && onLessonCompletedAndAdvance) {
+                      onLessonCompletedAndAdvance(destino);
+                    } else if (isModal && onCloseModal && !destino) {
+                      onCloseModal();
+                    } else if (destino) {
+                      openLesson(destino.moduleIndex, destino.videoIndex);
+                    }
+                  }}
+                  onPassed={async (score) => {
                     setQuizPassKey((prev) => prev + 1);
+                    // Aprobar no basta para avanzar: la última lección del módulo
+                    // también tiene que quedar completada. Antes había que volver
+                    // a la clase y pulsar «Marcar como completado»; quien cerraba
+                    // la ventana tras ver «¡Aprobado!» se quedaba con el módulo
+                    // siguiente y el certificado bloqueados. Se completa aquí, sin
+                    // saltar de lección; el servidor sigue exigiendo el 90 % visto.
+                    const ultima = moduloDelExamen.videos?.[moduloDelExamen.videos.length - 1];
+                    if (ultima && !completedVideos[ultima.id]) {
+                      await completeLesson(ultima.id, false, { advance: false });
+                    }
+                    // Recargar después de guardar: antes, una respuesta anterior
+                    // podía pisar el avance recién guardado.
                     void loadUserProgress();
                     onQuizPassed?.(moduloDelExamen.id, score);
                   }}
@@ -2009,7 +2029,7 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
                               </span>
                             </h4>
                             <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
-                              <Trans i18nKey="hasLlegadoALaUltimaClaseDeModulo" values={{ module: currentModule.title }} components={[<strong key="module" className="text-slate-900 dark:text-white" />]} defaultValue='Has llegado a la última clase de <0>"{{module}}"</0>. Realiza la evaluación para validar tu progreso.' />
+                              {t('examSigueTrasLeccion', 'Al completar esta lección sigue el examen de «{{module}}», como una lección más.', { module: currentModule.title })}
                             </p>
                           </div>
                         </div>

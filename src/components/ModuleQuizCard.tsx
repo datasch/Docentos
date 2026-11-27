@@ -12,7 +12,7 @@ import type { QuizAttemptStatus } from '../lib/quizAttemptStatus';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MorphingInfinity } from './loading/MorphingInfinity';
-import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, Clock, ArrowLeft } from 'lucide-react';
+import { CheckSquare, Award, RefreshCw, CheckCircle2, AlertCircle, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Module, User } from '../types';
 import { getModuleQuestions, setModuleQuiz, quizzesPluginEngine, QuizQuestion } from '../plugins/QuizzesPlugin';
 import { api } from '../lib/api';
@@ -31,6 +31,8 @@ interface ModuleQuizCardProps {
   onPassed?: (score: number) => void;
   /** Vuelve a la clase. Sin él, el examen no ofrece salida. */
   onExit?: () => void;
+  /** Con el examen aprobado, pasa a lo siguiente de la ruta (módulo siguiente o certificado). */
+  onContinue?: () => void;
 }
 
 export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
@@ -43,6 +45,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   maxAttempts = pluginManager.getQuizMaxAttempts(),
   onPassed,
   onExit,
+  onContinue,
 }) => {
   const { t, i18n } = useTranslation()
   const [questions, setQuestions] = useState<QuizQuestion[]>(() => getModuleQuestions(module.id));
@@ -215,7 +218,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
       setSubmitted(true);
       applyStatus(result.attemptStatus);
       if (result.passed) {
-        if (user) quizzesPluginEngine.recordAttempt(user.id, module.id, result.scorePercentage, passingScore);
+        // El aprobado lo decide el servidor: no se recalcula con la nota mínima del navegador.
+        if (user) quizzesPluginEngine.recordAttempt(user.id, module.id, result.scorePercentage, passingScore, result.passed);
         if (user) pluginManager.onQuizPass(user, module.id, result.scorePercentage);
         onPassed?.(result.scorePercentage);
       }
@@ -313,6 +317,18 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     </button>
   ) : null;
 
+  // El examen es una lección más: aprobado, se sigue con la ruta.
+  const botonContinuar = passed && onContinue ? (
+    <button
+      type="button"
+      onClick={onContinue}
+      className="btn-brand-primary flex items-center gap-2 px-6 py-2.5 text-meta font-semibold"
+    >
+      {t('examContinuar', 'Continuar')}
+      <ArrowRight aria-hidden className="h-4 w-4" />
+    </button>
+  ) : null;
+
   // Sin `onExit` la tarjeta no es el escenario, sino un añadido: ahí lo correcto
   // mientras no hay preguntas sigue siendo no ocupar sitio.
   if (cargando) {
@@ -402,7 +418,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
           {botonVolver || <span />}
-          <button
+          {botonContinuar || <button
             type="button"
             onClick={handleStartQuiz}
             disabled={intentosAgotados}
@@ -410,7 +426,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           >
             <Award aria-hidden className="h-4 w-4" />
             {intentosAgotados ? retryLabel : attemptsUsed > 0 ? t('reintentarExamen', 'Reintentar examen') : t('comenzarExamen', 'Comenzar examen')}
-          </button>
+          </button>}
         </div>
       </div>
     );
@@ -563,6 +579,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           )}
 
           {submitError && <p role="alert" className="text-meta text-danger-light">{submitError}</p>}
+          {submitted && botonContinuar}
           {!submitted && (
             <button
               type="submit"

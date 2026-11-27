@@ -21,7 +21,7 @@ import {
   moduleHasQuiz,
 } from '../src/plugins/QuizzesPlugin.js';
 import type { Module } from '../src/types.js';
-
+
 import './helpers/initI18n.js';
 function moduleOf(id: string, title: string): Module {
   return { id, title, order: 1, videos: [] } as unknown as Module;
@@ -133,6 +133,26 @@ test('Exámenes: un módulo sin examen no puede bloquear al siguiente', async (t
       const engine = new QuizzesPluginEngine();
       engine.recordAttempt('user-1', 'm-1', 40, 80);
       assert.equal(engine.isModuleUnlocked(modules, 1, 'user-1'), false);
+    });
+  });
+
+  await t.test('4b. El aprobado lo decide el servidor, no la nota mínima del navegador', () => {
+    // Si el navegador tiene otra nota mínima (configuración vieja o por
+    // defecto), recalcular dejaba «¡Aprobado!» en pantalla y la lección bloqueada.
+    withQuiz('m-1', () => {
+      const engine = new QuizzesPluginEngine();
+      engine.recordAttempt('user-1', 'm-1', 75, 80, true);
+      assert.equal(engine.getUserAttempt('user-1', 'm-1')?.passed, true);
+      assert.equal(engine.isModuleUnlocked(modules, 1, 'user-1'), true);
+    });
+  });
+
+  await t.test('4c. Un suspenso posterior no borra un aprobado', () => {
+    withQuiz('m-1', () => {
+      const engine = new QuizzesPluginEngine();
+      engine.recordAttempt('user-1', 'm-1', 80, 80, true);
+      engine.recordAttempt('user-1', 'm-1', 90, 95, false);
+      assert.equal(engine.getUserAttempt('user-1', 'm-1')?.passed, true);
     });
   });
 
