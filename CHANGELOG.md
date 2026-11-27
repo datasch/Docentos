@@ -12,6 +12,15 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.1.4] - 2026-11-27
+
+**No migra el esquema de base de datos.**
+
+### Fixed
+
+- **Examen de módulo en modo claro.** Las tarjetas de datos, las preguntas y las opciones se veían en un gris azulado lavado; ahora son blancas sobre el panel, la opción elegida se distingue con un borde claro del color de acento y el icono del examen usa el acento del tema en lugar de un violeta fijo.
+- **Corrección y resultado legibles en modo claro.** Respuestas correctas e incorrectas y el aviso «Aprobado / Reprobado» usan un verde y un rojo con buen contraste; «Volver a la clase» y «Reintentar examen» se leen bien también cuando están deshabilitados.
+
 ## [2.1.3] - 2026-11-26
 
 **Migración de esquema de base de datos:** esta versión añade el enum `CourseNpsStage` y la tabla `CourseNpsSurvey` en PostgreSQL (migración aditiva aplicada automáticamente al iniciar el contenedor; no altera ni elimina datos existentes).
