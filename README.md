@@ -2,7 +2,7 @@
 > **Created and maintained by Giantucchi**
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-06b6d4.svg)
-![Version: 2.1.4](https://img.shields.io/badge/Version-2.1.4-a855f7.svg)
+![Version: 2.1.5](https://img.shields.io/badge/Version-2.1.5-a855f7.svg)
 ![Status: Stable](https://img.shields.io/badge/Status-Stable-emerald400.svg)
 ![Architecture: AI--Native](https://img.shields.io/badge/Architecture-AI--Native-emerald400.svg)
 
@@ -131,7 +131,7 @@ ejecuta con `SEED_DEMO_DATA=true` y DocentOS rechaza esa opción cuando
 
 ## 🗺️ Estado y hoja de ruta
 
-* **Versión actual:** v2.1.4.
+* **Versión actual:** v2.1.5.
 * **Versión de la API:** GET /api/version.
 * **Plan funcional:** [docs/PLAN_IMPLEMENTACION_FUNCIONAL.md](docs/PLAN_IMPLEMENTACION_FUNCIONAL.md).
 * **Ediciones y versionado:** [docs/EDICIONES_Y_VERSIONADO.md](docs/EDICIONES_Y_VERSIONADO.md).
@@ -192,10 +192,10 @@ en lugar de un nombre móvil.
 
 ```bash
 # Después de publicar la etiqueta y de que Release termine en verde
-docker pull ghcr.io/datasch/docentos:2.1.4
+docker pull ghcr.io/datasch/docentos:2.1.5
 
 # Verificar la firma antes de desplegar
-cosign verify ghcr.io/datasch/docentos:2.1.4 \
+cosign verify ghcr.io/datasch/docentos:2.1.5 \
   --certificate-identity-regexp '^https://github.com/datasch/Docentos/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -203,8 +203,8 @@ cosign verify ghcr.io/datasch/docentos:2.1.4 \
 En el servidor se consume con `docker-compose.community.yml`, que no compila nada:
 
 ```bash
-DOCENTOS_IMAGE=ghcr.io/datasch/docentos:2.1.4 \
-DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:2.1.4 \
+DOCENTOS_IMAGE=ghcr.io/datasch/docentos:2.1.5 \
+DOCENTOS_BACKUP_IMAGE=ghcr.io/datasch/docentos-backup:2.1.5 \
   docker compose -f docker-compose.community.yml up -d
 ```
 
@@ -239,10 +239,10 @@ Coolify si está configurado `COOLIFY_WEBHOOK_URL`.
 npm run verify                       # versión consistente, tipado y compilación
 npm test
 ./scripts/verificar-diseno.sh HEAD    # verificador local, si está instalado
-git commit -m "chore(release): 2.1.4"
+git commit -m "chore(release): 2.1.5"
 git push datasch main
-git tag -a v2.1.4 -m "DocentOS 2.1.4"
-git push datasch v2.1.4    # el remoto de este repositorio
+git tag -a v2.1.5 -m "DocentOS 2.1.5"
+git push datasch v2.1.5    # el remoto de este repositorio
 ```
 
 `npm run version:check` obliga a que `package.json` y `src/version.ts` coincidan,

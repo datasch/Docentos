@@ -12,6 +12,28 @@ cuando alcance su primera versión estable.
 - Recuperar la variante `arm64` de las imágenes sobre runners ARM nativos, si
   algún despliegue llega a necesitarla.
 
+## [2.1.5] - 2026-11-27
+
+**No migra el esquema de base de datos.**
+
+### Fixed
+
+- **Aprobar el examen ya no deja al alumno bloqueado.** Hasta la 2.1.4, tras ver «¡Aprobado!» había que volver a la clase y pulsar «Marcar como completado»; quien cerraba la ventana se quedaba con el módulo siguiente y el certificado bloqueados. Ahora, al aprobar, la última lección del módulo se completa sola si ya se vio, y el aprobado que cuenta es el del servidor.
+- **Admin → Cursos:** Mentores, Temario y Editar vuelven a ir en una fila y «Publicar» / «Pasar a borrador» debajo, a todo el ancho; la vista de lista vuelve a mostrar un curso por fila con los botones alineados. «Publicar» ya no desaparece al pasar el ratón en modo claro.
+- **Selectores sin huecos.** «Certificados | Contratos», «Lista | Tarjetas», «Resueltas | Solo pendientes», «Buscar por tema | Pegar URL de playlist» y similares ya no dejan una columna vacía a la derecha.
+- **Recursos:** «Eliminar» ocupa todo el ancho bajo el selector de lección y «Abrir», en lista y en tarjetas.
+- **Buzón de escucha:** el asunto de cada mensaje se ve completo, sin puntos suspensivos.
+
+### Added
+
+- **El examen es una lección propia en la ruta.** Después de las lecciones de cada módulo con examen aparece la parada «Examen del módulo N» (o «Examen final» en el último), bloqueada hasta completar las lecciones, disponible después y marcada al aprobarla. Al terminar la última lección del módulo se abre el examen y, aprobado, «Continuar» lleva al módulo siguiente o al certificado. El examen sigue siendo obligatorio para abrir el módulo siguiente y para el certificado; el progreso de las lecciones no cambia.
+
+### Changed
+
+- **Admin → Cursos:** «Pasar a borrador» usa el color de acento del tema, y en la vista de lista el estado (Publicado / Borrador) va arriba a la derecha.
+- **Audio TTS:** la voz («Español (Latinoamérica…)») va en una línea aparte del nombre del mentor.
+- **Modo claro:** «Desde YouTube con IA» y «Desde Google Drive» tienen hover con el color de acento.
+
 ## [2.1.4] - 2026-11-27
 
 **No migra el esquema de base de datos.**
