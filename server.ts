@@ -2432,14 +2432,14 @@ app.post(
     // Ya completada: no se vuelve a escribir (ni siquiera la fecha de completado).
     if (!alreadyCompleted) {
       // El servidor decide el 90%: completar una lección medida exige haberla visto.
-      // const watch = await getWatchStatus(req.user!.id, videoId);
-      // if (!watch.unlocked) {
-      //   return res.status(409).json({
-      //     error: 'Para completar esta clase debes ver al menos el 90% del video, sin adelantarlo.',
-      //     code: 'WATCH_REQUIRED',
-      //     watchedPercent: Math.floor(watch.fraction * 100),
-      //   });
-      // }
+      const watch = await getWatchStatus(req.user!.id, videoId);
+      if (!watch.unlocked) {
+        return res.status(409).json({
+          error: 'Para completar esta clase debes ver al menos el 90% del video, sin adelantarlo.',
+          code: 'WATCH_REQUIRED',
+          watchedPercent: Math.floor(watch.fraction * 100),
+        });
+      }
       await prisma.userProgress.upsert({
         where: { userId_videoId: { userId: req.user!.id, videoId } },
         update: { completed: true, completedAt: new Date() },

@@ -1019,11 +1019,10 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
         hasCompletedAfter ||
         localStorage.getItem(getVideoWatchedKey(currentUser.id, videoId)) === 'true';
 
-      // if (!isWatched) {
-      //   setProgressError(t('paraCompletarEstaMisionDebesVerAlMenosEl', 'Para completar esta misión debes ver al menos el 90% del video, sin adelantarlo.'));
-      //   return false;
-      // }
-      void isWatched;
+      if (!isWatched) {
+        setProgressError(t('paraCompletarEstaMisionDebesVerAlMenosEl', 'Para completar esta misión debes ver al menos el 90% del video, sin adelantarlo.'));
+        return false;
+      }
 
       if (currentModule && activeVideoIndex >= (currentModule.videos?.length || 1) - 1) {
         const hasQuiz = pluginManager.isEnabled('interactive-quizzes') && getModuleQuestionCount(currentModule.id) > 0;
@@ -1423,11 +1422,8 @@ export const CourseViewer: React.FC<CourseViewerProps> = ({
     !moduleRequiresQuiz ||
     (currentModule && currentUser?.id && quizzesPluginEngine.getUserAttempt(currentUser.id, currentModule.id)?.passed)
   );
-  // const canCompleteLesson = isVideoWatched && (!isLastLessonOfModule || isQuizPassed);
-  // const lessonLockedReason: 'video' | 'quiz' = !isVideoWatched ? 'video' : !isQuizPassed ? 'quiz' : 'video';
-  void isVideoWatched;
-  const canCompleteLesson = !isLastLessonOfModule || isQuizPassed;
-  const lessonLockedReason: 'video' | 'quiz' = 'quiz';
+  const canCompleteLesson = isVideoWatched && (!isLastLessonOfModule || isQuizPassed);
+  const lessonLockedReason: 'video' | 'quiz' = !isVideoWatched ? 'video' : !isQuizPassed ? 'quiz' : 'video';
   const examenActivo =
     examenModuleIndex !== null &&
     hasAccess &&

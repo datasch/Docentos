@@ -306,7 +306,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     <button
       type="button"
       onClick={onExit}
-      className="flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
+      className="academy-exam__ghost flex items-center gap-1.5 rounded-lg bg-raised px-3 py-2 text-meta font-medium text-ink-soft transition-colors hover:bg-line hover:text-ink"
     >
       <ArrowLeft aria-hidden className="h-4 w-4" />
       {attemptStatus?.cooldownUntil ? t('volverAlModulo', 'Volver al módulo') : t('volverALaClase', 'Volver a la clase')}
@@ -357,7 +357,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
     return (
       <div className="academy-exam flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="rounded-xl border border-brand-violet/30 bg-brand-violet/10 p-2.5 text-brand-violet-light">
+          <span className="academy-exam__badge rounded-xl border border-brand-violet/30 bg-brand-violet/10 p-2.5 text-brand-violet-light">
             <CheckSquare aria-hidden className="h-5 w-5" />
           </span>
           <div className="min-w-0">
@@ -373,7 +373,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
             { etiqueta: 'Tiempo', valor: hasTimer ? t('timeLimitMinutesMin', '{{timeLimitMinutes}} min', { timeLimitMinutes }) : t('sinLimite', 'Sin límite') },
             { etiqueta: 'Intentos', valor: attemptLabel },
           ].map((dato) => (
-            <div key={dato.etiqueta} className="rounded-xl border border-line bg-raised px-3 py-2.5">
+            <div key={dato.etiqueta} className="academy-exam__stat rounded-xl border border-line bg-raised px-3 py-2.5">
               <dt className="text-micro text-ink-muted">{dato.etiqueta}</dt>
               <dd className="mt-0.5 text-row font-semibold text-ink tabular-nums">{dato.valor}</dd>
             </div>
@@ -417,11 +417,11 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-6">
+    <div className="academy-exam-run flex flex-col gap-6 rounded-2xl border border-line bg-surface p-6">
       {/* Cabecera */}
       <div className="flex flex-col items-start justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
-          <span className="rounded-xl border border-brand-violet/30 bg-brand-violet/10 p-2.5 text-brand-violet-light">
+          <span className="academy-exam__badge rounded-xl border border-brand-violet/30 bg-brand-violet/10 p-2.5 text-brand-violet-light">
             <CheckSquare aria-hidden className="h-5 w-5" />
           </span>
           <div className="min-w-0">
@@ -451,7 +451,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           {submitted && (
             <span
               role="status"
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1 text-meta font-semibold ${
+              data-passed={isPassed ? 'true' : 'false'}
+              className={`academy-exam__result flex items-center gap-1.5 rounded-xl border px-3 py-1 text-meta font-semibold ${
                 isPassed
                   ? 'border-success/30 bg-success/10 text-success-light'
                   : 'border-danger/30 bg-danger/10 text-danger-light'
@@ -480,7 +481,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
           return (
             <fieldset
               key={q.id}
-              className={`rounded-xl border p-4 transition-colors ${
+              data-review={isQuestionCorrect ? 'correct' : isQuestionWrong ? 'wrong' : undefined}
+              className={`academy-exam__q rounded-xl border p-4 transition-colors ${
                 isQuestionCorrect
                   ? 'border-success/40 bg-success/5'
                   : isQuestionWrong
@@ -520,7 +522,8 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                       onClick={() => handleSelectOption(q.id, optIdx)}
                       disabled={submitted}
                       aria-pressed={isChoiceSelected}
-                      className={`flex w-full items-center justify-between rounded-xl border p-3 text-left text-meta transition-colors disabled:cursor-default ${optStyle}`}
+                      data-review={canReview ? (optIdx === q.correctIndex ? 'correct' : isChoiceSelected ? 'wrong' : 'dim') : undefined}
+                      className={`academy-exam__opt flex w-full items-center justify-between rounded-xl border p-3 text-left text-meta transition-colors disabled:cursor-default ${optStyle}`}
                     >
                       <span>{opt}</span>
                       {isChoiceSelected && !submitted && (
@@ -549,7 +552,7 @@ export const ModuleQuizCard: React.FC<ModuleQuizCardProps> = ({
                 type="button"
                 onClick={handleResetQuiz}
                 disabled={intentosAgotados}
-                className="flex items-center gap-2 rounded-xl border border-line bg-raised px-4 py-2 text-meta font-semibold text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:opacity-50"
+                className="academy-exam__ghost flex items-center gap-2 rounded-xl border border-line bg-raised px-4 py-2 text-meta font-semibold text-ink transition-colors hover:bg-line disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw aria-hidden className="h-4 w-4 text-brand-cyan" />
                 {retryLabel}
